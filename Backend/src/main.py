@@ -1,72 +1,166 @@
-# Main application entry point
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from src.modules.auth.routes import router as auth_router
-from src.modules.voters.routes import router as voters_router
-from src.modules.roles.service import init_roles
-from src.config.database import get_database
-from src.config.settings import UPLOAD_DIR
+"""
+CRM Grievance Management System - FastAPI Application
+"""
+import sys
 import os
 
-app = FastAPI(title="CRM API", version="1.0.0", description="CRM System with Aadhar Verification")
+# Add current directory to Python path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# CORS Middleware
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from config.settings import settings
+from config.database import MongoDatabase
+import logging
+from datetime import datetime
+
+# Import all routes
+from auth.routes import router as auth_router
+from users.routes import router as users_router
+from grievances.routes import router as grievances_router
+from alerts.routes import router as alerts_router
+from events.routes import router as events_router
+from tasks.routes import router as tasks_router
+from notifications.routes import router as notifications_router
+from analytics.routes import router as analytics_router
+from dashboard.routes import router as dashboard_router
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Create FastAPI application
+app = FastAPI(
+    title=settings.API_TITLE,
+    description=settings.API_DESCRIPTION,
+    version=settings.API_VERSION,
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json"
+)
+
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Mount static files for uploads
-if os.path.exists(UPLOAD_DIR):
-    app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+uploads_dir = os.path.join(os.path.dirname(__file__), "..", "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+try:
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+    logger.info("✓ Static files mounted at /uploads")
+except Exception as e:
+    logger.warning(f"Could not mount static files: {e}")
 
-# Include routers
-app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
-app.include_router(voters_router, prefix="/api/voters", tags=["voters"])
+# Middleware for logging requests
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all requests"""
+    start_time = datetime.utcnow()
+    
+    response = await call_next(request)
+    
+    process_time = (datetime.utcnow() - start_time).total_seconds()
+    logger.info(
+        f"{request.method} {request.url.path} - Status: {response.status_code} - "
+        f"Duration: {process_time:.3f}s"
+    )
+    
+    return response
 
+
+# Startup event
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database on startup"""
-    print("🚀 Starting CRM API...")
+    """Initialize database and application"""
+    logger.info("Starting CRM Grievance Management System...")
     try:
-        get_database()
-        print("✅ Database connected!")
-        
-        # Initialize roles
-        print("📋 Initializing roles...")
-        init_roles()
-        print("✅ Roles initialized!")
+        MongoDatabase.connect(settings.MONGODB_URL, settings.MONGODB_DB)
+        logger.info("✓ Database connection established")
+        logger.info("✓ Collections and indexes created")
     except Exception as e:
-        print(f"⚠️  Database initialization warning: {str(e)}")
+        logger.error(f"✗ Failed to initialize database: {e}")
+        raise
 
-@app.get("/")
-def read_root():
-    """Root endpoint"""
+
+# Shutdown event
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    logger.info("Shutting down CRM Grievance Management System...")
+    MongoDatabase.close()
+    logger.info("✓ Database connection closed")
+
+
+# Root endpoint
+@app.get("/", tags=["Root"])
+async def root():
+    """API Information"""
     return {
-        "message": "🎉 CRM API is running",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "redoc": "/redoc"
+        "name": settings.API_TITLE,
+        "version": settings.API_VERSION,
+        "description": settings.API_DESCRIPTION,
+        "docs": "/api/docs",
+        "status": "operational"
     }
 
-@app.get("/health")
-def health_check():
-    """Health check endpoint"""
-    try:
-        db = get_database()
-        return {
-            "status": "healthy",
-            "database": db.name,
-            "collections": db.list_collection_names()
-        }
-    except Exception as e:
-        return {"status": "unhealthy", "error": str(e)}
 
+# Health check endpoint
+@app.get("/api/health", tags=["Health"])
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "service": settings.API_TITLE
+    }
+
+
+# Include routers
+app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(grievances_router)
+app.include_router(alerts_router)
+app.include_router(events_router)
+app.include_router(tasks_router)
+app.include_router(notifications_router)
+app.include_router(analytics_router)
+app.include_router(dashboard_router)
+
+
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle global exceptions"""
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "message": "Internal server error",
+            "statusCode": 500
+        }
+    )
+
+
+# Run application
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
+    
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG,
+        log_level="info"
+    )

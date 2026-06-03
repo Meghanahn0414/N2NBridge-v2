@@ -1,0 +1,839 @@
+{
+  "info": {
+    "_postman_id": "crm-api-collection",
+    "name": "CRM Grievance Management System",
+    "description": "Complete API Collection for CRM System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User - Citizen",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Rajesh Kumar\",\n  \"mobile\": \"9876543210\",\n  \"email\": \"rajesh@example.com\",\n  \"password\": \"CitizenPass123@\",\n  \"role\": \"CITIZEN\",\n  \"address\": \"123 Main Street, City\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register User - Manager",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Manager Singh\",\n  \"mobile\": \"9876543211\",\n  \"email\": \"manager@example.com\",\n  \"password\": \"ManagerPass123@\",\n  \"role\": \"MANAGER\",\n  \"constituencyId\": \"{{constituency_id}}\",\n  \"address\": \"Manager Office, City\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register User - Field Officer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Officer Priya\",\n  \"mobile\": \"9876543212\",\n  \"email\": \"officer@example.com\",\n  \"password\": \"OfficerPass123@\",\n  \"role\": \"FIELD_OFFICER\",\n  \"constituencyId\": \"{{constituency_id}}\",\n  \"address\": \"Field Office, City\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rajesh@example.com\",\n  \"password\": \"CitizenPass123@\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{user_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Rajesh Kumar Updated\",\n  \"address\": \"456 New Street, City\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{user_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Upload Profile Photo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/photo.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{user_id}}/upload-profile-photo",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "{{user_id}}", "upload-profile-photo"]
+            }
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/?page=1&per_page=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", ""],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Constituencies & Wards",
+      "item": [
+        {
+          "name": "Create Constituency",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"constituencyCode\": \"CONS-001\",\n  \"name\": \"Central District\",\n  \"district\": \"Metropolitan\",\n  \"state\": \"State Name\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/constituencies",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "constituencies"]
+            }
+          }
+        },
+        {
+          "name": "List Constituencies",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/constituencies",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "constituencies"]
+            }
+          }
+        },
+        {
+          "name": "Create Ward",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"constituencyId\": \"{{constituency_id}}\",\n  \"wardNumber\": \"101\",\n  \"name\": \"Ward 101 - Downtown\",\n  \"address\": \"Downtown Area\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/wards",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "wards"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grievances",
+      "item": [
+        {
+          "name": "Create Grievance Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Road Infrastructure\",\n  \"description\": \"Issues related to roads, potholes, and street maintenance\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/grievances/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grievances", "categories"]
+            }
+          }
+        },
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/grievances/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grievances", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Create Grievance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citizenId\": \"{{citizen_id}}\",\n  \"categoryId\": \"{{category_id}}\",\n  \"description\": \"Large pothole on Main Street affecting traffic\",\n  \"address\": \"123 Main Street, Downtown Area\",\n  \"constituencyId\": \"{{constituency_id}}\",\n  \"priority\": \"HIGH\",\n  \"gpsLocation\": {\n    \"type\": \"Point\",\n    \"coordinates\": [77.5946, 12.9716]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/grievances/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grievances", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Grievance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/grievances/{{grievance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grievances", "{{grievance_id}}"]
+            }
+          }
+        },
+        {
+          "name": "List Grievances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/grievances?page=1&per_page=10&status=NEW",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grievances"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "NEW"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload Grievance Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/document.pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/grievances/{{grievance_id}}/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grievances", "{{grievance_id}}", "upload"]
+            }
+          }
+        },
+        {
+          "name": "Assign Grievance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/grievances/{{grievance_id}}/assign/{{officer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grievances", "{{grievance_id}}", "assign", "{{officer_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Grievance Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{officer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\",\n  \"remarks\": \"Repair work started\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/grievances/{{grievance_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grievances", "{{grievance_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Add Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comments\": \"Work completed satisfactorily\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/grievances/{{grievance_id}}/feedback",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grievances", "{{grievance_id}}", "feedback"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Alerts",
+      "item": [
+        {
+          "name": "Create Alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citizenId\": \"{{citizen_id}}\",\n  \"alertType\": \"EMERGENCY\",\n  \"priority\": \"CRITICAL\",\n  \"description\": \"Accident near Main Street intersection\",\n  \"location\": {\n    \"type\": \"Point\",\n    \"coordinates\": [77.5946, 12.9716]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/alerts/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Alert",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/alerts/{{alert_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts", "{{alert_id}}"]
+            }
+          }
+        },
+        {
+          "name": "List Alerts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/alerts?page=1&status=OPEN&priority=CRITICAL",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "status",
+                  "value": "OPEN"
+                },
+                {
+                  "key": "priority",
+                  "value": "CRITICAL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload Alert Media",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/image.png"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/alerts/{{alert_id}}/upload-media",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts", "{{alert_id}}", "upload-media"]
+            }
+          }
+        },
+        {
+          "name": "Assign Alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/alerts/{{alert_id}}/assign/{{officer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts", "{{alert_id}}", "assign", "{{officer_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Alert Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{officer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/alerts/{{alert_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts", "{{alert_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rep_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizerId\": \"{{rep_id}}\",\n  \"title\": \"Citizens Awareness Program\",\n  \"description\": \"Program to raise awareness on grievance filing\",\n  \"eventDate\": \"2026-06-15T10:00:00\",\n  \"location\": \"Community Center, Downtown\",\n  \"eventType\": \"AWARENESS\",\n  \"expectedAttendees\": 100,\n  \"constituencyId\": \"{{constituency_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/events/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Event",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}"]
+            }
+          }
+        },
+        {
+          "name": "List Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/events?page=1&per_page=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register for Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizen_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citizenId\": \"{{citizen_id}}\",\n  \"numberOfTickets\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/events/{{event_id}}/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events", "{{event_id}}", "register"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard & Analytics",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/dashboard/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "dashboard", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/grievances?from_date=2026-06-01&to_date=2026-06-30",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "grievances"],
+              "query": [
+                {
+                  "key": "from_date",
+                  "value": "2026-06-01"
+                },
+                {
+                  "key": "to_date",
+                  "value": "2026-06-30"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "citizen_token",
+      "value": ""
+    },
+    {
+      "key": "manager_token",
+      "value": ""
+    },
+    {
+      "key": "officer_token",
+      "value": ""
+    },
+    {
+      "key": "rep_token",
+      "value": ""
+    },
+    {
+      "key": "citizen_id",
+      "value": ""
+    },
+    {
+      "key": "officer_id",
+      "value": ""
+    },
+    {
+      "key": "manager_id",
+      "value": ""
+    },
+    {
+      "key": "rep_id",
+      "value": ""
+    },
+    {
+      "key": "constituency_id",
+      "value": ""
+    },
+    {
+      "key": "category_id",
+      "value": ""
+    },
+    {
+      "key": "grievance_id",
+      "value": ""
+    },
+    {
+      "key": "alert_id",
+      "value": ""
+    },
+    {
+      "key": "event_id",
+      "value": ""
+    }
+  ]
+}
