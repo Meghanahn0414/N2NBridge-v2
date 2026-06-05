@@ -1,0 +1,221 @@
+.new-mla-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 80px);
+  padding: 24px;
+  background: whitesmoke;
+}
+
+.new-mla-card {
+  width: 100%;
+  max-width: 720px;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+}
+
+.new-mla-header {
+  padding: 40px 36px 30px;
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #ffffff;
+}
+
+.new-mla-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.new-mla-subtitle {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 15px;
+}
+
+.new-mla-form {
+  padding: 32px 36px 40px;
+}
+
+.new-mla-group {
+  margin-bottom: 22px;
+}
+
+.new-mla-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.new-mla-input,
+.new-mla-textarea,
+.new-mla-country-search {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.new-mla-input:focus,
+.new-mla-textarea:focus,
+.new-mla-country-search:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12);
+  background: #ffffff;
+}
+
+.new-mla-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.new-mla-phone-field {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.new-mla-country-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.new-mla-country-button:hover {
+  background: #eef2ff;
+}
+
+.new-mla-country-flag {
+  font-size: 18px;
+}
+
+.new-mla-country-arrow {
+  font-size: 12px;
+}
+
+.new-mla-country-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  width: 100%;
+  max-width: 320px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
+  z-index: 20;
+}
+
+.new-mla-country-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.new-mla-country-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.new-mla-country-item:hover {
+  background: #f1f5f9;
+}
+
+.new-mla-country-dial {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.new-mla-password-field {
+  position: relative;
+}
+
+.new-mla-toggle-password {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: #7c3aed;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.new-mla-submit {
+  width: 100%;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border: none;
+  color: white;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.new-mla-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 30px rgba(79, 70, 229, 0.28);
+}
+
+.new-mla-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.new-mla-alert {
+  padding: 14px 16px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.new-mla-alert--error {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.new-mla-alert--success {
+  background: #ecfdf5;
+  color: #15803d;
+}
+
+@media (max-width: 720px) {
+  .new-mla-card {
+    border-radius: 20px;
+  }
+
+  .new-mla-header,
+  .new-mla-form {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .new-mla-phone-field {
+    flex-direction: column;
+  }
+}
