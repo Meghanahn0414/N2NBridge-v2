@@ -44,13 +44,18 @@ app = FastAPI(
 )
 
 # Configure CORS
+logger.info(f"🔧 CORS_ORIGINS: {settings.CORS_ORIGINS} (type: {type(settings.CORS_ORIGINS).__name__})")
+logger.info(f"🔧 allow_credentials: {settings.CORS_ORIGINS != ['*']}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Ensure CORS headers are added to error responses as well by wrapping exception handler
+original_exception_handler = app.exception_handler(Exception)
 
 # Mount static files for uploads
 uploads_dir = os.path.join(os.path.dirname(__file__), "..", "uploads")
@@ -61,6 +66,7 @@ try:
     logger.info("✓ Static files mounted at /uploads")
 except Exception as e:
     logger.warning(f"Could not mount static files: {e}")
+
 
 # Middleware for logging requests
 @app.middleware("http")

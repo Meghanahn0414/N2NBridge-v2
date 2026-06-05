@@ -1,0 +1,140 @@
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .citizen-dashboard-page {
+    @apply min-h-screen bg-slate-100 px-4 py-8;
+  }
+
+  .citizen-dashboard-wrapper {
+    @apply mx-auto grid w-full max-w-7xl gap-6;
+  }
+
+  .citizen-dashboard-sidebar {
+    @apply hidden xl:block;
+  }
+
+  .citizen-dashboard-sidebar-card {
+    @apply sticky top-6 space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm;
+  }
+
+  .citizen-dashboard-brand {
+    @apply flex items-center gap-3;
+  }
+
+  .citizen-dashboard-brand-logo {
+    @apply flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-2xl text-white;
+  }
+
+  .dashboard-nav {
+    @apply space-y-2 pt-4;
+  }
+
+  .dashboard-nav-button {
+    @apply flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-slate-700 transition hover:bg-slate-50;
+  }
+
+  .dashboard-nav-button--active {
+    @apply bg-emerald-50 text-slate-900;
+  }
+
+  .dashboard-main-card {
+    @apply rounded-3xl border border-slate-200 bg-white p-6 shadow-sm;
+  }
+
+  .dashboard-main-header {
+    @apply mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between;
+  }
+
+  .dashboard-main-title {
+    @apply text-3xl font-semibold text-slate-900;
+  }
+
+  .dashboard-main-copy {
+    @apply mt-2 text-sm text-slate-500;
+  }
+
+  .dashboard-action {
+    @apply rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700;
+  }
+
+  .dashboard-secondary-action {
+    @apply rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100;
+  }
+
+  .dashboard-metrics-grid {
+    @apply grid gap-4 lg:grid-cols-4;
+  }
+
+  .dashboard-metric-card {
+    @apply rounded-3xl border border-slate-200 bg-white p-6 shadow-sm;
+  }
+
+  .dashboard-metric-label {
+    @apply text-sm text-slate-500;
+  }
+
+  .dashboard-metric-value {
+    @apply mt-4 text-3xl font-semibold text-slate-900;
+  }
+
+  .dashboard-grid-two {
+    @apply grid gap-6 xl:grid-cols-[2fr_1fr];
+  }
+
+  .dashboard-grid-three {
+    @apply grid gap-6 xl:grid-cols-[1.6fr_1fr];
+  }
+
+  .dashboard-section-card {
+    @apply rounded-3xl border border-slate-200 bg-white p-6 shadow-sm;
+  }
+
+  .dashboard-section-title {
+    @apply text-xl font-semibold text-slate-900;
+  }
+
+  .dashboard-section-copy {
+    @apply mt-2 text-sm text-slate-500;
+  }
+
+  .dashboard-status-row {
+    @apply space-y-4;
+  }
+
+  .dashboard-status-item {
+    @apply space-y-2;
+  }
+
+  .dashboard-status-label {
+    @apply flex items-center justify-between text-sm text-slate-500;
+  }
+
+  .dashboard-progress-track {
+    @apply h-2 overflow-hidden rounded-full bg-slate-100;
+  }
+
+  .dashboard-progress-value {
+    @apply h-full rounded-full bg-indigo-600;
+  }
+
+  .dashboard-quick-actions-grid {
+    @apply mt-5 grid gap-3 sm:grid-cols-2;
+  }
+
+  .dashboard-quick-action {
+    @apply flex items-center justify-between rounded-3xl px-4 py-4 text-left text-white transition hover:brightness-110;
+  }
+
+  .dashboard-event-card {
+    @apply rounded-3xl border border-slate-100 bg-slate-50 p-4;
+  }
+
+  .dashboard-notification-card {
+    @apply rounded-3xl border border-slate-100 bg-slate-50 p-4;
+  }
+
+  .dashboard-complaint-card {
+    @apply w-full rounded-3xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50;
+  }
+}

@@ -1,0 +1,347 @@
+.app-header {
+  width: calc(100% - var(--sidebar-width)) !important;
+  height: 70px !important;
+  background: linear-gradient(to right, #3E5C84 0%, #2F6C8F 55%, #2FA6A3 100%) !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: var(--sidebar-width) !important;
+  z-index: 90 !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid rgba(37, 86, 134, 0.25) !important;
+  transition: left 0.3s ease, width 0.3s ease;
+}
+
+body.sidebar-collapsed .app-header {
+  left: 0 !important;
+  width: 100% !important;
+}
+
+/* Container */
+.header-container {
+  max-width: 1180px;
+  width: 100%;
+  height: 100%;
+  padding: 0 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 auto;
+  color: #ffffff;
+}
+
+/* Left */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-page-title {
+  flex: 1;
+  margin-left: 80px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 2rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.02em;
+}
+
+.header-page-title::before {
+  content: '';
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-logo img {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Hamburger */
+.hamburger-btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hamburger-btn:hover {
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+/* Right */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+/* Icons */
+.notification-icon-wrapper,
+.user-icon-wrapper {
+  position: relative;
+  cursor: pointer;
+}
+
+.notification-icon,
+.user-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+}
+
+.notification-icon:hover,
+.user-icon:hover {
+  background: rgba(255, 255, 255, 0.28);
+  transform: scale(1.05);
+  box-shadow: 0 3px 8px rgba(255, 255, 255, 0.18);
+}
+
+/* Notification Badge */
+.notification-badge {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  background: var(--health-accent);
+  color: white;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+
+/* Dropdown */
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: #ffffff;
+  border: 1px solid rgba(16, 44, 65, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(16, 44, 65, 0.12);
+  width: 380px;
+  max-height: 500px;
+  z-index: 200;
+  animation: fadeIn 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 15px;
+  border-bottom: 1px solid rgba(16, 44, 65, 0.08);
+  background: #f1fbff;
+}
+
+.notification-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #243b6b;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  color: #243b6b;
+  transform: scale(1.1);
+}
+
+.notification-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.notification-item {
+  padding: 12px 15px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.notification-item:hover {
+  background: #ecf9ff;
+  padding-left: 18px;
+}
+
+.notification-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notification-title {
+  font-weight: 600;
+  color: #243b6b;
+  font-size: 14px;
+}
+
+.notification-message {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.notification-patient {
+  color: #667eea;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.notification-time {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+.notification-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.notification-empty p {
+  margin: 0;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e9eef5;
+  border-radius: 12px;
+  box-shadow: 0 15px 35px rgba(47, 95, 177, 0.12);
+  width: 220px;
+  padding: 15px;
+  z-index: 200;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.user-info {
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 10px;
+}
+
+.user-name {
+  font-weight: 600;
+  color: #243b6b;
+}
+
+.user-email {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+/* Logout Button */
+.logout-btn {
+  width: 100%;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, #2f5fb1, #32b6d6);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.3s ease;
+}
+
+.logout-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header-container {
+    padding: 0 20px;
+  }
+
+  .header-left {
+    gap: 15px;
+  }
+
+  .header-right {
+    gap: 15px;
+  }
+
+  .header-logo img {
+    height: 40px;
+  }
+
+  .hamburger-btn {
+    font-size: 20px;
+  }
+
+  .notification-icon,
+  .user-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+  }
+
+  .notification-dropdown {
+    width: 320px;
+    max-height: 400px;
+  }
+
+  .user-dropdown {
+    width: 200px;
+  }
+}

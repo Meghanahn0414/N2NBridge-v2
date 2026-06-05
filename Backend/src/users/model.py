@@ -76,6 +76,26 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
+class SendOtpRequest(BaseModel):
+    """Send OTP request"""
+    type: str = Field(..., description="'phone' or 'email'")
+    value: str = Field(..., description="Phone number or email address")
+
+
+class VerifyOtpRequest(BaseModel):
+    """Verify OTP request"""
+    value: str = Field(..., description="Phone number or email address")
+    otp: str = Field(..., description="6-digit OTP code")
+
+
+class OtpResponse(BaseModel):
+    """OTP response"""
+    success: bool
+    message: str
+    token: Optional[str] = None
+    role: Optional[str] = None
+
+
 class ConstituencyCreate(BaseModel):
     """Constituency creation"""
     constituencyCode: str

@@ -1,0 +1,78 @@
+.App {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f3f4f6;
+  padding: 0;
+  position: relative;
+  z-index: auto; /* avoid creating a hard stacking context so modals can overlay header */
+  overflow-x: hidden;
+}
+
+.app-main {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  margin-top: 80px; /* keep content below the fixed header */
+  padding: 20px;
+  padding-top: 10px; /* reinforce spacing for content top */
+  background: #f3f4f6;
+  position: relative;
+  z-index: auto; /* avoid creating nested stacking context that traps fixed modals */
+  min-height: calc(100vh - 80px);
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* Ensure any page section headers do not get hidden behind fixed top navbar */
+.card-header,
+.page-header,
+.form-header,
+.modal-header {
+  position: relative;
+  z-index: 2;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+main > * {
+  width: 100%;
+  height: 100%;
+}
+
+/* Ensure Routes component fills available space */
+main > div {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.app-main--landing {
+  margin-left: 0 !important;
+  margin-top: 0 !important;
+  padding: 0 !important;
+  flex: 1;
+  width: 100%;
+  min-height: 100vh;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+body.sidebar-collapsed .app-main {
+  margin-left: 0;
+}
+
+
+main > * {
+  margin-left: 0;
+  padding-left: 0;
+}

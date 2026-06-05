@@ -1,0 +1,16 @@
+export const ROUTES = {
+  landing: "/",
+  login: "/login",
+  citizenLogin: "/citizen-login",
+  signup: "/signup",
+  otp: "/otp",
+  citizen: "/citizen",
+  citizenCreateComplaint: "/citizen/create-complaint",
+  citizenComplaintList: "/citizen/complaints",
+  citizenComplaintDetails: "/citizen/complaints/:id",
+  field: "/field",
+  manager: "/manager",
+  rep: "/rep",
+  admin: "/admin",
+  adminSignup: "/admin-signup",
+};

@@ -28,7 +28,12 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     
     # Security
-    CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:8080"]
+    # CORS: allow local frontend origins during development
+    # In production, narrow this to the exact production origins.
+    CORS_ORIGINS: list = [
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ]
     
     # File upload
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB

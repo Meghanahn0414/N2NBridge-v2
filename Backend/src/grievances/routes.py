@@ -33,20 +33,6 @@ async def create_grievance(
     return GrievanceResponse(**grievance, _id=str(grievance["_id"]))
 
 
-@router.get("/{grievance_id}", response_model=GrievanceResponse)
-async def get_grievance(
-    grievance_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get grievance by ID"""
-    grievance = GrievanceService.get_grievance_by_id(grievance_id)
-    
-    if not grievance:
-        raise HTTPException(status_code=404, detail="Grievance not found")
-    
-    return GrievanceResponse(**grievance, _id=str(grievance["_id"]))
-
-
 @router.get("/", response_model=list[GrievanceResponse])
 async def list_grievances(
     page: int = Query(1, ge=1),
@@ -66,6 +52,55 @@ async def list_grievances(
     
     grievances = GrievanceService.list_grievances(skip, limit, filters)
     return [GrievanceResponse(**g, _id=str(g["_id"])) for g in grievances]
+
+
+# Category Endpoints - Must be before /{grievance_id} routes
+@router.post("/categories", response_model=GrievanceCategoryResponse)
+async def create_category(
+    data: GrievanceCategoryCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create grievance category"""
+    category_id = GrievanceCategoryService.create_category(data.dict())
+    category = GrievanceCategoryService.get_category_by_id(category_id)
+    
+    return GrievanceCategoryResponse(**category, _id=str(category["_id"]))
+
+
+@router.get("/categories", response_model=list[GrievanceCategoryResponse])
+async def list_categories(current_user: dict = Depends(get_current_user)):
+    """List grievance categories"""
+    categories = GrievanceCategoryService.get_all_categories()
+    
+    return [GrievanceCategoryResponse(**c, _id=str(c["_id"])) for c in categories]
+
+
+@router.get("/citizen/{citizen_id}", response_model=list[GrievanceResponse])
+async def get_citizen_grievances(
+    citizen_id: str,
+    page: int = Query(1, ge=1),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get grievances by citizen"""
+    skip, limit = Helper.paginate(page, 10)
+    grievances = GrievanceService.get_grievances_by_citizen(citizen_id, skip, limit)
+    
+    return [GrievanceResponse(**g, _id=str(g["_id"])) for g in grievances]
+
+
+# Parameterized routes - Must come after specific routes
+@router.get("/{grievance_id}", response_model=GrievanceResponse)
+async def get_grievance(
+    grievance_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get grievance by ID"""
+    grievance = GrievanceService.get_grievance_by_id(grievance_id)
+    
+    if not grievance:
+        raise HTTPException(status_code=404, detail="Grievance not found")
+    
+    return GrievanceResponse(**grievance, _id=str(grievance["_id"]))
 
 
 @router.put("/{grievance_id}", response_model=GrievanceResponse)
@@ -122,40 +157,6 @@ async def add_feedback(
         raise HTTPException(status_code=400, detail="Failed to add feedback")
     
     return success_response(None, "Feedback added successfully")
-
-
-@router.get("/citizen/{citizen_id}", response_model=list[GrievanceResponse])
-async def get_citizen_grievances(
-    citizen_id: str,
-    page: int = Query(1, ge=1),
-    current_user: dict = Depends(get_current_user)
-):
-    """Get grievances by citizen"""
-    skip, limit = Helper.paginate(page, 10)
-    grievances = GrievanceService.get_grievances_by_citizen(citizen_id, skip, limit)
-    
-    return [GrievanceResponse(**g, _id=str(g["_id"])) for g in grievances]
-
-
-# Category Endpoints
-@router.post("/categories", response_model=GrievanceCategoryResponse)
-async def create_category(
-    data: GrievanceCategoryCreate,
-    current_user: dict = Depends(get_current_user)
-):
-    """Create grievance category"""
-    category_id = GrievanceCategoryService.create_category(data.dict())
-    category = GrievanceCategoryService.get_category_by_id(category_id)
-    
-    return GrievanceCategoryResponse(**category, _id=str(category["_id"]))
-
-
-@router.get("/categories", response_model=list[GrievanceCategoryResponse])
-async def list_categories(current_user: dict = Depends(get_current_user)):
-    """List grievance categories"""
-    categories = GrievanceCategoryService.get_all_categories()
-    
-    return [GrievanceCategoryResponse(**c, _id=str(c["_id"])) for c in categories]
 
 
 # File Upload Endpoints
