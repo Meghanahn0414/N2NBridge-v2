@@ -11,12 +11,13 @@ html, body, #root {
 
 :root {
   --sidebar-width: 260px;
+  --header-height: 88px;
 }
 
 /* Main app content area (adjusts with sidebar and header) */
 .app-main {
   margin-left: var(--sidebar-width);
-  margin-top: 70px; /* header height */
+  margin-top: var(--header-height);
   padding: 20px 28px;
   transition: margin-left 0.3s ease, margin-top 0.3s ease;
 }

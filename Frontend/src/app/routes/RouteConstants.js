@@ -13,4 +13,13 @@ export const ROUTES = {
   rep: "/rep",
   admin: "/admin",
   adminSignup: "/admin-signup",
+  register: "/admin/register",
+  registerMLA: "/admin/register/mla",
+  registerManager: "/admin/register/manager",
+  registerFieldOfficer: "/admin/register/field-officer",
+  mlaList: "/admin/mla-list",
+  citizenList: "/admin/users",
+  adminUsers: "/admin/users",
+  reports: "/admin/reports",
+  settings: "/admin/settings",
 };

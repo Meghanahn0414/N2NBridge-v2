@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "./Logo";
+import { ROUTES } from "./app/routes/RouteConstants";
 import {
   getAuthRole,
   getAuthUser,
@@ -62,108 +63,61 @@ export default function Sidebar() {
   return (
     <>
       <aside className={`sidebar ${sidebarOpen ? '' : 'closed'}`}>
-        <div className="sidebar-brand">
+        <div className="sidebar-top">
+          {/* Logo Section */}
           <Logo />
-          <div className="sidebar-brand-text">
-            <h1>VaarahiCRM</h1>
-            <p>Citizen Relation Management</p>
-          </div>
-        </div>
+
+          {/* Sidebar Hamburger */}
+          {/* <button className="hamburger-btn sidebar-hamburger" onClick={toggleSidebar}>
+            <FaBars />
+          </button> */}
+       
 
         <button className="hamburger-btn sidebar-hamburger" onClick={toggleSidebar}>
           <span aria-hidden="true">☰</span>
         </button>
+         </div>
 
         <nav className="sidebar-menu">
-        {/* Show doctor list only for Location Administrator */}
-        {role === 'location_admin' && (
-          <>
-            <button
-              className={`sidebar-item ${isActive('/location-doctors') ? 'active' : ''}`}
-              onClick={() => navigate("/location-doctors")}
-            >
-              <span style={{ marginRight: '10px', verticalAlign: 'middle' }}>👨‍⚕️</span> Doctors
-            </button>
-            <button
-              className={`sidebar-item ${isActive('/location-analysts') ? 'active' : ''}`}
-              onClick={() => navigate("/location-analysts")}
-            >
-              <span style={{ marginRight: '10px', verticalAlign: 'middle' }}>👤</span> Analysts
-            </button>
-          </>
-        )}
+          {(role === 'ADMIN' || role === 'admin') && (
+            <>
+              <button
+                className={`sidebar-item ${isActive(ROUTES.admin) ? 'active' : ''}`}
+                onClick={() => navigate(ROUTES.admin)}
+              >
+                <span style={{ marginRight: '10px' }}>📊</span> Dashboard
+              </button>
 
-        {/* Show doctor details only when not analyst and not location administrator */}
-        {role && role !== 'analyst' && role !== 'location_admin' && (
-          <button
-            className={`sidebar-item ${isActive('/doctor/details') ? 'active' : ''}`}
-            onClick={() => navigate("/doctor/details")}
-          >
-            <span style={{ marginRight: '10px', verticalAlign: 'middle' }}>🩺</span> Appointments
-          </button>
-        )}
+              <button
+                className={`sidebar-item ${isActive(ROUTES.adminUsers) ? 'active' : ''}`}
+                onClick={() => navigate(ROUTES.adminUsers)}
+              >
+                <span style={{ marginRight: '10px' }}>👥</span> Users
+              </button>
 
-        {role == 'location_admin' && (
-          <button
-            className={`sidebar-item ${isActive('/patients') ? 'active' : ''}`}
-            onClick={() => navigate("/patients")}
-          >
-            <span style={{ marginRight: '10px', verticalAlign: 'middle' }}>👥</span> Patients
-          </button>
-        )}
+              <button
+                className={`sidebar-item ${isActive(ROUTES.register) ? 'active' : ''}`}
+                onClick={() => navigate(ROUTES.register)}
+              >
+                <span style={{ marginRight: '10px' }}>📝</span> Registration
+              </button>
 
-        {role == 'analyst' && (
-           <button
-          className={`sidebar-item ${isActive('/analyst/details') ? 'active' : ''}`}
-          onClick={() => navigate("/analyst/details")}
-        >
-           <span style={{ marginRight: '10px', verticalAlign: 'middle' }}>👤</span> Analyst
-        </button>
-        )}
-        {role == 'analyst' && (
-        <>
-         <button
-            className={`sidebar-item ${isActive('/patients') ? 'active' : ''}`}
-            onClick={() => navigate("/patients")}
-          >
-            <span style={{ marginRight: '10px', verticalAlign: 'middle' }}>👥</span> Patients
-          </button>
-        </>  
-        )}
-         {role == 'doctor' && (
-          <>
-            <button
-              className={`sidebar-item ${isActive('/patients') ? 'active' : ''}`}
-              onClick={() => navigate("/patients")}
-            >
-              <span style={{ marginRight: '10px', verticalAlign: 'middle' }}>👥</span> Patients
-            </button>
-          </>
-        )}
+              <button
+                className={`sidebar-item ${isActive(ROUTES.reports) ? 'active' : ''}`}
+                onClick={() => navigate(ROUTES.reports)}
+              >
+                <span style={{ marginRight: '10px' }}>📁</span> Reports
+              </button>
 
-        {/* Payment Links */}
-        {/* <hr style={{ margin: '15px 0', border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)' }} /> */}
-
-        {/* Payment for all authenticated users */}
-        {/* {role && role !== 'analyst' && (
-          <button
-            className={`sidebar-item ${isActive('/payment') ? 'active' : ''}`}
-            onClick={() => navigate("/payment")}
-          >
-            <span style={{ marginRight: '10px', verticalAlign: 'middle' }}>💳</span> Patient Payment
-          </button>
-        )} */}
-
-        {/* Admin Payment Management - only for location_admin */}
-        {/* {role === 'location_admin' && (
-          <button
-            className={`sidebar-item ${isActive('/admin/payments') ? 'active' : ''}`}
-            onClick={() => navigate("/admin/payments")}
-          >
-            <span style={{ marginRight: '10px', verticalAlign: 'middle' }}>📊</span> Payment Methods
-          </button>
-        )} */}
-      </nav>
+              <button
+                className={`sidebar-item ${isActive(ROUTES.settings) ? 'active' : ''}`}
+                onClick={() => navigate(ROUTES.settings)}
+              >
+                <span style={{ marginRight: '10px' }}>⚙️</span> Settings
+              </button>
+            </>
+          )}
+        </nav>
 
       {/* Bottom user area */}
       <div className="sidebar-footer" ref={dropdownRef}>

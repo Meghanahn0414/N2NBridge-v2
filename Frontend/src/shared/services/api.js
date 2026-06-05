@@ -8,9 +8,13 @@ const buildUrl = (path) => {
 
 async function request(method, url, { params, data, headers } = {}) {
 	const query = params ? `?${new URLSearchParams(params).toString()}` : "";
+	// Automatically include Authorization header if token exists
+	const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+	const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+
 	const res = await fetch(buildUrl(url) + query, {
 		method,
-		headers: Object.assign({ Accept: "application/json" }, headers || {}),
+		headers: Object.assign({ Accept: "application/json", "Content-Type": "application/json" }, authHeader, headers || {}),
 		body: data && !(data instanceof FormData) ? JSON.stringify(data) : data,
 	});
 
