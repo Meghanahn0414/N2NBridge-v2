@@ -17,17 +17,23 @@ class UserService:
     @staticmethod
     def create_user(user_data: dict, user_id: str) -> dict:
         """Create new user"""
-        db = MongoDatabase.get_db()
-        
-        # Hash password
-        user_data["passwordHash"] = SecurityManager.hash_password(user_data.pop("password"))
-        user_data["status"] = "ACTIVE"
-        user_data["lastLoginAt"] = None
-        user_data.update(Helper.audit_fields(user_id))
-        
-        result = db.users.insert_one(user_data)
-        logger.info(f"User created: {result.inserted_id}")
-        return str(result.inserted_id)
+        try:
+            db = MongoDatabase.get_db()
+            
+            logger.info(f"Creating user with email: {user_data.get('email')}")
+            # Hash password
+            user_data["passwordHash"] = SecurityManager.hash_password(user_data.pop("password"))
+            user_data["status"] = "ACTIVE"
+            user_data["lastLoginAt"] = None
+            user_data.update(Helper.audit_fields(user_id))
+            
+            logger.info(f"Inserting user document into database")
+            result = db.users.insert_one(user_data)
+            logger.info(f"User created successfully with ID: {result.inserted_id}")
+            return str(result.inserted_id)
+        except Exception as e:
+            logger.error(f"Error creating user: {e}", exc_info=True)
+            raise
     
     @staticmethod
     def get_user_by_id(user_id: str) -> Optional[dict]:

@@ -4,7 +4,8 @@ Helper Utilities
 from datetime import datetime
 import uuid
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
+from bson import ObjectId
 
 logger = logging.getLogger(__name__)
 
@@ -73,3 +74,13 @@ class Helper:
             fields["isDeleted"] = False
             fields["deletedAt"] = None
         return fields
+    
+    @staticmethod
+    def convert_mongo_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert MongoDB document to JSON-serializable dict"""
+        if not doc:
+            return None
+        result = dict(doc)
+        if "_id" in result and isinstance(result["_id"], ObjectId):
+            result["_id"] = str(result["_id"])
+        return result

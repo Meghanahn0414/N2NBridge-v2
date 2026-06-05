@@ -6,7 +6,7 @@ import AdminLogin from "../../features/auth/AdminLogin";
 import CitizenLogin from "../../features/auth/CitizenLogin";
 import OtpVerify from "../../features/auth/OtpVerify";
 import AdminSignup from "../../features/auth/AdminSignup";
-import CitizenDashboard from "../../features/dshboard/pages/CitizenDashboard";
+import CitizenDashboard from "../../pages/dashboard/CitizenDashboard";
 import CreateComplaint from "../../pages/citizen/CreateComplaint";
 import ComplaintList from "../../pages/citizen/ComplaintList";
 import ComplaintDetails from "../../pages/citizen/ComplaintDetails";

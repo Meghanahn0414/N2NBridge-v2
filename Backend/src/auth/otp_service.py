@@ -3,7 +3,8 @@ OTP Service for authentication
 """
 import random
 import time
-from typing import Optional, Dict
+# import sys
+from typing import  Dict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -47,9 +48,9 @@ class OTPService:
 
             # TODO: Integrate with actual SMS/Email service
             # For now, log to console for testing
-            print(f"🔐 DEBUG OTP sent to {type_} {value}: {otp}")  # Debug output
+            print(f"🔐 DEBUG OTP sent to {type_} {value}: {otp}", flush=True)  # Debug output
             logger.info(f"OTP for {type_} {value}: {otp}")
-            print(f"🔐 DEBUG OTP: {otp} for {value}")
+            print(f"🔐 DEBUG OTP: {otp} for {value}", flush=True)
 
             return True
         except Exception as e:

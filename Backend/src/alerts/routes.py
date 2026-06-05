@@ -1,9 +1,9 @@
 """
 Alert Routes
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+
 from typing import Optional
-from auth.routes import get_current_user
 from alerts.service import AlertService
 from alerts.model import AlertCreate, AlertUpdate, AlertResponse
 from utils.response import success_response
@@ -16,23 +16,21 @@ logger = logging.getLogger(__name__)
 
 @router.post("/", response_model=AlertResponse)
 async def create_alert(
-    alert_data: AlertCreate,
-    current_user: dict = Depends(get_current_user)
+    alert_data: AlertCreate
 ):
     """Create alert"""
     alert_id = AlertService.create_alert(
         alert_data.dict(),
-        current_user["user_id"]
+        None
     )
     
     alert = AlertService.get_alert_by_id(alert_id)
-    return AlertResponse(**alert, _id=str(alert["_id"]))
+    return AlertResponse(**Helper.convert_mongo_doc(alert))
 
 
 @router.get("/{alert_id}", response_model=AlertResponse)
 async def get_alert(
-    alert_id: str,
-    current_user: dict = Depends(get_current_user)
+    alert_id: str
 ):
     """Get alert by ID"""
     alert = AlertService.get_alert_by_id(alert_id)
@@ -40,7 +38,7 @@ async def get_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     
-    return AlertResponse(**alert, _id=str(alert["_id"]))
+    return AlertResponse(**Helper.convert_mongo_doc(alert))
 
 
 @router.get("/", response_model=list[AlertResponse])
@@ -48,8 +46,7 @@ async def list_alerts(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100),
     status: Optional[str] = None,
-    priority: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
+    priority: Optional[str] = None
 ):
     """List alerts"""
     skip, limit = Helper.paginate(page, per_page)
@@ -61,37 +58,35 @@ async def list_alerts(
         filters["priority"] = priority
     
     alerts = AlertService.list_alerts(skip, limit, filters)
-    return [AlertResponse(**a, _id=str(a["_id"])) for a in alerts]
+    return [AlertResponse(**Helper.convert_mongo_doc(a)) for a in alerts]
 
 
 @router.put("/{alert_id}", response_model=AlertResponse)
 async def update_alert(
     alert_id: str,
-    update_data: AlertUpdate,
-    current_user: dict = Depends(get_current_user)
+    update_data: AlertUpdate
 ):
     """Update alert"""
     success = AlertService.update_alert(
         alert_id,
         update_data.dict(exclude_unset=True),
-        current_user["user_id"]
+        None
     )
     
     if not success:
         raise HTTPException(status_code=400, detail="Failed to update alert")
     
     alert = AlertService.get_alert_by_id(alert_id)
-    return AlertResponse(**alert, _id=str(alert["_id"]))
+    return AlertResponse(**Helper.convert_mongo_doc(alert))
 
 
 @router.post("/{alert_id}/assign/{officer_id}")
 async def assign_alert(
     alert_id: str,
-    officer_id: str,
-    current_user: dict = Depends(get_current_user)
+    officer_id: str
 ):
     """Assign alert to officer"""
-    success = AlertService.assign_alert(alert_id, officer_id, current_user["user_id"])
+    success = AlertService.assign_alert(alert_id, officer_id, None)
     
     if not success:
         raise HTTPException(status_code=400, detail="Failed to assign alert")
@@ -103,8 +98,7 @@ async def assign_alert(
 @router.post("/{alert_id}/upload-media")
 async def upload_alert_media(
     alert_id: str,
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user)
+    file: UploadFile = File(...)
 ):
     """Upload media attachment to alert"""
     try:
@@ -134,3 +128,5 @@ async def upload_alert_media(
     except Exception as e:
         logger.error(f"Upload error: {str(e)}")
         raise HTTPException(status_code=500, detail="Upload failed")
+
+
