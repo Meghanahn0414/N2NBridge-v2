@@ -4,7 +4,7 @@ User Model and Schemas
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
-from bson import ObjectId
+# from bson import ObjectId
 
 
 class UserBase(BaseModel):

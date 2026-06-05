@@ -2,7 +2,7 @@
 Notification Model and Schemas
 """
 from pydantic import BaseModel, Field
-from typing import Optional
+# from typing import Optional
 from datetime import datetime
 
 

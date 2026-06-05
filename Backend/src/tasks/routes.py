@@ -94,7 +94,7 @@ async def create_field_report(
     report_data: FieldReportCreate
 ):
     """Create field report"""
-    report_id = FieldReportService.create_report(report_data.dict())
+    # report_id = FieldReportService.create_report(report_data.dict())
     report = FieldReportService.get_report_by_task(report_data.taskId)
     
     if report:

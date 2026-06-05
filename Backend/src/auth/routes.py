@@ -5,10 +5,10 @@ from fastapi import APIRouter, Header, HTTPException, status, Request
 from typing import Optional
 from auth.service import AuthService
 from auth.otp_service import OTPService
-from users.model import UserLoginRequest, TokenResponse, UserCreate, UserResponse, SendOtpRequest, VerifyOtpRequest, OtpResponse
+from users.model import UserLoginRequest, TokenResponse, UserCreate,  SendOtpRequest, VerifyOtpRequest, OtpResponse
 from users.service import UserService
 from config.database import MongoDatabase
-from utils.response import success_response, error_response, ResponseMessage
+# from utils.response import success_response
 from utils.jwt import TokenManager
 import logging
 
@@ -144,7 +144,7 @@ async def verify_token():
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return success_response({"user_id": None, "role": current_user["role"]})
+    # return success_response({"user_id": None, "role": current_user["role"]})
 
 
 @router.post("/send-otp")

@@ -25,7 +25,10 @@ class UserService:
             user_data["passwordHash"] = SecurityManager.hash_password(user_data.pop("password"))
             user_data["status"] = "ACTIVE"
             user_data["lastLoginAt"] = None
-            user_data.update(Helper.audit_fields(user_id))
+            
+            # Handle audit fields - use "system" for public registration (when user_id is None)
+            audit_user_id = user_id if user_id else "system"
+            user_data.update(Helper.audit_fields(audit_user_id))
             
             logger.info(f"Inserting user document into database")
             result = db.users.insert_one(user_data)

@@ -1,7 +1,7 @@
 """
 Grievance Routes
 """
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 
 from typing import Optional
 from grievances.service import GrievanceService, GrievanceCategoryService
@@ -10,7 +10,7 @@ from grievances.model import (
     GrievanceCategoryCreate, GrievanceCategoryResponse,
     GrievanceFeedbackCreate
 )
-from utils.response import success_response, error_response
+from utils.response import success_response
 from utils.helper import Helper
 import logging
 

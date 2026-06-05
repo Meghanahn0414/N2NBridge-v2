@@ -20,7 +20,10 @@ class TaskService:
         db = MongoDatabase.get_db()
         
         task_data["status"] = "PENDING"
-        task_data.update(Helper.audit_fields(user_id))
+        
+        # Handle audit fields - use "system" for public creation (when user_id is None)
+        audit_user_id = user_id if user_id else "system"
+        task_data.update(Helper.audit_fields(audit_user_id))
         
         result = db.tasks.insert_one(task_data)
         return str(result.inserted_id)
@@ -78,6 +81,18 @@ class FieldReportService:
         db = MongoDatabase.get_db()
         
         report_data["submittedAt"] = datetime.utcnow()
+        
+        # Validate and clean gpsLocation - must be valid GeoJSON or null
+        gps_location = report_data.get("gpsLocation")
+        if gps_location:
+            # Check if it's valid GeoJSON Point format
+            if not (isinstance(gps_location, dict) and 
+                    gps_location.get("type") == "Point" and 
+                    isinstance(gps_location.get("coordinates"), list) and 
+                    len(gps_location.get("coordinates", [])) == 2):
+                # Invalid format, set to null
+                logger.warning(f"Invalid gpsLocation format: {gps_location}. Setting to null.")
+                report_data["gpsLocation"] = None
         
         result = db.field_reports.insert_one(report_data)
         

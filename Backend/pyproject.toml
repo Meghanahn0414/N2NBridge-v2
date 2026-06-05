@@ -1,0 +1,12 @@
+[tool.pyright]
+include = ["src", "main.py"]
+pythonVersion = "3.13"
+typeCheckingMode = "basic"
+extraPaths = ["src"]
+
+[tool.pylint]
+init-hook = """
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent / 'src'))
+"""

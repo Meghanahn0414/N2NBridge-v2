@@ -21,7 +21,22 @@ class AlertService:
         
         alert_data["alertNumber"] = Helper.generate_alert_number()
         alert_data["status"] = "OPEN"
-        alert_data.update(Helper.audit_fields(user_id))
+        
+        # Validate and clean location - must be valid GeoJSON or null
+        location = alert_data.get("location")
+        if location:
+            # Check if it's valid GeoJSON Point format
+            if not (isinstance(location, dict) and 
+                    location.get("type") == "Point" and 
+                    isinstance(location.get("coordinates"), list) and 
+                    len(location.get("coordinates", [])) == 2):
+                # Invalid format, set to null
+                logger.warning(f"Invalid location format: {location}. Setting to null.")
+                alert_data["location"] = None
+        
+        # Handle audit fields - use "system" for public creation (when user_id is None)
+        audit_user_id = user_id if user_id else "system"
+        alert_data.update(Helper.audit_fields(audit_user_id))
         
         result = db.alerts.insert_one(alert_data)
         return str(result.inserted_id)

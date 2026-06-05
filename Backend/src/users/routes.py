@@ -1,7 +1,7 @@
 """
 User Routes
 """
-from fastapi import APIRouter, Header, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter,  HTTPException,  Query, UploadFile, File
 from typing import Optional
 from users.service import UserService, ConstituencyService, WardService
 from users.model import (
@@ -9,7 +9,7 @@ from users.model import (
     ConstituencyCreate, ConstituencyResponse,
     WardCreate, WardResponse
 )
-from utils.response import success_response, error_response
+from utils.response import success_response
 from utils.helper import Helper
 import logging
 

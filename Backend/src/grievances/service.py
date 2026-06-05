@@ -25,7 +25,22 @@ class GrievanceService:
         grievance_data["attachments"] = []
         grievance_data["history"] = []
         grievance_data["feedback"] = None
-        grievance_data.update(Helper.audit_fields(user_id))
+        
+        # Validate and clean gpsLocation - must be valid GeoJSON or null
+        gps_location = grievance_data.get("gpsLocation")
+        if gps_location:
+            # Check if it's valid GeoJSON Point format
+            if not (isinstance(gps_location, dict) and 
+                    gps_location.get("type") == "Point" and 
+                    isinstance(gps_location.get("coordinates"), list) and 
+                    len(gps_location.get("coordinates", [])) == 2):
+                # Invalid format, set to null
+                logger.warning(f"Invalid gpsLocation format: {gps_location}. Setting to null.")
+                grievance_data["gpsLocation"] = None
+        
+        # Handle audit fields - use "system" for public creation (when user_id is None)
+        audit_user_id = user_id if user_id else "system"
+        grievance_data.update(Helper.audit_fields(audit_user_id))
         
         result = db.grievances.insert_one(grievance_data)
         logger.info(f"Grievance created: {result.inserted_id}")

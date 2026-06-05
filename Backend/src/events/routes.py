@@ -61,7 +61,7 @@ async def update_event(
     success = EventService.update_event(
         event_id,
         update_data.dict(exclude_unset=True),
-        None
+        "system"
     )
     
     if not success:
@@ -76,7 +76,7 @@ async def publish_event(
     event_id: str
 ):
     """Publish event"""
-    success = EventService.publish_event(event_id, None)
+    success = EventService.publish_event(event_id, "system")
     
     if not success:
         raise HTTPException(status_code=400, detail="Failed to publish event")
@@ -87,15 +87,15 @@ async def publish_event(
 # Registration Endpoints
 @router.post("/{event_id}/register", response_model=EventRegistrationResponse)
 async def register_for_event(
-    event_id: str
+    event_id: str,
+    registration_data: EventRegistrationCreate
 ):
     """Register for event"""
-    registration_id = EventRegistrationService.register_citizen({
-        "eventId": event_id,
-        "citizenId": None
-    })
+    registration_data_dict = registration_data.dict()
+    registration_data_dict["eventId"] = event_id
+    # registration_id = EventRegistrationService.register_citizen(registration_data_dict)
     
-    registration = EventRegistrationService.get_registration(event_id, None)
+    registration = EventRegistrationService.get_registration(event_id, registration_data.citizenId)
     return EventRegistrationResponse(**Helper.convert_mongo_doc(registration))
 
 
@@ -108,7 +108,13 @@ async def get_registrations(
     skip, limit = Helper.paginate(page, 10)
     registrations = EventRegistrationService.get_event_registrations(event_id, skip, limit)
     
-    return [EventRegistrationResponse(**Helper.convert_mongo_doc(r)) for r in registrations]
+    # Filter out registrations with missing citizenId
+    valid_registrations = [
+        Helper.convert_mongo_doc(r) for r in registrations 
+        if r.get("citizenId")
+    ]
+    
+    return [EventRegistrationResponse(**reg) for reg in valid_registrations]
 
 
 @router.post("/registrations/{registration_id}/attend")
