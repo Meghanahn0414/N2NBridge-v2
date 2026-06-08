@@ -76,19 +76,19 @@ export default function AnalyticsReports() {
       <div className="module-stats">
         <div className="stat-card">
           <span className="stat-label">Total Records</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Average Response Time</span>
-          <span className="stat-value">0h</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Success Rate</span>
-          <span className="stat-value">0%</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Escalations</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
       </div>
 
@@ -140,15 +140,15 @@ export default function AnalyticsReports() {
           <div className="ai-metrics">
             <div className="ai-metric-card">
               <div className="metric-label">Auto-Categorized</div>
-              <div className="metric-value">0</div>
+              <div className="metric-value"></div>
             </div>
             <div className="ai-metric-card">
               <div className="metric-label">Manual Override %</div>
-              <div className="metric-value">0%</div>
+              <div className="metric-value"></div>
             </div>
             <div className="ai-metric-card">
               <div className="metric-label">Accuracy %</div>
-              <div className="metric-value">0%</div>
+              <div className="metric-value"></div>
             </div>
           </div>
 

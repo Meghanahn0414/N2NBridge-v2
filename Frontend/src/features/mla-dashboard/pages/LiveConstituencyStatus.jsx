@@ -4,9 +4,9 @@ import '../../../styles/mla-dashboard/LiveConstituencyStatus.css';
 
 export default function LiveConstituencyStatus() {
   const [stats, setStats] = useState({
-    complaints: { new: 120, assigned: 450, inProgress: 820, resolved: 2500 },
-    alerts: { critical: 5, high: 15, medium: 20, low: 35 },
-    events: { today: 2, thisWeek: 8, registrations: 4500 },
+    complaints: { new:'', assigned:'', inProgress:'', resolved: '' },
+    alerts: { critical: '', high: '', medium: '', low: '' },
+    events: { today: '', thisWeek: '', registrations: '' },
   });
 
   return (

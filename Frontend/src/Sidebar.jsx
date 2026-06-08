@@ -253,12 +253,12 @@ export default function Sidebar() {
 
               <div className="sidebar-section-divider" style={{ margin: '15px 0', borderTop: '1px solid #ddd' }}></div>
 
-              {/* <button
+              <button
                 className={`sidebar-item ${isActive(ROUTES.adminUsers) ? 'active' : ''}`}
                 onClick={() => navigate(ROUTES.adminUsers)}
               >
                 <span style={{ marginRight: '10px' }}>👥</span> Citizens
-              </button> */}
+              </button>
 
               {/* <button
                 className={`sidebar-item ${isActive(ROUTES.events) ? 'active' : ''}`}
@@ -274,7 +274,7 @@ export default function Sidebar() {
                 <span style={{ marginRight: '10px' }}>🚨</span> Alerts
               </button> */}
 
-              {/* <button
+              <button
                 className={`sidebar-item ${isActive(ROUTES.register) ? 'active' : ''}`}
                 onClick={() => navigate(ROUTES.register)}
               >
@@ -285,9 +285,9 @@ export default function Sidebar() {
                 onClick={() => navigate(ROUTES.mlaList)}
               >
                 <span style={{ marginRight: '10px' }}>👔</span> Representatives
-              </button> */}
+              </button>
 
-              {/* <button
+              <button
                 className={`sidebar-item ${isActive(ROUTES.managerList) ? 'active' : ''}`}
                 onClick={() => navigate(ROUTES.managerList)}
               >
@@ -299,7 +299,7 @@ export default function Sidebar() {
                 onClick={() => navigate(ROUTES.fieldOfficerList)}
               >
                 <span style={{ marginRight: '10px' }}>👷</span> Field Officers
-              </button> */}
+              </button>
             </>
           )}
 

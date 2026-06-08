@@ -16,7 +16,7 @@ export default function CreateComplaint() {
     description: "",
     address: "",
     wardId: "",
-    priority: "MEDIUM",
+    priority: "",
     attachment: null,
   });
   const [error, setError] = useState("");

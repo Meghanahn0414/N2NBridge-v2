@@ -4,11 +4,11 @@ import '../../../styles/mla-dashboard/EmergencyCommandCenter.css';
 
 export default function EmergencyCommandCenter() {
   const [alerts, setAlerts] = useState([
-    { id: 1, type: 'Flood', ward: 'Ward 8', status: 'Team Dispatched', time: '10 mins ago', priority: 'critical' },
-    { id: 2, type: 'Fire', ward: 'Ward 14', status: 'Firefighters En Route', time: '23 mins ago', priority: 'critical' },
-    { id: 3, type: 'Medical Emergency', ward: 'Ward 5', status: 'Ambulance Assigned', time: '45 mins ago', priority: 'high' },
-    { id: 4, type: 'Accident', ward: 'Ward 12', status: 'Police On Scene', time: '1 hour ago', priority: 'high' },
-    { id: 5, type: 'Law & Order', ward: 'Ward 20', status: 'Investigation Underway', time: '2 hours ago', priority: 'high' },
+    { id: '', type: '', ward: '', status: '', time: '', priority: '' },
+    { id: '', type: '', ward: '', status: '', time: '', priority: '' },
+    { id: '', type: '', ward: '', status: '', time: '', priority: '' },
+    { id: '', type: '', ward: '', status: '', time: '', priority: '' },
+    { id: '', type: '', ward: '', status: '', time: '', priority: '' },
   ]);
 
   const [activeTab, setActiveTab] = useState('all');
@@ -24,7 +24,7 @@ export default function EmergencyCommandCenter() {
       <div className="mla-section">
         <div className="critical-alert-banner">
           <div className="critical-count">
-            <span className="count-number">5</span>
+            <span className="count-number"></span>
             <span className="count-label">Active Emergencies</span>
           </div>
           <button className="btn-danger">🔔 Alert All Officers</button>
@@ -38,19 +38,19 @@ export default function EmergencyCommandCenter() {
             className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
             onClick={() => setActiveTab('all')}
           >
-            All Alerts (5)
+            All Alerts ()
           </button>
           <button
             className={`tab-btn ${activeTab === 'critical' ? 'active' : ''}`}
             onClick={() => setActiveTab('critical')}
           >
-            Critical (2)
+            Critical ()
           </button>
           <button
             className={`tab-btn ${activeTab === 'high' ? 'active' : ''}`}
             onClick={() => setActiveTab('high')}
           >
-            High (3)
+            High ()
           </button>
         </div>
       </div>
@@ -95,24 +95,24 @@ export default function EmergencyCommandCenter() {
         <h2>Response Teams Status</h2>
         <div className="teams-grid">
           <div className="team-card">
-            <div className="team-name">🚒 Fire Brigade</div>
-            <div className="team-status active">Active</div>
-            <div className="team-units">2 units deployed</div>
+            <div className="team-name"></div>
+            <div className="team-status active"></div>
+            <div className="team-units"></div>
           </div>
           <div className="team-card">
-            <div className="team-name">🚑 Ambulance Service</div>
-            <div className="team-status active">Active</div>
-            <div className="team-units">1 unit deployed</div>
+            <div className="team-name"></div>
+            <div className="team-status active"></div>
+            <div className="team-units"></div>
           </div>
           <div className="team-card">
-            <div className="team-name">🚓 Police</div>
-            <div className="team-status active">Active</div>
-            <div className="team-units">2 units deployed</div>
+            <div className="team-name"></div>
+            <div className="team-status active"></div>
+            <div className="team-units"></div>
           </div>
           <div className="team-card">
-            <div className="team-name">🛠️ Emergency Repair</div>
-            <div className="team-status standby">Standby</div>
-            <div className="team-units">Available</div>
+            <div className="team-name"></div>
+            <div className="team-status standby"></div>
+            <div className="team-units"></div>
           </div>
         </div>
       </div>

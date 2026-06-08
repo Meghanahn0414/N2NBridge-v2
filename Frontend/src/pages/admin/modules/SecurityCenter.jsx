@@ -8,11 +8,11 @@ export default function SecurityCenter() {
   const [showSessionDetail, setShowSessionDetail] = useState(false);
 
   const [stats, setStats] = useState({
-    failedLoginAttempts: 0,
-    activeSessions: 0,
-    lockedAccounts: 0,
-    apiErrors: 0,
-    suspiciousActivities: 0,
+    failedLoginAttempts: '',
+    activeSessions: '',
+    lockedAccounts: '',
+    apiErrors: '',
+    suspiciousActivities: '',
   });
 
   const handleTerminateSession = (sessionId) => {

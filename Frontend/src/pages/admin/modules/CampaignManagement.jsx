@@ -22,19 +22,19 @@ export default function CampaignManagement() {
       <div className="module-stats">
         <div className="stat-card">
           <span className="stat-label">Active Campaigns</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Total Reach</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Engagement Rate</span>
-          <span className="stat-value">0%</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">ROI</span>
-          <span className="stat-value">0%</span>
+          <span className="stat-value"></span>
         </div>
       </div>
 

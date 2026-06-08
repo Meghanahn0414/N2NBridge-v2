@@ -4,20 +4,20 @@ import '../../../styles/mla-dashboard/ComplaintsDashboard.css';
 
 export default function ComplaintsDashboard() {
   const [complaints, setComplaints] = useState([
-    { category: 'Water Supply', count: 450 },
-    { category: 'Electricity', count: 380 },
-    { category: 'Roads', count: 320 },
-    { category: 'Drainage', count: 210 },
-    { category: 'Health', count: 180 },
-    { category: 'Education', count: 125 },
+    { category: 'Water Supply', count: '' },
+    { category: 'Electricity', count:'' },
+    { category: 'Roads', count:''},
+    { category: 'Drainage', count: '' },
+    { category: 'Health', count: '' },
+    { category: 'Education', count: '' },
   ]);
 
   const [topWards] = useState([
-    { ward: 'Ward 12', issues: 156, priority: 'critical' },
-    { ward: 'Ward 18', issues: 142, priority: 'critical' },
-    { ward: 'Ward 4', issues: 128, priority: 'high' },
-    { ward: 'Ward 7', issues: 98, priority: 'high' },
-    { ward: 'Ward 21', issues: 87, priority: 'medium' },
+    { ward: '', issues:'', priority: '' },
+    { ward: '', issues: '', priority: '' },
+    { ward: '', issues:'', priority:'' },
+    { ward: '', issues: '', priority: '' },
+    { ward: '', issues: '', priority: '' },
   ]);
 
   return (
@@ -32,19 +32,19 @@ export default function ComplaintsDashboard() {
         <div className="complaint-stats-grid">
           <div className="stat-box">
             <div className="stat-label">Total Complaints</div>
-            <div className="stat-value">3,245</div>
+            <div className="stat-value"></div>
           </div>
           <div className="stat-box alert">
             <div className="stat-label">Open Complaints</div>
-            <div className="stat-value">1,270</div>
+            <div className="stat-value"></div>
           </div>
           <div className="stat-box">
             <div className="stat-label">Escalated</div>
-            <div className="stat-value">45</div>
+            <div className="stat-value"></div>
           </div>
           <div className="stat-box success">
             <div className="stat-label">Resolved</div>
-            <div className="stat-value">2,500</div>
+            <div className="stat-value"></div>
           </div>
         </div>
       </div>

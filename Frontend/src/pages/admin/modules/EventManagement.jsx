@@ -32,19 +32,19 @@ export default function EventManagement() {
       <div className="module-stats">
         <div className="stat-card">
           <span className="stat-label">Total Events</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Upcoming</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Total Registrations</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Avg Attendance %</span>
-          <span className="stat-value">0%</span>
+          <span className="stat-value"></span>
         </div>
       </div>
 

@@ -22,15 +22,15 @@ export default function ConstituencyManagement() {
       <div className="module-stats">
         <div className="stat-card">
           <span className="stat-label">Total Constituencies</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Total Wards</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Total Booths</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
       </div>
 

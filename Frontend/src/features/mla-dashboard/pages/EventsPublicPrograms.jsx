@@ -4,18 +4,18 @@ import '../../../styles/mla-dashboard/EventsPublicPrograms.css';
 
 export default function EventsPublicPrograms() {
   const [events, setEvents] = useState([
-    { id: 1, name: 'Health Camp', date: '2024-06-15', ward: 'Ward 5', registrations: 450, feedback: 4.5, status: 'upcoming' },
-    { id: 2, name: 'Youth Meeting', date: '2024-06-18', ward: 'Ward 12', registrations: 320, feedback: 4.2, status: 'upcoming' },
-    { id: 3, name: 'Women Welfare Program', date: '2024-06-20', ward: 'Ward 8', registrations: 280, feedback: 4.7, status: 'upcoming' },
-    { id: 4, name: 'Farmer Meeting', date: '2024-06-22', ward: 'Ward 3', registrations: 180, feedback: 4.4, status: 'upcoming' },
+    { id: '', name: '', date: '', ward: '', registrations:'', feedback:'', status: '' },
+    { id: '', name: '', date: '', ward: '', registrations: '', feedback: '', status: '' },
+    { id: '', name: '', date: '', ward: '', registrations: '', feedback: '', status: '' },
+    { id: '', name: '', date: '', ward: '', registrations:'', feedback:'', status: '' },
   ]);
 
   const [totalMetrics] = useState({
-    totalEvents: 45,
-    upcomingEvents: 8,
-    totalRegistrations: 4500,
-    avgAttendance: 82,
-    avgFeedback: 4.6,
+    totalEvents: '',
+    upcomingEvents: '',
+    totalRegistrations: '',
+    avgAttendance: '',
+    avgFeedback: '',
   });
 
   return (

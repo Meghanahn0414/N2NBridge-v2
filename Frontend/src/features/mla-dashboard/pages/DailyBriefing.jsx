@@ -6,29 +6,29 @@ export default function DailyBriefing() {
   const [briefing] = useState({
     greeting: 'Good Morning MLA',
     date: new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-    newComplaints: 145,
-    resolved: 82,
-    criticalAlerts: 2,
-    events: 1,
-    pendingEscalations: 18,
-    topConcern: 'Water Supply in Ward 12',
-    recommendedAction: 'Schedule review meeting with engineering department',
+    newComplaints:'',
+    resolved:'',
+    criticalAlerts:'',
+    events:'',
+    pendingEscalations:'',
+    topConcern: '',
+    recommendedAction: '',
   });
 
   const [actionItems] = useState([
-    { id: 1, title: 'Review escalated complaints from Ward 12', priority: 'critical', time: 'Now' },
-    { id: 2, title: 'Approve pending housing scheme applications', priority: 'high', time: '10:00 AM' },
-    { id: 3, title: 'Attend public health camp at Ward 5', priority: 'medium', time: '2:00 PM' },
-    { id: 4, title: 'Conference call with team managers', priority: 'medium', time: '4:00 PM' },
+    { id: 1, title: '', priority: '', time: '' },
+    { id: 2, title: '', priority: '', time: '' },
+    { id: 3, title: '', priority: '', time: '' },
+    { id: 4, title: '', priority: '', time: '' },
   ]);
 
   const [metrics] = useState({
-    citizenSatisfaction: 4.6,
-    healthScore: 82,
-    resolvedThisMonth: 8124,
-    activeAlerts: 12,
-    teamOnDuty: 245,
-    eventsThisWeek: 8,
+    citizenSatisfaction: '',
+    healthScore: '',
+    resolvedThisMonth: '',
+    activeAlerts: '',
+    teamOnDuty: '',
+    eventsThisWeek: '',
   });
 
   return (

@@ -24,12 +24,7 @@ async def create_task(
     task_id = TaskService.create_task(task_data.dict(), None)
     task = TaskService.get_task_by_id(task_id)
     
-<<<<<<< HEAD
-    Helper.prepare_response_data(task)
-    return TaskResponse(**task)
-=======
     return TaskResponse(**Helper.convert_mongo_doc(task))
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
@@ -42,12 +37,7 @@ async def get_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-<<<<<<< HEAD
-    Helper.prepare_response_data(task)
-    return TaskResponse(**task)
-=======
     return TaskResponse(**Helper.convert_mongo_doc(task))
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.get("/", response_model=list[TaskResponse])
@@ -64,12 +54,7 @@ async def list_tasks(
         filters["status"] = status
     
     tasks = TaskService.list_tasks(skip, limit, filters)
-<<<<<<< HEAD
-    Helper.prepare_response_list(tasks)
-    return [TaskResponse(**t) for t in tasks]
-=======
     return [TaskResponse(**Helper.convert_mongo_doc(t)) for t in tasks]
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.put("/{task_id}", response_model=TaskResponse)
@@ -88,12 +73,7 @@ async def update_task(
         raise HTTPException(status_code=400, detail="Failed to update task")
     
     task = TaskService.get_task_by_id(task_id)
-<<<<<<< HEAD
-    Helper.prepare_response_data(task)
-    return TaskResponse(**task)
-=======
     return TaskResponse(**Helper.convert_mongo_doc(task))
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.get("/officer/{officer_id}", response_model=list[TaskResponse])
@@ -105,12 +85,7 @@ async def get_officer_tasks(
     skip, limit = Helper.paginate(page, 10)
     tasks = TaskService.get_tasks_by_officer(officer_id, skip, limit)
     
-<<<<<<< HEAD
-    Helper.prepare_response_list(tasks)
-    return [TaskResponse(**t) for t in tasks]
-=======
     return [TaskResponse(**Helper.convert_mongo_doc(t)) for t in tasks]
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 # Field Report Endpoints
@@ -123,12 +98,7 @@ async def create_field_report(
     report = FieldReportService.get_report_by_task(report_data.taskId)
     
     if report:
-<<<<<<< HEAD
-        Helper.prepare_response_data(report)
-        return FieldReportResponse(**report)
-=======
         return FieldReportResponse(**Helper.convert_mongo_doc(report))
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
     
     raise HTTPException(status_code=400, detail="Failed to create field report")
 
@@ -142,11 +112,6 @@ async def get_officer_reports(
     skip, limit = Helper.paginate(page, 10)
     reports = FieldReportService.get_reports_by_officer(officer_id, skip, limit)
     
-<<<<<<< HEAD
-    Helper.prepare_response_list(reports)
-    return success_response([FieldReportResponse(**r) for r in reports])
-=======
     return success_response([FieldReportResponse(**r) for r in reports])
 
 
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee

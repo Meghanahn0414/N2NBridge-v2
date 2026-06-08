@@ -29,11 +29,7 @@ async def create_grievance(
     )
     
     grievance = GrievanceService.get_grievance_by_id(grievance_id)
-<<<<<<< HEAD
-    Helper.prepare_response_data(grievance)
-=======
     grievance = Helper.convert_mongo_doc(grievance)
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
     return GrievanceResponse(**grievance)
 
 
@@ -54,12 +50,7 @@ async def list_grievances(
         filters["priority"] = priority
     
     grievances = GrievanceService.list_grievances(skip, limit, filters)
-<<<<<<< HEAD
-    Helper.prepare_response_list(grievances)
-    return [GrievanceResponse(**g) for g in grievances]
-=======
     return [GrievanceResponse(**Helper.convert_mongo_doc(g)) for g in grievances]
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 # Category Endpoints - Must be before /{grievance_id} routes
@@ -71,11 +62,7 @@ async def create_category(
     category_id = GrievanceCategoryService.create_category(data.dict())
     category = GrievanceCategoryService.get_category_by_id(category_id)
     
-<<<<<<< HEAD
-    Helper.prepare_response_data(category)
-=======
     category = Helper.convert_mongo_doc(category)
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
     return GrievanceCategoryResponse(**category)
 
 
@@ -84,12 +71,7 @@ async def list_categories():
     """List grievance categories"""
     categories = GrievanceCategoryService.get_all_categories()
     
-<<<<<<< HEAD
-    Helper.prepare_response_list(categories)
-    return [GrievanceCategoryResponse(**c) for c in categories]
-=======
     return [GrievanceCategoryResponse(**Helper.convert_mongo_doc(c)) for c in categories]
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.get("/citizen/{citizen_id}", response_model=list[GrievanceResponse])
@@ -101,12 +83,7 @@ async def get_citizen_grievances(
     skip, limit = Helper.paginate(page, 10)
     grievances = GrievanceService.get_grievances_by_citizen(citizen_id, skip, limit)
     
-<<<<<<< HEAD
-    Helper.prepare_response_list(grievances)
-    return [GrievanceResponse(**g) for g in grievances]
-=======
     return [GrievanceResponse(**Helper.convert_mongo_doc(g)) for g in grievances]
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 # Parameterized routes - Must come after specific routes
@@ -120,11 +97,7 @@ async def get_grievance(
     if not grievance:
         raise HTTPException(status_code=404, detail="Grievance not found")
     
-<<<<<<< HEAD
-    Helper.prepare_response_data(grievance)
-=======
     grievance = Helper.convert_mongo_doc(grievance)
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
     return GrievanceResponse(**grievance)
 
 
@@ -143,11 +116,7 @@ async def update_grievance(
         )
     
     grievance = GrievanceService.get_grievance_by_id(grievance_id)
-<<<<<<< HEAD
-    Helper.prepare_response_data(grievance)
-=======
     grievance = Helper.convert_mongo_doc(grievance)
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
     return GrievanceResponse(**grievance)
 
 

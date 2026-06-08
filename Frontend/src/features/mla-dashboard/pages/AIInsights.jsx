@@ -6,32 +6,32 @@ export default function AIInsights() {
   const [recommendations] = useState([
     {
       id: 1,
-      title: 'Water Crisis Prevention',
-      description: 'Ward 12 likely to generate 50+ complaints next week based on seasonal patterns.',
-      action: 'Deploy additional officer',
-      priority: 'critical',
+      title: '',
+      description: '',
+      action: '',
+      priority: '',
     },
     {
       id: 2,
-      title: 'Flood Risk Alert',
-      description: 'Heavy rainfall forecast. Flood risk identified in Ward 8, 10, 11.',
-      action: 'Prepare emergency response',
-      priority: 'critical',
+      title: '',
+      description: '',
+      action: '',
+      priority: '',
     },
     {
       id: 3,
-      title: 'Infrastructure Maintenance',
-      description: 'Road deterioration rate in Ward 14 is accelerating. Intervention needed within 2 weeks.',
-      action: 'Schedule maintenance review',
-      priority: 'high',
+      title: '',
+      description: '',
+      action: '',
+      priority: '',
     },
   ]);
 
   const [riskScores] = useState([
-    { category: 'Road Risk', score: 68, color: '#ef4444' },
-    { category: 'Water Risk', score: 45, color: '#f59e0b' },
-    { category: 'Health Risk', score: 32, color: '#fbbf24' },
-    { category: 'Political Risk', score: 28, color: '#10b981' },
+    { category: '', score: '', color: '#ef4444' },
+    { category: '', score: '', color: '#f59e0b' },
+    { category: '', score: '', color: '#fbbf24' },
+    { category: '', score: '', color: '#10b981' },
   ]);
 
   return (
@@ -73,7 +73,7 @@ export default function AIInsights() {
                 <svg width="120" height="120" viewBox="0 0 120 120">
                   <circle cx="60" cy="60" r="50" fill="none" stroke="#e5e7eb" strokeWidth="8" />
                   <circle
-                    cx="60"
+                    cx=""
                     cy="60"
                     r="50"
                     fill="none"
@@ -98,20 +98,20 @@ export default function AIInsights() {
         <div className="predictions-grid">
           <div className="prediction-card">
             <h4>Complaint Forecast</h4>
-            <p className="forecast-value">250-300 complaints expected next week</p>
-            <p className="forecast-insight">+15% compared to last week</p>
+            <p className="forecast-value"></p>
+            <p className="forecast-insight"></p>
             <button className="btn-secondary">View Forecast</button>
           </div>
           <div className="prediction-card">
             <h4>Event Participation</h4>
-            <p className="forecast-value">Expected attendance: 2,500 citizens</p>
-            <p className="forecast-insight">Based on historical data</p>
+            <p className="forecast-value"></p>
+            <p className="forecast-insight"></p>
             <button className="btn-secondary">View Forecast</button>
           </div>
           <div className="prediction-card">
             <h4>Citizen Sentiment</h4>
-            <p className="forecast-value">Sentiment likely to remain positive (72%)</p>
-            <p className="forecast-insight">Stable indicators this month</p>
+            <p className="forecast-value"></p>
+            <p className="forecast-insight"></p>
             <button className="btn-secondary">View Forecast</button>
           </div>
         </div>
@@ -124,19 +124,19 @@ export default function AIInsights() {
           <div className="insight-item">
             <span className="insight-season">Monsoon Season (Jun-Sep):</span>
             <span className="insight-data">
-              Expected 40% increase in water-related complaints. Prepare drainage teams.
+              
             </span>
           </div>
           <div className="insight-item">
             <span className="insight-season">Summer (Apr-May):</span>
             <span className="insight-data">
-              Power demand peaks. Coordinate with electricity board for standby arrangements.
+              
             </span>
           </div>
           <div className="insight-item">
             <span className="insight-season">Winter (Dec-Feb):</span>
             <span className="insight-data">
-              Health issues increase. Ramp up health camps and medical support.
+              
             </span>
           </div>
         </div>

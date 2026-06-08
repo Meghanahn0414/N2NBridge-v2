@@ -4,21 +4,21 @@ import '../../../styles/mla-dashboard/TeamPerformanceDashboard.css';
 
 export default function TeamPerformanceDashboard() {
   const [managers, setManagers] = useState([
-    { id: 1, name: 'Manager A', complaints: 500, resolved: 480, rating: 4.7, ward: 'Ward 5' },
-    { id: 2, name: 'Manager B', complaints: 420, resolved: 395, rating: 4.5, ward: 'Ward 8' },
-    { id: 3, name: 'Manager C', complaints: 380, resolved: 340, rating: 4.2, ward: 'Ward 12' },
+    { id: 1, name: '', complaints:'', resolved:'', rating:'', ward: '' },
+    { id: 2, name: '', complaints:'', resolved:'', rating: '', ward: ''},
+    { id: 3, name: '', complaints:'', resolved:'', rating: '', ward: '' },
   ]);
 
   const [officers] = useState([
-    { rank: 1, name: 'Rajesh Kumar', resolved: 520, rating: 4.8, wards: 'Ward 2, 3, 5' },
-    { rank: 2, name: 'Suresh Singh', resolved: 485, rating: 4.7, wards: 'Ward 8, 9' },
-    { rank: 3, name: 'Anita Sharma', resolved: 450, rating: 4.6, wards: 'Ward 12, 14' },
-    { rank: 4, name: 'Vikram Patel', resolved: 420, rating: 4.4, wards: 'Ward 18, 20' },
+    { rank: 1, name: '', resolved: '', rating: '', wards: '' },
+    { rank: 2, name: '', resolved: '', rating: '', wards: '' },
+    { rank: 3, name: '', resolved: '', rating: '', wards: '' },
+    { rank: 4, name: '', resolved: '', rating: '', wards: '' },
   ]);
 
   const [poorPerformance] = useState([
-    { name: 'Officer X', resolutionTime: 12, target: 3, wards: 'Ward 15, 16' },
-    { name: 'Officer Y', resolutionTime: 10, target: 3, wards: 'Ward 21' },
+    { name: '', resolutionTime: '', target: '', wards: '' },
+    { name: '', resolutionTime: '', target: '', wards: '' },
   ]);
 
   return (
@@ -32,19 +32,19 @@ export default function TeamPerformanceDashboard() {
       <div className="mla-section">
         <div className="team-summary-grid">
           <div className="summary-card">
-            <div className="summary-value">245</div>
+            <div className="summary-value"></div>
             <div className="summary-label">Active Officers</div>
           </div>
           <div className="summary-card">
-            <div className="summary-value">18</div>
+            <div className="summary-value"></div>
             <div className="summary-label">Constituency Managers</div>
           </div>
           <div className="summary-card">
-            <div className="summary-value">92%</div>
+            <div className="summary-value"></div>
             <div className="summary-label">Overall Rating</div>
           </div>
           <div className="summary-card">
-            <div className="summary-value">2,500</div>
+            <div className="summary-value"></div>
             <div className="summary-label">Resolved This Month</div>
           </div>
         </div>

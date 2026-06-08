@@ -86,15 +86,15 @@ export default function UserManagement() {
       <div className="module-stats">
         <div className="stat-card">
           <span className="stat-label">Total Users</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Active Users</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Blocked Users</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
       </div>
 

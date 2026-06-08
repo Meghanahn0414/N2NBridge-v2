@@ -135,15 +135,15 @@ export default function CitizenSentimentDashboard() {
         <div className="feedback-categories">
           <div className="feedback-item">
             <span className="category-name">Services</span>
-            <span className="sentiment-badge positive">72% Positive</span>
+            <span className="sentiment-badge positive"></span>
           </div>
           <div className="feedback-item">
             <span className="category-name">Officials</span>
-            <span className="sentiment-badge neutral">58% Positive</span>
+            <span className="sentiment-badge neutral"></span>
           </div>
           <div className="feedback-item">
             <span className="category-name">Infrastructure</span>
-            <span className="sentiment-badge negative">38% Positive</span>
+            <span className="sentiment-badge negative"></span>
           </div>
         </div>
       </div>

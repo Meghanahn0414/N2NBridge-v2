@@ -1,30 +1,32 @@
 """
-CRM Management System - FastAPI Application
+CRM Grievance Management System - FastAPI Application
 """
-import logging
-import os
 import sys
-from datetime import datetime
+import os
 
-# Add src directory to Python path BEFORE importing local modules
-_src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src')
-sys.path.insert(0, _src_path)
+# Add current directory to Python path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from alerts.routes import router as alerts_router
-from analytics.routes import router as analytics_router
-from auth.routes import router as auth_router
-from config.database import MongoDatabase
-from config.settings import settings
-from dashboard.routes import router as dashboard_router
-from events.routes import router as events_router
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from grievances.routes import router as grievances_router
-from notifications.routes import router as notifications_router
-from tasks.routes import router as tasks_router
+from config.settings import settings
+from config.database import MongoDatabase
+import logging
+from datetime import datetime
+
+# Import all routes
+from auth.routes import router as auth_router
 from users.routes import router as users_router
+from grievances.routes import router as grievances_router
+from alerts.routes import router as alerts_router
+from events.routes import router as events_router
+from tasks.routes import router as tasks_router
+from notifications.routes import router as notifications_router
+from analytics.routes import router as analytics_router
+from dashboard.routes import router as dashboard_router
+from citizens.routes import router as citizens_router
 
 # Configure logging
 logging.basicConfig(
@@ -43,6 +45,8 @@ app = FastAPI(
 )
 
 # Configure CORS
+logger.info(f"🔧 CORS_ORIGINS: {settings.CORS_ORIGINS} (type: {type(settings.CORS_ORIGINS).__name__})")
+logger.info(f"🔧 allow_credentials: True")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -53,12 +57,16 @@ app.add_middleware(
     max_age=600,
 )
 
+# Ensure CORS headers are added to error responses as well by wrapping exception handler
+original_exception_handler = app.exception_handler(Exception)
+
 # Mount static files for uploads
-uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+uploads_dir = os.path.join(os.path.dirname(__file__), "..", "uploads")
 os.makedirs(uploads_dir, exist_ok=True)
 try:
+    from fastapi.staticfiles import StaticFiles
     app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
-    logger.info("Static files mounted at /uploads")
+    logger.info("✓ Static files mounted at /uploads")
 except Exception as e:
     logger.warning(f"Could not mount static files: {e}")
 
@@ -92,13 +100,13 @@ async def log_requests(request: Request, call_next):
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and application"""
-    logger.info("Starting CRM Management System...")
+    logger.info("Starting CRM Grievance Management System...")
     try:
         MongoDatabase.connect(settings.MONGODB_URL, settings.MONGODB_DB)
-        logger.info("Database connection established")
-        logger.info("Collections and indexes created")
+        logger.info("✓ Database connection established")
+        logger.info("✓ Collections and indexes created")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"✗ Failed to initialize database: {e}")
         raise
 
 
@@ -106,9 +114,9 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    logger.info("Shutting down CRM Management System...")
+    logger.info("Shutting down CRM Grievance Management System...")
     MongoDatabase.close()
-    logger.info("Database connection closed")
+    logger.info("✓ Database connection closed")
 
 
 # Root endpoint
@@ -145,6 +153,7 @@ app.include_router(tasks_router)
 app.include_router(notifications_router)
 app.include_router(analytics_router)
 app.include_router(dashboard_router)
+app.include_router(citizens_router)
 
 
 # Global exception handler

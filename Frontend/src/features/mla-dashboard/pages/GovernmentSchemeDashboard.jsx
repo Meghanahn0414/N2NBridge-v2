@@ -7,47 +7,47 @@ export default function GovernmentSchemeDashboard() {
     {
       id: 1,
       name: 'Housing Scheme',
-      eligible: 2500,
-      applied: 1850,
-      approved: 1200,
-      pending: 450,
-      rejected: 200,
+      eligible:'',
+      applied:'',
+      approved:'',
+      pending:'',
+      rejected:'',
     },
     {
       id: 2,
-      name: 'Pension Scheme',
-      eligible: 3200,
-      applied: 2900,
-      approved: 2500,
-      pending: 300,
-      rejected: 100,
+      name: '',
+      eligible:'',
+      applied: '',
+      approved: '',
+      pending: '',
+      rejected: '',
     },
     {
       id: 3,
       name: 'Scholarship Scheme',
-      eligible: 1500,
-      applied: 1200,
-      approved: 950,
-      pending: 180,
-      rejected: 70,
+      eligible: '',
+      applied: '',
+      approved: '',
+      pending: '',
+      rejected: '',
     },
     {
       id: 4,
       name: 'Farmer Subsidy',
-      eligible: 4500,
-      applied: 3200,
-      approved: 2800,
-      pending: 300,
-      rejected: 100,
+      eligible: '',
+      applied: '',
+      approved: '',
+      pending: '',
+      rejected: '',
     },
     {
       id: 5,
       name: 'Health Insurance',
-      eligible: 5000,
-      applied: 4100,
-      approved: 3800,
-      pending: 250,
-      rejected: 50,
+      eligible: '',
+      applied: '',
+      approved: '',
+      pending: '',
+      rejected: '',
     },
   ]);
 
@@ -63,19 +63,19 @@ export default function GovernmentSchemeDashboard() {
         <div className="scheme-metrics-grid">
           <div className="metric-card">
             <div className="metric-label">Total Eligible</div>
-            <div className="metric-value">16,700</div>
+            <div className="metric-value"></div>
           </div>
           <div className="metric-card">
             <div className="metric-label">Total Applied</div>
-            <div className="metric-value">13,250</div>
+            <div className="metric-value"></div>
           </div>
           <div className="metric-card">
             <div className="metric-label">Total Approved</div>
-            <div className="metric-value">11,250</div>
+            <div className="metric-value"></div>
           </div>
           <div className="metric-card">
             <div className="metric-label">Pending Approvals</div>
-            <div className="metric-value">1,480</div>
+            <div className="metric-value"></div>
           </div>
         </div>
       </div>
@@ -128,17 +128,17 @@ export default function GovernmentSchemeDashboard() {
         <div className="pending-alerts">
           <div className="pending-item">
             <div className="pending-scheme">Housing Scheme</div>
-            <div className="pending-count">450 applications pending</div>
+            <div className="pending-count"></div>
             <button className="btn-danger">Review Now</button>
           </div>
           <div className="pending-item">
             <div className="pending-scheme">Farmer Subsidy</div>
-            <div className="pending-count">300 applications pending</div>
+            <div className="pending-count"></div>
             <button className="btn-danger">Review Now</button>
           </div>
           <div className="pending-item">
             <div className="pending-scheme">Pension Scheme</div>
-            <div className="pending-count">300 applications pending</div>
+            <div className="pending-count"></div>
             <button className="btn-danger">Review Now</button>
           </div>
         </div>

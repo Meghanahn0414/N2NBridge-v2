@@ -235,7 +235,7 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
           })}
         </section>
 
-        <section className="mt-8 grid gap-2 xl:grid-cols-[2fr,1fr]">
+        <section className="mt-8 grid gap-4 xl:grid-cols-[2fr]">
           <div className="space-y-4">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-5 flex items-center justify-between gap-4">

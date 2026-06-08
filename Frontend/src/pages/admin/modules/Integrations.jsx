@@ -4,12 +4,12 @@ import '../../../styles/modules/Integrations.css';
 
 export default function Integrations() {
   const [integrations, setIntegrations] = useState([
-    { name: 'WhatsApp API', status: 'connected', lastSync: '2 hours ago' },
-    { name: 'SMS Gateway', status: 'connected', lastSync: '30 mins ago' },
-    { name: 'Email Provider', status: 'connected', lastSync: '1 hour ago' },
-    { name: 'Google Maps', status: 'connected', lastSync: 'N/A' },
-    { name: 'Aadhaar eKYC', status: 'not_configured', lastSync: 'N/A' },
-    { name: 'Government APIs', status: 'connected', lastSync: '5 hours ago' },
+    { name: '', status: '', lastSync: '' },
+    { name: '', status: '', lastSync: '' },
+    { name: '', status: '', lastSync: '' },
+    { name: '', status: '', lastSync: 'N/A' },
+    { name: '', status: '', lastSync: 'N/A' },
+    { name: '', status: '', lastSync: '' },
   ]);
 
   const [showConfig, setShowConfig] = useState(null);

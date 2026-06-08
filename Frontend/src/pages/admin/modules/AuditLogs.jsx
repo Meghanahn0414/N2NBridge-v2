@@ -45,19 +45,19 @@ export default function AuditLogs() {
       <div className="module-stats">
         <div className="stat-card">
           <span className="stat-label">Total Actions</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Users Active</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Changes Made</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Data Exports</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
       </div>
 
@@ -90,19 +90,19 @@ export default function AuditLogs() {
         <div className="details-grid">
           <div className="detail-item">
             <span className="label">User Logins:</span>
-            <span className="value">0</span>
+            <span className="value"></span>
           </div>
           <div className="detail-item">
             <span className="label">Failed Attempts:</span>
-            <span className="value">0</span>
+            <span className="value"></span>
           </div>
           <div className="detail-item">
             <span className="label">Role Changes:</span>
-            <span className="value">0</span>
+            <span className="value"></span>
           </div>
           <div className="detail-item">
             <span className="label">Data Accessed:</span>
-            <span className="value">0 times</span>
+            <span className="value"></span>
           </div>
         </div>
       </div>

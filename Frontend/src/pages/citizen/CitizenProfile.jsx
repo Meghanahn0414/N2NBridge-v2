@@ -4,12 +4,12 @@ import { FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit } from 'react-icons
 export default function CitizenProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState({
-    name: 'John Doe',
-    email: 'john@example.com',
-    phone: '+91 9876543210',
-    address: '123 Main Street, City, State 12345',
-    constituency: 'Central Constituency',
-    joinDate: '2025-01-15',
+    name: '',
+    email: '',
+    phone: '+91-xxxxxxxxxx',
+    address: '',
+    constituency: '',
+    joinDate: '',
   });
 
   const [formData, setFormData] = useState(profile);

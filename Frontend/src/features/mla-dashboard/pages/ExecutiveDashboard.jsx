@@ -4,21 +4,21 @@ import '../../../styles/mla-dashboard/ExecutiveDashboard.css';
 
 export default function ExecutiveDashboard() {
   const [kpis, setKpis] = useState({
-    totalCitizens: 125000,
-    openComplaints: 3245,
-    resolvedThisMonth: 8124,
-    criticalAlerts: 12,
-    upcomingEvents: 8,
-    citizenSatisfaction: 4.6,
-    healthScore: 82,
-    activeOfficers: 245,
+    totalCitizens:'',
+    openComplaints:'',
+    resolvedThisMonth:'',
+    criticalAlerts: '',
+    upcomingEvents: '',
+    citizenSatisfaction: '',
+    healthScore: '',
+    activeOfficers: '',
   });
 
   const [attentionNeeded, setAttentionNeeded] = useState([
-    { id: 1, icon: '⚠️', title: 'Water Crisis', ward: 'Ward 14', priority: 'critical' },
-    { id: 2, icon: '⚠️', title: 'Flood Alert', ward: 'Ward 8', priority: 'critical' },
-    { id: 3, icon: '⚠️', title: 'Road Issue', ward: 'Ward 22', priority: 'high' },
-    { id: 4, icon: '⚠️', title: '35 Complaints Escalated', ward: '', priority: 'high' },
+    { id: '', icon: '⚠️', title: '', ward: '', priority: '' },
+    { id: '', icon: '⚠️', title: '', ward: '', priority: '' },
+    { id: '', icon: '⚠️', title: '', ward: '', priority: '' },
+    { id: '', icon: '⚠️', title: '', ward: '', priority: '' },
   ]);
 
   return (
@@ -33,49 +33,49 @@ export default function ExecutiveDashboard() {
         <div className="mla-kpi-card">
           <div className="kpi-label">Total Citizens</div>
           <div className="kpi-value">{kpis.totalCitizens.toLocaleString()}</div>
-          <div className="kpi-change">+2.5% this month</div>
+          <div className="kpi-change"></div>
         </div>
 
         <div className="mla-kpi-card alert">
           <div className="kpi-label">Open Complaints</div>
           <div className="kpi-value">{kpis.openComplaints}</div>
-          <div className="kpi-change">-12% from last week</div>
+          <div className="kpi-change"></div>
         </div>
 
         <div className="mla-kpi-card success">
           <div className="kpi-label">Resolved This Month</div>
           <div className="kpi-value">{kpis.resolvedThisMonth}</div>
-          <div className="kpi-change">+18% this month</div>
+          <div className="kpi-change"></div>
         </div>
 
         <div className="mla-kpi-card danger">
           <div className="kpi-label">Critical Alerts</div>
           <div className="kpi-value">{kpis.criticalAlerts}</div>
-          <div className="kpi-change">Needs attention</div>
+          <div className="kpi-change"></div>
         </div>
 
         <div className="mla-kpi-card">
           <div className="kpi-label">Upcoming Events</div>
           <div className="kpi-value">{kpis.upcomingEvents}</div>
-          <div className="kpi-change">This week</div>
+          <div className="kpi-change"></div>
         </div>
 
         <div className="mla-kpi-card success">
           <div className="kpi-label">Citizen Satisfaction</div>
           <div className="kpi-value">{kpis.citizenSatisfaction}/5 ⭐</div>
-          <div className="kpi-change">+0.3 this month</div>
+          <div className="kpi-change"></div>
         </div>
 
         <div className="mla-kpi-card success">
           <div className="kpi-label">Health Score</div>
           <div className="kpi-value">{kpis.healthScore}%</div>
-          <div className="kpi-change">+5% from last month</div>
+          <div className="kpi-change"></div>
         </div>
 
         <div className="mla-kpi-card">
           <div className="kpi-label">Active Officers</div>
           <div className="kpi-value">{kpis.activeOfficers}</div>
-          <div className="kpi-change">All on duty</div>
+          <div className="kpi-change"></div>
         </div>
       </div>
 
@@ -94,28 +94,28 @@ export default function ExecutiveDashboard() {
                 <div className="metric-bar">
                   <div className="metric-progress" style={{ width: '78%' }}></div>
                 </div>
-                <span className="metric-value">78%</span>
+                <span className="metric-value"></span>
               </div>
               <div className="metric">
                 <span className="metric-name">Citizen Satisfaction</span>
                 <div className="metric-bar">
                   <div className="metric-progress" style={{ width: '92%' }}></div>
                 </div>
-                <span className="metric-value">92%</span>
+                <span className="metric-value"></span>
               </div>
               <div className="metric">
                 <span className="metric-name">Alert Response Time</span>
                 <div className="metric-bar">
                   <div className="metric-progress" style={{ width: '85%' }}></div>
                 </div>
-                <span className="metric-value">85%</span>
+                <span className="metric-value"></span>
               </div>
               <div className="metric">
                 <span className="metric-name">Event Participation</span>
                 <div className="metric-bar">
                   <div className="metric-progress" style={{ width: '72%' }}></div>
                 </div>
-                <span className="metric-value">72%</span>
+                <span className="metric-value"></span>
               </div>
             </div>
           </div>

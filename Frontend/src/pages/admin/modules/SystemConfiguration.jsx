@@ -17,9 +17,9 @@ export default function SystemConfiguration() {
   });
 
   const [slaSettings, setSlaSettings] = useState({
-    critical: 15,
-    high: 60,
-    complaint: 1440,
+    critical:'',
+    high:'',
+    complaint:'',
   });
 
   const handleSettingChange = (key, value) => {

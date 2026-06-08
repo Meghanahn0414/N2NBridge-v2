@@ -21,15 +21,15 @@ export default function AIServices() {
           <h3>🏷️ Complaint Categorization</h3>
           <div className="metric">
             <span>Auto-Categorized:</span>
-            <span className="value">0</span>
+            <span className="value"></span>
           </div>
           <div className="metric">
             <span>Manual Override %:</span>
-            <span className="value">0%</span>
+            <span className="value"></span>
           </div>
           <div className="metric">
             <span>Model Accuracy:</span>
-            <span className="value">0%</span>
+            <span className="value"></span>
           </div>
           <button>View Training Data</button>
         </div>
@@ -38,15 +38,15 @@ export default function AIServices() {
           <h3>😊 Sentiment Analysis</h3>
           <div className="metric">
             <span>Positive:</span>
-            <span className="value">0%</span>
+            <span className="value"></span>
           </div>
           <div className="metric">
             <span>Neutral:</span>
-            <span className="value">0%</span>
+            <span className="value"></span>
           </div>
           <div className="metric">
             <span>Negative:</span>
-            <span className="value">0%</span>
+            <span className="value"></span>
           </div>
           <button>View Sentiment Trends</button>
         </div>
@@ -55,15 +55,15 @@ export default function AIServices() {
           <h3>💬 AI Chat Assistant</h3>
           <div className="metric">
             <span>Total Queries:</span>
-            <span className="value">0</span>
+            <span className="value"></span>
           </div>
           <div className="metric">
             <span>Success Rate:</span>
-            <span className="value">0%</span>
+            <span className="value"></span>
           </div>
           <div className="metric">
             <span>Escalations:</span>
-            <span className="value">0</span>
+            <span className="value"></span>
           </div>
           <button>View Interaction Logs</button>
         </div>
@@ -72,15 +72,15 @@ export default function AIServices() {
           <h3>🔍 Anomaly Detection</h3>
           <div className="metric">
             <span>Anomalies Detected:</span>
-            <span className="value">0</span>
+            <span className="value"></span>
           </div>
           <div className="metric">
             <span>False Positives:</span>
-            <span className="value">0%</span>
+            <span className="value"></span>
           </div>
           <div className="metric">
             <span>Detection Accuracy:</span>
-            <span className="value">0%</span>
+            <span className="value"></span>
           </div>
           <button>View Anomaly Log</button>
         </div>
@@ -101,16 +101,16 @@ export default function AIServices() {
           <tbody>
             <tr>
               <td>Categorization</td>
-              <td>v2.1</td>
-              <td className="status-active">Active</td>
-              <td>2 days ago</td>
+              <td></td>
+              <td className="status-active"></td>
+              <td></td>
               <td><button>Update</button></td>
             </tr>
             <tr>
               <td>Sentiment</td>
-              <td>v1.5</td>
-              <td className="status-active">Active</td>
-              <td>5 days ago</td>
+              <td></td>
+              <td className="status-active"></td>
+              <td></td>
               <td><button>Update</button></td>
             </tr>
           </tbody>

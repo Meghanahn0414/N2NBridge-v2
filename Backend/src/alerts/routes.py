@@ -25,12 +25,7 @@ async def create_alert(
     )
     
     alert = AlertService.get_alert_by_id(alert_id)
-<<<<<<< HEAD
-    Helper.prepare_response_data(alert)
-    return AlertResponse(**alert)
-=======
     return AlertResponse(**Helper.convert_mongo_doc(alert))
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.get("/{alert_id}", response_model=AlertResponse)
@@ -43,12 +38,7 @@ async def get_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     
-<<<<<<< HEAD
-    Helper.prepare_response_data(alert)
-    return AlertResponse(**alert)
-=======
     return AlertResponse(**Helper.convert_mongo_doc(alert))
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.get("/", response_model=list[AlertResponse])
@@ -68,12 +58,7 @@ async def list_alerts(
         filters["priority"] = priority
     
     alerts = AlertService.list_alerts(skip, limit, filters)
-<<<<<<< HEAD
-    Helper.prepare_response_list(alerts)
-    return [AlertResponse(**a) for a in alerts]
-=======
     return [AlertResponse(**Helper.convert_mongo_doc(a)) for a in alerts]
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.put("/{alert_id}", response_model=AlertResponse)
@@ -92,12 +77,7 @@ async def update_alert(
         raise HTTPException(status_code=400, detail="Failed to update alert")
     
     alert = AlertService.get_alert_by_id(alert_id)
-<<<<<<< HEAD
-    Helper.prepare_response_data(alert)
-    return AlertResponse(**alert)
-=======
     return AlertResponse(**Helper.convert_mongo_doc(alert))
->>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.post("/{alert_id}/assign/{officer_id}")

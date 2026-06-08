@@ -36,19 +36,19 @@ export default function CommunicationHub() {
       <div className="module-stats">
         <div className="stat-card">
           <span className="stat-label">Messages Sent</span>
-          <span className="stat-value">0</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Delivery Rate</span>
-          <span className="stat-value">0%</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Read Rate</span>
-          <span className="stat-value">0%</span>
+          <span className="stat-value"></span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Click Rate</span>
-          <span className="stat-value">0%</span>
+          <span className="stat-value"></span>
         </div>
       </div>
 

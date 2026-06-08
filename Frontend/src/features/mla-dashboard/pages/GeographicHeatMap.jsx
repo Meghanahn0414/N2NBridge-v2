@@ -7,11 +7,11 @@ export default function GeographicHeatMap() {
   const [dateRange, setDateRange] = useState('week');
 
   const wards = [
-    { id: 12, name: 'Ward 12', status: 'critical', issues: 45 },
-    { id: 8, name: 'Ward 8', status: 'high', issues: 32 },
-    { id: 20, name: 'Ward 20', status: 'normal', issues: 8 },
-    { id: 4, name: 'Ward 4', status: 'high', issues: 28 },
-    { id: 18, name: 'Ward 18', status: 'critical', issues: 52 },
+    { id:'', name: '', status: '', issues:'' },
+    { id:'', name: '', status: '', issues:'' },
+    { id:'', name: '', status: '', issues: '' },
+    { id:'', name: '', status: '', issues:'' },
+    { id:'', name: '', status: '', issues:'' },
   ];
 
   return (

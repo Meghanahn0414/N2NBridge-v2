@@ -12,11 +12,11 @@ export default function ComplaintManagement() {
 
   // Dashboard stats
   const [stats, setStats] = useState({
-    total: 0,
-    open: 0,
-    assigned: 0,
-    escalated: 0,
-    resolved: 0,
+    total: '',
+    open: '',
+    assigned: '',
+    escalated: '',
+    resolved: '',
   });
 
   useEffect(() => {
