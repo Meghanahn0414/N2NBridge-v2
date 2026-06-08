@@ -27,7 +27,30 @@ export function setAuthRole(role) {
   localStorage.setItem('role', role);
 }
 
+export function setAuthUser(user) {
+  if (!user) return;
+  localStorage.setItem('user', JSON.stringify(user));
+}
+
+export function updateAuthUser(changes) {
+  const existingUser = getAuthUser() || {};
+  const merged = { ...existingUser, ...changes };
+  localStorage.setItem('user', JSON.stringify(merged));
+  return merged;
+}
+
 export function getAuthUser() {
+  // First try to get full user data from localStorage (includes profileImage)
+  const storedUser = localStorage.getItem("user");
+  if (storedUser) {
+    try {
+      return JSON.parse(storedUser);
+    } catch (e) {
+      console.error("Failed to parse stored user data:", e);
+    }
+  }
+
+  // Fallback to JWT payload
   const token = localStorage.getItem('token');
   const payload = parseJwt(token);
   if (!payload) return null;
@@ -42,4 +65,5 @@ export function getAuthUser() {
 export function clearAuth() {
   localStorage.removeItem('token');
   localStorage.removeItem('role');
+  localStorage.removeItem('user');
 }

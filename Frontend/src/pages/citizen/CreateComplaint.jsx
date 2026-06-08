@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import CitizenPageLayout from "./CitizenPageLayout";
 import {
   fetchComplaintCategories,
   createComplaint,
@@ -81,23 +82,21 @@ export default function CreateComplaint() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="mx-auto w-full max-w-3xl rounded-3xl bg-white p-8 shadow-lg shadow-slate-200/40">
-        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-900">Register Complaint</h1>
-            <p className="mt-2 text-sm text-slate-500">Submit a new civic grievance and track it from your dashboard.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate("/citizen/complaints")}
-            className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
-          >
-            View My Complaints
-          </button>
-        </div>
-
-        <div className="grid gap-5">
+    <CitizenPageLayout
+      title="Register Complaint"
+      subtitle="Submit a new civic grievance and track it from your dashboard."
+      action={
+        <button
+          type="button"
+          onClick={() => navigate("/citizen/complaints")}
+          className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
+        >
+          View My Complaints
+        </button>
+      }
+      maxWidth="max-w-3xl"
+    >
+      <div className="grid gap-5">
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Category *</span>
             <select
@@ -180,7 +179,6 @@ export default function CreateComplaint() {
             {loading ? "Submitting..." : "Submit Complaint"}
           </button>
         </div>
-      </div>
-    </div>
+    </CitizenPageLayout>
   );
 }

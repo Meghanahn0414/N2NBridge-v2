@@ -18,8 +18,11 @@ export default function NewMLA() {
     address: "",
     password: "",
     confirmPassword: "",
+    profileImage: null,
   });
 
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
   const [constituencies, setConstituencies] = useState([]);
   const [country, setCountry] = useState(COUNTRY_OPTIONS[0]);
   const [countrySearch, setCountrySearch] = useState("");
@@ -28,7 +31,9 @@ export default function NewMLA() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const countryDropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Fetch constituencies on component mount
   useEffect(() => {
@@ -106,6 +111,47 @@ export default function NewMLA() {
     }));
   };
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        setError("Please select a valid image file");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Image size should be less than 5MB");
+        return;
+      }
+      
+      // Store the file object for later upload
+      setPhotoFile(file);
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64String = event.target?.result;
+        setPhotoPreview(base64String);
+        setFormData((prev) => ({
+          ...prev,
+          profileImage: base64String,
+        }));
+        setError("");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoPreview("");
+    setPhotoFile(null);
+    setFormData((prev) => ({
+      ...prev,
+      profileImage: null,
+    }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -117,8 +163,11 @@ export default function NewMLA() {
 
     setError("");
     setLoading(true);
+    let photoUploadFailed = false;
+    let photoUploadError = "";
 
     try {
+      // Step 1: Register user without photo
       const payload = {
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
@@ -130,8 +179,42 @@ export default function NewMLA() {
       };
 
       const response = await api.post("/api/auth/register", payload);
+      const newUserId = response.data.user.id;
+
+      // Step 2: Upload photo if selected
+      if (photoFile) {
+        setUploadingPhoto(true);
+        try {
+          const formDataWithFile = new FormData();
+          formDataWithFile.append("file", photoFile);
+
+          console.log("[NewMLA] Uploading photo for user:", newUserId, "File:", photoFile.name, "Size:", photoFile.size);
+          
+          const uploadResponse = await api.post(`/api/users/${newUserId}/upload-profile-photo`, formDataWithFile);
+          
+          console.log("[NewMLA] Photo uploaded successfully:", uploadResponse.data);
+        } catch (uploadErr) {
+          const uploadErrorMsg = uploadErr.response?.data?.detail || 
+                                uploadErr.response?.data?.message || 
+                                uploadErr.message || 
+                                "Failed to upload photo";
+          console.error("[NewMLA] Photo upload failed:", uploadErrorMsg, uploadErr);
+          
+          photoUploadFailed = true;
+          photoUploadError = uploadErrorMsg;
+        }
+        setUploadingPhoto(false);
+      }
       
-      setSuccess("MLA registered successfully!");
+      // Show appropriate success/warning message
+      if (photoUploadFailed) {
+        setSuccess(""); // Clear any success message
+        setError(`⚠️ MLA registered successfully, but photo upload failed: ${photoUploadError}`);
+      } else {
+        setSuccess("✅ MLA registered successfully!" + (photoFile ? " Photo uploaded." : ""));
+        setError(""); // Clear any error messages
+      }
+      
       setFormData({
         fullName: "",
         email: "",
@@ -140,18 +223,27 @@ export default function NewMLA() {
         address: "",
         password: "",
         confirmPassword: "",
+        profileImage: null,
       });
+      setPhotoPreview("");
+      setPhotoFile(null);
       
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(""), 3000);
+      // Clear messages after 4 seconds if photo upload failed, 3 seconds if successful
+      setTimeout(() => {
+        setSuccess("");
+        if (photoUploadFailed) {
+          setError("");
+        }
+      }, photoUploadFailed ? 4000 : 3000);
     } catch (err) {
       const errorMessage = err.response?.data?.message || 
                           err.response?.data?.error?.details ||
-                          err.message || 
+                          err.message ||
                           "Failed to register MLA. Please try again.";
       setError(errorMessage);
     } finally {
       setLoading(false);
+      setUploadingPhoto(false);
     }
   };
 
@@ -280,6 +372,39 @@ export default function NewMLA() {
             ></textarea>
           </div>
 
+          {/* Photo Upload */}
+          <div className="new-mla-group">
+            <label className="new-mla-label">Photo</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="new-mla-file-input"
+              style={{ display: "none" }}
+            />
+            {photoPreview ? (
+              <div className="new-mla-photo-preview">
+                <img src={photoPreview} alt="Preview" className="new-mla-photo-img" />
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  className="new-mla-remove-photo"
+                >
+                  Remove Photo
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="new-mla-upload-button"
+              >
+                + Upload Photo
+              </button>
+            )}
+          </div>
+
           {/* Password */}
           <div className="new-mla-group">
             <label className="new-mla-label">Password *</label>
@@ -320,10 +445,10 @@ export default function NewMLA() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploadingPhoto}
             className="new-mla-submit"
           >
-            {loading ? "Registering..." : "Register MLA"}
+            {uploadingPhoto ? "Uploading photo..." : loading ? "Registering..." : "Register MLA"}
           </button>
         </form>
 

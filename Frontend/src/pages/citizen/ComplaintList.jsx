@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import CitizenPageLayout from "./CitizenPageLayout";
 import {
   getCitizenComplaints,
   fetchComplaintCategories,
@@ -33,23 +34,21 @@ export default function ComplaintList() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="mx-auto w-full max-w-5xl rounded-3xl bg-white p-8 shadow-lg shadow-slate-200/40">
-        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-900">My Complaints</h1>
-            <p className="mt-2 text-sm text-slate-500">Track all complaints you have submitted.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate("/citizen/create-complaint")}
-            className="rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
-          >
-            + New Complaint
-          </button>
-        </div>
-
-        {loading ? (
+    <CitizenPageLayout
+      title="My Complaints"
+      subtitle="Track all complaints you have submitted."
+      action={
+        <button
+          type="button"
+          onClick={() => navigate("/citizen/create-complaint")}
+          className="rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+        >
+          + New Complaint
+        </button>
+      }
+      maxWidth="max-w-5xl"
+    >
+      {loading ? (
           <div className="py-20 text-center text-slate-500">Loading complaints...</div>
         ) : error ? (
           <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">{error}</div>
@@ -85,7 +84,6 @@ export default function ComplaintList() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+    </CitizenPageLayout>
   );
 }

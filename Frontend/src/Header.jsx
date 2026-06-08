@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaBars, FaBell, FaUser, FaTimes } from "react-icons/fa";
+import { FaBars, FaBell, FaUser, FaTimes, FaDownload, FaRedoAlt } from "react-icons/fa";
 import "./styles/Header.css";
-import logoSrc from "./assets/images/Logo.png";
 import api, { backendProbeHealthy } from "./shared/services/api";
 import {
   getAuthUser,
@@ -17,16 +16,45 @@ export default function Header() {
   const [showNotificationsList, setShowNotificationsList] = useState(false);
   const [notificationsList, setNotificationsList] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [debugShowAdminNotifications, setDebugShowAdminNotifications] = useState(() => {
     try { return localStorage.getItem('debug_notifications') === '1'; } catch (e) { return false; }
   });
   const dropdownRef = useRef(null);
+  const userProfileRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const user = getAuthUser();
+  const [authUser, setAuthUser] = useState(getAuthUser());
+  const user = authUser;
   
   // Get specialization from user object
   const specialization = user && user.specialization ? user.specialization : localStorage.getItem('specialization') || '';
+
+  // Construct profile image URL
+  const getProfileImageUrl = () => {
+    if (!user?.profileImage) return null;
+    const img = user.profileImage;
+    // If it's a data URL (base64 from file upload), use it as-is
+    if (img.startsWith('data:image/')) {
+      return img;
+    }
+    // If it's already a full URL, use it as-is
+    if (img.startsWith('http://') || img.startsWith('https://')) {
+      return img;
+    }
+    // Otherwise, prepend the backend base URL
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
+    return `${baseUrl}/${img.startsWith('/') ? img.slice(1) : img}`;
+  };
+
+  const profileImageUrl = getProfileImageUrl();
+
+  useEffect(() => {
+    const handleAuthUserUpdated = () => setAuthUser(getAuthUser());
+    window.addEventListener('auth-user-updated', handleAuthUserUpdated);
+    return () => window.removeEventListener('auth-user-updated', handleAuthUserUpdated);
+  }, []);
 
   // helper to tightly normalize patient IDs that sometimes come prefixed with
   // ":patientId=" or "?patientId=" (an earlier bug in Header navigation)
@@ -55,20 +83,15 @@ export default function Header() {
       const normalizedRole = role.toString().toLowerCase();
       console.log('[HEADER] Fetching notification count for role:', normalizedRole);
       
-      const params = { role: normalizedRole, unread_only: true };
-      if (specialization !== undefined && specialization !== null && specialization !== '') {
-        params.specialization = specialization;
-      }
-      if (user && user.email) {
-        params.recipient_email = user.email;
-      }
-      // if we're a doctor/dentist include identifying info so backend can return
-      const res = await api.get('/notifications/count', { params });
-      if (res && res.data && typeof res.data.count === 'number') {
-        console.log('[HEADER] ✅ Notification count:', res.data.count);
-        setNotificationCount(res.data.count);
-        return;
-      }
+      const res = await api.get('/api/notifications/unread');
+      const unreadItems = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.data)
+          ? res.data.data
+          : [];
+      console.log('[HEADER] ✅ Notification count:', unreadItems.length);
+      setNotificationCount(unreadItems.length);
+      return;
     } catch (e) {
       console.error('[HEADER] Error fetching notification count:', e);
       // fallback to client-side stored notifications
@@ -124,8 +147,9 @@ export default function Header() {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setOpen(false);
-      }
-    }
+      }      if (userProfileRef.current && !userProfileRef.current.contains(event.target)) {
+        setShowUserProfile(false);
+      }    }
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
@@ -145,9 +169,16 @@ export default function Header() {
   const hideHeaderBrand = routePageTitle === 'Admin Dashboard';
 
   const handleLogout = () => {
+    const role = getAuthRole();
     clearAuth();
     setOpen(false);
-    navigate('/login');
+    setShowUserProfile(false);
+    // Navigate to appropriate login page based on role
+    if (role === 'CITIZEN' || role === 'citizen') {
+      navigate('/citizen-login');
+    } else {
+      navigate('/admin-login');
+    }
   };
 
   const fetchNotificationsList = async () => {
@@ -160,7 +191,7 @@ export default function Header() {
       } else {
         role = getAuthRole() || localStorage.getItem('userRole') || localStorage.getItem('role') || '';
       }
-      
+
       // normalize before sending to backend
       if (!role) {
         console.log('[HEADER] No role, returning empty list');
@@ -168,30 +199,15 @@ export default function Header() {
       }
       const normalizedRole = role.toString().toLowerCase();
       console.log('[HEADER] 📬 Fetching notifications list for role:', normalizedRole);
-      const params = { role: normalizedRole, specialization: specialization, unread_only: true, limit: 50 };
-      if (user && user.email) {
-        params.recipient_email = user.email;
-      }
-      console.log('[HEADER] API params:', params);
-      const res = await api.get('/notifications', { params });
-      if (res && res.data) {
-        // ensure array
-        console.log('[HEADER] Setting', items.length, 'notifications in state');
-        setNotificationsList(items);
 
-        if (items.length === 0 && notificationCount > 0) {
-          try {
-            const fallbackRes = await api.get('/notifications', { params: { unread_only: true, limit: 100 } });
-            let fallbackItems = Array.isArray(fallbackRes.data) ? fallbackRes.data : (fallbackRes.data.data || []);
-            if (Array.isArray(fallbackItems) && fallbackItems.length > 0) {
-              console.log('[HEADER] Fallback: found', fallbackItems.length, 'notifications');
-              setNotificationsList(fallbackItems);
-            }
-          } catch (fallbackErr) {
-            console.warn('[HEADER] fallback notifications fetch failed', fallbackErr);
-          }
-        }
-      }
+      const res = await api.get('/api/notifications', { params: { page: 1, per_page: 50 } });
+      const items = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.data)
+          ? res.data.data
+          : [];
+      console.log('[HEADER] Setting', items.length, 'notifications in state');
+      setNotificationsList(items);
     } catch (e) {
       console.error('[HEADER] Error fetching notifications list:', e);
       setNotificationsList([]);
@@ -298,7 +314,7 @@ export default function Header() {
 
   const markNotificationRead = async (id) => {
     try {
-      await api.patch(`/notifications/${id}/read`);
+      await api.patch(`/api/notifications/${id}/read`);
     } catch (e) {
       // ignore
     } finally {
@@ -313,20 +329,34 @@ export default function Header() {
     <header className="app-header">
       <div className="header-container">
         <div className="header-left">
-          {!hideHeaderBrand && (
-            <>
-              <div className="header-logo">
-                <img src={logoSrc} alt="VaarahiCRM" />
-              </div>
-              {routePageTitle && (
-                <div className="header-page-title">{routePageTitle}</div>
-              )}
-            </>
+          {!hideHeaderBrand && routePageTitle && (
+            <div className="header-page-title">{routePageTitle}</div>
+          )}
+          {hideHeaderBrand && (
+            <div className="header-dashboard-info">
+              <h1 className="dashboard-title">Dashboard</h1>
+              <p className="dashboard-subtitle">Welcome back, Admin! Here's what's happening in your platform.</p>
+            </div>
           )}
         </div>
 
         {/* Right: Icons */}
         <div className="header-right">
+          {/* Date Filter */}
+          <div className="header-date-filter">
+            <input 
+              type="date" 
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="date-filter-input"
+            />
+          </div>
+
+          {/* Export and Refresh Buttons */}
+          <button className="header-action-btn" title="Export Report">
+            <FaDownload />
+            <span>Export Report</span>
+          </button>
           <div className="notification-icon">
             <div style={{ position: 'relative', display: 'inline-block' }}>
               <FaBell
@@ -394,6 +424,64 @@ export default function Header() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* User Profile Section */}
+          <div className="user-profile-section" ref={userProfileRef}>
+            <button
+              className="user-profile-btn"
+              onClick={() => setShowUserProfile(!showUserProfile)}
+              title="User Profile"
+            >
+              <div className="user-profile-avatar">
+                {profileImageUrl ? (
+                  <img
+                    src={profileImageUrl}
+                    alt="Profile"
+                    onError={(e) => {
+                      console.warn('[Header] Failed to load profile image:', profileImageUrl);
+                      e.target.style.display = 'none';
+                      if (e.target.nextSibling) e.target.nextSibling.style.display = 'inline-flex';
+                    }}
+                  />
+                ) : null}
+                {!profileImageUrl && <span className="profile-fallback">👤</span>}
+              </div>
+              <span className="user-profile-name-text">{user?.fullName || user?.name || 'User'}</span>
+            </button>
+
+            {showUserProfile && (
+              <div className="user-profile-dropdown">
+                <div className="user-profile-header">
+                  <div className="user-profile-avatar-large">
+                    {profileImageUrl ? (
+                      <img
+                        src={profileImageUrl}
+                        alt="Profile"
+                        onError={(e) => {
+                          console.warn('[Header] Failed to load profile image in dropdown:', profileImageUrl);
+                          e.target.style.display = 'none';
+                          if (e.target.nextSibling) e.target.nextSibling.style.display = 'inline-flex';
+                        }}
+                      />
+                    ) : null}
+                    {!profileImageUrl && <span className="profile-fallback-large">👤</span>}
+                  </div>
+                  <div className="user-profile-info">
+                    <div className="user-profile-name">{user?.fullName || user?.name || 'Admin User'}</div>
+                    <div className="user-profile-email">{user?.email || ''}</div>
+                    <div className="user-profile-role">{getAuthRole() || 'User'}</div>
+                  </div>
+                </div>
+                <div className="user-profile-divider"></div>
+                <button 
+                  className="user-profile-logout-btn" 
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

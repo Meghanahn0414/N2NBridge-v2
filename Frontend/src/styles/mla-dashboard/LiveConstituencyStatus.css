@@ -1,0 +1,53 @@
+/* Live Constituency Status Page Styles */
+
+.status-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px;
+  margin-top: 24px;
+}
+
+.status-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.status-section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 3px solid #3b82f6;
+}
+
+.status-widgets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .status-sections {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .status-widgets-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .status-widgets-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .status-section-title {
+    font-size: 18px;
+  }
+}

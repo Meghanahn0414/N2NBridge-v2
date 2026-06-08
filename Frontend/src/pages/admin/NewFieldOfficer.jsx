@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../shared/services/api';
+import { ROUTES } from '../../app/routes/RouteConstants';
 import "./NewMLA.css";
 
 export default function NewFieldOfficer() {
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
@@ -22,9 +25,12 @@ export default function NewFieldOfficer() {
       });
       setMessage('Field officer created. Default password: ChangeMe123');
       setName(''); setEmail(''); setMobile('');
+      // Navigate to Field Officer List immediately
+      navigate(ROUTES.fieldOfficerList);
     } catch (err) {
       setMessage('Failed to create field officer');
-    } finally { setLoading(false); }
+      setLoading(false);
+    }
   };
 
   return (

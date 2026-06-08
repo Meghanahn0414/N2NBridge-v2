@@ -73,3 +73,22 @@ class Helper:
             fields["isDeleted"] = False
             fields["deletedAt"] = None
         return fields
+
+    @staticmethod
+    def prepare_response_data(data: dict) -> dict:
+        """Convert ObjectId to string for response models with _id field.
+        
+        Pydantic models using Field(alias="_id") need the _id value as a string.
+        This helper converts any ObjectId to string.
+        """
+        if isinstance(data, dict) and "_id" in data:
+            data["_id"] = str(data["_id"])
+        return data
+
+    @staticmethod
+    def prepare_response_list(data_list: list) -> list:
+        """Convert ObjectId to string for list of response models."""
+        for item in data_list:
+            if isinstance(item, dict) and "_id" in item:
+                item["_id"] = str(item["_id"])
+        return data_list

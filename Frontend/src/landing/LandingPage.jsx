@@ -1,13 +1,68 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import "../styles/LandingPage.css";
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+  const [showLoginOptions, setShowLoginOptions] = useState(false);
+
   return (
     <div className="landing-page">
       <div className="landing-header">
-        <Link to="/login" className="sign-in-btn">Sign In</Link>
+        <button 
+          className="sign-in-btn"
+          onClick={() => setShowLoginOptions(!showLoginOptions)}
+        >
+          Sign In
+        </button>
       </div>
+
+      {/* Login Options Modal */}
+      {showLoginOptions && (
+        <div className="login-options-overlay" onClick={() => setShowLoginOptions(false)}>
+          <div className="login-options-modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="login-options-title">Select Your Login Type</h2>
+            <div className="login-options-grid">
+              <Link to="/citizen-login" className="login-option-card citizen">
+                <div className="login-option-icon">👤</div>
+                <h3>Citizen</h3>
+                <p>Login as a citizen</p>
+              </Link>
+              
+              <Link to="/admin-signup" className="login-option-card admin">
+                <div className="login-option-icon">👨‍💼</div>
+                <h3>Admin</h3>
+                <p>Create new account</p>
+              </Link>
+              
+              <Link to="/admin-login?role=MANAGER" className="login-option-card manager">
+                <div className="login-option-icon">📋</div>
+                <h3>Manager</h3>
+                <p>Constituency Manager</p>
+              </Link>
+              
+              <Link to="/admin-login?role=FIELD_OFFICER" className="login-option-card officer">
+                <div className="login-option-icon">🚗</div>
+                <h3>Field Officer</h3>
+                <p>Login as field officer</p>
+              </Link>
+              
+              <Link to="/admin-login?role=REPRESENTATIVE" className="login-option-card representative">
+                <div className="login-option-icon">🏛️</div>
+                <h3>Representative</h3>
+                <p>MLA/Representative Login</p>
+              </Link>
+            </div>
+            <button 
+              className="close-modal-btn"
+              onClick={() => setShowLoginOptions(false)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="hero">
          <div className="hero-content">

@@ -30,7 +30,8 @@ async def create_grievance(
     )
     
     grievance = GrievanceService.get_grievance_by_id(grievance_id)
-    return GrievanceResponse(**grievance, _id=str(grievance["_id"]))
+    Helper.prepare_response_data(grievance)
+    return GrievanceResponse(**grievance)
 
 
 @router.get("/", response_model=list[GrievanceResponse])
@@ -51,7 +52,8 @@ async def list_grievances(
         filters["priority"] = priority
     
     grievances = GrievanceService.list_grievances(skip, limit, filters)
-    return [GrievanceResponse(**g, _id=str(g["_id"])) for g in grievances]
+    Helper.prepare_response_list(grievances)
+    return [GrievanceResponse(**g) for g in grievances]
 
 
 # Category Endpoints - Must be before /{grievance_id} routes
@@ -64,7 +66,8 @@ async def create_category(
     category_id = GrievanceCategoryService.create_category(data.dict())
     category = GrievanceCategoryService.get_category_by_id(category_id)
     
-    return GrievanceCategoryResponse(**category, _id=str(category["_id"]))
+    Helper.prepare_response_data(category)
+    return GrievanceCategoryResponse(**category)
 
 
 @router.get("/categories", response_model=list[GrievanceCategoryResponse])
@@ -72,7 +75,8 @@ async def list_categories(current_user: dict = Depends(get_current_user)):
     """List grievance categories"""
     categories = GrievanceCategoryService.get_all_categories()
     
-    return [GrievanceCategoryResponse(**c, _id=str(c["_id"])) for c in categories]
+    Helper.prepare_response_list(categories)
+    return [GrievanceCategoryResponse(**c) for c in categories]
 
 
 @router.get("/citizen/{citizen_id}", response_model=list[GrievanceResponse])
@@ -85,7 +89,8 @@ async def get_citizen_grievances(
     skip, limit = Helper.paginate(page, 10)
     grievances = GrievanceService.get_grievances_by_citizen(citizen_id, skip, limit)
     
-    return [GrievanceResponse(**g, _id=str(g["_id"])) for g in grievances]
+    Helper.prepare_response_list(grievances)
+    return [GrievanceResponse(**g) for g in grievances]
 
 
 # Parameterized routes - Must come after specific routes
@@ -100,7 +105,8 @@ async def get_grievance(
     if not grievance:
         raise HTTPException(status_code=404, detail="Grievance not found")
     
-    return GrievanceResponse(**grievance, _id=str(grievance["_id"]))
+    Helper.prepare_response_data(grievance)
+    return GrievanceResponse(**grievance)
 
 
 @router.put("/{grievance_id}", response_model=GrievanceResponse)
@@ -119,7 +125,8 @@ async def update_grievance(
         )
     
     grievance = GrievanceService.get_grievance_by_id(grievance_id)
-    return GrievanceResponse(**grievance, _id=str(grievance["_id"]))
+    Helper.prepare_response_data(grievance)
+    return GrievanceResponse(**grievance)
 
 
 @router.post("/{grievance_id}/assign/{officer_id}")

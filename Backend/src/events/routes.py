@@ -25,7 +25,8 @@ async def create_event(
     event_id = EventService.create_event(event_data.dict(), current_user["user_id"])
     event = EventService.get_event_by_id(event_id)
     
-    return EventResponse(**event, _id=str(event["_id"]))
+    Helper.prepare_response_data(event)
+    return EventResponse(**event)
 
 
 @router.get("/{event_id}", response_model=EventResponse)
@@ -39,7 +40,8 @@ async def get_event(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     
-    return EventResponse(**event, _id=str(event["_id"]))
+    Helper.prepare_response_data(event)
+    return EventResponse(**event)
 
 
 @router.get("/", response_model=list[EventResponse])
@@ -52,7 +54,8 @@ async def list_events(
     skip, limit = Helper.paginate(page, per_page)
     events = EventService.list_events(skip, limit)
     
-    return [EventResponse(**e, _id=str(e["_id"])) for e in events]
+    Helper.prepare_response_list(events)
+    return [EventResponse(**e) for e in events]
 
 
 @router.put("/{event_id}", response_model=EventResponse)
@@ -72,7 +75,8 @@ async def update_event(
         raise HTTPException(status_code=400, detail="Failed to update event")
     
     event = EventService.get_event_by_id(event_id)
-    return EventResponse(**event, _id=str(event["_id"]))
+    Helper.prepare_response_data(event)
+    return EventResponse(**event)
 
 
 @router.post("/{event_id}/publish")
@@ -102,7 +106,8 @@ async def register_for_event(
     })
     
     registration = EventRegistrationService.get_registration(event_id, current_user["user_id"])
-    return EventRegistrationResponse(**registration, _id=str(registration["_id"]))
+    Helper.prepare_response_data(registration)
+    return EventRegistrationResponse(**registration)
 
 
 @router.get("/{event_id}/registrations", response_model=list[EventRegistrationResponse])
@@ -115,7 +120,8 @@ async def get_registrations(
     skip, limit = Helper.paginate(page, 10)
     registrations = EventRegistrationService.get_event_registrations(event_id, skip, limit)
     
-    return [EventRegistrationResponse(**r, _id=str(r["_id"])) for r in registrations]
+    Helper.prepare_response_list(registrations)
+    return [EventRegistrationResponse(**r) for r in registrations]
 
 
 @router.post("/registrations/{registration_id}/attend")

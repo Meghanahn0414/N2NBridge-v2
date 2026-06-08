@@ -26,7 +26,8 @@ async def create_alert(
     )
     
     alert = AlertService.get_alert_by_id(alert_id)
-    return AlertResponse(**alert, _id=str(alert["_id"]))
+    Helper.prepare_response_data(alert)
+    return AlertResponse(**alert)
 
 
 @router.get("/{alert_id}", response_model=AlertResponse)
@@ -40,7 +41,8 @@ async def get_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     
-    return AlertResponse(**alert, _id=str(alert["_id"]))
+    Helper.prepare_response_data(alert)
+    return AlertResponse(**alert)
 
 
 @router.get("/", response_model=list[AlertResponse])
@@ -61,7 +63,8 @@ async def list_alerts(
         filters["priority"] = priority
     
     alerts = AlertService.list_alerts(skip, limit, filters)
-    return [AlertResponse(**a, _id=str(a["_id"])) for a in alerts]
+    Helper.prepare_response_list(alerts)
+    return [AlertResponse(**a) for a in alerts]
 
 
 @router.put("/{alert_id}", response_model=AlertResponse)
@@ -81,7 +84,8 @@ async def update_alert(
         raise HTTPException(status_code=400, detail="Failed to update alert")
     
     alert = AlertService.get_alert_by_id(alert_id)
-    return AlertResponse(**alert, _id=str(alert["_id"]))
+    Helper.prepare_response_data(alert)
+    return AlertResponse(**alert)
 
 
 @router.post("/{alert_id}/assign/{officer_id}")

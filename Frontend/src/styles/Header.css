@@ -21,7 +21,7 @@ body.sidebar-collapsed .app-header {
   max-width: 1180px;
   width: 100%;
   height: 100%;
-  padding: 0 32px;
+  padding: 0 16px 0 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -52,6 +52,25 @@ body.sidebar-collapsed .app-header {
 
 .header-page-title::before {
   content: '';
+}
+
+.header-dashboard-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dashboard-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.dashboard-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
 }
 
 .header-logo {
@@ -91,6 +110,70 @@ body.sidebar-collapsed .app-header {
   display: flex;
   align-items: center;
   gap: 30px;
+}
+
+/* Date Filter */
+.header-date-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.date-filter-input {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  min-width: 140px;
+}
+
+.date-filter-input:focus {
+  outline: none;
+}
+
+.date-filter-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Styling for the calendar picker */
+.date-filter-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+/* Header Action Buttons */
+.header-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #6b8e8f;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.header-action-btn:hover {
+  background: #5a7b7c;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.header-action-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Icons */
@@ -153,6 +236,8 @@ body.sidebar-collapsed .app-header {
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
   background: rgba(255,255,255,0.04);
 }
+
+.notification-dropdown {
   right: 0;
   background: #ffffff;
   border: 1px solid rgba(16, 44, 65, 0.12);
@@ -308,6 +393,163 @@ body.sidebar-collapsed .app-header {
   cursor: pointer;
   font-weight: 600;
   transition: 0.3s ease;
+}
+
+/* User Profile Section in Header */
+.user-profile-section {
+  position: relative;
+  display: inline-block;
+  margin-left: 24px;
+}
+
+.user-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.user-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.user-profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.user-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.profile-fallback {
+  font-size: 18px;
+  display: inline-flex;
+}
+
+.user-profile-name-text {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  width: 300px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 2001;
+  animation: slideDown 0.2s ease-out;
+}
+
+.user-profile-header {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.user-profile-avatar-large {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.user-profile-avatar-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.profile-fallback-large {
+  font-size: 28px;
+  display: inline-flex;
+}
+
+.user-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-profile-name {
+  font-weight: 600;
+  color: #243b6b;
+  font-size: 14px;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.user-profile-email {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.user-profile-role {
+  font-size: 11px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.user-profile-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 0;
+}
+
+.user-profile-logout-btn {
+  width: 100%;
+  padding: 10px 16px;
+  background: #ffffff;
+  color: #dc2626;
+  border: none;
+  border-radius: 0 0 8px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.user-profile-logout-btn:hover {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .logout-btn:hover {

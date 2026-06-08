@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { loginAdmin } from "./authService";
 import { setAuthToken, setAuthRole } from "../../services/authStorage";
 import "./auth.css";
@@ -10,6 +10,22 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const redirectByRole = {
+    ADMIN: "/admin",
+    REPRESENTATIVE: "/rep",
+    CONSTITUENCY_MANAGER: "/manager",
+    MANAGER: "/manager",
+    FIELD_OFFICER: "/field",
+  };
+
+  // Get role from URL query parameter
+  const roleFromUrl = searchParams.get("role");
+  
+  // Roles that cannot access signup
+  const restrictedSignupRoles = ["REPRESENTATIVE", "MANAGER", "CONSTITUENCY_MANAGER", "FIELD_OFFICER"];
+  const showSignupLink = !restrictedSignupRoles.includes(roleFromUrl);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -29,8 +45,9 @@ export default function AdminLogin() {
       setAuthRole(userRole);
       localStorage.setItem("user", JSON.stringify(response.user));
 
-      // Redirect to admin dashboard
-      navigate("/admin");
+      // Redirect based on user role
+      const redirectPath = redirectByRole[userRole] || "/admin";
+      navigate(redirectPath);
     } catch (err) {
       setError(err.message || "Login failed");
     } finally {
@@ -47,7 +64,7 @@ export default function AdminLogin() {
       <div className="auth-card">
         <div className="auth-header">
           <h1 className="auth-title">Login to Your Account</h1>
-          <p className="auth-subtitle">Admin Access</p>
+          <p className="auth-subtitle">Staff & Admin Access</p>
         </div>
 
         <form className="auth-form" onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
@@ -94,30 +111,19 @@ export default function AdminLogin() {
           </button>
         </form>
 
-        <div className="auth-footer">
-          <p>Don't have an account?
-            <button
-              type="button"
-              onClick={() => navigate("/signup")}
-              className="auth-link"
-            >
-              Sign up here
-            </button>
-          </p>
-        </div>
-
-        <div className="auth-divider"></div>
-
-        <div className="auth-citizen-section">
-          <p>Citizen?</p>
-          <button
-            type="button"
-            onClick={() => navigate("/citizen-login")}
-            className="auth-link-secondary"
-          >
-            Login with Phone/Email (OTP)
-          </button>
-        </div>
+        {showSignupLink && (
+          <div className="auth-footer">
+            <p>Don't have an account?
+              <button
+                type="button"
+                onClick={() => navigate("/admin-signup")}
+                className="auth-link"
+              >
+                Sign up here
+              </button>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

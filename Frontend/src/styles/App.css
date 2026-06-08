@@ -8,18 +8,19 @@
   position: relative;
   z-index: auto; /* avoid creating a hard stacking context so modals can overlay header */
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .app-main {
   flex: 1;
   margin-left: var(--sidebar-width);
-  margin-top: 80px; /* keep content below the fixed header */
+  margin-top: var(--header-height); /* keep content below the fixed header */
   padding: 20px;
   padding-top: 10px; /* reinforce spacing for content top */
   background: #f3f4f6;
   position: relative;
   z-index: auto; /* avoid creating nested stacking context that traps fixed modals */
-  min-height: calc(100vh - 80px);
+  min-height: calc(100vh - var(--header-height));
   min-width: 0;
   overflow-x: hidden;
 }

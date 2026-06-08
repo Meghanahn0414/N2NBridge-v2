@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerAdmin } from "./authService";
+import api from "../../shared/services/api";
 import "./AdminSignup.css";
 
 const COUNTRY_OPTIONS = [
@@ -26,6 +27,13 @@ export default function AdminSignup() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // Photo upload states
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
+  
   const navigate = useNavigate();
   const countryDropdownRef = useRef(null);
 
@@ -74,6 +82,29 @@ export default function AdminSignup() {
     return "";
   };
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      console.log("[AdminSignup] Photo selected:", file.name);
+      setPhotoFile(file);
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPhotoPreview(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    console.log("[AdminSignup] Photo removed");
+    setPhotoFile(null);
+    setPhotoPreview("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleRegister = async () => {
     const validationError = validateForm();
     if (validationError) {
@@ -85,16 +116,57 @@ export default function AdminSignup() {
     setLoading(true);
 
     try {
-      await registerAdmin({
+      const registrationData = {
         fullName: fullName.trim(),
         email: email.trim(),
         mobile: normalizePhone(mobile),
         password,
         role: "ADMIN",
-      });
+      };
 
-      setSuccess("Admin account created successfully. Redirecting to login...");
-      setTimeout(() => navigate("/login"), 1300);
+      const response = await registerAdmin(registrationData);
+      const userId = response?.user?.id;
+      
+      console.log("[AdminSignup] Registration response:", response);
+      console.log("[AdminSignup] Extracted userId:", userId);
+      console.log("[AdminSignup] photoFile exists:", !!photoFile);
+
+      // Upload photo if one was selected
+      if (photoFile && userId) {
+        console.log("[AdminSignup] Starting photo upload for user:", userId);
+        setUploadingPhoto(true);
+        
+        try {
+          const formDataPhoto = new FormData();
+          formDataPhoto.append("file", photoFile);
+          
+          const photoResponse = await api.post(
+            `/api/users/${userId}/upload-profile-photo`,
+            formDataPhoto
+          );
+          console.log("[AdminSignup] Photo uploaded successfully:", photoResponse.data);
+          setSuccess(`Admin account created successfully with photo! Redirecting to login...`);
+        } catch (photoErr) {
+          console.error("[AdminSignup] Photo upload error:", photoErr);
+          // Photo upload failure is not critical, still show registration success
+          setSuccess(`Admin account created successfully! (Photo upload failed). Redirecting to login...`);
+        } finally {
+          setUploadingPhoto(false);
+        }
+      } else {
+        setSuccess("Admin account created successfully. Redirecting to login...");
+      }
+
+      // Clear form
+      setFullName("");
+      setEmail("");
+      setMobile("");
+      setPassword("");
+      setConfirmPassword("");
+      setPhotoFile(null);
+      setPhotoPreview("");
+
+      setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
       setError(err.message || "Failed to create account. Please try again.");
     } finally {
@@ -209,6 +281,46 @@ export default function AdminSignup() {
             />
           </div>
 
+          {/* Photo Upload Section for Admin */}
+          <div className="signup-card__group">
+            <label className="signup-card__label">Profile Photo (Optional)</label>
+            <div className="signup-card__photo-upload">
+              <input
+                type="file"
+                id="photo"
+                ref={fileInputRef}
+                name="photo"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="signup-card__file-input"
+              />
+              <label className="signup-card__file-label" htmlFor="photo">
+                <span className="signup-card__upload-icon">📷</span>
+                <span className="signup-card__upload-text">
+                  {photoFile ? "📸 Change Photo" : "📸 Upload Photo"}
+                </span>
+              </label>
+            </div>
+            
+            {photoPreview && (
+              <div className="signup-card__photo-preview">
+                <img
+                  src={photoPreview}
+                  alt="Photo preview"
+                  className="signup-card__preview-image"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  className="signup-card__remove-photo"
+                  disabled={uploadingPhoto}
+                >
+                  ❌ Remove
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="signup-card__feedback">
             {error && <span className="signup-card__error">{error}</span>}
             {success && <span className="signup-card__success">{success}</span>}
@@ -225,7 +337,7 @@ export default function AdminSignup() {
 
           <div className="signup-card__footer">
             Already have an account?{' '}
-            <button type="button" onClick={() => navigate("/login")}>Log in</button>
+            <button type="button" onClick={() => navigate("/admin-login")}>Log in</button>
           </div>
         </div>
       </div>

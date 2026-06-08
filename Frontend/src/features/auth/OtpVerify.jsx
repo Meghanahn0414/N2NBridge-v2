@@ -41,6 +41,10 @@ export default function OtpVerify() {
       const res = await verifyOtp({ value: authState.value, otp });
       localStorage.setItem("token", res.token);
       localStorage.setItem("role", res.role);
+      if (res.user) {
+        localStorage.setItem("user", JSON.stringify(res.user));
+        window.dispatchEvent(new Event('auth-user-updated'));
+      }
       sessionStorage.removeItem("authValue");
 
       const destination = roleRedirect[res.role] || "/";

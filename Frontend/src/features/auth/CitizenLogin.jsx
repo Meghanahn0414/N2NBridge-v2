@@ -98,18 +98,6 @@ export default function CitizenLogin() {
         </form>
 
         <div className="auth-divider"></div>
-
-        <div className="auth-footer">
-          <p>Admin?
-            <button
-              type="button"
-              onClick={() => navigate("/login")}
-              className="auth-link"
-            >
-              Login here
-            </button>
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ export default function AdminUsers(){
 
   const fetchUsers = async () => {
     try {
-      const res = await api.get('/api/users', { params: { per_page: 200 } });
+      const res = await api.get('/api/users/', { params: { per_page: 100, role: 'CITIZEN' } });
       if (res.data) {
         const list = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : res.data);
         setUsers(list);
@@ -27,8 +27,8 @@ export default function AdminUsers(){
     <div className="new-mla-container">
       <div className="new-mla-card">
         <div className="new-mla-header">
-          <h1 className="new-mla-title">Users</h1>
-          <p className="new-mla-subtitle">All registered users in the system</p>
+          <h1 className="new-mla-title">CITIZENS</h1>
+          <p className="new-mla-subtitle">All registered citizens in the system</p>
         </div>
         <div style={{ padding: 30 }}>
           {loading && <div>Loading...</div>}

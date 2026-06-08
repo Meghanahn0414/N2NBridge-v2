@@ -16,19 +16,55 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)
 
 
-def get_current_user(authorization: Optional[str] = Header(None)):
+def get_current_user(authorization: Optional[str] = Header(None, alias="Authorization")):
     """Get current user from token"""
+    logger.info(f"[AUTH] Authorization header present: {bool(authorization)}")
+    
     if not authorization:
+        logger.error("[AUTH] Missing authorization header - 401 response")
         raise HTTPException(status_code=401, detail="Missing authorization header")
     
     token = TokenManager.extract_token_from_header(authorization)
+    logger.info(f"[AUTH] Token extracted: {bool(token)}, length: {len(token) if token else 0}")
+    
     if not token:
+        logger.error("[AUTH] Invalid authorization header format - 401 response")
         raise HTTPException(status_code=401, detail="Invalid authorization header")
     
     payload = AuthService.verify_token(token)
+    logger.info(f"[AUTH] Token verified, payload present: {bool(payload)}")
+    
     if not payload:
+        logger.error("[AUTH] Invalid or expired token - 401 response")
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     
+    logger.info(f"[AUTH] ✅ User authenticated: user_id={payload.get('user_id')}, role={payload.get('role')}")
+    return payload
+
+
+def get_current_user_optional(authorization: Optional[str] = Header(None, alias="Authorization")):
+    """Get current user from token (optional - returns None if not authenticated)"""
+    logger.info(f"[AUTH_OPT] Authorization header present: {bool(authorization)}")
+    
+    if not authorization:
+        logger.info("[AUTH_OPT] No authorization header - proceeding without auth")
+        return None
+    
+    token = TokenManager.extract_token_from_header(authorization)
+    logger.info(f"[AUTH_OPT] Token extracted: {bool(token)}")
+    
+    if not token:
+        logger.info("[AUTH_OPT] Invalid authorization header format - proceeding without auth")
+        return None
+    
+    payload = AuthService.verify_token(token)
+    logger.info(f"[AUTH_OPT] Token verified: {bool(payload)}")
+    
+    if not payload:
+        logger.info("[AUTH_OPT] Invalid or expired token - proceeding without auth")
+        return None
+    
+    logger.info(f"[AUTH_OPT] ✅ User authenticated: user_id={payload.get('user_id')}, role={payload.get('role')}")
     return payload
 
 
@@ -48,7 +84,7 @@ async def login(login_data: UserLoginRequest):
 
 @router.post("/login-admin", response_model=TokenResponse)
 async def login_admin(request: Request):
-    """Admin login using email/password (debug-friendly)"""
+    """Admin/Staff login using email/password (ADMIN, REPRESENTATIVE, CONSTITUENCY_MANAGER, FIELD_OFFICER)"""
     try:
         raw = await request.body()
         logger.debug(f"/login-admin raw body: {raw}")
@@ -95,15 +131,18 @@ async def login_admin(request: Request):
             detail="Invalid email or password"
         )
 
-    # Ensure the user has admin role
+    # Ensure the user has an allowed role (not a citizen)
     user_role = None
     try:
         user_role = result.user.role if hasattr(result, 'user') and result.user else None
     except Exception:
         user_role = None
 
-    if user_role != "ADMIN":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized as admin")
+    # Allow staff roles (admin, representative/MLA, manager, field officer) but not citizens
+    # Note: Support both "MANAGER" (legacy) and "CONSTITUENCY_MANAGER" (new standard)
+    allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER", "MANAGER"]
+    if user_role not in allowed_roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized. Citizens must use citizen login.")
 
     return result
 
@@ -112,13 +151,16 @@ async def login_admin(request: Request):
 async def register(user_data: UserCreate):
     """Register new user (public endpoint)"""
     try:
+        logger.info(f"[REGISTER] Received registration request: {user_data.fullName}, {user_data.email}, role={user_data.role}")
         user_id = AuthService.register_user(user_data.dict(), None)
         if not user_id:
+            logger.error("[REGISTER] register_user returned None")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to register user"
             )
         
+        logger.info(f"[REGISTER] User registered successfully: {user_id}")
         # Create token for newly registered user
         token = TokenManager.create_token(user_id, user_data.role)
         
@@ -132,8 +174,11 @@ async def register(user_data: UserCreate):
                 "role": user_data.role
             }
         }
+    except HTTPException as he:
+        logger.error(f"[REGISTER] HTTP Exception: {he.detail}")
+        raise
     except Exception as e:
-        logger.error(f"Registration error: {e}", exc_info=True)
+        logger.error(f"[REGISTER] Unexpected error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Registration failed")
 
 
@@ -219,11 +264,14 @@ async def verify_otp(request: VerifyOtpRequest):
         
         logger.info(f"OTP verified and user logged in: {user['_id']}")
         
+        # Normalize user payload for response
+        user_payload = { **user, "_id": str(user["_id"]) }
         return OtpResponse(
             success=True,
             message="OTP verified successfully",
             token=token,
-            role=user["role"]
+            role=user["role"],
+            user=UserResponse(**user_payload)
         )
     except HTTPException:
         raise

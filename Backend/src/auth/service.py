@@ -76,5 +76,5 @@ class AuthService:
             logger.info(f"New user registered: {user_id}")
             return user_id
         except Exception as e:
-            logger.error(f"User registration error: {e}")
+            logger.error(f"User registration error: {e}", exc_info=True)
             return None

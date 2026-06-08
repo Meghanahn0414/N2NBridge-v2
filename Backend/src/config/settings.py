@@ -3,6 +3,7 @@ Application Settings and Configuration
 """
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
 
 
 class Settings(BaseSettings):
@@ -31,13 +32,17 @@ class Settings(BaseSettings):
     # CORS: allow local frontend origins during development
     # In production, narrow this to the exact production origins.
     CORS_ORIGINS: list = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "http://localhost:5174",
         "http://127.0.0.1:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:5175",
     ]
     
-    # File upload
+    # File upload - use absolute path to project root/uploads
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
-    UPLOAD_DIR: str = "uploads"
+    UPLOAD_DIR: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
     ALLOWED_EXTENSIONS: list = ["pdf", "jpg", "jpeg", "png", "doc", "docx"]
     
     # Email (if needed)
@@ -55,7 +60,4 @@ class Settings(BaseSettings):
 
 
 # Create settings instance that loads from .env
-settings = Settings()
-
-
 settings = Settings()

@@ -6,6 +6,7 @@ from bson import ObjectId
 from typing import Optional, List
 from datetime import datetime
 import logging
+from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,10 @@ class NotificationService:
     def get_notification_by_id(notification_id: str) -> Optional[dict]:
         """Get notification by ID"""
         db = MongoDatabase.get_db()
-        return db.notifications.find_one({"_id": ObjectId(notification_id)})
+        try:
+            return db.notifications.find_one({"_id": ObjectId(notification_id)})
+        except InvalidId:
+            return None
     
     @staticmethod
     def get_user_notifications(user_id: str, skip: int = 0, limit: int = 10) -> List[dict]:

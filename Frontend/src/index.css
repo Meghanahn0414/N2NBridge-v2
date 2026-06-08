@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 * {
   margin: 0;
   padding: 0;
@@ -10,32 +14,19 @@ html, body, #root {
 }
 
 :root {
-  --sidebar-width: 260px;
-  --header-height: 88px;
+  --sidebar-width: 200px;
 }
 
 /* Main app content area (adjusts with sidebar and header) */
 .app-main {
   margin-left: var(--sidebar-width);
-  margin-top: var(--header-height);
+  margin-top: 70px; /* header height */
   padding: 20px 28px;
   transition: margin-left 0.3s ease, margin-top 0.3s ease;
 }
 
 body.sidebar-collapsed .app-main {
   margin-left: 0;
-}
-
-/* Landing page takes full screen */
-.app-main .landing-page {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  margin: 0 !important;
-  padding: 0 !important;
-  z-index: 1;
 }
 
 /* ================================================= */

@@ -26,6 +26,7 @@ from tasks.routes import router as tasks_router
 from notifications.routes import router as notifications_router
 from analytics.routes import router as analytics_router
 from dashboard.routes import router as dashboard_router
+from citizens.routes import router as citizens_router
 
 # Configure logging
 logging.basicConfig(
@@ -45,13 +46,15 @@ app = FastAPI(
 
 # Configure CORS
 logger.info(f"🔧 CORS_ORIGINS: {settings.CORS_ORIGINS} (type: {type(settings.CORS_ORIGINS).__name__})")
-logger.info(f"🔧 allow_credentials: {settings.CORS_ORIGINS != ['*']}")
+logger.info(f"🔧 allow_credentials: True")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=False,
-    allow_methods=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=600,
 )
 
 # Ensure CORS headers are added to error responses as well by wrapping exception handler
@@ -73,6 +76,14 @@ except Exception as e:
 async def log_requests(request: Request, call_next):
     """Log all requests"""
     start_time = datetime.utcnow()
+    
+    # Log Authorization header for protected endpoints
+    if request.url.path.startswith("/api/"):
+        auth_header = request.headers.get("authorization")
+        if auth_header:
+            logger.info(f"[MIDDLEWARE] {request.method} {request.url.path} - Auth: {auth_header[:30]}...")
+        else:
+            logger.warning(f"[MIDDLEWARE] {request.method} {request.url.path} - ⚠️ NO Authorization header!")
     
     response = await call_next(request)
     
@@ -142,6 +153,7 @@ app.include_router(tasks_router)
 app.include_router(notifications_router)
 app.include_router(analytics_router)
 app.include_router(dashboard_router)
+app.include_router(citizens_router)
 
 
 # Global exception handler

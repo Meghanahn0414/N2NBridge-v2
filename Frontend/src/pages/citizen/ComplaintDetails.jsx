@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import CitizenPageLayout from "./CitizenPageLayout";
 import { getComplaintById } from "../../features/complaints/complaintService";
 
 const statusLabels = {
@@ -59,25 +60,21 @@ export default function ComplaintDetails() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="mx-auto w-full max-w-4xl rounded-3xl bg-white p-8 shadow-lg shadow-slate-200/40">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-900">Complaint Details</h1>
-            <p className="mt-2 text-sm text-slate-500">Review status, timeline, and attachments for your complaint.</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => navigate("/citizen/complaints")}
-              className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
-            >
-              Back to list
-            </button>
-          </div>
-        </div>
-
-        {loading ? (
+    <CitizenPageLayout
+      title="Complaint Details"
+      subtitle="Review status, timeline, and attachments for your complaint."
+      action={
+        <button
+          type="button"
+          onClick={() => navigate("/citizen/complaints")}
+          className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
+        >
+          Back to list
+        </button>
+      }
+      maxWidth="max-w-4xl"
+    >
+      {loading ? (
           <div className="py-20 text-center text-slate-500">Loading complaint details...</div>
         ) : error ? (
           <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">{error}</div>
@@ -152,7 +149,6 @@ export default function ComplaintDetails() {
         ) : (
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700">Complaint details were not found.</div>
         )}
-      </div>
-    </div>
+    </CitizenPageLayout>
   );
 }

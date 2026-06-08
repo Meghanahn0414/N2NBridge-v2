@@ -59,17 +59,22 @@ class SecurityManager:
     def decode_token(token: str) -> Optional[dict]:
         """Decode JWT token"""
         try:
+            logger.debug(f"[JWT] Attempting to decode token, length: {len(token)}")
             payload = jwt.decode(
                 token,
                 settings.JWT_SECRET_KEY,
                 algorithms=[settings.JWT_ALGORITHM]
             )
+            logger.debug(f"[JWT] ✅ Token decoded successfully, user_id: {payload.get('user_id')}")
             return payload
         except jwt.ExpiredSignatureError:
-            logger.warning("Token has expired")
+            logger.warning("[JWT] ❌ Token has expired")
             return None
-        except jwt.InvalidTokenError:
-            logger.warning("Invalid token")
+        except jwt.InvalidTokenError as e:
+            logger.warning(f"[JWT] ❌ Invalid token: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"[JWT] ❌ Unexpected error decoding token: {str(e)}")
             return None
 
 

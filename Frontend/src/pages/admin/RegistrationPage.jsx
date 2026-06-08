@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../shared/services/api";
+import { ROUTES } from "../../app/routes/RouteConstants";
 import "./NewMLA.css";
 
 const roleOptions = [
   { value: "REPRESENTATIVE", label: "MLA" },
-  { value: "MANAGER", label: "Manager" },
+  { value: "CONSTITUENCY_MANAGER", label: "Manager" },
   { value: "FIELD_OFFICER", label: "Field Officer" },
 ];
 
@@ -29,15 +31,21 @@ const initialFormState = {
 export default function RegistrationPage() {
   const [role, setRole] = useState("");
   const [formData, setFormData] = useState(initialFormState);
-  const [constituencies, setConstituencies] = useState([]);
   const [managers, setManagers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Photo upload states
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
+  
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchConstituencies();
     fetchManagers();
   }, []);
 
@@ -48,21 +56,10 @@ export default function RegistrationPage() {
     return raw.startsWith("0") ? `+${raw.replace(/^0+/, "")}` : `+91${raw}`;
   };
 
-  const fetchConstituencies = async () => {
-    try {
-      const response = await api.get("/api/users/constituencies");
-      if (response.data) {
-        setConstituencies(response.data);
-      }
-    } catch (err) {
-      console.warn("Unable to load constituencies", err);
-    }
-  };
-
   const fetchManagers = async () => {
     try {
-      const response = await api.get("/api/users", {
-        params: { per_page: 200, role: "MANAGER" },
+      const response = await api.get("/api/users/", {
+        params: { per_page: 100, role: "CONSTITUENCY_MANAGER" },
       });
       if (response.data) {
         setManagers(response.data);
@@ -94,23 +91,37 @@ export default function RegistrationPage() {
       return "Please enter a valid phone number.";
     }
 
-    if (role === "REPRESENTATIVE") {
-      if (!formData.constituencyId) return "Constituency is required for MLA.";
-      if (!formData.partyName.trim()) return "Party Name is required for MLA.";
-      if (!formData.district.trim()) return "District is required for MLA.";
-    }
-    if (role === "MANAGER") {
-      if (!formData.department.trim()) return "Department is required for Manager.";
-      if (!formData.officeLocation.trim()) return "Office Location is required for Manager.";
-      if (!formData.managerCode.trim()) return "Manager Code is required.";
+    if (role === "CONSTITUENCY_MANAGER") {
+      // Department, Office Location, and Manager Code are now optional
     }
     if (role === "FIELD_OFFICER") {
-      if (!formData.assignedArea.trim()) return "Assigned Area is required for Field Officer.";
-      if (!formData.managerId) return "Manager is required for Field Officer.";
-      if (!formData.fieldOfficerId.trim()) return "Field Officer ID is required.";
+      // Assigned Area, Manager, and Field Officer ID are now optional
     }
 
     return "";
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      console.log("[RegistrationPage] Photo selected:", file.name);
+      setPhotoFile(file);
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPhotoPreview(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    console.log("[RegistrationPage] Photo removed");
+    setPhotoFile(null);
+    setPhotoPreview("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -136,11 +147,11 @@ export default function RegistrationPage() {
       };
 
       if (role === "REPRESENTATIVE") {
-        payload.constituencyId = formData.constituencyId;
-        payload.partyName = formData.partyName.trim();
-        payload.district = formData.district.trim();
+        if (formData.constituencyId.trim()) payload.constituencyId = formData.constituencyId.trim();
+        if (formData.partyName.trim()) payload.partyName = formData.partyName.trim();
+        if (formData.district.trim()) payload.district = formData.district.trim();
       }
-      if (role === "MANAGER") {
+      if (role === "CONSTITUENCY_MANAGER") {
         payload.department = formData.department.trim();
         payload.officeLocation = formData.officeLocation.trim();
         payload.managerCode = formData.managerCode.trim();
@@ -151,11 +162,50 @@ export default function RegistrationPage() {
         payload.fieldOfficerId = formData.fieldOfficerId.trim();
       }
 
-      await api.post("/api/auth/register", payload);
-      setSuccess(`${roleOptions.find((option) => option.value === role)?.label || "User"} registered successfully!`);
+      // Register the user and get the userId
+      const registrationResponse = await api.post("/api/auth/register", payload);
+      const userId = registrationResponse.data?.user?.id;
+      
+      console.log("[RegistrationPage] Full registration response:", registrationResponse);
+      console.log("[RegistrationPage] Extracted userId:", userId);
+      console.log("[RegistrationPage] photoFile exists:", !!photoFile);
+
+      // Upload photo if one was selected
+      if (photoFile && userId) {
+        console.log("[RegistrationPage] Starting photo upload for user:", userId);
+        setUploadingPhoto(true);
+        
+        try {
+          const formDataPhoto = new FormData();
+          formDataPhoto.append("file", photoFile);
+          
+          const photoResponse = await api.post(`/api/users/${userId}/upload-profile-photo`, formDataPhoto);
+          console.log("[RegistrationPage] Photo uploaded successfully:", photoResponse.data);
+          setSuccess(`${roleOptions.find((option) => option.value === role)?.label || "User"} registered with photo!`);
+        } catch (photoErr) {
+          console.error("[RegistrationPage] Photo upload error:", photoErr);
+          // Photo upload failure is not critical, still show registration success
+          setSuccess(`${roleOptions.find((option) => option.value === role)?.label || "User"} registered successfully! (Photo upload failed)`);
+        } finally {
+          setUploadingPhoto(false);
+        }
+      } else {
+        setSuccess(`${roleOptions.find((option) => option.value === role)?.label || "User"} registered successfully!`);
+      }
+      
       setError("");
       setFormData(initialFormState);
+      setPhotoFile(null);
+      setPhotoPreview("");
       setRole("");
+      
+      if (role === "REPRESENTATIVE") {
+        navigate(ROUTES.mlaList);
+      } else if (role === "CONSTITUENCY_MANAGER") {
+        navigate(ROUTES.managerList);
+      } else if (role === "FIELD_OFFICER") {
+        navigate(ROUTES.fieldOfficerList);
+      }
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.response?.data?.detail || err.message || "Failed to register user.";
       setError(errorMessage);
@@ -280,34 +330,18 @@ export default function RegistrationPage() {
             <>
               <div style={{ margin: "24px 0 16px", fontWeight: 700, color: "#1f2937" }}>MLA Details</div>
               <div className="new-mla-group">
-                <label className="new-mla-label">Constituency *</label>
-                <select
+                <label className="new-mla-label">Constituency </label>
+                <input
+                  type="text"
                   name="constituencyId"
                   value={formData.constituencyId}
                   onChange={handleInputChange}
-                  className="new-mla-input"
-                >
-                  <option value="">Select constituency</option>
-                  {constituencies.map((item) => (
-                    <option key={item._id || item.id} value={item._id || item.id}>
-                      {item.name} {item.district ? `(${item.district})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="new-mla-group">
-                <label className="new-mla-label">Party Name *</label>
-                <input
-                  type="text"
-                  name="partyName"
-                  value={formData.partyName}
-                  onChange={handleInputChange}
-                  placeholder="Enter party name"
+                  placeholder="Enter constituency"
                   className="new-mla-input"
                 />
               </div>
               <div className="new-mla-group">
-                <label className="new-mla-label">District *</label>
+                <label className="new-mla-label">District</label>
                 <input
                   type="text"
                   name="district"
@@ -317,14 +351,49 @@ export default function RegistrationPage() {
                   className="new-mla-input"
                 />
               </div>
+              <div className="new-mla-group">
+                <label className="new-mla-label">Upload Photo</label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  name="photo"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="new-mla-input"
+                />
+                {photoPreview && (
+                  <div style={{ marginTop: "16px" }}>
+                    <img
+                      src={photoPreview}
+                      alt="Photo preview"
+                      style={{ maxWidth: "150px", maxHeight: "150px", borderRadius: "8px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      style={{
+                        marginTop: "8px",
+                        padding: "8px 16px",
+                        backgroundColor: "#ef4444",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Remove Photo
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
 
-          {role === "MANAGER" && (
+          {role === "CONSTITUENCY_MANAGER" && (
             <>
               <div style={{ margin: "24px 0 16px", fontWeight: 700, color: "#1f2937" }}>Manager Details</div>
               <div className="new-mla-group">
-                <label className="new-mla-label">Department *</label>
+                <label className="new-mla-label">Department</label>
                 <input
                   type="text"
                   name="department"
@@ -335,7 +404,7 @@ export default function RegistrationPage() {
                 />
               </div>
               <div className="new-mla-group">
-                <label className="new-mla-label">Office Location *</label>
+                <label className="new-mla-label">Office Location</label>
                 <input
                   type="text"
                   name="officeLocation"
@@ -346,7 +415,7 @@ export default function RegistrationPage() {
                 />
               </div>
               <div className="new-mla-group">
-                <label className="new-mla-label">Manager Code *</label>
+                <label className="new-mla-label">Manager Code</label>
                 <input
                   type="text"
                   name="managerCode"
@@ -356,6 +425,41 @@ export default function RegistrationPage() {
                   className="new-mla-input"
                 />
               </div>
+              <div className="new-mla-group">
+                <label className="new-mla-label">Upload Photo</label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  name="photo"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="new-mla-input"
+                />
+                {photoPreview && (
+                  <div style={{ marginTop: "16px" }}>
+                    <img
+                      src={photoPreview}
+                      alt="Photo preview"
+                      style={{ maxWidth: "150px", maxHeight: "150px", borderRadius: "8px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      style={{
+                        marginTop: "8px",
+                        padding: "8px 16px",
+                        backgroundColor: "#ef4444",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Remove Photo
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
 
@@ -363,7 +467,7 @@ export default function RegistrationPage() {
             <>
               <div style={{ margin: "24px 0 16px", fontWeight: 700, color: "#1f2937" }}>Field Officer Details</div>
               <div className="new-mla-group">
-                <label className="new-mla-label">Assigned Area *</label>
+                <label className="new-mla-label">Assigned Area</label>
                 <input
                   type="text"
                   name="assignedArea"
@@ -374,7 +478,7 @@ export default function RegistrationPage() {
                 />
               </div>
               <div className="new-mla-group">
-                <label className="new-mla-label">Manager *</label>
+                <label className="new-mla-label">Manager</label>
                 <select
                   name="managerId"
                   value={formData.managerId}
@@ -390,7 +494,7 @@ export default function RegistrationPage() {
                 </select>
               </div>
               <div className="new-mla-group">
-                <label className="new-mla-label">Field Officer ID *</label>
+                <label className="new-mla-label">Field Officer ID</label>
                 <input
                   type="text"
                   name="fieldOfficerId"
@@ -399,6 +503,41 @@ export default function RegistrationPage() {
                   placeholder="Enter field officer ID"
                   className="new-mla-input"
                 />
+              </div>
+              <div className="new-mla-group">
+                <label className="new-mla-label">Upload Photo</label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  name="photo"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="new-mla-input"
+                />
+                {photoPreview && (
+                  <div style={{ marginTop: "16px" }}>
+                    <img
+                      src={photoPreview}
+                      alt="Photo preview"
+                      style={{ maxWidth: "150px", maxHeight: "150px", borderRadius: "8px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      style={{
+                        marginTop: "8px",
+                        padding: "8px 16px",
+                        backgroundColor: "#ef4444",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Remove Photo
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}

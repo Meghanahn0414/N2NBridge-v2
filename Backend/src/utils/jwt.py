@@ -29,9 +29,17 @@ class TokenManager:
     def extract_token_from_header(authorization_header: str) -> Optional[str]:
         """Extract token from authorization header"""
         if not authorization_header:
+            logger.warning("[JWT] No authorization header provided")
             return None
         
         parts = authorization_header.split()
-        if len(parts) == 2 and parts[0].lower() == "bearer":
-            return parts[1]
-        return None
+        if len(parts) != 2:
+            logger.warning(f"[JWT] Invalid header format - expected 2 parts, got {len(parts)}")
+            return None
+        
+        if parts[0].lower() != "bearer":
+            logger.warning(f"[JWT] Invalid auth scheme - expected 'Bearer', got '{parts[0]}'")
+            return None
+        
+        logger.debug(f"[JWT] ✅ Token extracted successfully, length: {len(parts[1])}")
+        return parts[1]

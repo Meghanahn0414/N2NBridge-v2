@@ -199,6 +199,62 @@
   color: #b91c1c;
 }
 
+.new-mla-file-input {
+  display: none;
+}
+
+.new-mla-upload-button {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #7c3aed;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.new-mla-upload-button:hover {
+  border-color: #7c3aed;
+  background: #f3e8ff;
+}
+
+.new-mla-photo-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.new-mla-photo-img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.new-mla-remove-photo {
+  padding: 8px 16px;
+  background: #fee2e2;
+  border: none;
+  border-radius: 8px;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.new-mla-remove-photo:hover {
+  background: #fecaca;
+}
+
 .new-mla-alert--success {
   background: #ecfdf5;
   color: #15803d;

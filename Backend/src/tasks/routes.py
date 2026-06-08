@@ -25,7 +25,8 @@ async def create_task(
     task_id = TaskService.create_task(task_data.dict(), current_user["user_id"])
     task = TaskService.get_task_by_id(task_id)
     
-    return TaskResponse(**task, _id=str(task["_id"]))
+    Helper.prepare_response_data(task)
+    return TaskResponse(**task)
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
@@ -39,7 +40,8 @@ async def get_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    return TaskResponse(**task, _id=str(task["_id"]))
+    Helper.prepare_response_data(task)
+    return TaskResponse(**task)
 
 
 @router.get("/", response_model=list[TaskResponse])
@@ -57,7 +59,8 @@ async def list_tasks(
         filters["status"] = status
     
     tasks = TaskService.list_tasks(skip, limit, filters)
-    return [TaskResponse(**t, _id=str(t["_id"])) for t in tasks]
+    Helper.prepare_response_list(tasks)
+    return [TaskResponse(**t) for t in tasks]
 
 
 @router.put("/{task_id}", response_model=TaskResponse)
@@ -77,7 +80,8 @@ async def update_task(
         raise HTTPException(status_code=400, detail="Failed to update task")
     
     task = TaskService.get_task_by_id(task_id)
-    return TaskResponse(**task, _id=str(task["_id"]))
+    Helper.prepare_response_data(task)
+    return TaskResponse(**task)
 
 
 @router.get("/officer/{officer_id}", response_model=list[TaskResponse])
@@ -90,7 +94,8 @@ async def get_officer_tasks(
     skip, limit = Helper.paginate(page, 10)
     tasks = TaskService.get_tasks_by_officer(officer_id, skip, limit)
     
-    return [TaskResponse(**t, _id=str(t["_id"])) for t in tasks]
+    Helper.prepare_response_list(tasks)
+    return [TaskResponse(**t) for t in tasks]
 
 
 # Field Report Endpoints
@@ -104,7 +109,8 @@ async def create_field_report(
     report = FieldReportService.get_report_by_task(report_data.taskId)
     
     if report:
-        return FieldReportResponse(**report, _id=str(report["_id"]))
+        Helper.prepare_response_data(report)
+        return FieldReportResponse(**report)
     
     raise HTTPException(status_code=400, detail="Failed to create field report")
 
@@ -119,4 +125,5 @@ async def get_officer_reports(
     skip, limit = Helper.paginate(page, 10)
     reports = FieldReportService.get_reports_by_officer(officer_id, skip, limit)
     
-    return success_response([FieldReportResponse(**r, _id=str(r["_id"])) for r in reports])
+    Helper.prepare_response_list(reports)
+    return success_response([FieldReportResponse(**r) for r in reports])
