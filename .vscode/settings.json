@@ -1,0 +1,19 @@
+{
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/Backend/src"
+  ],
+  "python.defaultInterpreterPath": "${workspaceFolder}/Backend/.venv/bin/python",
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "pylint.args": [
+    "--init-hook",
+    "import sys; sys.path.insert(0, '${workspaceFolder}/Backend/src')"
+  ],
+  "python.linting.pylintEnabled": true,
+  "python.linting.enabled": true
+}

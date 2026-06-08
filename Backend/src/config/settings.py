@@ -1,9 +1,10 @@
 """
 Application Settings and Configuration
 """
-from pydantic_settings import BaseSettings
 from typing import Optional
 import os
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -19,9 +20,9 @@ class Settings(BaseSettings):
     JWT_EXPIRATION_HOURS: int = 24
     
     # API
-    API_TITLE: str = "CRM Grievance Management System"
+    API_TITLE: str = "CRM Management System"
     API_VERSION: str = "1.0.0"
-    API_DESCRIPTION: str = "Government CRM system for grievance management"
+    API_DESCRIPTION: str = "CRM system for enterprise management"
     
     # Server
     HOST: str = "0.0.0.0"

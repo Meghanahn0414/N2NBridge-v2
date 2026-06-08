@@ -70,7 +70,7 @@ class EventRegistrationResponse(BaseModel):
     """Event registration response"""
     id: str = Field(alias="_id")
     eventId: str
-    citizenId: str
+    citizenId: Optional[str] = None
     qrCode: Optional[str] = None
     attendanceStatus: str
     registeredAt: datetime

@@ -1,8 +1,8 @@
 """
 Event Routes
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
-from auth.routes import get_current_user
+from fastapi import APIRouter, HTTPException, Query
+
 from events.service import EventService, EventRegistrationService
 from events.model import (
     EventCreate, EventUpdate, EventResponse,
@@ -18,21 +18,23 @@ logger = logging.getLogger(__name__)
 
 @router.post("/", response_model=EventResponse)
 async def create_event(
-    event_data: EventCreate,
-    current_user: dict = Depends(get_current_user)
+    event_data: EventCreate
 ):
     """Create event"""
-    event_id = EventService.create_event(event_data.dict(), current_user["user_id"])
+    event_id = EventService.create_event(event_data.dict(), None)
     event = EventService.get_event_by_id(event_id)
     
+<<<<<<< HEAD
     Helper.prepare_response_data(event)
     return EventResponse(**event)
+=======
+    return EventResponse(**Helper.convert_mongo_doc(event))
+>>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.get("/{event_id}", response_model=EventResponse)
 async def get_event(
-    event_id: str,
-    current_user: dict = Depends(get_current_user)
+    event_id: str
 ):
     """Get event by ID"""
     event = EventService.get_event_by_id(event_id)
@@ -40,52 +42,61 @@ async def get_event(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     
+<<<<<<< HEAD
     Helper.prepare_response_data(event)
     return EventResponse(**event)
+=======
+    return EventResponse(**Helper.convert_mongo_doc(event))
+>>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.get("/", response_model=list[EventResponse])
 async def list_events(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
-    current_user: dict = Depends(get_current_user)
+    per_page: int = Query(10, ge=1, le=100)
 ):
     """List events"""
     skip, limit = Helper.paginate(page, per_page)
     events = EventService.list_events(skip, limit)
     
+<<<<<<< HEAD
     Helper.prepare_response_list(events)
     return [EventResponse(**e) for e in events]
+=======
+    return [EventResponse(**Helper.convert_mongo_doc(e)) for e in events]
+>>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.put("/{event_id}", response_model=EventResponse)
 async def update_event(
     event_id: str,
-    update_data: EventUpdate,
-    current_user: dict = Depends(get_current_user)
+    update_data: EventUpdate
 ):
     """Update event"""
     success = EventService.update_event(
         event_id,
         update_data.dict(exclude_unset=True),
-        current_user["user_id"]
+        "system"
     )
     
     if not success:
         raise HTTPException(status_code=400, detail="Failed to update event")
     
     event = EventService.get_event_by_id(event_id)
+<<<<<<< HEAD
     Helper.prepare_response_data(event)
     return EventResponse(**event)
+=======
+    return EventResponse(**Helper.convert_mongo_doc(event))
+>>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.post("/{event_id}/publish")
 async def publish_event(
-    event_id: str,
-    current_user: dict = Depends(get_current_user)
+    event_id: str
 ):
     """Publish event"""
-    success = EventService.publish_event(event_id, current_user["user_id"])
+    success = EventService.publish_event(event_id, "system")
     
     if not success:
         raise HTTPException(status_code=400, detail="Failed to publish event")
@@ -97,37 +108,49 @@ async def publish_event(
 @router.post("/{event_id}/register", response_model=EventRegistrationResponse)
 async def register_for_event(
     event_id: str,
-    current_user: dict = Depends(get_current_user)
+    registration_data: EventRegistrationCreate
 ):
     """Register for event"""
-    registration_id = EventRegistrationService.register_citizen({
-        "eventId": event_id,
-        "citizenId": current_user["user_id"]
-    })
+    registration_data_dict = registration_data.dict()
+    registration_data_dict["eventId"] = event_id
+    # registration_id = EventRegistrationService.register_citizen(registration_data_dict)
     
+<<<<<<< HEAD
     registration = EventRegistrationService.get_registration(event_id, current_user["user_id"])
     Helper.prepare_response_data(registration)
     return EventRegistrationResponse(**registration)
+=======
+    registration = EventRegistrationService.get_registration(event_id, registration_data.citizenId)
+    return EventRegistrationResponse(**Helper.convert_mongo_doc(registration))
+>>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.get("/{event_id}/registrations", response_model=list[EventRegistrationResponse])
 async def get_registrations(
     event_id: str,
-    page: int = Query(1, ge=1),
-    current_user: dict = Depends(get_current_user)
+    page: int = Query(1, ge=1)
 ):
     """Get event registrations"""
     skip, limit = Helper.paginate(page, 10)
     registrations = EventRegistrationService.get_event_registrations(event_id, skip, limit)
     
+<<<<<<< HEAD
     Helper.prepare_response_list(registrations)
     return [EventRegistrationResponse(**r) for r in registrations]
+=======
+    # Filter out registrations with missing citizenId
+    valid_registrations = [
+        Helper.convert_mongo_doc(r) for r in registrations 
+        if r.get("citizenId")
+    ]
+    
+    return [EventRegistrationResponse(**reg) for reg in valid_registrations]
+>>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee
 
 
 @router.post("/registrations/{registration_id}/attend")
 async def mark_attendance(
-    registration_id: str,
-    current_user: dict = Depends(get_current_user)
+    registration_id: str
 ):
     """Mark attendance"""
     success = EventRegistrationService.mark_attendance(registration_id)
@@ -136,3 +159,5 @@ async def mark_attendance(
         raise HTTPException(status_code=400, detail="Failed to mark attendance")
     
     return success_response(None, "Attendance marked successfully")
+
+

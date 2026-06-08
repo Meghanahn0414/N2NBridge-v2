@@ -21,7 +21,10 @@ class EventService:
         
         event_data["status"] = "DRAFT"
         event_data["registrationCount"] = 0
-        event_data.update(Helper.audit_fields(user_id))
+        
+        # Handle audit fields - use "system" for public creation (when user_id is None)
+        audit_user_id = user_id if user_id else "system"
+        event_data.update(Helper.audit_fields(audit_user_id))
         
         result = db.events.insert_one(event_data)
         return str(result.inserted_id)

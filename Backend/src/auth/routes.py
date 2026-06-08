@@ -1,14 +1,14 @@
 """
 Authentication Routes
 """
-from fastapi import APIRouter, Depends, Header, HTTPException, status, Request
+from fastapi import APIRouter, Header, HTTPException, status, Request
 from typing import Optional
 from auth.service import AuthService
 from auth.otp_service import OTPService
-from users.model import UserLoginRequest, TokenResponse, UserCreate, UserResponse, SendOtpRequest, VerifyOtpRequest, OtpResponse
+from users.model import UserLoginRequest, TokenResponse, UserCreate,  SendOtpRequest, VerifyOtpRequest, OtpResponse
 from users.service import UserService
 from config.database import MongoDatabase
-from utils.response import success_response, error_response, ResponseMessage
+# from utils.response import success_response
 from utils.jwt import TokenManager
 import logging
 
@@ -183,13 +183,13 @@ async def register(user_data: UserCreate):
 
 
 @router.get("/verify")
-async def verify_token(current_user: dict = Depends(get_current_user)):
+async def verify_token():
     """Verify token"""
-    user = UserService.get_user_by_id(current_user["user_id"])
+    user = UserService.get_user_by_id(None)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return success_response({"user_id": current_user["user_id"], "role": current_user["role"]})
+    # return success_response({"user_id": None, "role": current_user["role"]})
 
 
 @router.post("/send-otp")
@@ -295,3 +295,4 @@ async def debug_otp_storage():
             for key, data in OTP_STORAGE.items()
         }
     }
+

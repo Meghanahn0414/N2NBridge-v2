@@ -4,7 +4,8 @@ Helper Utilities
 from datetime import datetime
 import uuid
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
+from bson import ObjectId
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class Helper:
             fields["isDeleted"] = False
             fields["deletedAt"] = None
         return fields
+<<<<<<< HEAD
 
     @staticmethod
     def prepare_response_data(data: dict) -> dict:
@@ -92,3 +94,15 @@ class Helper:
             if isinstance(item, dict) and "_id" in item:
                 item["_id"] = str(item["_id"])
         return data_list
+=======
+    
+    @staticmethod
+    def convert_mongo_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert MongoDB document to JSON-serializable dict"""
+        if not doc:
+            return None
+        result = dict(doc)
+        if "_id" in result and isinstance(result["_id"], ObjectId):
+            result["_id"] = str(result["_id"])
+        return result
+>>>>>>> edad0dcb7e287f8a594e1b1c4fb576de75e28fee

@@ -1,9 +1,9 @@
 """
 Authentication Models and Schemas
 """
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+# from datetime import datetime
 
 
 class TokenData(BaseModel):
