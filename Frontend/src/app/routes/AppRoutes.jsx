@@ -7,11 +7,7 @@ import AdminLogin from "../../features/auth/AdminLogin";
 import CitizenLogin from "../../features/auth/CitizenLogin";
 import OtpVerify from "../../features/auth/OtpVerify";
 import AdminSignup from "../../features/auth/AdminSignup";
-<<<<<<< HEAD
-import CitizenDashboard from "../../pages/dashboard/CitizenDashboard";
-=======
 import CitizenDashboard from "../../features/dashboard/pages/CitizenDashboard";
->>>>>>> 4a7141570be378b920432517d9bcaf8e03c92b52
 import CreateComplaint from "../../pages/citizen/CreateComplaint";
 import ComplaintList from "../../pages/citizen/ComplaintList";
 import ComplaintDetails from "../../pages/citizen/ComplaintDetails";

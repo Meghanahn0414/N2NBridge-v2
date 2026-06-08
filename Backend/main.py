@@ -1,5 +1,5 @@
 """
-CRM Grievance Management System - FastAPI Application
+CRM Management System - FastAPI Application
 """
 import logging
 import os
@@ -82,7 +82,7 @@ async def log_requests(request: Request, call_next):
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and application"""
-    logger.info("Starting CRM Grievance Management System...")
+    logger.info("Starting CRM Management System...")
     try:
         MongoDatabase.connect(settings.MONGODB_URL, settings.MONGODB_DB)
         logger.info("Database connection established")
@@ -96,7 +96,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    logger.info("Shutting down CRM Grievance Management System...")
+    logger.info("Shutting down CRM Management System...")
     MongoDatabase.close()
     logger.info("Database connection closed")
 

@@ -1,13 +1,17 @@
 """
 Notification Routes
 """
-from fastapi import APIRouter, HTTPException, Query
-
-from notifications.service import NotificationService
-from notifications.model import  NotificationResponse
-from utils.response import success_response
-from utils.helper import Helper
 import logging
+import os
+
+from fastapi import APIRouter, HTTPException, Query
+from notifications.model import NotificationResponse
+from notifications.service import NotificationService
+from pydantic import BaseModel, EmailStr
+from utils.email_service import send_otp_via_email
+from utils.helper import Helper
+from utils.response import success_response
+from utils.sms_service import send_otp_via_sms
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 logger = logging.getLogger(__name__)
@@ -87,4 +91,223 @@ async def delete_notification(
     
     return success_response(None, "Notification deleted successfully")
 
+
+# ======================== SMS & Email Service Testing ========================
+
+# Request Models
+class SendSMSRequest(BaseModel):
+    phone_number: str
+    otp: str
+    message: str = None
+
+
+class SendEmailRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+
+class TestSMSRequest(BaseModel):
+    phone_number: str
+
+
+class TestEmailRequest(BaseModel):
+    email: EmailStr
+
+
+# ======================== SMS Endpoints ========================
+
+@router.post("/sms/send")
+async def send_sms(request: SendSMSRequest):
+    """
+    Send OTP via SMS
+    
+    Args:
+        phone_number: Phone number (10 digits or +91XXXXXXXXXX)
+        otp: 4-digit OTP code
+        message: Custom message (optional)
+    
+    Returns:
+        Success/failure response
+    """
+    try:
+        # Validate phone number
+        if len(request.phone_number.replace("+", "").replace(" ", "")) < 10:
+            raise HTTPException(
+                status_code=400,
+                detail="Phone number must be at least 10 digits"
+            )
+        
+        result = send_otp_via_sms(request.phone_number, request.otp, request.message)
+        
+        if result:
+            return success_response(
+                {"phone_number": request.phone_number, "otp": request.otp},
+                "SMS sent successfully"
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to send SMS. Check your provider configuration."
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending SMS: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending SMS: {str(e)}")
+
+
+@router.post("/sms/test")
+async def test_sms(request: TestSMSRequest):
+    """
+    Test SMS service with a test OTP (1234)
+    
+    Args:
+        phone_number: Phone number to test
+    
+    Returns:
+        Success/failure response
+    """
+    try:
+        if len(request.phone_number.replace("+", "").replace(" ", "")) < 10:
+            raise HTTPException(
+                status_code=400,
+                detail="Phone number must be at least 10 digits"
+            )
+        
+        result = send_otp_via_sms(
+            request.phone_number,
+            "1234",
+            "Test OTP from CRM: 1234"
+        )
+        
+        if result:
+            return success_response(
+                {"phone_number": request.phone_number, "test_otp": "1234"},
+                "Test SMS sent successfully"
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to send test SMS. Check your SMS provider configuration."
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending test SMS: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending test SMS: {str(e)}")
+
+
+@router.get("/sms/status")
+async def check_sms_status():
+    """
+    Check SMS service status
+    
+    Returns:
+        Status information
+    """
+    providers = {
+        "twilio": bool(os.getenv("TWILIO_ACCOUNT_SID")),
+        "aws_sns": bool(os.getenv("AWS_ACCESS_KEY_ID")),
+        "custom_api": bool(os.getenv("SMS_API_URL")),
+    }
+    
+    active_provider = next((k for k, v in providers.items() if v), "console_fallback")
+    
+    return success_response(
+        {
+            "active_provider": active_provider,
+            "providers": providers,
+            "configured": active_provider != "console_fallback"
+        },
+        "SMS service status retrieved"
+    )
+
+
+# ======================== Email Endpoints ========================
+
+@router.post("/email/send")
+async def send_email(request: SendEmailRequest):
+    """
+    Send OTP via Email
+    
+    Args:
+        email: Email address
+        otp: 4-digit OTP code
+    
+    Returns:
+        Success/failure response
+    """
+    try:
+        result = send_otp_via_email(request.email, request.otp)
+        
+        if result:
+            return success_response(
+                {"email": request.email, "otp": request.otp},
+                "Email sent successfully"
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to send email. Check your SMTP configuration."
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending email: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
+
+
+@router.post("/email/test")
+async def test_email(request: TestEmailRequest):
+    """
+    Test Email service with a test OTP (1234)
+    
+    Args:
+        email: Email address to test
+    
+    Returns:
+        Success/failure response
+    """
+    try:
+        result = send_otp_via_email(request.email, "1234")
+        
+        if result:
+            return success_response(
+                {"email": request.email, "test_otp": "1234"},
+                "Test email sent successfully"
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to send test email. Check your SMTP configuration."
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending test email: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending test email: {str(e)}")
+
+
+@router.get("/email/status")
+async def check_email_status():
+    """
+    Check Email service status
+    
+    Returns:
+        Status information
+    """
+    configured = bool(os.getenv("SMTP_EMAIL"))
+    
+    return success_response(
+        {
+            "configured": configured,
+            "smtp_server": os.getenv("SMTP_SERVER", "smtp.gmail.com"),
+            "smtp_email": os.getenv("SMTP_EMAIL", "not_configured")
+        },
+        "Email service status retrieved"
+    )
 

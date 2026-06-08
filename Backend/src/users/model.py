@@ -1,9 +1,11 @@
 """
 User Model and Schemas
 """
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr, Field
+
 # from bson import ObjectId
 
 
@@ -113,8 +115,8 @@ class ConstituencyResponse(BaseModel):
     district: str
     state: str
     representativeId: Optional[str] = None
-    createdAt: datetime
-    updatedAt: datetime
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
     
     class Config:
         populate_by_name = True
@@ -133,8 +135,8 @@ class WardResponse(BaseModel):
     wardNumber: str
     wardName: str
     constituencyId: str
-    createdAt: datetime
-    updatedAt: datetime
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
     
     class Config:
         populate_by_name = True

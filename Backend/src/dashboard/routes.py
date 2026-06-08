@@ -17,6 +17,10 @@ async def get_admin_dashboard():
     dashboard = DashboardService.get_admin_dashboard()
     return success_response(dashboard, "Admin dashboard retrieved")
 
+@router.get("/mla")
+async def get_mla_dashboard():
+    dashboard = DashboardService.get_mla_dashboard()
+    return success_response(dashboard,"MLA dashboard retrieved")
 
 @router.get("/officer")
 async def get_officer_dashboard():
