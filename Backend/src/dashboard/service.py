@@ -254,6 +254,65 @@ class DashboardService:
         }
     
     @staticmethod
+    def get_mla_dashboard() -> dict:
+        """Get MLA dashboard data"""
+        db = MongoDatabase.get_db()
+        metrics = AnalyticsService.get_performance_metrics()
+
+        status_counts = metrics.get("grievances", {}).get("byStatus", {})
+        alert_priorities = metrics.get("alerts", {}).get("byPriority", {})
+        user_roles = metrics.get("users", {}).get("byRole", {})
+
+        total_complaints = metrics.get("grievances", {}).get("total", 0)
+        open_complaints = (
+            status_counts.get("NEW", 0)
+            + status_counts.get("ASSIGNED", 0)
+            + status_counts.get("IN_PROGRESS", 0)
+        )
+        resolved_complaints = status_counts.get("RESOLVED", 0)
+        critical_alerts = alert_priorities.get("CRITICAL", 0)
+        registered_citizens = metrics.get("users", {}).get("total", 0)
+        active_officers = user_roles.get("FIELD_OFFICER", 0) + user_roles.get("OFFICER", 0)
+        health_score = DashboardService.get_system_health()
+        avg_satisfaction = 0
+
+        satisfaction_agg = list(db.grievances.aggregate([
+            {"$match": {"satisfactionRating": {"$exists": True, "$ne": None}}},
+            {"$group": {"_id": None, "avgRating": {"$avg": "$satisfactionRating"}}}
+        ]))
+        if satisfaction_agg:
+            avg_satisfaction = round(satisfaction_agg[0].get("avgRating", 0), 1)
+
+        recent_alerts = list(db.alerts.find({}).sort("createdAt", -1).limit(5))
+        recent_complaints = list(db.grievances.find({"isDeleted": False}).sort("createdAt", -1).limit(5))
+
+        return {
+            "summary": {
+                "totalComplaints": total_complaints,
+                "openComplaints": open_complaints,
+                "resolvedThisMonth": resolved_complaints,
+                "criticalAlerts": critical_alerts,
+                "upcomingEvents": metrics.get("events", {}).get("totalEvents", 0),
+                "citizenSatisfaction": avg_satisfaction,
+                "healthScore": health_score,
+                "activeOfficers": active_officers,
+                "registeredCitizens": registered_citizens,
+            },
+            "metrics": metrics,
+            "overview": {
+                "grievances": AnalyticsService.get_grievance_stats(),
+                "alerts": AnalyticsService.get_alert_stats(),
+                "users": AnalyticsService.get_user_stats(),
+                "events": AnalyticsService.get_event_stats()
+            },
+            "recentAlerts": recent_alerts,
+            "recentComplaints": recent_complaints,
+            "teamPerformance": DashboardService.get_team_performance(),
+            "grievanceTrends": DashboardService.get_grievance_trends(7),
+            "systemHealth": health_score
+        }
+    
+    @staticmethod
     def get_officer_dashboard(officer_id: str) -> dict:
         """Get officer dashboard data"""
         db = MongoDatabase.get_db()

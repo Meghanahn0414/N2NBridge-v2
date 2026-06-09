@@ -135,7 +135,7 @@ export default function Dashboard() {
             <Header title="Hon. Representative" />
 
             <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {stats.slice(0, 3).map((s) => (
+              {stats.map((s) => (
                 <StatCard key={s.title} title={s.title} value={s.value} growth={s.growth} />
               ))}
             </section>

@@ -189,6 +189,42 @@ class AnalyticsService:
         return {"avgResolutionTime": 0, "minResolutionTime": 0, "maxResolutionTime": 0}
     
     @staticmethod
+    def get_sentiment_distribution() -> dict:
+        """Get citizen sentiment distribution from satisfaction ratings"""
+        db = MongoDatabase.get_db()
+        sentiment_counts = {"positive": 0, "neutral": 0, "negative": 0, "total": 0}
+        pipeline = [
+            {"$match": {"isDeleted": False, "satisfactionRating": {"$exists": True, "$ne": None}}},
+            {"$group": {"_id": "$satisfactionRating", "count": {"$sum": 1}}}
+        ]
+        for item in db.grievances.aggregate(pipeline):
+            rating = item.get("_id")
+            count = item.get("count", 0)
+            try:
+                rating_value = int(rating)
+            except (TypeError, ValueError):
+                continue
+            if rating_value >= 4:
+                sentiment_counts["positive"] += count
+            elif rating_value == 3:
+                sentiment_counts["neutral"] += count
+            else:
+                sentiment_counts["negative"] += count
+            sentiment_counts["total"] += count
+
+        total = sentiment_counts["total"]
+        if total > 0:
+            sentiment_counts["positivePct"] = round(sentiment_counts["positive"] / total * 100, 1)
+            sentiment_counts["neutralPct"] = round(sentiment_counts["neutral"] / total * 100, 1)
+            sentiment_counts["negativePct"] = round(sentiment_counts["negative"] / total * 100, 1)
+        else:
+            sentiment_counts["positivePct"] = 0
+            sentiment_counts["neutralPct"] = 0
+            sentiment_counts["negativePct"] = 0
+
+        return sentiment_counts
+
+    @staticmethod
     def get_performance_metrics() -> dict:
         """Get performance metrics"""
         stats = {
@@ -197,18 +233,19 @@ class AnalyticsService:
             "users": AnalyticsService.get_user_stats(),
             "events": AnalyticsService.get_event_stats(),
             "resolutionTime": AnalyticsService.get_resolution_time_stats(),
-            "activeUsers": AnalyticsService.get_active_users()
+            "activeUsers": AnalyticsService.get_active_users(),
+            "sentimentDistribution": AnalyticsService.get_sentiment_distribution(),
         }
-        
+
         return stats
-    
+
     @staticmethod
     def get_active_users() -> dict:
         """Get count of active users today"""
         db = MongoDatabase.get_db()
         today_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
         today_end = datetime.combine(datetime.utcnow().date(), datetime.max.time())
-        
+
         # Count users who have logged in today or have recent activity
         active_today = db.users.count_documents({
             "$or": [
@@ -217,11 +254,11 @@ class AnalyticsService:
             ],
             "isDeleted": False
         })
-        
+
         # Get active users count for yesterday to calculate trend
         yesterday_start = today_start - timedelta(days=1)
         yesterday_end = today_end - timedelta(days=1)
-        
+
         active_yesterday = db.users.count_documents({
             "$or": [
                 {"lastLoginAt": {"$gte": yesterday_start, "$lte": yesterday_end}},
@@ -229,12 +266,12 @@ class AnalyticsService:
             ],
             "isDeleted": False
         })
-        
+
         # Calculate trend
         trend = 0
         if active_yesterday > 0:
             trend = round(((active_today - active_yesterday) / active_yesterday * 100), 1)
-        
+
         return {
             "active": active_today,
             "trend": trend

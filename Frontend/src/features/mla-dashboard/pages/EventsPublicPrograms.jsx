@@ -1,22 +1,29 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/EventsPublicPrograms.css';
+import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+
+const formatNumber = (value) => (value == null || value === '' ? '-' : value.toLocaleString());
 
 export default function EventsPublicPrograms() {
-  const [events, setEvents] = useState([
-    { id: '', name: '', date: '', ward: '', registrations:'', feedback:'', status: '' },
-    { id: '', name: '', date: '', ward: '', registrations: '', feedback: '', status: '' },
-    { id: '', name: '', date: '', ward: '', registrations: '', feedback: '', status: '' },
-    { id: '', name: '', date: '', ward: '', registrations:'', feedback:'', status: '' },
-  ]);
+  const navigate = useNavigate();
+  const { dashboard, loading, error } = useMlaDashboard();
 
-  const [totalMetrics] = useState({
-    totalEvents: '',
-    upcomingEvents: '',
-    totalRegistrations: '',
-    avgAttendance: '',
-    avgFeedback: '',
-  });
+  const handleCreateEvent = () => navigate(ROUTES.mlaEvents);
+  const handleViewAnalytics = () => navigate(ROUTES.mlaAIInsights);
+  const handleSendReminders = () => navigate(ROUTES.mlaCommunications);
+  const handleManageEvent = () => navigate(ROUTES.mlaEvents);
+  const eventMetrics = dashboard?.metrics?.events || {};
+  const events = Array.isArray(eventMetrics.recent) ? eventMetrics.recent.slice(0, 4) : [];
+  const totalMetrics = {
+    totalEvents: formatNumber(eventMetrics.totalEvents || events.length),
+    upcomingEvents: formatNumber(eventMetrics.upcomingEvents || events.filter((e) => new Date(e.date) >= new Date()).length),
+    totalRegistrations: formatNumber(eventMetrics.registrations || events.reduce((sum, e) => sum + (e.attendees || 0), 0)),
+    avgAttendance: formatNumber(eventMetrics.avgAttendance || 0),
+    avgFeedback: formatNumber(eventMetrics.avgFeedback || 0),
+  };
 
   return (
     <div className="mla-container">
@@ -77,7 +84,7 @@ export default function EventsPublicPrograms() {
                   <span>⭐ {event.feedback}/5</span>
                 </div>
               </div>
-              <button className="btn-secondary">Manage</button>
+              <button type="button" className="btn-secondary" onClick={handleManageEvent}>Manage</button>
             </div>
           ))}
         </div>
@@ -86,9 +93,9 @@ export default function EventsPublicPrograms() {
       {/* Create Event Button */}
       <div className="mla-section">
         <div className="detail-buttons">
-          <button className="btn-primary">+ Create New Event</button>
-          <button className="btn-primary">View Event Analytics</button>
-          <button className="btn-primary">Send Reminders</button>
+          <button type="button" className="btn-primary" onClick={handleCreateEvent}>+ Create New Event</button>
+          <button type="button" className="btn-primary" onClick={handleViewAnalytics}>View Event Analytics</button>
+          <button type="button" className="btn-primary" onClick={handleSendReminders}>Send Reminders</button>
         </div>
       </div>
     </div>

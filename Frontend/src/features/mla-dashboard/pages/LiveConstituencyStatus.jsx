@@ -1,13 +1,38 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/LiveConstituencyStatus.css';
+import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+
+const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
 export default function LiveConstituencyStatus() {
-  const [stats, setStats] = useState({
-    complaints: { new:'', assigned:'', inProgress:'', resolved: '' },
-    alerts: { critical: '', high: '', medium: '', low: '' },
-    events: { today: '', thisWeek: '', registrations: '' },
-  });
+  const navigate = useNavigate();
+  const { dashboard, loading, error } = useMlaDashboard();
+
+  const handleViewComplaints = () => navigate(ROUTES.mlaComplaintsDashboard);
+  const handleViewAlerts = () => navigate(ROUTES.mlaEmergencyCenter);
+  const handleViewEvents = () => navigate(ROUTES.mlaEvents);
+  const stats = {
+    complaints: {
+      new: formatNumber(dashboard?.summary?.openComplaints),
+      assigned: formatNumber(dashboard?.metrics?.grievances?.byStatus?.ASSIGNED || 0),
+      inProgress: formatNumber(dashboard?.metrics?.grievances?.byStatus?.IN_PROGRESS || 0),
+      resolved: formatNumber(dashboard?.summary?.resolvedThisMonth),
+    },
+    alerts: {
+      critical: formatNumber(dashboard?.summary?.criticalAlerts),
+      high: formatNumber(dashboard?.metrics?.alerts?.byPriority?.HIGH || 0),
+      medium: formatNumber(dashboard?.metrics?.alerts?.byPriority?.MEDIUM || 0),
+      low: formatNumber(dashboard?.metrics?.alerts?.byPriority?.LOW || 0),
+    },
+    events: {
+      today: formatNumber(dashboard?.metrics?.events?.today || 0),
+      thisWeek: formatNumber(dashboard?.metrics?.events?.week || dashboard?.summary?.upcomingEvents || 0),
+      registrations: formatNumber(dashboard?.metrics?.events?.registrations || 0),
+    },
+  };
 
   return (
     <div className="mla-container">
@@ -95,9 +120,9 @@ export default function LiveConstituencyStatus() {
       {/* View Details Buttons */}
       <div className="mla-section">
         <div className="detail-buttons">
-          <button className="btn-primary">View All Complaints</button>
-          <button className="btn-primary">View All Alerts</button>
-          <button className="btn-primary">View All Events</button>
+          <button type="button" className="btn-primary" onClick={handleViewComplaints}>View All Complaints</button>
+          <button type="button" className="btn-primary" onClick={handleViewAlerts}>View All Alerts</button>
+          <button type="button" className="btn-primary" onClick={handleViewEvents}>View All Events</button>
         </div>
       </div>
     </div>

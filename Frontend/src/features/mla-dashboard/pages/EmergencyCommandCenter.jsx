@@ -1,17 +1,40 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/EmergencyCommandCenter.css';
+import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 
 export default function EmergencyCommandCenter() {
-  const [alerts, setAlerts] = useState([
-    { id: '', type: '', ward: '', status: '', time: '', priority: '' },
-    { id: '', type: '', ward: '', status: '', time: '', priority: '' },
-    { id: '', type: '', ward: '', status: '', time: '', priority: '' },
-    { id: '', type: '', ward: '', status: '', time: '', priority: '' },
-    { id: '', type: '', ward: '', status: '', time: '', priority: '' },
-  ]);
-
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
+  const { dashboard, loading, error } = useMlaDashboard();
+
+  const handleAlertAllOfficers = () => navigate(ROUTES.mlaCommunications);
+  const handleViewDetails = () => navigate(ROUTES.mlaEmergencyCenter);
+  const handleDispatchTeam = () => navigate(ROUTES.mlaTeamPerformance);
+  const handleEscalate = () => navigate(ROUTES.mlaCommunications);
+  const handleSendEmergencyBroadcast = () => navigate(ROUTES.mlaCommunications);
+  const handleCallMeeting = () => navigate(ROUTES.mlaEvents);
+  const handleViewResponseLogs = () => window.alert('Opening response logs...');
+  const alerts = dashboard?.recentAlerts?.slice(0, 5).map((alert) => ({
+    id: alert._id,
+    type: alert.alertType || alert.type || 'Emergency Alert',
+    ward: alert.location || alert.wardId || 'Unknown',
+    status: alert.status || 'Active',
+    time: new Date(alert.createdAt || Date.now()).toLocaleString(),
+    priority: (alert.priority || 'medium').toLowerCase(),
+  })) || [];
+  const alertCounts = {
+    all: alerts.length,
+    critical: alerts.filter((alert) => alert.priority === 'critical').length,
+    high: alerts.filter((alert) => alert.priority === 'high').length,
+  };
+  const responseTeams = (dashboard?.teamPerformance || []).slice(0, 4).map((member) => ({
+    name: member.name || 'Team Member',
+    status: member.completed > 0 ? 'active' : 'standby',
+    units: member.assigned || 0,
+  }));
 
   return (
     <div className="mla-container">
@@ -24,10 +47,10 @@ export default function EmergencyCommandCenter() {
       <div className="mla-section">
         <div className="critical-alert-banner">
           <div className="critical-count">
-            <span className="count-number"></span>
+            <span className="count-number">{alertCounts.all}</span>
             <span className="count-label">Active Emergencies</span>
           </div>
-          <button className="btn-danger">🔔 Alert All Officers</button>
+          <button type="button" className="btn-danger" onClick={handleAlertAllOfficers}>🔔 Alert All Officers</button>
         </div>
       </div>
 
@@ -38,19 +61,19 @@ export default function EmergencyCommandCenter() {
             className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
             onClick={() => setActiveTab('all')}
           >
-            All Alerts ()
+            All Alerts ({alertCounts.all})
           </button>
           <button
             className={`tab-btn ${activeTab === 'critical' ? 'active' : ''}`}
             onClick={() => setActiveTab('critical')}
           >
-            Critical ()
+            Critical ({alertCounts.critical})
           </button>
           <button
             className={`tab-btn ${activeTab === 'high' ? 'active' : ''}`}
             onClick={() => setActiveTab('high')}
           >
-            High ()
+            High ({alertCounts.high})
           </button>
         </div>
       </div>
@@ -81,9 +104,9 @@ export default function EmergencyCommandCenter() {
               </div>
 
               <div className="alert-actions">
-                <button className="btn-secondary">View Details</button>
-                <button className="btn-secondary">Dispatch Team</button>
-                <button className="btn-danger">Escalate</button>
+                <button type="button" className="btn-secondary" onClick={handleViewDetails}>View Details</button>
+                <button type="button" className="btn-secondary" onClick={handleDispatchTeam}>Dispatch Team</button>
+                <button type="button" className="btn-danger" onClick={handleEscalate}>Escalate</button>
               </div>
             </div>
           ))}
@@ -94,35 +117,28 @@ export default function EmergencyCommandCenter() {
       <div className="mla-section">
         <h2>Response Teams Status</h2>
         <div className="teams-grid">
-          <div className="team-card">
-            <div className="team-name"></div>
-            <div className="team-status active"></div>
-            <div className="team-units"></div>
-          </div>
-          <div className="team-card">
-            <div className="team-name"></div>
-            <div className="team-status active"></div>
-            <div className="team-units"></div>
-          </div>
-          <div className="team-card">
-            <div className="team-name"></div>
-            <div className="team-status active"></div>
-            <div className="team-units"></div>
-          </div>
-          <div className="team-card">
-            <div className="team-name"></div>
-            <div className="team-status standby"></div>
-            <div className="team-units"></div>
-          </div>
+          {responseTeams.length > 0 ? responseTeams.map((team, idx) => (
+            <div key={idx} className="team-card">
+              <div className="team-name">{team.name}</div>
+              <div className={`team-status ${team.status}`}>{team.status}</div>
+              <div className="team-units">{team.units} units</div>
+            </div>
+          )) : (
+            <div className="team-card no-data">
+              <div className="team-name">No response team data</div>
+              <div className="team-status standby">standby</div>
+              <div className="team-units">0 units</div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="mla-section">
         <div className="detail-buttons">
-          <button className="btn-danger">📢 Send Emergency Broadcast</button>
-          <button className="btn-primary">📞 Call Emergency Meeting</button>
-          <button className="btn-primary">📋 View Response Logs</button>
+          <button type="button" className="btn-danger" onClick={handleSendEmergencyBroadcast}>📢 Send Emergency Broadcast</button>
+          <button type="button" className="btn-primary" onClick={handleCallMeeting}>📞 Call Emergency Meeting</button>
+          <button type="button" className="btn-primary" onClick={handleViewResponseLogs}>📋 View Response Logs</button>
         </div>
       </div>
     </div>

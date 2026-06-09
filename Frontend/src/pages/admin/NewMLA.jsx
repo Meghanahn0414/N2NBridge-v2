@@ -1,13 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../../shared/services/api";
+import { getCountries } from "../../shared/services/lookupService";
 import "./NewMLA.css";
-
-const COUNTRY_OPTIONS = [
-  { label: "India", dialCode: "+91", flag: "🇮🇳" },
-  { label: "United States", dialCode: "+1", flag: "🇺🇸" },
-  { label: "United Kingdom", dialCode: "+44", flag: "🇬🇧" },
-  { label: "Australia", dialCode: "+61", flag: "🇦🇺" },
-];
 
 export default function NewMLA() {
   const [formData, setFormData] = useState({
@@ -24,7 +18,8 @@ export default function NewMLA() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoFile, setPhotoFile] = useState(null);
   const [constituencies, setConstituencies] = useState([]);
-  const [country, setCountry] = useState(COUNTRY_OPTIONS[0]);
+  const [countries, setCountries] = useState([]);
+  const [country, setCountry] = useState(null);
   const [countrySearch, setCountrySearch] = useState("");
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -35,9 +30,10 @@ export default function NewMLA() {
   const countryDropdownRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Fetch constituencies on component mount
+  // Fetch constituencies and country list on component mount
   useEffect(() => {
     fetchConstituencies();
+    fetchCountries();
   }, []);
 
   useEffect(() => {
@@ -62,7 +58,19 @@ export default function NewMLA() {
     }
   };
 
-  const countryOptions = COUNTRY_OPTIONS.filter((opt) =>
+  const fetchCountries = async () => {
+    try {
+      const response = await getCountries();
+      setCountries(response || []);
+      if (!country && response?.length) {
+        setCountry(response[0]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch countries:", err);
+    }
+  };
+
+  const countryOptions = countries.filter((opt) =>
     opt.label.toLowerCase().includes(countrySearch.toLowerCase()) ||
     opt.dialCode.includes(countrySearch)
   );

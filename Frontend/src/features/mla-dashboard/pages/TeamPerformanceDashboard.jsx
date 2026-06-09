@@ -1,25 +1,54 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/TeamPerformanceDashboard.css';
+import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+
+const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
 export default function TeamPerformanceDashboard() {
-  const [managers, setManagers] = useState([
-    { id: 1, name: '', complaints:'', resolved:'', rating:'', ward: '' },
-    { id: 2, name: '', complaints:'', resolved:'', rating: '', ward: ''},
-    { id: 3, name: '', complaints:'', resolved:'', rating: '', ward: '' },
-  ]);
+  const navigate = useNavigate();
+  const { dashboard, loading, error } = useMlaDashboard();
+  const teamData = dashboard?.teamPerformance || [];
+  const activeOfficers = dashboard?.summary?.activeOfficers || teamData.length;
+  const managerCount = teamData.length;
+  const resolvedThisMonth = dashboard?.summary?.resolvedThisMonth || 0;
 
-  const [officers] = useState([
-    { rank: 1, name: '', resolved: '', rating: '', wards: '' },
-    { rank: 2, name: '', resolved: '', rating: '', wards: '' },
-    { rank: 3, name: '', resolved: '', rating: '', wards: '' },
-    { rank: 4, name: '', resolved: '', rating: '', wards: '' },
-  ]);
+  const handleReview = () => navigate(ROUTES.mlaComplaintsDashboard);
+  const handleTakeAction = () => navigate(ROUTES.mlaEmergencyCenter);
+  const handleScheduleMeeting = () => navigate(ROUTES.mlaEvents);
+  const handleViewAnalytics = () => navigate(ROUTES.mlaAIInsights);
+  const handleSendReport = () => navigate(ROUTES.mlaCommunications);
+  const managers = teamData.slice(0, 3).map((member, idx) => ({
+    id: idx + 1,
+    name: member.name || 'Unknown',
+    complaints: member.assigned || 0,
+    resolved: member.completed || 0,
+    rating: member.rating || '0.0',
+    ward: member.role || 'Field Officer',
+  }));
 
-  const [poorPerformance] = useState([
-    { name: '', resolutionTime: '', target: '', wards: '' },
-    { name: '', resolutionTime: '', target: '', wards: '' },
-  ]);
+  const officers = teamData.slice(0, 4).map((member, idx) => ({
+    rank: idx + 1,
+    name: member.name || 'Officer',
+    resolved: member.completed || 0,
+    rating: member.rating || '0.0',
+    wards: member.role || 'N/A',
+  }));
+
+  const averageRating = teamData.length
+    ? (teamData.reduce((sum, member) => sum + Number(member.rating || 0), 0) / teamData.length).toFixed(1)
+    : '0.0';
+
+  const poorPerformance = teamData.slice(3, 5).map((member) => ({
+    name: member.name || 'No data',
+    resolutionTime: member.time || 'N/A',
+    target: dashboard?.metrics?.resolutionTime?.avgResolutionTime
+      ? `${Math.round(dashboard.metrics.resolutionTime.avgResolutionTime / (1000 * 60 * 60 * 24))} Days`
+      : '24h',
+    wards: member.role || 'N/A',
+  }));
 
   return (
     <div className="mla-container">
@@ -32,19 +61,19 @@ export default function TeamPerformanceDashboard() {
       <div className="mla-section">
         <div className="team-summary-grid">
           <div className="summary-card">
-            <div className="summary-value"></div>
+            <div className="summary-value">{activeOfficers}</div>
             <div className="summary-label">Active Officers</div>
           </div>
           <div className="summary-card">
-            <div className="summary-value"></div>
+            <div className="summary-value">{managerCount}</div>
             <div className="summary-label">Constituency Managers</div>
           </div>
           <div className="summary-card">
-            <div className="summary-value"></div>
+            <div className="summary-value">{averageRating}</div>
             <div className="summary-label">Overall Rating</div>
           </div>
           <div className="summary-card">
-            <div className="summary-value"></div>
+            <div className="summary-value">{resolvedThisMonth}</div>
             <div className="summary-label">Resolved This Month</div>
           </div>
         </div>
@@ -73,7 +102,7 @@ export default function TeamPerformanceDashboard() {
                   <td>{mgr.complaints}</td>
                   <td><span className="success">{mgr.resolved}</span></td>
                   <td><span className="rating">⭐ {mgr.rating}/5</span></td>
-                  <td><button className="btn-secondary btn-sm">Review</button></td>
+                  <td><button type="button" className="btn-secondary btn-sm" onClick={handleReview}>Review</button></td>
                 </tr>
               ))}
             </tbody>
@@ -131,7 +160,7 @@ export default function TeamPerformanceDashboard() {
                   <span className="value">{perf.wards}</span>
                 </div>
               </div>
-              <button className="btn-danger">Take Action</button>
+              <button type="button" className="btn-danger" onClick={handleTakeAction}>Take Action</button>
             </div>
           ))}
         </div>
@@ -140,9 +169,9 @@ export default function TeamPerformanceDashboard() {
       {/* Quick Actions */}
       <div className="mla-section">
         <div className="detail-buttons">
-          <button className="btn-primary">Schedule Meeting</button>
-          <button className="btn-primary">View Detailed Analytics</button>
-          <button className="btn-primary">Send Performance Report</button>
+          <button type="button" className="btn-primary" onClick={handleScheduleMeeting}>Schedule Meeting</button>
+          <button type="button" className="btn-primary" onClick={handleViewAnalytics}>View Detailed Analytics</button>
+          <button type="button" className="btn-primary" onClick={handleSendReport}>Send Performance Report</button>
         </div>
       </div>
     </div>

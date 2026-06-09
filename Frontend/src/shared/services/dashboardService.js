@@ -1,11 +1,20 @@
 import api from "./api";
 
 const ROLE_ENDPOINT = {
+<<<<<<< HEAD
   CITIZEN: "/api/analytics/grievances",
   FIELD_OFFICER: "/api/analytics/dashboard",
   ADMIN: "/api/analytics/dashboard",
   REPRESENTATIVE: "/api/analytics/dashboard",
   CONSTITUENCY_MANAGER: "/api/analytics/dashboard",
+=======
+  CITIZEN: "/api/dashboard/citizen",
+  FIELD_OFFICER: "/api/dashboard/officer",
+  ADMIN: "/api/dashboard/admin",
+  REPRESENTATIVE: "/api/dashboard/mla",
+  CONSTITUENCY_MANAGER: "/api/dashboard/mla",
+  MLA: "/api/dashboard/mla",
+>>>>>>> 271478c11829ebfafc1133b2388027ad233ec912
 };
 
 /**
@@ -74,4 +83,9 @@ export async function getDashboardForRole(role = "ADMIN") {
     console.error(`Error fetching dashboard data from ${endpoint}:`, error);
     throw error;
   }
+}
+
+export async function getMlaDashboard() {
+  const response = await api.get(ROLE_ENDPOINT.MLA);
+  return response.data?.data ?? response.data;
 }

@@ -1,14 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../shared/services/api";
+import { getUserRoles } from "../../shared/services/lookupService";
 import { ROUTES } from "../../app/routes/RouteConstants";
 import "./NewMLA.css";
-
-const roleOptions = [
-  { value: "REPRESENTATIVE", label: "MLA" },
-  { value: "CONSTITUENCY_MANAGER", label: "Manager" },
-  { value: "FIELD_OFFICER", label: "Field Officer" },
-];
 
 const initialFormState = {
   fullName: "",
@@ -30,6 +25,7 @@ const initialFormState = {
 
 export default function RegistrationPage() {
   const [role, setRole] = useState("");
+  const [roles, setRoles] = useState([]);
   const [formData, setFormData] = useState(initialFormState);
   const [managers, setManagers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -47,6 +43,7 @@ export default function RegistrationPage() {
 
   useEffect(() => {
     fetchManagers();
+    fetchRoles();
   }, []);
 
   const normalizePhone = (value) => {
@@ -54,6 +51,15 @@ export default function RegistrationPage() {
     if (!raw) return "";
     if (raw.startsWith("+")) return raw;
     return raw.startsWith("0") ? `+${raw.replace(/^0+/, "")}` : `+91${raw}`;
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const response = await getUserRoles();
+      setRoles(response || []);
+    } catch (err) {
+      console.warn("Unable to load role options", err);
+    }
   };
 
   const fetchManagers = async () => {
@@ -181,24 +187,24 @@ export default function RegistrationPage() {
           
           const photoResponse = await api.post(`/api/users/${userId}/upload-profile-photo`, formDataPhoto);
           console.log("[RegistrationPage] Photo uploaded successfully:", photoResponse.data);
-          setSuccess(`${roleOptions.find((option) => option.value === role)?.label || "User"} registered with photo!`);
+          setSuccess(`${roles.find((option) => option.value === role)?.label || "User"} registered with photo!`);
         } catch (photoErr) {
           console.error("[RegistrationPage] Photo upload error:", photoErr);
           // Photo upload failure is not critical, still show registration success
-          setSuccess(`${roleOptions.find((option) => option.value === role)?.label || "User"} registered successfully! (Photo upload failed)`);
+          setSuccess(`${roles.find((option) => option.value === role)?.label || "User"} registered successfully! (Photo upload failed)`);
         } finally {
           setUploadingPhoto(false);
         }
       } else {
-        setSuccess(`${roleOptions.find((option) => option.value === role)?.label || "User"} registered successfully!`);
+        setSuccess(`${roles.find((option) => option.value === role)?.label || "User"} registered successfully!`);
       }
-      
+
       setError("");
       setFormData(initialFormState);
       setPhotoFile(null);
       setPhotoPreview("");
       setRole("");
-      
+
       if (role === "REPRESENTATIVE") {
         navigate(ROUTES.mlaList);
       } else if (role === "CONSTITUENCY_MANAGER") {
@@ -237,7 +243,7 @@ export default function RegistrationPage() {
               onChange={(e) => setRole(e.target.value)}
             >
               <option value="">Select Role</option>
-              {roleOptions.map((option) => (
+              {roles.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
