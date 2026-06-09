@@ -1,18 +1,17 @@
 """
 Grievance Routes
 """
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
-
-from typing import Optional
-from grievances.service import GrievanceService, GrievanceCategoryService
-from grievances.model import (
-    GrievanceCreate, GrievanceUpdate, GrievanceResponse,
-    GrievanceCategoryCreate, GrievanceCategoryResponse,
-    GrievanceFeedbackCreate
-)
-from utils.response import success_response
-from utils.helper import Helper
 import logging
+from typing import Optional
+
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from grievances.model import (GrievanceCategoryCreate,
+                              GrievanceCategoryResponse, GrievanceCreate,
+                              GrievanceFeedbackCreate, GrievanceResponse,
+                              GrievanceUpdate)
+from grievances.service import GrievanceCategoryService, GrievanceService
+from utils.helper import Helper
+from utils.response import success_response
 
 router = APIRouter(prefix="/api/grievances", tags=["Grievances"])
 logger = logging.getLogger(__name__)
@@ -36,7 +35,7 @@ async def create_grievance(
 @router.get("/", response_model=list[GrievanceResponse])
 async def list_grievances(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
+    per_page: int = Query(10, ge=1, le=1000),
     status: Optional[str] = None,
     priority: Optional[str] = None
 ):
@@ -164,7 +163,7 @@ async def upload_grievance_attachment(
     """Upload attachment to grievance"""
     try:
         from utils.file_handler import upload_profile_image
-        
+
         # Validate grievance exists
         grievance = GrievanceService.get_grievance_by_id(grievance_id)
         if not grievance:

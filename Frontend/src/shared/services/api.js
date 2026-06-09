@@ -17,7 +17,7 @@ async function request(method, url, { params, data, headers } = {}) {
 	// Check if data is FormData early (before logging)
 	const isFormData = data instanceof FormData;
 	
-	if (url.includes('/api/notifications') || url.includes('/api/dashboard') || url.includes('/upload-profile-photo')) {
+	if (url.includes('/api/notifications') || url.includes('/api/dashboard') || url.includes('/upload-profile-photo') || url.includes('/api/grievances')) {
 		console.log(`[API] ${method} ${url}`, { 
 			hasToken: !!token, 
 			authHeaderLength: authHeader.Authorization?.length,
@@ -40,7 +40,7 @@ async function request(method, url, { params, data, headers } = {}) {
 	const contentType = res.headers.get("content-type") || "";
 	if (contentType.includes("application/json")) {
 		const json = await res.json();
-		if (url.includes('/upload-profile-photo')) {
+		if (url.includes('/upload-profile-photo') || url.includes('/api/grievances')) {
 			console.log(`[API] ${method} ${url} - Status: ${res.status}`, { response: json });
 		}
 		if (!res.ok) throw { response: { status: res.status, data: json } };
