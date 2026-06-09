@@ -156,6 +156,62 @@ const getActionItems = (dashboard, role) => {
   ];
 };
 
+const getMapInsight = (dashboard) => {
+  const openComplaints = dashboard?.metrics?.grievances?.byStatus?.OPEN ?? dashboard?.metrics?.grievances?.total;
+  const criticalAlerts = dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total;
+
+  if (openComplaints == null && criticalAlerts == null) {
+    return "Map insights are unavailable until dashboard data loads.";
+  }
+
+  if (criticalAlerts > (openComplaints || 0) * 0.4) {
+    return `Critical alerts are concentrated in high-priority zones; review the map for urgent action.`;
+  }
+
+  if (openComplaints > 0 || criticalAlerts > 0) {
+    return `There are ${formatNumber(openComplaints)} open complaints and ${formatNumber(criticalAlerts)} critical alerts reported on the map.`;
+  }
+
+  return "Map overview shows no active complaints or alerts at the moment.";
+};
+
+const getAiInsights = (dashboard) => {
+  const insights = [];
+  const openComplaints = dashboard?.metrics?.grievances?.byStatus?.OPEN ?? dashboard?.metrics?.grievances?.total;
+  const criticalAlerts = dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total;
+  const satisfaction = dashboard?.summary?.citizenSatisfaction;
+
+  if (criticalAlerts > 0) {
+    insights.push({
+      title: `${formatNumber(criticalAlerts)} critical alerts require immediate response.`,
+      action: "Review urgent alert clusters.",
+    });
+  }
+
+  if (openComplaints > 0) {
+    insights.push({
+      title: `${formatNumber(openComplaints)} open complaints are still unresolved.`,
+      action: "Prioritize grievance triage.",
+    });
+  }
+
+  if (typeof satisfaction === "number") {
+    insights.push({
+      title: `Citizen satisfaction is at ${formatNumber(satisfaction)} / 5.`,
+      action: "Plan outreach and grievance camps.",
+    });
+  }
+
+  if (!insights.length) {
+    insights.push({
+      title: "No AI-driven insights are available yet.",
+      action: "Dashboard data is still loading.",
+    });
+  }
+
+  return insights.slice(0, 2);
+};
+
 
 export default function CommandCenter({ title = "Dashboard", subtitle }) {
   const [showQuickActions, setShowQuickActions] = useState(false);
@@ -185,6 +241,8 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
   const summaryCards = getSummaryCards(dashboard, role);
   const actionItems = getActionItems(dashboard, role);
   const isCitizen = role === "CITIZEN";
+  const mapInsightText = getMapInsight(dashboard);
+  const aiInsights = getAiInsights(dashboard);
   const overviewItems = [
     {
       label: "Open Complaints",
@@ -324,7 +382,7 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
 
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                 <p className="font-semibold text-slate-900">Map Insights</p>
-                <p className="mt-2">Ward 12 shows the highest alert density. Ward 5 is the top area for open complaints.</p>
+                <p className="mt-2">{mapInsightText}</p>
               </div>
             </div>
           </div>
@@ -335,16 +393,7 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
             <h2 className="text-xl font-semibold text-slate-900">AI Insights</h2>
             <p className="mt-2 text-sm text-slate-500">Actionable recommendations from constituent trends.</p>
             <div className="mt-6 space-y-4">
-              {[
-                {
-                  title: "Water complaints increased 35% in Ward 9.",
-                  action: "Schedule inspection.",
-                },
-                {
-                  title: "Citizen satisfaction dropped 10% in Ward 4.",
-                  action: "Conduct grievance camp.",
-                },
-              ].map((insight) => (
+              {aiInsights.map((insight) => (
                 <div key={insight.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
                   <div className="flex items-center gap-3 text-slate-900">
                     <FaLightbulb className="h-5 w-5 text-amber-500" />

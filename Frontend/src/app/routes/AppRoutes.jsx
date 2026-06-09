@@ -2,7 +2,6 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Sidebar from "../../Sidebar";
 import Header from "../../Header";
-import Login from "../../features/auth/Login";
 import OtpVerify from "../../features/auth/OtpVerify";
 import AdminSignup from "../../features/auth/AdminSignup";
 import AdminLogin from "../../features/auth/AdminLogin";
@@ -79,7 +78,7 @@ function AppRoutesContent() {
       <main className={`${isLanding ? 'app-main--landing' : 'app-main'}`}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path={ROUTES.login} element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/citizen-login" replace /></PublicRoute>} />
           <Route path="/citizen-login" element={<PublicRoute><CitizenLogin /></PublicRoute>} />
           <Route path="/admin-login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
           <Route path={ROUTES.otp} element={<PublicRoute><OtpVerify /></PublicRoute>} />
