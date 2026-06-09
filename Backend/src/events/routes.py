@@ -1,16 +1,15 @@
 """
 Event Routes
 """
-from fastapi import APIRouter, HTTPException, Query
-
-from events.service import EventService, EventRegistrationService
-from events.model import (
-    EventCreate, EventUpdate, EventResponse,
-    EventRegistrationCreate, EventRegistrationResponse
-)
-from utils.response import success_response
-from utils.helper import Helper
 import logging
+
+from events.model import (EventCreate, EventRegistrationCreate,
+                          EventRegistrationResponse, EventResponse,
+                          EventUpdate)
+from events.service import EventRegistrationService, EventService
+from fastapi import APIRouter, HTTPException, Query
+from utils.helper import Helper
+from utils.response import success_response
 
 router = APIRouter(prefix="/api/events", tags=["Events"])
 logger = logging.getLogger(__name__)
@@ -43,7 +42,7 @@ async def get_event(
 @router.get("/", response_model=list[EventResponse])
 async def list_events(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100)
+    per_page: int = Query(10, ge=1, le=1000)
 ):
     """List events"""
     skip, limit = Helper.paginate(page, per_page)

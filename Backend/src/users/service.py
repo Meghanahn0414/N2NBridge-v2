@@ -1,12 +1,13 @@
 """
 User Service
 """
+import logging
+from typing import Dict, List, Optional
+
+from bson import ObjectId
 from config.database import MongoDatabase
 from config.security import SecurityManager, UserRole
 from utils.helper import Helper
-from bson import ObjectId
-from typing import Optional, List, Dict
-import logging
 
 logger = logging.getLogger(__name__)
 

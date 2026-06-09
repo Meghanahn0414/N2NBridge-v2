@@ -1,9 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
+import { fetchCampaigns } from '../../../features/campaigns/campaignService';
 
 export default function CampaignManagement() {
   const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [stats, setStats] = useState({ active: 0, reach: 0, engagement: 0, roi: 0 });
+
+  useEffect(() => {
+    loadCampaigns();
+  }, []);
+
+  const loadCampaigns = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchCampaigns(1, 1000);
+      setCampaigns(data);
+      updateStats(data);
+    } catch (err) {
+      setError(err.message || 'Failed to load campaigns');
+      console.error('Error loading campaigns:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateStats = (campaignList) => {
+    const active = campaignList.filter(c => c.status === 'ACTIVE').length;
+    const reach = campaignList.reduce((sum, c) => sum + (c.reach || 0), 0);
+    const engagement = campaignList.length > 0 ? Math.round(campaignList.reduce((sum, c) => sum + (c.engagement || 0), 0) / campaignList.length) : 0;
+    const roi = campaignList.length > 0 ? Math.round(campaignList.reduce((sum, c) => sum + (c.roi || 0), 0) / campaignList.length) : 0;
+    setStats({ active, reach, engagement, roi });
+  };
 
   return (
     <div className="module-container">
@@ -22,26 +53,65 @@ export default function CampaignManagement() {
       <div className="module-stats">
         <div className="stat-card">
           <span className="stat-label">Active Campaigns</span>
-          <span className="stat-value"></span>
+          <span className="stat-value">{stats.active}</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Total Reach</span>
-          <span className="stat-value"></span>
+          <span className="stat-value">{stats.reach}</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Engagement Rate</span>
-          <span className="stat-value"></span>
+          <span className="stat-value">{stats.engagement}%</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">ROI</span>
-          <span className="stat-value"></span>
+          <span className="stat-value">{stats.roi}%</span>
         </div>
       </div>
 
       <div className="campaigns-list">
-        <div className="empty-state">
-          <p>📭 No campaigns created. Click "Launch Campaign" to get started.</p>
-        </div>
+        {loading ? (
+          <div className="loading-state">Loading campaigns...</div>
+        ) : error ? (
+          <div className="error-state">{error}</div>
+        ) : campaigns.length === 0 ? (
+          <div className="empty-state">
+            <p>📭 No campaigns created. Click "Launch Campaign" to get started.</p>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Campaign Name</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Target Reach</th>
+                <th>Engagement</th>
+                <th>ROI</th>
+                <th>Start Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {campaigns.map(campaign => (
+                <tr key={campaign._id || campaign.id}>
+                  <td>{campaign.name}</td>
+                  <td>{campaign.type || 'Awareness'}</td>
+                  <td><span className="status-badge">{campaign.status}</span></td>
+                  <td>{campaign.reach || 0}</td>
+                  <td>{campaign.engagement || 0}%</td>
+                  <td>{campaign.roi || 0}%</td>
+                  <td>{campaign.startDate ? new Date(campaign.startDate).toLocaleDateString() : '-'}</td>
+                  <td>
+                    <button>✏️</button>
+                    <button>📊</button>
+                    <button>🗑️</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {showBuilder && (

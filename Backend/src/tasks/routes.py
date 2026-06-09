@@ -1,16 +1,14 @@
 """
 Task Routes
 """
-from fastapi import APIRouter, HTTPException, Query
-
-from tasks.service import TaskService, FieldReportService
-from tasks.model import (
-    TaskCreate, TaskUpdate, TaskResponse,
-    FieldReportCreate, FieldReportResponse
-)
-from utils.response import success_response
-from utils.helper import Helper
 import logging
+
+from fastapi import APIRouter, HTTPException, Query
+from tasks.model import (FieldReportCreate, FieldReportResponse, TaskCreate,
+                         TaskResponse, TaskUpdate)
+from tasks.service import FieldReportService, TaskService
+from utils.helper import Helper
+from utils.response import success_response
 
 router = APIRouter(prefix="/api/tasks", tags=["Tasks"])
 logger = logging.getLogger(__name__)
@@ -43,7 +41,7 @@ async def get_task(
 @router.get("/", response_model=list[TaskResponse])
 async def list_tasks(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
+    per_page: int = Query(10, ge=1, le=1000),
     status: str = None
 ):
     """List tasks"""

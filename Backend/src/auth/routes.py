@@ -1,16 +1,19 @@
 """
 Authentication Routes
 """
-from fastapi import APIRouter, Depends, Header, HTTPException, status, Request
-from typing import Optional
-from auth.service import AuthService
-from auth.otp_service import OTPService
-from users.model import UserLoginRequest, TokenResponse, UserCreate, UserResponse, SendOtpRequest, VerifyOtpRequest, OtpResponse
-from users.service import UserService
-from config.database import MongoDatabase
-from utils.response import success_response, error_response, ResponseMessage
-from utils.jwt import TokenManager
 import logging
+from typing import Optional
+
+from auth.otp_service import OTPService
+from auth.service import AuthService
+from config.database import MongoDatabase
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from users.model import (OtpResponse, SendOtpRequest, TokenResponse,
+                         UserCreate, UserLoginRequest, UserResponse,
+                         VerifyOtpRequest)
+from users.service import UserService
+from utils.jwt import TokenManager
+from utils.response import ResponseMessage, error_response, success_response
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)
@@ -151,13 +154,13 @@ async def login_admin(request: Request):
 async def register(user_data: UserCreate):
     """Register new user (public endpoint)"""
     try:
-        logger.info(f"[REGISTER] Received registration request: {user_data.fullName}, {user_data.email}, role={user_data.role}")
+        logger.info(f"[REGISTER] Received registration request: {user_data.fullName}, {user_data.email}, mobile: {user_data.mobile}, role={user_data.role}")
         user_id = AuthService.register_user(user_data.dict(), None)
         if not user_id:
-            logger.error("[REGISTER] register_user returned None")
+            logger.error("[REGISTER] register_user returned None - likely email or mobile already exists")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to register user"
+                detail="Failed to register user - Email or mobile number may already be registered"
             )
         
         logger.info(f"[REGISTER] User registered successfully: {user_id}")
@@ -234,8 +237,8 @@ async def verify_otp(request: VerifyOtpRequest):
         if not user:
             # Auto-create user on first OTP verification (OTP users don't have password)
             db = MongoDatabase.get_db()
-            from datetime import datetime
             import uuid
+            from datetime import datetime
             
             is_email = "@" in request.value
             is_mobile = request.value.isdigit()
@@ -255,9 +258,17 @@ async def verify_otp(request: VerifyOtpRequest):
                 "createdBy": "system",
                 "updatedBy": "system"
             }
-            result = db.users.insert_one(user_data)
-            user = db.users.find_one({"_id": result.inserted_id})
-            logger.info(f"OTP user auto-created: {result.inserted_id}")
+            try:
+                result = db.users.insert_one(user_data)
+                user = db.users.find_one({"_id": result.inserted_id})
+                logger.info(f"OTP user auto-created: {result.inserted_id}")
+            except Exception as e:
+                # If duplicate key error, try to find existing user by mobile/email
+                logger.warning(f"Insert failed (likely duplicate): {e}. Trying to fetch existing user...")
+                user = UserService.get_user_by_mobile(request.value) if is_mobile else UserService.get_user_by_email(request.value)
+                if not user:
+                    # If still no user found, re-raise the error
+                    raise HTTPException(status_code=500, detail="Failed to create or find user")
         
         # Create JWT token
         token = TokenManager.create_token(str(user["_id"]), user["role"])

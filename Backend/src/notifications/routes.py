@@ -3,13 +3,16 @@ Notification Routes
 """
 import logging
 import os
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from auth.service import AuthService
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from notifications.model import NotificationResponse
 from notifications.service import NotificationService
 from pydantic import BaseModel, EmailStr
 from utils.email_service import send_otp_via_email
 from utils.helper import Helper
+from utils.jwt import TokenManager
 from utils.response import success_response
 from utils.sms_service import send_otp_via_sms
 
@@ -17,15 +20,35 @@ router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 logger = logging.getLogger(__name__)
 
 
+def get_current_user_optional(authorization: Optional[str] = Header(None, alias="Authorization")):
+    """Get current user from token (optional - returns None if not authenticated)"""
+    if not authorization:
+        return None
+    
+    token = TokenManager.extract_token_from_header(authorization)
+    if not token:
+        return None
+    
+    payload = AuthService.verify_token(token)
+    if not payload:
+        return None
+    
+    return payload
+
+
+# ======================== LIST & GET ENDPOINTS (MUST BE BEFORE PARAMETRIZED ROUTES) ========================
+
 @router.get("/", response_model=list[NotificationResponse])
 async def list_notifications(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100)
+    per_page: int = Query(10, ge=1, le=1000),
+    current_user: dict = Depends(get_current_user_optional)
 ):
     """List user notifications"""
     skip, limit = Helper.paginate(page, per_page)
+    user_id = current_user.get("user_id") if current_user else None
     notifications = NotificationService.get_user_notifications(
-        None,
+        user_id,
         skip,
         limit
     )
@@ -34,27 +57,25 @@ async def list_notifications(
 
 
 @router.get("/unread")
-async def get_unread_notifications():
+async def get_unread_notifications(
+    current_user: dict = Depends(get_current_user_optional)
+):
     """Get unread notifications"""
-    notifications = NotificationService.get_unread_notifications(None)
+    user_id = current_user.get("user_id") if current_user else None
+    notifications = NotificationService.get_unread_notifications(user_id)
     
     return success_response(
-        [NotificationResponse(**n) for n in notifications],
+        [NotificationResponse(**Helper.convert_mongo_doc(n)) for n in notifications],
         f"Retrieved {len(notifications)} unread notifications"
     )
 
 
-@router.post("/mark-all-read")
-async def mark_all_as_read():
-    """Mark all notifications as read"""
-    count = NotificationService.mark_all_as_read(None)
-    
-    return success_response({"count": count}, f"Marked {count} notifications as read")
-
+# ======================== SPECIFIC NOTIFICATION ENDPOINTS (AFTER NON-PARAMETRIZED ROUTES) ========================
 
 @router.get("/{notification_id}", response_model=NotificationResponse)
 async def get_notification(
-    notification_id: str
+    notification_id: str,
+    current_user: dict = Depends(get_current_user_optional)
 ):
     """Get notification"""
     notification = NotificationService.get_notification_by_id(notification_id)
@@ -66,10 +87,12 @@ async def get_notification(
 
 
 @router.put("/{notification_id}/read", response_model=NotificationResponse)
+@router.patch("/{notification_id}/read", response_model=NotificationResponse)
 async def mark_as_read(
-    notification_id: str
+    notification_id: str,
+    current_user: dict = Depends(get_current_user_optional)
 ):
-    """Mark notification as read"""
+    """Mark notification as read (supports both PUT and PATCH)"""
     success = NotificationService.mark_as_read(notification_id)
 
     if not success:
@@ -79,9 +102,21 @@ async def mark_as_read(
     return NotificationResponse(**Helper.convert_mongo_doc(notification))
 
 
+@router.post("/mark-all-read")
+async def mark_all_as_read(
+    current_user: dict = Depends(get_current_user_optional)
+):
+    """Mark all notifications as read"""
+    user_id = current_user.get("user_id") if current_user else None
+    count = NotificationService.mark_all_as_read(user_id)
+    
+    return success_response({"count": count}, f"Marked {count} notifications as read")
+
+
 @router.delete("/{notification_id}")
 async def delete_notification(
-    notification_id: str
+    notification_id: str,
+    current_user: dict = Depends(get_current_user_optional)
 ):
     """Delete notification"""
     success = NotificationService.delete_notification(notification_id)

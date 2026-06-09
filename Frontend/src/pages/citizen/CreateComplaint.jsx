@@ -16,7 +16,7 @@ export default function CreateComplaint() {
     description: "",
     address: "",
     wardId: "",
-    priority: "",
+    priority: "LOW",
     attachment: null,
   });
   const [error, setError] = useState("");
@@ -72,7 +72,7 @@ export default function CreateComplaint() {
       }
 
       setSuccess("Complaint submitted successfully.");
-      setForm({ categoryId: "", description: "", address: "", wardId: "", priority: "MEDIUM", attachment: null });
+      setForm({ categoryId: "", description: "", address: "", wardId: "", priority: "LOW", attachment: null });
       navigate(`/citizen/complaints/${response.id}`);
     } catch (err) {
       setError(err.message || "Unable to submit complaint.");

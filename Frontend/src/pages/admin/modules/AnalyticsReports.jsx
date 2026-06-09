@@ -1,10 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/AnalyticsReports.css';
+import { getGrievanceStats, getAlertStats, getEventStats, getDashboardMetrics } from '../../../features/analytics/analyticsService';
 
 export default function AnalyticsReports() {
   const [reportType, setReportType] = useState('COMPLAINTS');
   const [dateRange, setDateRange] = useState('MONTH');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [stats, setStats] = useState({});
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [reportType]);
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      let data = {};
+      
+      switch(reportType) {
+        case 'COMPLAINTS':
+          data = await getGrievanceStats();
+          break;
+        case 'ALERTS':
+          data = await getAlertStats();
+          break;
+        case 'EVENTS':
+          data = await getEventStats();
+          break;
+        default:
+          data = await getDashboardMetrics();
+      }
+      
+      setStats(data);
+    } catch (err) {
+      setError(err.message || 'Failed to load analytics');
+      console.error('Error loading analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const complaintMetrics = [
     { name: 'Category-wise Complaints', icon: '📋' },
@@ -76,19 +113,19 @@ export default function AnalyticsReports() {
       <div className="module-stats">
         <div className="stat-card">
           <span className="stat-label">Total Records</span>
-          <span className="stat-value"></span>
+          <span className="stat-value">{stats?.total || 0}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Average Response Time</span>
-          <span className="stat-value"></span>
+          <span className="stat-label">Trend</span>
+          <span className="stat-value">{stats?.trend ? `${stats.trend}%` : 'N/A'}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Success Rate</span>
-          <span className="stat-value"></span>
+          <span className="stat-label">Categories</span>
+          <span className="stat-value">{stats?.byCategory ? Object.keys(stats.byCategory).length : 0}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Escalations</span>
-          <span className="stat-value"></span>
+          <span className="stat-label">Status Breakdown</span>
+          <span className="stat-value">{stats?.byStatus ? Object.keys(stats.byStatus).length : 0}</span>
         </div>
       </div>
 
@@ -110,27 +147,62 @@ export default function AnalyticsReports() {
       {/* Detailed Stats Table */}
       <div className="detailed-stats" style={{ marginTop: '32px' }}>
         <h3>Detailed Breakdown</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Metric</th>
-              <th>Value</th>
-              <th>% Change</th>
-              <th>Trend</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td colSpan="5" className="no-data">
-                {reportType === 'COMPLAINTS' && 'Select date range to view complaint analytics'}
-                {reportType === 'ALERTS' && 'Select date range to view alert analytics'}
-                {reportType === 'EVENTS' && 'Select date range to view event analytics'}
-                {reportType === 'COMMUNICATION' && 'Select date range to view communication analytics'}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {loading ? (
+          <div className="loading-state">Loading analytics...</div>
+        ) : error ? (
+          <div className="error-state">{error}</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Count</th>
+                <th>Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportType === 'COMPLAINTS' && stats?.byCategory ? (
+                Object.entries(stats.byCategory).map(([category, count]) => (
+                  <tr key={category}>
+                    <td>{category}</td>
+                    <td>{count}</td>
+                    <td>{stats.total > 0 ? ((count / stats.total) * 100).toFixed(1) : 0}%</td>
+                  </tr>
+                ))
+              ) : reportType === 'ALERTS' && stats?.byPriority ? (
+                Object.entries(stats.byPriority).map(([priority, count]) => (
+                  <tr key={priority}>
+                    <td>{priority}</td>
+                    <td>{count}</td>
+                    <td>{stats.total > 0 ? ((count / stats.total) * 100).toFixed(1) : 0}%</td>
+                  </tr>
+                ))
+              ) : reportType === 'EVENTS' && stats?.byStatus ? (
+                Object.entries(stats.byStatus).map(([status, count]) => (
+                  <tr key={status}>
+                    <td>{status}</td>
+                    <td>{count}</td>
+                    <td>{stats.total > 0 ? ((count / stats.total) * 100).toFixed(1) : 0}%</td>
+                  </tr>
+                ))
+              ) : reportType === 'COMMUNICATION' && stats?.byChannel ? (
+                Object.entries(stats.byChannel).map(([channel, count]) => (
+                  <tr key={channel}>
+                    <td>{channel}</td>
+                    <td>{count}</td>
+                    <td>{stats.total > 0 ? ((count / stats.total) * 100).toFixed(1) : 0}%</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="3" className="no-data">
+                    No data available for {reportType}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* AI Analytics Section */}

@@ -1,14 +1,14 @@
 """
 Alert Routes
 """
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
-
-from typing import Optional
-from alerts.service import AlertService
-from alerts.model import AlertCreate, AlertUpdate, AlertResponse
-from utils.response import success_response
-from utils.helper import Helper
 import logging
+from typing import Optional
+
+from alerts.model import AlertCreate, AlertResponse, AlertUpdate
+from alerts.service import AlertService
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from utils.helper import Helper
+from utils.response import success_response
 
 router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ async def get_alert(
 @router.get("/", response_model=list[AlertResponse])
 async def list_alerts(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
+    per_page: int = Query(10, ge=1, le=1000),
     status: Optional[str] = None,
     priority: Optional[str] = None
 ):
@@ -103,7 +103,7 @@ async def upload_alert_media(
     """Upload media attachment to alert"""
     try:
         from utils.file_handler import upload_profile_image
-        
+
         # Validate alert exists
         alert = AlertService.get_alert_by_id(alert_id)
         if not alert:

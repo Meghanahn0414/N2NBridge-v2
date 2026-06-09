@@ -66,15 +66,21 @@ class AuthService:
     def register_user(user_data: dict, admin_id: str) -> Optional[str]:
         """Register new user (by admin/manager)"""
         try:
-            logger.info(f"Starting registration for email: {user_data.get('email')}")
+            logger.info(f"Starting registration for email: {user_data.get('email')}, mobile: {user_data.get('mobile')}")
             
-            # Check if user already exists
-            existing_user = UserService.get_user_by_email(user_data["email"])
-            if existing_user:
+            # Check if user already exists by email
+            existing_user_email = UserService.get_user_by_email(user_data["email"])
+            if existing_user_email:
                 logger.warning(f"User registration failed: Email already exists: {user_data['email']}")
                 return None
             
-            logger.info(f"Email {user_data['email']} is available. Creating user...")
+            # Check if user already exists by mobile
+            existing_user_mobile = UserService.get_user_by_mobile(user_data.get("mobile"))
+            if existing_user_mobile:
+                logger.warning(f"User registration failed: Mobile already exists: {user_data.get('mobile')}")
+                return None
+            
+            logger.info(f"Email {user_data['email']} and mobile {user_data.get('mobile')} are available. Creating user...")
             # Create user
             user_id = UserService.create_user(user_data, admin_id)
             logger.info(f"New user registered successfully. User ID: {user_id}")

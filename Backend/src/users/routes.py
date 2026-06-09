@@ -1,20 +1,37 @@
 """
 User Routes
 """
-from fastapi import APIRouter,  HTTPException,  Query, UploadFile, File
-from typing import Optional
-from users.service import UserService, ConstituencyService, WardService
-from users.model import (
-    UserCreate, UserUpdate, UserResponse, 
-    ConstituencyCreate, ConstituencyResponse,
-    WardCreate, WardResponse
-)
-from utils.response import success_response
-from utils.helper import Helper
 import logging
+from typing import Optional
+
+from auth.service import AuthService
+from fastapi import (APIRouter, Depends, File, Header, HTTPException, Query,
+                     UploadFile)
+from users.model import (ConstituencyCreate, ConstituencyResponse, UserCreate,
+                         UserResponse, UserUpdate, WardCreate, WardResponse)
+from users.service import ConstituencyService, UserService, WardService
+from utils.helper import Helper
+from utils.jwt import TokenManager
+from utils.response import success_response
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 logger = logging.getLogger(__name__)
+
+
+def get_current_user_optional(authorization: Optional[str] = Header(None, alias="Authorization")):
+    """Get current user from token (optional - returns None if not authenticated)"""
+    if not authorization:
+        return None
+    
+    token = TokenManager.extract_token_from_header(authorization)
+    if not token:
+        return None
+    
+    payload = AuthService.verify_token(token)
+    if not payload:
+        return None
+    
+    return payload
 
 
 # USER ENDPOINTS - Create
@@ -37,7 +54,7 @@ async def create_user(user_data: UserCreate):
 @router.get("/", response_model=list[UserResponse])
 async def list_users(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
+    per_page: int = Query(10, ge=1, le=1000),
     role: Optional[str] = None
 ):
     """List users"""
@@ -117,7 +134,8 @@ async def get_wards(
 @router.post("/{user_id}/upload-profile-photo")
 async def upload_profile_photo(
     user_id: str,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user_optional)
 ):
     """Upload user profile photo (allows unauthenticated uploads for newly registered users)"""
     try:

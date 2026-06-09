@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/AlertManagement.css';
+import { fetchAlerts, broadcastAlert } from '../../../features/alerts/alertService';
 
 export default function AlertManagement() {
   const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ priority: 'ALL', status: 'ALL' });
   const [showBroadcast, setShowBroadcast] = useState(false);
 
@@ -18,9 +21,40 @@ export default function AlertManagement() {
     low: 0,
   });
 
-  const handleBroadcast = (e) => {
+  useEffect(() => {
+    loadAlerts();
+  }, [filters]);
+
+  const loadAlerts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchAlerts(1, 1000, filters);
+      setAlerts(data);
+      updateAlertBoard(data);
+    } catch (err) {
+      setError(err.message || 'Failed to load alerts');
+      console.error('Error loading alerts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateAlertBoard = (alertList) => {
+    const board = { critical: 0, high: 0, medium: 0, low: 0 };
+    alertList.forEach(alert => {
+      const priority = alert.priority?.toLowerCase();
+      if (priority === 'critical') board.critical++;
+      else if (priority === 'high') board.high++;
+      else if (priority === 'medium') board.medium++;
+      else if (priority === 'low') board.low++;
+    });
+    setAlertBoard(board);
+  };
+
+  const handleBroadcast = async (e) => {
     e.preventDefault();
-    // TODO: Call API to broadcast alert
+    // TODO: Implement broadcast functionality
     console.log('Broadcasting alert...');
     setShowBroadcast(false);
   };
@@ -80,25 +114,51 @@ export default function AlertManagement() {
 
       {/* Alerts Table */}
       <div className="alerts-table" style={{ marginTop: '24px' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Alert Type</th>
-              <th>Location</th>
-              <th>Priority</th>
-              <th>Reporter</th>
-              <th>Assigned Team</th>
-              <th>Status</th>
-              <th>Created Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td colSpan="8" className="no-data">No alerts at this time. Stay vigilant!</td>
-            </tr>
-          </tbody>
-        </table>
+        {loading ? (
+          <div className="loading-state">Loading alerts...</div>
+        ) : error ? (
+          <div className="error-state">{error}</div>
+        ) : alerts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <p>No alerts at this time. Stay vigilant!</p>
+          </div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Alert Type</th>
+                <th>Location</th>
+                <th>Priority</th>
+                <th>Reporter</th>
+                <th>Assigned Team</th>
+                <th>Status</th>
+                <th>Created Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {alerts.map(alert => (
+                <tr key={alert._id || alert.id}>
+                  <td>{alert.type || 'Emergency'}</td>
+                  <td>
+                    {typeof alert.location === 'object' && alert.location?.coordinates 
+                      ? `${alert.location.coordinates[1]}, ${alert.location.coordinates[0]}` 
+                      : (alert.location || '-')}
+                  </td>
+                  <td><span className="priority-badge" style={{color: alert.priority?.toLowerCase()}}>{alert.priority}</span></td>
+                  <td>{alert.reporter || 'System'}</td>
+                  <td>{alert.assignedTeam || 'Unassigned'}</td>
+                  <td><span className="status-badge">{alert.status}</span></td>
+                  <td>{alert.createdDate ? new Date(alert.createdDate).toLocaleDateString() : '-'}</td>
+                  <td>
+                    <button onClick={() => handleAssignTeam(alert._id || alert.id)}>👥</button>
+                    <button onClick={() => handleMarkResolved(alert._id || alert.id)}>✓</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Broadcast Modal */}

@@ -1,48 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/TeamManagement.css';
+import { fetchUsers } from '../../../features/team-management/userService';
+import { fetchTasks } from '../../../features/tasks/taskService';
 
 export default function TeamManagement() {
   const [teamMembers, setTeamMembers] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [viewType, setViewType] = useState('kpi'); // 'kpi' or 'kanban'
   const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    loadTeamData();
+  }, []);
+
+  const loadTeamData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [members, taskList] = await Promise.all([
+        fetchUsers(1, 1000),
+        fetchTasks(1, 1000)
+      ]);
+      setTeamMembers(members);
+      setTasks(taskList);
+    } catch (err) {
+      setError(err.message || 'Failed to load team data');
+      console.error('Error loading team data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const kpiMetrics = [
     {
       id: 1,
       name: 'Active Tasks',
       description: 'Assigned work',
-      value: '0',
+      value: tasks.filter(t => t.status === 'ASSIGNED').length,
       icon: '📋',
     },
     {
       id: 2,
       name: 'Completed Tasks',
       description: 'Finished work',
-      value: '0',
+      value: tasks.filter(t => t.status === 'COMPLETED').length,
       icon: '✅',
     },
     {
       id: 3,
       name: 'Avg Resolution Time',
       description: 'SLA metric',
-      value: '0 hrs',
+      value: tasks.length > 0 ? Math.round(tasks.reduce((sum, t) => sum + (t.resolutionTime || 0), 0) / tasks.length) + ' hrs' : '0 hrs',
       icon: '⏱️',
     },
     {
       id: 4,
-      name: 'Citizen Rating',
-      description: 'Satisfaction score',
-      value: '0/5',
-      icon: '⭐',
+      name: 'Team Size',
+      description: 'Total members',
+      value: teamMembers.length,
+      icon: '👥',
     },
   ];
 
   const taskColumns = [
-    { id: 'assigned', title: 'Assigned', icon: '📋', tasks: [] },
-    { id: 'in-progress', title: 'In Progress', icon: '🔄', tasks: [] },
-    { id: 'completed', title: 'Completed', icon: '✅', tasks: [] },
-    { id: 'rejected', title: 'Rejected', icon: '❌', tasks: [] },
+    { id: 'assigned', title: 'Assigned', icon: '📋', tasks: tasks.filter(t => t.status === 'ASSIGNED') },
+    { id: 'in-progress', title: 'In Progress', icon: '🔄', tasks: tasks.filter(t => t.status === 'IN_PROGRESS') },
+    { id: 'completed', title: 'Completed', icon: '✅', tasks: tasks.filter(t => t.status === 'COMPLETED') },
+    { id: 'rejected', title: 'Rejected', icon: '❌', tasks: tasks.filter(t => t.status === 'REJECTED') },
   ];
 
   return (

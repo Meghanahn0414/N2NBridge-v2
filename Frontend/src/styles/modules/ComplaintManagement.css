@@ -1,5 +1,15 @@
 /* Complaint Management Module Styles */
 
+.error-banner {
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #991b1b;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
 .complaint-stats {
   margin-bottom: 32px;
 }
@@ -123,6 +133,27 @@
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.action-buttons button {
+  padding: 6px 8px;
+  font-size: 14px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: none;
+}
+
+.action-buttons button:hover {
+  transform: scale(1.2);
 }
 
 .complaint-actions .btn-view {
