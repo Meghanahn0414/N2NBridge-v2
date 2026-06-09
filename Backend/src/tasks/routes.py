@@ -113,3 +113,22 @@ async def get_officer_reports(
     return success_response([FieldReportResponse(**r) for r in reports])
 
 
+@router.post("/{task_id}/assign/{officer_id}", response_model=TaskResponse)
+async def assign_task(
+    task_id: str,
+    officer_id: str
+):
+    """Assign task to officer"""
+    try:
+        success = TaskService.assign_task(task_id, officer_id, None)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to assign task")
+        
+        task = TaskService.get_task_by_id(task_id)
+        return TaskResponse(**Helper.convert_mongo_doc(task))
+    except Exception as e:
+        logger.error(f"Error assigning task: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to assign task: {str(e)}")
+
+

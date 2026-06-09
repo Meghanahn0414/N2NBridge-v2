@@ -4,6 +4,7 @@ CRM Management System - FastAPI Application
 import logging
 import os
 import sys
+from contextlib import asynccontextmanager
 from datetime import datetime
 
 # Add src directory to Python path BEFORE importing local modules
@@ -22,10 +23,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from grievances.routes import router as grievances_router
+from lookups.routes import router as lookups_router
 from notifications.routes import router as notifications_router
 from tasks.routes import router as tasks_router
 from users.routes import router as users_router
-from lookups.routes import router as lookups_router
 
 # Configure logging
 logging.basicConfig(
@@ -34,13 +35,35 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Lifespan context manager for startup and shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan events"""
+    # Startup event
+    logger.info("Starting CRM Management System...")
+    try:
+        MongoDatabase.connect(settings.MONGODB_URL, settings.MONGODB_DB)
+        logger.info("Database connection established")
+        logger.info("Collections and indexes created")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        raise
+    
+    yield
+    
+    # Shutdown event
+    logger.info("Shutting down CRM Management System...")
+    MongoDatabase.close()
+    logger.info("Database connection closed")
+
 # Create FastAPI application
 app = FastAPI(
     title=settings.API_TITLE,
     description=settings.API_DESCRIPTION,
     version=settings.API_VERSION,
     docs_url="/api/docs",
-    openapi_url="/api/openapi.json"
+    openapi_url="/api/openapi.json",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -89,27 +112,7 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and application"""
-    logger.info("Starting CRM Management System...")
-    try:
-        MongoDatabase.connect(settings.MONGODB_URL, settings.MONGODB_DB)
-        logger.info("Database connection established")
-        logger.info("Collections and indexes created")
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        raise
 
-
-# Shutdown event
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    logger.info("Shutting down CRM Management System...")
-    MongoDatabase.close()
-    logger.info("Database connection closed")
 
 
 # Root endpoint

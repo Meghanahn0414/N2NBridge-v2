@@ -8,6 +8,7 @@ from bson import ObjectId
 from config.database import MongoDatabase
 from config.security import SecurityManager, UserRole
 from utils.helper import Helper
+from utils.id_generator import IDGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,11 @@ class UserService:
             user_data["passwordHash"] = SecurityManager.hash_password(user_data.pop("password"))
             user_data["status"] = "ACTIVE"
             user_data["lastLoginAt"] = None
+            
+            # Generate unique citizen ID for CITIZEN role
+            if user_data.get("role") == "CITIZEN":
+                user_data["citizenId"] = IDGenerator.generate_citizen_id()
+                logger.info(f"Generated citizen ID: {user_data['citizenId']}")
             
             # Handle audit fields - use "system" for public registration (when user_id is None)
             audit_user_id = user_id if user_id else "system"

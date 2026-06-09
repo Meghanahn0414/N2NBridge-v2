@@ -1,12 +1,13 @@
 """
 Task Service
 """
+import logging
+from datetime import datetime
+from typing import List, Optional
+
+from bson import ObjectId
 from config.database import MongoDatabase
 from utils.helper import Helper
-from bson import ObjectId
-from typing import Optional, List
-from datetime import datetime
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,24 @@ class TaskService:
             "assignedTo": officer_id,
             "status": {"$ne": "COMPLETED"}
         }).skip(skip).limit(limit))
+    
+    @staticmethod
+    def assign_task(task_id: str, officer_id: str, assigned_by: str) -> bool:
+        """Assign task to officer"""
+        db = MongoDatabase.get_db()
+        
+        result = db.tasks.update_one(
+            {"_id": ObjectId(task_id)},
+            {
+                "$set": {
+                    "assignedTo": officer_id,
+                    "status": "ASSIGNED",
+                    "updatedBy": assigned_by if assigned_by else "system",
+                    "updatedAt": datetime.utcnow()
+                }
+            }
+        )
+        return result.modified_count > 0
 
 
 class FieldReportService:
