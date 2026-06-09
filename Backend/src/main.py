@@ -27,6 +27,7 @@ from notifications.routes import router as notifications_router
 from analytics.routes import router as analytics_router
 from dashboard.routes import router as dashboard_router
 from citizens.routes import router as citizens_router
+from lookups.routes import router as lookups_router
 
 # Configure logging
 logging.basicConfig(
@@ -154,6 +155,7 @@ app.include_router(notifications_router)
 app.include_router(analytics_router)
 app.include_router(dashboard_router)
 app.include_router(citizens_router)
+app.include_router(lookups_router)
 
 
 # Global exception handler

@@ -25,6 +25,7 @@ from grievances.routes import router as grievances_router
 from notifications.routes import router as notifications_router
 from tasks.routes import router as tasks_router
 from users.routes import router as users_router
+from lookups.routes import router as lookups_router
 
 # Configure logging
 logging.basicConfig(
@@ -145,6 +146,7 @@ app.include_router(tasks_router)
 app.include_router(notifications_router)
 app.include_router(analytics_router)
 app.include_router(dashboard_router)
+app.include_router(lookups_router)
 
 
 # Global exception handler

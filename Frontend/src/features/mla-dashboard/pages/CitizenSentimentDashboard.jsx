@@ -1,32 +1,41 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/CitizenSentimentDashboard.css';
+import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+
+const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
 export default function CitizenSentimentDashboard() {
-  const [sentimentData] = useState({
-    positive: 72,
-    neutral: 18,
-    negative: 10,
-  });
+  const navigate = useNavigate();
+  const { dashboard, loading, error } = useMlaDashboard();
 
-  const [concerns] = useState([
-    'Roads',
-    'Water Supply',
-    'Drainage',
-    'Employment',
-    'Healthcare',
-  ]);
-
-  const [keywords] = useState([
-    'Water Supply',
-    'Pension',
-    'Road Repair',
-    'Street Lights',
-    'Hospital',
-    'School',
-    'Electricity',
-    'Drainage',
-  ]);
+  const handleViewDetailedReport = () => navigate(ROUTES.mlaAIInsights);
+  const handleExportSentimentData = () => window.alert('Exporting sentiment data...');
+  const handleViewNegativeFeedback = () => navigate(ROUTES.mlaComplaintsDashboard);
+  const sentimentDistribution = dashboard?.metrics?.sentimentDistribution || {};
+  const positivePct = sentimentDistribution.positivePct ?? 0;
+  const neutralPct = sentimentDistribution.neutralPct ?? 0;
+  const negativePct = sentimentDistribution.negativePct ?? 0;
+  const sentimentData = {
+    positive: positivePct,
+    neutral: neutralPct,
+    negative: negativePct,
+  };
+  const concerns = Object.entries(dashboard?.metrics?.grievances?.byCategory || {})
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([category]) => category);
+  const keywords = concerns.length ? concerns : [];
+  const topCategories = Object.entries(dashboard?.metrics?.grievances?.byCategory || {})
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3);
+  const sentimentLabel = positivePct >= neutralPct && positivePct >= negativePct
+    ? 'Positive'
+    : neutralPct >= positivePct && neutralPct >= negativePct
+      ? 'Neutral'
+      : 'Negative';
 
   return (
     <div className="mla-container">
@@ -50,7 +59,7 @@ export default function CitizenSentimentDashboard() {
                 fill="none"
                 stroke="#10b981"
                 strokeWidth="20"
-                strokeDasharray={`${(72 / 100) * 314} 314`}
+                strokeDasharray={`${(positivePct / 100) * 314} 314`}
               />
               {/* Neutral section (Yellow) */}
               <path
@@ -58,7 +67,7 @@ export default function CitizenSentimentDashboard() {
                 fill="none"
                 stroke="#f59e0b"
                 strokeWidth="20"
-                strokeDasharray={`${(18 / 100) * 314} 314`}
+                strokeDasharray={`${(neutralPct / 100) * 314} 314`}
               />
               {/* Negative section (Red) */}
               <path
@@ -66,11 +75,12 @@ export default function CitizenSentimentDashboard() {
                 fill="none"
                 stroke="#ef4444"
                 strokeWidth="20"
+                strokeDasharray={`${(negativePct / 100) * 314} 314`}
               />
               
               {/* Center text */}
               <text x="150" y="140" textAnchor="middle" fontSize="24" fontWeight="bold" fill="#1f2937">
-                Overall: Positive
+                Overall: {sentimentLabel}
               </text>
             </svg>
           </div>
@@ -113,11 +123,15 @@ export default function CitizenSentimentDashboard() {
       <div className="mla-section">
         <h2>🔥 Trending Keywords</h2>
         <div className="keywords-cloud">
-          {keywords.map((keyword, idx) => (
-            <span key={idx} className="keyword-tag" style={{ fontSize: `${12 + idx * 2}px` }}>
-              {keyword}
-            </span>
-          ))}
+          {keywords.length ? (
+            keywords.map((keyword, idx) => (
+              <span key={idx} className="keyword-tag" style={{ fontSize: `${12 + idx * 2}px` }}>
+                {keyword}
+              </span>
+            ))
+          ) : (
+            <div className="no-data-text">No trending keywords available</div>
+          )}
         </div>
       </div>
 
@@ -133,27 +147,28 @@ export default function CitizenSentimentDashboard() {
       <div className="mla-section">
         <h2>Feedback by Category</h2>
         <div className="feedback-categories">
-          <div className="feedback-item">
-            <span className="category-name">Services</span>
-            <span className="sentiment-badge positive"></span>
-          </div>
-          <div className="feedback-item">
-            <span className="category-name">Officials</span>
-            <span className="sentiment-badge neutral"></span>
-          </div>
-          <div className="feedback-item">
-            <span className="category-name">Infrastructure</span>
-            <span className="sentiment-badge negative"></span>
-          </div>
+          {topCategories.length ? (
+            topCategories.map(([category, count], idx) => (
+              <div key={category} className="feedback-item">
+                <span className="category-name">{category}</span>
+                <span className={`sentiment-badge ${idx === 0 ? 'positive' : idx === 1 ? 'neutral' : 'negative'}`}></span>
+                <span className="category-count">{count} complaints</span>
+              </div>
+            ))
+          ) : (
+            <div className="feedback-item">
+              <span className="category-name">No category feedback available</span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="mla-section">
         <div className="detail-buttons">
-          <button className="btn-primary">View Detailed Report</button>
-          <button className="btn-primary">Export Sentiment Data</button>
-          <button className="btn-primary">View Negative Feedback</button>
+          <button type="button" className="btn-primary" onClick={handleViewDetailedReport}>View Detailed Report</button>
+          <button type="button" className="btn-primary" onClick={handleExportSentimentData}>Export Sentiment Data</button>
+          <button type="button" className="btn-primary" onClick={handleViewNegativeFeedback}>View Negative Feedback</button>
         </div>
       </div>
     </div>

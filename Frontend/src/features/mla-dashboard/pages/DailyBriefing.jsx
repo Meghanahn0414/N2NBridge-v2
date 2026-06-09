@@ -1,35 +1,55 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/DailyBriefing.css';
+import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+
+const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
 export default function DailyBriefing() {
-  const [briefing] = useState({
-    greeting: 'Good Morning MLA',
+  const navigate = useNavigate();
+  const { dashboard, loading, error } = useMlaDashboard();
+  const summary = dashboard?.summary || {};
+
+  const handleNavigate = (route) => () => navigate(route);
+  const handleTakeAction = () => navigate(ROUTES.mlaComplaintsDashboard);
+  const recentAlert = dashboard?.recentAlerts?.[0];
+  const topConcernTitle = recentAlert
+    ? `${recentAlert.alertType || recentAlert.type || 'Alert'} in ${recentAlert.location || recentAlert.wardId || 'your area'}`
+    : summary.openComplaints > 0
+      ? 'Pending complaints need attention'
+      : 'No urgent issues detected';
+
+  const briefing = {
+    greeting: `Good ${new Date().getHours() < 12 ? 'Morning' : 'Afternoon'} MLA`,
     date: new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-    newComplaints:'',
-    resolved:'',
-    criticalAlerts:'',
-    events:'',
-    pendingEscalations:'',
-    topConcern: '',
-    recommendedAction: '',
-  });
+    newComplaints: formatNumber(summary.totalComplaints),
+    resolved: formatNumber(summary.resolvedThisMonth),
+    criticalAlerts: formatNumber(summary.criticalAlerts),
+    events: formatNumber(summary.upcomingEvents),
+    pendingEscalations: formatNumber(summary.openComplaints),
+    topConcern: topConcernTitle,
+    recommendedAction: summary.openComplaints > 0
+      ? 'Review open complaints and assign officers immediately.'
+      : 'Monitor ongoing events and community sentiment.',
+  };
 
-  const [actionItems] = useState([
-    { id: 1, title: '', priority: '', time: '' },
-    { id: 2, title: '', priority: '', time: '' },
-    { id: 3, title: '', priority: '', time: '' },
-    { id: 4, title: '', priority: '', time: '' },
-  ]);
+  const actionItems = (dashboard?.recentAlerts || []).slice(0, 4).map((alert, idx) => ({
+    id: alert._id || idx,
+    title: alert.alertType || alert.type || 'Review new alert',
+    priority: (alert.priority || 'HIGH').toLowerCase(),
+    time: alert.createdAt ? new Date(alert.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+  }));
 
-  const [metrics] = useState({
-    citizenSatisfaction: '',
-    healthScore: '',
-    resolvedThisMonth: '',
-    activeAlerts: '',
-    teamOnDuty: '',
-    eventsThisWeek: '',
-  });
+  const metrics = {
+    citizenSatisfaction: formatNumber(summary.citizenSatisfaction),
+    healthScore: formatNumber(summary.healthScore),
+    resolvedThisMonth: formatNumber(summary.resolvedThisMonth),
+    activeAlerts: formatNumber(summary.criticalAlerts),
+    teamOnDuty: formatNumber(summary.activeOfficers),
+    eventsThisWeek: formatNumber(summary.upcomingEvents),
+  };
 
   return (
     <div className="mla-container daily-briefing-container">
@@ -92,7 +112,7 @@ export default function DailyBriefing() {
               <span className="action-text">{briefing.recommendedAction}</span>
             </div>
           </div>
-          <button className="btn-danger">Take Action</button>
+          <button className="btn-danger" onClick={handleTakeAction}>Take Action</button>
         </div>
       </div>
 
@@ -100,16 +120,25 @@ export default function DailyBriefing() {
       <div className="mla-section">
         <h2>📋 Your Action Items Today</h2>
         <div className="action-items-list">
-          {actionItems.map(item => (
-            <div key={item.id} className={`action-item ${item.priority}`}>
-              <input type="checkbox" />
-              <div className="action-content">
-                <h4>{item.title}</h4>
-                <span className="action-time">🕐 {item.time}</span>
+          {actionItems.length > 0 ? (
+            actionItems.map(item => (
+              <div key={item.id} className={`action-item ${item.priority}`}>
+                <input type="checkbox" />
+                <div className="action-content">
+                  <h4>{item.title}</h4>
+                  <span className="action-time">🕐 {item.time}</span>
+                </div>
+                <span className={`priority-badge ${item.priority}`}>{item.priority}</span>
               </div>
-              <span className={`priority-badge ${item.priority}`}>{item.priority}</span>
+            ))
+          ) : (
+            <div className="action-item no-data">
+              <div className="action-content">
+                <h4>No current action items</h4>
+                <span className="action-time">No recent alerts were found.</span>
+              </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
@@ -159,12 +188,12 @@ export default function DailyBriefing() {
       <div className="mla-section">
         <h2>Quick Navigation</h2>
         <div className="quick-nav-buttons">
-          <button className="nav-btn">📊 View Heat Map</button>
-          <button className="nav-btn">🚨 Emergency Center</button>
-          <button className="nav-btn">💬 Send Broadcast</button>
-          <button className="nav-btn">👥 Team Performance</button>
-          <button className="nav-btn">🤖 AI Insights</button>
-          <button className="nav-btn">📋 All Complaints</button>
+          <button className="nav-btn" onClick={handleNavigate(ROUTES.mlaHeatMap)}>📊 View Heat Map</button>
+          <button className="nav-btn" onClick={handleNavigate(ROUTES.mlaEmergencyCenter)}>🚨 Emergency Center</button>
+          <button className="nav-btn" onClick={handleNavigate(ROUTES.mlaCommunications)}>💬 Send Broadcast</button>
+          <button className="nav-btn" onClick={handleNavigate(ROUTES.mlaTeamPerformance)}>👥 Team Performance</button>
+          <button className="nav-btn" onClick={handleNavigate(ROUTES.mlaAIInsights)}>🤖 AI Insights</button>
+          <button className="nav-btn" onClick={handleNavigate(ROUTES.mlaComplaintsDashboard)}>📋 All Complaints</button>
         </div>
       </div>
 
