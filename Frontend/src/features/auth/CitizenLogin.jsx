@@ -38,37 +38,37 @@ export default function CitizenLogin() {
           <p className="auth-subtitle">Enter OTP to Access</p>
         </div>
 
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '10px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Login Method
-          </label>
-          <div style={{ display: 'flex', gap: '20px', padding: '12px', backgroundColor: 'rgba(248, 250, 252, 0.8)', borderRadius: '10px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#334155', fontWeight: '500' }}>
-              <input
-                type="radio"
-                name="loginType"
-                value="phone"
-                checked={type === "phone"}
-                onChange={(e) => setType(e.target.value)}
-                style={{ cursor: 'pointer', accentColor: '#22d3ee' }}
-              />
-              Phone
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#334155', fontWeight: '500' }}>
-              <input
-                type="radio"
-                name="loginType"
-                value="email"
-                checked={type === "email"}
-                onChange={(e) => setType(e.target.value)}
-                style={{ cursor: 'pointer', accentColor: '#22d3ee' }}
-              />
-              Email
-            </label>
-          </div>
-        </div>
-
         <form className="auth-form" onSubmit={(e) => { e.preventDefault(); handleSendOtp(); }}>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '10px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Login Method
+            </label>
+            <div style={{ display: 'flex', gap: '20px', padding: '12px', backgroundColor: 'rgba(248, 250, 252, 0.8)', borderRadius: '10px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#334155', fontWeight: '500' }}>
+                <input
+                  type="radio"
+                  name="loginType"
+                  value="phone"
+                  checked={type === "phone"}
+                  onChange={(e) => setType(e.target.value)}
+                  style={{ cursor: 'pointer', accentColor: '#22d3ee' }}
+                />
+                Phone
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#334155', fontWeight: '500' }}>
+                <input
+                  type="radio"
+                  name="loginType"
+                  value="email"
+                  checked={type === "email"}
+                  onChange={(e) => setType(e.target.value)}
+                  style={{ cursor: 'pointer', accentColor: '#22d3ee' }}
+                />
+                Email
+              </label>
+            </div>
+          </div>
+
           <div className="form-group">
             <label className="form-label">
               {type === "phone" ? "Phone Number" : "Email Address"} <span className="required">*</span>
@@ -97,7 +97,6 @@ export default function CitizenLogin() {
           </button>
         </form>
 
-        <div className="auth-divider"></div>
       </div>
     </div>
   );
