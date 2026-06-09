@@ -140,7 +140,11 @@ export default function AlertManagement() {
               {alerts.map(alert => (
                 <tr key={alert._id || alert.id}>
                   <td>{alert.type || 'Emergency'}</td>
-                  <td>{alert.location || '-'}</td>
+                  <td>
+                    {typeof alert.location === 'object' && alert.location?.coordinates 
+                      ? `${alert.location.coordinates[1]}, ${alert.location.coordinates[0]}` 
+                      : (alert.location || '-')}
+                  </td>
                   <td><span className="priority-badge" style={{color: alert.priority?.toLowerCase()}}>{alert.priority}</span></td>
                   <td>{alert.reporter || 'System'}</td>
                   <td>{alert.assignedTeam || 'Unassigned'}</td>

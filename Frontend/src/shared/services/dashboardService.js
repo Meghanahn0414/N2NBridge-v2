@@ -1,20 +1,12 @@
 import api from "./api";
 
 const ROLE_ENDPOINT = {
-<<<<<<< HEAD
-  CITIZEN: "/api/analytics/grievances",
-  FIELD_OFFICER: "/api/analytics/dashboard",
-  ADMIN: "/api/analytics/dashboard",
-  REPRESENTATIVE: "/api/analytics/dashboard",
-  CONSTITUENCY_MANAGER: "/api/analytics/dashboard",
-=======
   CITIZEN: "/api/dashboard/citizen",
   FIELD_OFFICER: "/api/dashboard/officer",
   ADMIN: "/api/dashboard/admin",
   REPRESENTATIVE: "/api/dashboard/mla",
   CONSTITUENCY_MANAGER: "/api/dashboard/mla",
   MLA: "/api/dashboard/mla",
->>>>>>> 271478c11829ebfafc1133b2388027ad233ec912
 };
 
 /**
@@ -23,20 +15,23 @@ const ROLE_ENDPOINT = {
 function transformAnalyticsData(analyticsData, role) {
   if (!analyticsData) return null;
 
-  // Extract the data from response
+  // The backend returns either a flat structure or a nested one with metrics
+  // Check if this is a dashboard response (with metrics) or raw analytics data
   const data = analyticsData.data || analyticsData;
+  const metrics = data.metrics || data;
   
   if (role === "CITIZEN") {
     // For citizens, transform grievance analytics into grievanceSummary
+    const grievanceMetrics = metrics.grievances || {};
     return {
       grievanceSummary: {
-        total: data.total || 0,
-        pending: (data.byStatus?.NEW || 0) + (data.byStatus?.ASSIGNED || 0),
-        completed: data.byStatus?.RESOLVED || 0,
+        total: grievanceMetrics.total || 0,
+        pending: (grievanceMetrics.byStatus?.NEW || 0) + (grievanceMetrics.byStatus?.ASSIGNED || 0),
+        completed: grievanceMetrics.byStatus?.RESOLVED || 0,
       },
       registeredEvents: [], // Will be populated separately if needed
       recentNotifications: [], // Will be populated separately if needed
-      metrics: data, // Keep original analytics data for reference
+      metrics: metrics, // Keep original analytics data for reference
     };
   }
 
@@ -48,23 +43,26 @@ function transformAnalyticsData(analyticsData, role) {
       pendingAlerts: data.pendingAlerts || 0,
       tasks: data.tasks || [],
       grievances: data.grievances || [],
-      metrics: data,
+      metrics: metrics,
     };
   }
 
   // For admins and others, return the full metrics structure
   return {
     metrics: {
-      grievances: {
-        total: data.total || 0,
-        byStatus: data.byStatus || {},
-        byPriority: data.byPriority || {},
-        byCategory: data.byCategory || {},
-      },
-      alerts: data.alerts || { total: 0, byPriority: {} },
-      events: data.events || { totalEvents: 0 },
-      users: data.users || { total: 0 },
+      grievances: metrics.grievances || { total: 0, byStatus: {}, byPriority: {}, byCategory: {} },
+      alerts: metrics.alerts || { total: 0, byPriority: {} },
+      events: metrics.events || { totalEvents: 0 },
+      users: metrics.users || { total: 0, byRole: {} },
+      resolutionTime: metrics.resolutionTime || {},
+      activeUsers: metrics.activeUsers || { active: 0, trend: 0 },
+      sentimentDistribution: metrics.sentimentDistribution || {},
     },
+    overview: data.overview,
+    recentActivity: data.recentActivity,
+    teamPerformance: data.teamPerformance,
+    grievanceTrends: data.grievanceTrends,
+    systemHealth: data.systemHealth,
   };
 }
 
