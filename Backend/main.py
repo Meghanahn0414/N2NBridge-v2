@@ -14,7 +14,6 @@ sys.path.insert(0, _src_path)
 from alerts.routes import router as alerts_router
 from analytics.routes import router as analytics_router
 from auth.routes import router as auth_router
-from complaints.routes import router as complaints_router
 from config.database import MongoDatabase
 from config.settings import settings
 from dashboard.routes import router as dashboard_router
@@ -145,7 +144,6 @@ async def health_check():
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(grievances_router)
-app.include_router(complaints_router)
 app.include_router(emergency_router)
 app.include_router(alerts_router)
 app.include_router(events_router)

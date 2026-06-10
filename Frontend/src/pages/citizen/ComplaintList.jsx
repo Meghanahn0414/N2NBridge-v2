@@ -5,6 +5,7 @@ import {
   getCitizenComplaints,
   fetchComplaintCategories,
   mapCategoryName,
+  getCurrentUserId,
 } from "../../features/complaints/complaintService";
 
 export default function ComplaintList() {
@@ -17,6 +18,14 @@ export default function ComplaintList() {
   useEffect(() => {
     async function loadData() {
       try {
+        const userId = getCurrentUserId();
+        
+        if (!userId) {
+          setError("No user ID found. Please login again.");
+          setLoading(false);
+          return;
+        }
+
         const [complaintData, categoryData] = await Promise.all([
           getCitizenComplaints(),
           fetchComplaintCategories(),
@@ -66,8 +75,11 @@ export default function ComplaintList() {
         ) : error ? (
           <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">{error}</div>
         ) : complaints.length === 0 ? (
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700">
-            No complaints found. Create one to get started.
+          <div className="space-y-4">
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700">
+              No complaints found. Create one to get started.
+            </div>
+
           </div>
         ) : (
           <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">

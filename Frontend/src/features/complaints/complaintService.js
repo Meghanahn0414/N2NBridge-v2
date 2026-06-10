@@ -47,9 +47,8 @@ function getStoredUserId() {
 export function getCurrentUserId() {
   const token = localStorage.getItem("token");
   const payload = parseJwt(token);
-  return (
-    payload?.user_id || payload?.id || payload?._id || getStoredUserId() || null
-  );
+  const userId = payload?.user_id || payload?.id || payload?._id;
+  return userId || getStoredUserId() || null;
 }
 
 async function request(path, options) {

@@ -188,7 +188,7 @@ class EventService {
       }
 
       const response = await fetch(
-        `${API_BASE_URL}/complaints/stats/summary`,
+        `${API_BASE_URL}/grievances/stats/summary`,
         { headers: this.getHeaders() }
       );
 
@@ -216,7 +216,7 @@ class EventService {
       }
 
       const response = await fetch(
-        `${API_BASE_URL}/notifications/stats`,
+        `${API_BASE_URL}/notifications/stats/stats`,
         { headers: this.getHeaders() }
       );
 

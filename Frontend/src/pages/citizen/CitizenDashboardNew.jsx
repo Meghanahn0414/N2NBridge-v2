@@ -122,13 +122,7 @@ export default function CitizenDashboardNew() {
       {/* Main Content */}
       <div className="dashboard-content">
         {/* Alert Banner */}
-        <div className="alert-banner">
-          <span className="alert-icon">⚠️</span>
-          <div className="alert-content">
-            <p className="alert-title">Water cut today</p>
-            <p className="alert-time">9AM-5PM - {profile.ward || "Ward"}</p>
-          </div>
-        </div>
+        
 
         {/* Stats Grid */}
         <div className="stats-grid">
