@@ -66,14 +66,19 @@ export default function CreateComplaint() {
       };
 
       const response = await createComplaint(payload);
+      const complaintId = response.id || response._id;
+
+      if (!complaintId) {
+        throw new Error("Complaint created successfully, but the server did not return a valid complaint ID.");
+      }
 
       if (form.attachment) {
-        await uploadComplaintAttachment(response.id, form.attachment);
+        await uploadComplaintAttachment(complaintId, form.attachment);
       }
 
       setSuccess("Complaint submitted successfully.");
       setForm({ categoryId: "", description: "", address: "", wardId: "", priority: "LOW", attachment: null });
-      navigate(`/citizen/complaints/${response.id}`);
+      navigate(`/citizen/complaints/${complaintId}`);
     } catch (err) {
       setError(err.message || "Unable to submit complaint.");
     } finally {

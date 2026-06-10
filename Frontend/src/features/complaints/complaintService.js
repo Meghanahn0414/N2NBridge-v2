@@ -1,5 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-const API_BASE = `${API_BASE_URL}/api`;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim();
+const API_BASE = API_BASE_URL ? `${API_BASE_URL.replace(/\/$/, "")}/api` : "/api";
 
 function getAuthHeaders(contentType = "application/json") {
   const token = localStorage.getItem("token");
@@ -33,18 +33,44 @@ function parseJwt(token) {
   }
 }
 
+function getStoredUserId() {
+  try {
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) return null;
+    const user = JSON.parse(storedUser);
+    return user?.user_id || user?.id || user?._id || null;
+  } catch (error) {
+    return null;
+  }
+}
+
 export function getCurrentUserId() {
   const token = localStorage.getItem("token");
   const payload = parseJwt(token);
-  return payload?.user_id || null;
+  return (
+    payload?.user_id || payload?.id || payload?._id || getStoredUserId() || null
+  );
 }
 
 async function request(path, options) {
-  const response = await fetch(`${API_BASE}${path}`, options);
-  const data = await response.json();
+  const url = `${API_BASE}${path}`;
+  let response;
+
+  try {
+    response = await fetch(url, options);
+  } catch (error) {
+    throw new Error(`Network request failed for ${url}: ${error.message}`);
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error(`Invalid JSON response from ${url}: ${error.message}`);
+  }
 
   if (!response.ok) {
-    throw new Error(data?.detail || data?.message || "Request failed");
+    throw new Error(data?.detail || data?.message || `Request failed (${response.status})`);
   }
 
   return data;
@@ -58,7 +84,7 @@ export function fetchComplaintCategories() {
 }
 
 export function createComplaint(payload) {
-  return request(`/grievances/`, {
+  return request(`/grievances`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -67,6 +93,10 @@ export function createComplaint(payload) {
 
 export function getCitizenComplaints() {
   const citizenId = getCurrentUserId();
+  if (!citizenId) {
+    throw new Error("Unable to identify current citizen. Please login again.");
+  }
+
   return request(`/grievances/citizen/${citizenId}`, {
     method: "GET",
     headers: getAuthHeaders(),

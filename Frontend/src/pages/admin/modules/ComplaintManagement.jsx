@@ -207,6 +207,7 @@ export default function ComplaintManagement() {
                 <th>Complaint #</th>
                 <th>Description</th>
                 <th>Address</th>
+                <th>Citizen</th>
                 <th>Priority</th>
                 <th>Assigned To</th>
                 <th>Status</th>
@@ -217,7 +218,7 @@ export default function ComplaintManagement() {
             <tbody>
               {filteredComplaints.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="no-data">
+                  <td colSpan="10" className="no-data">
                     No complaints found.
                   </td>
                 </tr>
@@ -228,6 +229,7 @@ export default function ComplaintManagement() {
                     <td>{complaint.complaintNumber || 'N/A'}</td>
                     <td>{complaint.description ? complaint.description.substring(0, 30) + '...' : 'N/A'}</td>
                     <td>{complaint.address || 'N/A'}</td>
+                    <td>{complaint.citizenName || (complaint.citizenId ? String(complaint.citizenId).substring(0, 8) : 'Unknown')}</td>
                     <td>
                       <span style={{ 
                         color: getPriorityColor(complaint.priority),
@@ -245,10 +247,10 @@ export default function ComplaintManagement() {
                     <td>{complaint.createdAt ? new Date(complaint.createdAt).toLocaleDateString() : 'N/A'}</td>
                     <td>
                       <div className="action-buttons">
-                        <button onClick={() => handleReassign(complaint._id)} title="Reassign">📤</button>
-                        <button onClick={() => handleEscalate(complaint._id)} title="Escalate">📈</button>
-                        <button onClick={() => handleClose(complaint._id)} title="Close">✓</button>
-                        <button onClick={() => handleDownloadReport(complaint._id)} title="Download">⬇</button>
+                        <button className="reassign" onClick={() => handleReassign(complaint._id)} title="Reassign">📤</button>
+                        <button className="escalate" onClick={() => handleEscalate(complaint._id)} title="Escalate">📈</button>
+                        <button className="close" onClick={() => handleClose(complaint._id)} title="Close">✓</button>
+                        <button className="download" onClick={() => handleDownloadReport(complaint._id)} title="Download">⬇</button>
                       </div>
                     </td>
                   </tr>

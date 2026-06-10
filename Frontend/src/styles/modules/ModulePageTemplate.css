@@ -200,7 +200,7 @@
 .users-table th,
 .complaints-table th,
 .audit-logs-table th {
-  padding: 16px;
+  padding: 12px 14px;
   text-align: left;
   font-size: 13px;
   font-weight: 600;
@@ -225,9 +225,10 @@
 .users-table td,
 .complaints-table td,
 .audit-logs-table td {
-  padding: 14px 16px;
+  padding: 10px 14px;
   font-size: 14px;
   color: #4b5563;
+  line-height: 1.4;
 }
 
 .users-table .no-data,
