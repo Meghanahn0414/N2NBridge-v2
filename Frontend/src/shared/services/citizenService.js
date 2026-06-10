@@ -19,6 +19,13 @@ export function updateCitizenProfile(profileData) {
   return api.put(`/api/users/${citizenId}`, profileData).then((res) => res.data);
 }
 
+export function uploadCitizenProfilePhoto(file) {
+  const citizenId = requireCitizenId();
+  const formData = new FormData();
+  formData.append("file", file);
+  return api.post(`/api/users/${citizenId}/upload-profile-photo`, formData).then((res) => res.data);
+}
+
 export function getCitizenNotifications(page = 1, perPage = 10) {
   return api
     .get(`/api/notifications`, {

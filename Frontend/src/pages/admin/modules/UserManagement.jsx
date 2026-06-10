@@ -120,13 +120,13 @@ export default function UserManagement() {
             <option value="REPRESENTATIVE">Representative</option>
             <option value="ADMIN">Admin</option>
           </select>
-
+{/* 
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active</option>
             <option value="INACTIVE">Inactive</option>
             <option value="BLOCKED">Blocked</option>
-          </select>
+          </select> */}
         </div>
 
         <button className="btn-primary" onClick={() => setShowAddModal(true)}>
@@ -139,14 +139,14 @@ export default function UserManagement() {
           <span className="stat-label">Total Users</span>
           <span className="stat-value">{totalUsers}</span>
         </div>
-        <div className="stat-card">
+        {/* <div className="stat-card">
           <span className="stat-label">Active Users</span>
           <span className="stat-value">{activeUsers}</span>
-        </div>
-        <div className="stat-card">
+        </div> */}
+        {/* <div className="stat-card">
           <span className="stat-label">Blocked Users</span>
           <span className="stat-value">{blockedUsers}</span>
-        </div>
+        </div> */}
       </div>
 
       {loading ? (
@@ -163,7 +163,7 @@ export default function UserManagement() {
                 <th>Email</th>
                 <th>Role</th>
                 <th>Ward/Constituency</th>
-                <th>Status</th>
+                {/* <th>Status</th> */}
                 <th>Last Login</th>
                 <th>Actions</th>
               </tr>
@@ -185,11 +185,11 @@ export default function UserManagement() {
                     <td>{user.email}</td>
                     <td>{user.role}</td>
                     <td>{user.constituencyId || user.wardId || '-'}</td>
-                    <td>
+                    {/* <td>
                       <span className={`status-badge status-${user.status?.toLowerCase() || 'active'}`}>
                         {user.status || 'ACTIVE'}
                       </span>
-                    </td>
+                    </td> */}
                     <td>{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</td>
                     <td className="actions">
                       <button 

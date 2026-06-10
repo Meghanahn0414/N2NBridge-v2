@@ -143,14 +143,6 @@ export default function Sidebar() {
                   >
                     <span style={{ marginRight: '8px' }}>👥</span> User Management
                   </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.rolePermissions) ? 'active' : ''}`}
-                    onClick={() => navigate(ROUTES.rolePermissions)}
-                  >
-                    <span style={{ marginRight: '8px' }}>🔐</span> Role & Permissions
-                  </button>
-
                   <button
                     className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.constituencyManagement) ? 'active' : ''}`}
                     onClick={() => navigate(ROUTES.constituencyManagement)}
@@ -280,6 +272,12 @@ export default function Sidebar() {
               >
                 <span style={{ marginRight: '10px' }}>📝</span> Registration
               </button>
+              <button
+                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.rolePermissions) ? 'active' : ''}`}
+                    onClick={() => navigate(ROUTES.rolePermissions)}
+                  >
+                    <span style={{ marginRight: '8px' }}>🔐</span> Role & Permissions
+                  </button>
               <button
                 className={`sidebar-item ${isActive(ROUTES.mlaList) ? 'active' : ''}`}
                 onClick={() => navigate(ROUTES.mlaList)}

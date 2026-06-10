@@ -205,13 +205,7 @@ export default function RegistrationPage() {
       setPhotoPreview("");
       setRole("");
 
-      if (role === "REPRESENTATIVE") {
-        navigate(ROUTES.mlaList);
-      } else if (role === "CONSTITUENCY_MANAGER") {
-        navigate(ROUTES.managerList);
-      } else if (role === "FIELD_OFFICER") {
-        navigate(ROUTES.fieldOfficerList);
-      }
+      navigate(ROUTES.rolePermissions, { state: { selectedRole: role } });
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.response?.data?.detail || err.message || "Failed to register user.";
       setError(errorMessage);

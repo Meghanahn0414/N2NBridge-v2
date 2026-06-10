@@ -2,6 +2,7 @@
 User Service
 """
 import logging
+import re
 from typing import Dict, List, Optional
 
 from bson import ObjectId
@@ -33,6 +34,12 @@ class UserService:
                 user_data["citizenId"] = IDGenerator.generate_citizen_id()
                 logger.info(f"Generated citizen ID: {user_data['citizenId']}")
             
+            # Normalize contact fields for consistent lookup and storage
+            if "email" in user_data:
+                user_data["email"] = UserService.normalize_email(user_data["email"])
+            if "mobile" in user_data:
+                user_data["mobile"] = UserService.normalize_mobile(user_data["mobile"])
+
             # Handle audit fields - use "system" for public registration (when user_id is None)
             audit_user_id = user_id if user_id else "system"
             user_data.update(Helper.audit_fields(audit_user_id))
@@ -55,11 +62,31 @@ class UserService:
         })
     
     @staticmethod
+    def normalize_email(email: Optional[str]) -> Optional[str]:
+        if not email:
+            return None
+        normalized = email.strip().lower()
+        return normalized if normalized else None
+
+    @staticmethod
+    def normalize_mobile(mobile: Optional[str]) -> Optional[str]:
+        if not mobile:
+            return None
+        normalized = re.sub(r"\D", "", mobile)
+        return normalized if normalized else None
+
+    @staticmethod
     def get_user_by_email(email: str) -> Optional[dict]:
         """Get user by email"""
         db = MongoDatabase.get_db()
+        normalized_email = UserService.normalize_email(email)
+        if not normalized_email:
+            return None
         return db.users.find_one({
-            "email": email,
+            "email": {
+                "$regex": f"^{re.escape(normalized_email)}$",
+                "$options": "i"
+            },
             "isDeleted": False
         })
     
@@ -67,8 +94,15 @@ class UserService:
     def get_user_by_mobile(mobile: str) -> Optional[dict]:
         """Get user by mobile"""
         db = MongoDatabase.get_db()
+        normalized_mobile = UserService.normalize_mobile(mobile)
+        if not normalized_mobile:
+            return None
+        separator_pattern = r"[^\da-zA-Z]*"
+        pattern = r"^" + separator_pattern.join(re.escape(d) for d in normalized_mobile) + separator_pattern + r"$"
         return db.users.find_one({
-            "mobile": mobile,
+            "mobile": {
+                "$regex": pattern
+            },
             "isDeleted": False
         })
     
@@ -87,6 +121,12 @@ class UserService:
     def update_user(user_id: str, update_data: dict, updated_by: str) -> bool:
         """Update user"""
         db = MongoDatabase.get_db()
+
+        if "email" in update_data:
+            update_data["email"] = UserService.normalize_email(update_data["email"])
+        if "mobile" in update_data:
+            update_data["mobile"] = UserService.normalize_mobile(update_data["mobile"])
+
         update_data.update(Helper.audit_fields(updated_by, is_update=True))
         
         result = db.users.update_one(
