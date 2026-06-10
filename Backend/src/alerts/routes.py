@@ -130,3 +130,22 @@ async def upload_alert_media(
         raise HTTPException(status_code=500, detail="Upload failed")
 
 
+@router.post("/broadcast", response_model=AlertResponse)
+async def broadcast_alert(alert_data: AlertCreate):
+    """Broadcast alert to all users"""
+    try:
+        # Create broadcast alert
+        alert_dict = alert_data.dict()
+        alert_dict["isBroadcast"] = True
+        alert_id = AlertService.create_alert(alert_dict, None)
+        
+        if not alert_id:
+            raise HTTPException(status_code=400, detail="Failed to broadcast alert")
+        
+        alert = AlertService.get_alert_by_id(alert_id)
+        return AlertResponse(**Helper.convert_mongo_doc(alert))
+    except Exception as e:
+        logger.error(f"Broadcast alert error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to broadcast alert: {str(e)}")
+
+

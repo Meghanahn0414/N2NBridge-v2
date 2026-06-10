@@ -1,12 +1,18 @@
 """
 Grievance Service
 """
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional
+
+from bson import ObjectId
 from config.database import MongoDatabase
 from bson import ObjectId
 from typing import Optional, List, Dict
 from datetime import datetime
 import logging
 from utils.helper import Helper
+from utils.id_generator import IDGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +46,8 @@ class GrievanceService:
         """Create grievance"""
         db = MongoDatabase.get_db()
         
+        # Generate unique 4-digit grievance ID
+        grievance_data["grievanceId"] = IDGenerator.generate_grievance_id()
         grievance_data["complaintNumber"] = Helper.generate_complaint_number()
         grievance_data["status"] = "NEW"
         grievance_data["escalationLevel"] = 0
@@ -74,7 +82,7 @@ class GrievanceService:
         grievance_data.update(Helper.audit_fields(audit_user_id))
         
         result = db.grievances.insert_one(grievance_data)
-        logger.info(f"Grievance created: {result.inserted_id}")
+        logger.info(f"Grievance created with ID {grievance_data['grievanceId']}: {result.inserted_id}")
         return str(result.inserted_id)
     
     @staticmethod

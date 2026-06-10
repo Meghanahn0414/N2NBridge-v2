@@ -32,13 +32,22 @@ export default function ExecutiveDashboard() {
   const avgRegistrationsPerEvent = Number(dashboard?.overview?.events?.avgRegistrationsPerEvent || 0);
   const eventParticipationPct = Math.min(100, Math.round(avgRegistrationsPerEvent * 10));
 
-  const attentionNeeded = (dashboard?.recentAlerts || []).slice(0, 4).map((alert, idx) => ({
-    id: alert._id || idx,
-    icon: '⚠️',
-    title: alert.alertType || alert.type || 'Alert',
-    ward: alert.location || alert.wardId || 'Unknown ward',
-    priority: (alert.priority || 'LOW').toLowerCase(),
-  }));
+  const attentionNeeded = (dashboard?.recentAlerts || []).slice(0, 4).map((alert, idx) => {
+    let ward = 'Unknown location';
+    if (alert.wardId && typeof alert.wardId === 'string') {
+      ward = alert.wardId;
+    } else if (alert.location?.type === 'Point' && alert.location?.coordinates) {
+      const [lon, lat] = alert.location.coordinates;
+      ward = `📍 ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+    }
+    return {
+      id: alert._id || idx,
+      icon: '⚠️',
+      title: alert.alertType || alert.type || 'Alert',
+      ward,
+      priority: (alert.priority || 'LOW').toLowerCase(),
+    };
+  });
 
   return (
     <div className="mla-container">

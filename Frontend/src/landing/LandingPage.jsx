@@ -1,10 +1,18 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "../styles/LandingPage.css";
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [showLoginOptions, setShowLoginOptions] = useState(false);
+
+  const handleLogin = (path) => {
+    setShowLoginOptions(false);
+    // Use a small delay to ensure modal closes before navigation
+    setTimeout(() => {
+      navigate(path);
+    }, 100);
+  };
 
   return (
     <div className="landing-page">
@@ -23,35 +31,65 @@ export default function LandingPage() {
           <div className="login-options-modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="login-options-title">Select Your Login Type</h2>
             <div className="login-options-grid">
-              <Link to="/citizen-login" className="login-option-card citizen">
+              <div 
+                className="login-option-card citizen"
+                onClick={() => handleLogin("/citizen-login")}
+                role="button"
+                tabIndex={0}
+                onKeyPress={(e) => e.key === "Enter" && handleLogin("/citizen-login")}
+              >
                 <div className="login-option-icon">👤</div>
                 <h3>Citizen</h3>
                 <p>Login as a citizen</p>
-              </Link>
+              </div>
               
-              <Link to="/admin-signup" className="login-option-card admin">
+              <div 
+                className="login-option-card admin"
+                onClick={() => handleLogin("/admin-signup")}
+                role="button"
+                tabIndex={0}
+                onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-signup")}
+              >
                 <div className="login-option-icon">👨‍💼</div>
                 <h3>Admin</h3>
                 <p>Create new account</p>
-              </Link>
+              </div>
               
-              <Link to="/admin-login?role=MANAGER" className="login-option-card manager">
+              <div 
+                className="login-option-card manager"
+                onClick={() => handleLogin("/admin-login?role=MANAGER")}
+                role="button"
+                tabIndex={0}
+                onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-login?role=MANAGER")}
+              >
                 <div className="login-option-icon">📋</div>
                 <h3>Manager</h3>
                 <p>Constituency Manager</p>
-              </Link>
+              </div>
               
-              <Link to="/admin-login?role=FIELD_OFFICER" className="login-option-card officer">
+              <div 
+                className="login-option-card officer"
+                onClick={() => handleLogin("/admin-login?role=FIELD_OFFICER")}
+                role="button"
+                tabIndex={0}
+                onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-login?role=FIELD_OFFICER")}
+              >
                 <div className="login-option-icon">🚗</div>
                 <h3>Field Officer</h3>
                 <p>Login as field officer</p>
-              </Link>
+              </div>
               
-              <Link to="/admin-login?role=REPRESENTATIVE" className="login-option-card representative">
+              <div 
+                className="login-option-card representative"
+                onClick={() => handleLogin("/admin-login?role=REPRESENTATIVE")}
+                role="button"
+                tabIndex={0}
+                onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-login?role=REPRESENTATIVE")}
+              >
                 <div className="login-option-icon">🏛️</div>
                 <h3>Representative</h3>
                 <p>MLA/Representative Login</p>
-              </Link>
+              </div>
             </div>
             <button 
               className="close-modal-btn"

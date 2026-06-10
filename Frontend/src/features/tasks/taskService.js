@@ -59,10 +59,10 @@ export async function deleteTask(taskId) {
   }
 }
 
-export async function assignTask(taskId, userId) {
+export async function assignTask(taskId, officerId) {
   try {
-    const response = await api.put(`${TASK_ENDPOINT}/${taskId}/assign`, { userId });
-    return response.data;
+    const response = await api.post(`${TASK_ENDPOINT}/${taskId}/assign/${officerId}`);
+    return Array.isArray(response.data) ? response.data[0] : response.data?.data || response.data;
   } catch (error) {
     console.error("Error assigning task:", error);
     throw error;

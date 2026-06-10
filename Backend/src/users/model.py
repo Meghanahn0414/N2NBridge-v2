@@ -25,15 +25,6 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """User creation schema"""
     password: str
-    # Optional fields for different role registrations
-    partyName: Optional[str] = None
-    district: Optional[str] = None
-    department: Optional[str] = None
-    officeLocation: Optional[str] = None
-    managerCode: Optional[str] = None
-    assignedArea: Optional[str] = None
-    managerId: Optional[str] = None
-    fieldOfficerId: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
