@@ -107,13 +107,13 @@ export default function AdminDashboard() {
       icon: FaUsers,
       color: "blue",
     },
-    {
-      label: "Active Users Today",
-      value: dashboard?.metrics?.activeUsers?.active || dashboard?.activeUsers || 0,
-      trend: dashboard?.metrics?.activeUsers?.trend || 0,
-      icon: FaUserTie,
-      color: "green",
-    },
+    // {
+    //   label: "Active Users Today",
+    //   value: dashboard?.metrics?.activeUsers?.active || dashboard?.activeUsers || 0,
+    //   trend: dashboard?.metrics?.activeUsers?.trend || 0,
+    //   icon: FaUserTie,
+    //   color: "green",
+    // },
     {
       label: "Total Complaints",
       value: dashboard?.metrics?.grievances?.total || 0,
@@ -142,23 +142,23 @@ export default function AdminDashboard() {
       icon: FaCalendarAlt,
       color: "purple",
     },
-    {
-      label: "Active Staff",
-      value: (dashboard?.metrics?.users?.byRole?.FIELD_OFFICER || 0) + (dashboard?.metrics?.users?.byRole?.MANAGER || 0) + (dashboard?.metrics?.users?.byRole?.REPRESENTATIVE || 0),
-      trend: 0,
-      icon: FaUsers,
-      color: "teal",
-    },
+    // {
+    //   label: "Active Staff",
+    //   value: (dashboard?.metrics?.users?.byRole?.FIELD_OFFICER || 0) + (dashboard?.metrics?.users?.byRole?.MANAGER || 0) + (dashboard?.metrics?.users?.byRole?.REPRESENTATIVE || 0),
+    //   trend: 0,
+    //   icon: FaUsers,
+    //   color: "teal",
+    // },
     
   ] : [];
 
   const quickActions = [
-    { label: "Add Complaint", icon: FaPlus },
+    // { label: "Add Complaint", icon: FaPlus },
     { label: "Broadcast Alert", icon: FaBroadcastTower },
     { label: "Create Event", icon: FaCalendarAlt },
     { label: "Send Campaign", icon: FaBell },
     { label: "Add Staff", icon: FaUserTie },
-    { label: "Generate Report", icon: FaDownload },
+    // { label: "Generate Report", icon: FaDownload },
     { label: "System Backup", icon: FaCog },
     { label: "View Analytics", icon: FaChartLine },
   ];
@@ -197,7 +197,7 @@ export default function AdminDashboard() {
         <div className="dashboard-card">
           <div className="card-header-flex">
             <b><h2 className="card-title">Real-Time Activity Feed </h2></b>
-            <a href="#" className="view-all-link">View All</a>
+            {/* <a href="#" className="view-all-link">View All</a> */}
           </div>
           <div className="activity-feed">
             {recentActivity && recentActivity.length > 0 ? (
@@ -274,7 +274,7 @@ export default function AdminDashboard() {
         <div className="dashboard-card">
           <div className="card-header-flex">
             <h2 className="card-title">Team Performance (This Month)</h2>
-            <a href="#" className="view-all-link">View All</a>
+            {/* <a href="#" className="view-all-link">View All</a> */}
           </div>
           <div className="team-table">
             <div className="table-header">

@@ -2,6 +2,7 @@
 OTP Service for authentication
 """
 import random
+import re
 import time
 # import sys
 from typing import  Dict
@@ -25,6 +26,14 @@ class OTPService:
         return ''.join([str(random.randint(0, 9)) for _ in range(OTP_DIGITS)])
 
     @staticmethod
+    def normalize_contact(type_: str, value: str) -> str:
+        if type_ == "phone":
+            return re.sub(r"\D", "", (value or ""))
+        if type_ == "email":
+            return (value or "").strip().lower()
+        return value or ""
+
+    @staticmethod
     def send_otp(type_: str, value: str) -> bool:
         """
         Send OTP to phone or email
@@ -35,11 +44,12 @@ class OTPService:
             bool: True if OTP sent successfully
         """
         try:
+            normalized_value = OTPService.normalize_contact(type_, value)
             otp = OTPService.generate_otp()
             timestamp = time.time()
 
             # Store OTP
-            OTP_STORAGE[value] = {
+            OTP_STORAGE[normalized_value] = {
                 "otp": otp,
                 "timestamp": timestamp,
                 "attempts": 0,
@@ -68,22 +78,25 @@ class OTPService:
             bool: True if OTP is valid
         """
         try:
-            if value not in OTP_STORAGE:
+            # Normalize the value using the same logic as send_otp
+            is_phone = value is not None and "@" not in value
+            normalized_value = OTPService.normalize_contact("phone" if is_phone else "email", value)
+            if normalized_value not in OTP_STORAGE:
                 logger.warning(f"OTP verification failed: No OTP found for {value}")
                 return False
 
-            otp_data = OTP_STORAGE[value]
+            otp_data = OTP_STORAGE[normalized_value]
             current_time = time.time()
 
             # Check if OTP expired
             if current_time - otp_data["timestamp"] > OTP_EXPIRY:
-                del OTP_STORAGE[value]
+                del OTP_STORAGE[normalized_value]
                 logger.warning(f"OTP verification failed: OTP expired for {value}")
                 return False
 
             # Check attempt limit
             if otp_data["attempts"] >= MAX_OTP_ATTEMPTS:
-                del OTP_STORAGE[value]
+                del OTP_STORAGE[normalized_value]
                 logger.warning(f"OTP verification failed: Max attempts exceeded for {value}")
                 return False
 
@@ -94,7 +107,7 @@ class OTPService:
                 return False
 
             # OTP verified successfully
-            del OTP_STORAGE[value]
+            del OTP_STORAGE[normalized_value]
             logger.info(f"OTP verified successfully for {value}")
             return True
         except Exception as e:

@@ -230,12 +230,22 @@ async def send_otp(request: SendOtpRequest):
 async def verify_otp(request: VerifyOtpRequest):
     """Verify OTP and return JWT token"""
     try:
-        # Verify OTP
-        if not OTPService.verify_otp(request.value, request.otp):
+        normalized_value = request.value.strip()
+        is_email = "@" in normalized_value
+        normalized_email = UserService.normalize_email(normalized_value) if is_email else None
+        normalized_mobile = UserService.normalize_mobile(normalized_value)
+        is_mobile = bool(normalized_mobile) and not is_email
+
+        # Verify OTP using normalized identifiers
+        if not OTPService.verify_otp(normalized_value, request.otp):
             raise HTTPException(status_code=401, detail="Invalid or expired OTP")
         
         # Get or create user
-        user = UserService.get_user_by_email(request.value) or UserService.get_user_by_mobile(request.value)
+        user = None
+        if normalized_email:
+            user = UserService.get_user_by_email(normalized_email)
+        if not user and normalized_mobile:
+            user = UserService.get_user_by_mobile(normalized_mobile)
         
         if not user:
             # Auto-create user on first OTP verification (OTP users don't have password)
@@ -243,14 +253,11 @@ async def verify_otp(request: VerifyOtpRequest):
             import uuid
             from datetime import datetime
             
-            is_email = "@" in request.value
-            is_mobile = request.value.isdigit()
-            
-            # Generate unique mobile/email if not provided
+            # Generate unique mobile/email if not provided or when login is via email/phone only
             user_data = {
-                "fullName": request.value,
-                "mobile": request.value if is_mobile else f"otp-{uuid.uuid4().hex[:8]}",  # Unique ID if email login
-                "email": request.value if is_email else f"otp-{uuid.uuid4().hex[:8]}@otp.local",   # Unique email if phone login
+                "fullName": request.value.strip(),
+                "mobile": normalized_mobile if is_mobile else f"otp-{uuid.uuid4().hex[:8]}",
+                "email": normalized_email if is_email else f"otp-{uuid.uuid4().hex[:8]}@otp.local",
                 "passwordHash": "",  # OTP login users have no password
                 "role": "CITIZEN",  # Default role
                 "status": "ACTIVE",
@@ -268,7 +275,7 @@ async def verify_otp(request: VerifyOtpRequest):
             except Exception as e:
                 # If duplicate key error, try to find existing user by mobile/email
                 logger.warning(f"Insert failed (likely duplicate): {e}. Trying to fetch existing user...")
-                user = UserService.get_user_by_mobile(request.value) if is_mobile else UserService.get_user_by_email(request.value)
+                user = UserService.get_user_by_mobile(normalized_mobile) if is_mobile else UserService.get_user_by_email(normalized_email)
                 if not user:
                     # If still no user found, re-raise the error
                     raise HTTPException(status_code=500, detail="Failed to create or find user")

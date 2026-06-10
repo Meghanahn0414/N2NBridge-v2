@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import { fetchConstituencies, createConstituency } from '../../../features/constituencies/constituencyService';
+import { fetchUsers } from '../../../features/team-management/userService';
 
 export default function ConstituencyManagement() {
   const [constituencies, setConstituencies] = useState([]);
@@ -8,10 +9,61 @@ export default function ConstituencyManagement() {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [stats, setStats] = useState({ total: 0, wards: 0, booths: 0 });
+  const [representatives, setRepresentatives] = useState([]);
+  const [repLoading, setRepLoading] = useState(true);
+  const [repError, setRepError] = useState(null);
+  const [selectedRepresentative, setSelectedRepresentative] = useState('');
+  const [newConstituencyName, setNewConstituencyName] = useState('');
+  const [newConstituencyCode, setNewConstituencyCode] = useState('');
+  const [newConstituencyDistrict, setNewConstituencyDistrict] = useState('');
+  const [newConstituencyState, setNewConstituencyState] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   useEffect(() => {
     loadConstituencies();
+    loadRepresentatives();
   }, []);
+
+  const resetForm = () => {
+    setNewConstituencyName('');
+    setNewConstituencyCode('');
+    setNewConstituencyDistrict('');
+    setNewConstituencyState('');
+    setSelectedRepresentative('');
+    setSubmitError(null);
+  };
+
+  const handleCreateConstituency = async (event) => {
+    event.preventDefault();
+    setSubmitError(null);
+
+    if (!newConstituencyName.trim() || !newConstituencyDistrict.trim() || !newConstituencyState.trim()) {
+      setSubmitError('Name, district, and state are required.');
+      return;
+    }
+
+    const payload = {
+      constituencyCode: newConstituencyCode.trim(),
+      name: newConstituencyName.trim(),
+      district: newConstituencyDistrict.trim(),
+      state: newConstituencyState.trim(),
+      representativeId: selectedRepresentative || undefined,
+    };
+
+    try {
+      setIsSubmitting(true);
+      await createConstituency(payload);
+      await loadConstituencies();
+      setShowModal(false);
+      resetForm();
+    } catch (err) {
+      setSubmitError(err?.response?.data?.message || err.message || 'Failed to add constituency.');
+      console.error('Create constituency failed:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const loadConstituencies = async () => {
     try {
@@ -29,6 +81,20 @@ export default function ConstituencyManagement() {
       console.error('Error loading constituencies:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRepresentatives = async () => {
+    try {
+      setRepLoading(true);
+      setRepError(null);
+      const reps = await fetchUsers(1, 1000, 'REPRESENTATIVE');
+      setRepresentatives(reps);
+    } catch (err) {
+      setRepError(err.message || 'Failed to load representatives');
+      console.error('Error loading representatives:', err);
+    } finally {
+      setRepLoading(false);
     }
   };
 
@@ -61,7 +127,7 @@ export default function ConstituencyManagement() {
         </div>
       </div>
 
-      <div className="constituencies-grid">
+      <div className="constituency-table-wrapper">
         {loading ? (
           <div className="loading-state">Loading constituencies...</div>
         ) : error ? (
@@ -87,7 +153,7 @@ export default function ConstituencyManagement() {
               {constituencies.map(constituency => (
                 <tr key={constituency._id || constituency.id}>
                   <td>{constituency.name}</td>
-                  <td>{constituency.code || '-'}</td>
+                  <td>{constituency.constituencyCode || '-'}</td>
                   <td>{constituency.district || '-'}</td>
                   <td>{constituency.state || '-'}</td>
                   <td>{constituency.wards?.length || 0}</td>
@@ -107,28 +173,73 @@ export default function ConstituencyManagement() {
         <div className="modal-overlay">
           <div className="modal-content">
             <h2>Add Constituency</h2>
-            <form>
+            <form onSubmit={handleCreateConstituency}>
               <div className="form-group">
                 <label>Constituency Name *</label>
-                <input type="text" required />
+                <input
+                  type="text"
+                  required
+                  value={newConstituencyName}
+                  onChange={(e) => setNewConstituencyName(e.target.value)}
+                />
               </div>
               <div className="form-group">
                 <label>Code</label>
-                <input type="text" />
+                <input
+                  type="text"
+                  value={newConstituencyCode}
+                  onChange={(e) => setNewConstituencyCode(e.target.value)}
+                />
               </div>
               <div className="form-group">
-                <label>District</label>
-                <input type="text" />
+                <label>District *</label>
+                <input
+                  type="text"
+                  required
+                  value={newConstituencyDistrict}
+                  onChange={(e) => setNewConstituencyDistrict(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>State *</label>
+                <input
+                  type="text"
+                  required
+                  value={newConstituencyState}
+                  onChange={(e) => setNewConstituencyState(e.target.value)}
+                />
               </div>
               <div className="form-group">
                 <label>Representative</label>
-                <select>
-                  <option>Select Representative</option>
+                <select
+                  value={selectedRepresentative}
+                  onChange={(e) => setSelectedRepresentative(e.target.value)}
+                >
+                  <option value="">Select Representative</option>
+                  {repLoading ? (
+                    <option value="" disabled>Loading representatives...</option>
+                  ) : repError ? (
+                    <option value="" disabled>{repError}</option>
+                  ) : (
+                    representatives.map((rep) => (
+                      <option key={rep._id || rep.id} value={rep._id || rep.id}>
+                        {rep.fullName || rep.name || rep.email || rep.mobile || 'Representative'}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
+              {submitError && <div className="form-error">{submitError}</div>}
               <div className="form-actions">
-                <button type="button" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Add</button>
+                <button type="button" onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Adding…' : 'Add'}
+                </button>
               </div>
             </form>
           </div>

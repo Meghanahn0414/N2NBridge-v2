@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit } from 'react-icons/fa';
-import { getCitizenProfile, updateCitizenProfile } from '../../shared/services/citizenService';
+import { FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit, FaCamera } from 'react-icons/fa';
+import { getCitizenProfile, updateCitizenProfile, uploadCitizenProfilePhoto } from '../../shared/services/citizenService';
 
 export default function CitizenProfile() {
   const [profile, setProfile] = useState(null);
@@ -12,6 +12,9 @@ export default function CitizenProfile() {
     constituencyId: '',
     createdAt: '',
   });
+  const [photoFile, setPhotoFile] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -89,6 +92,47 @@ export default function CitizenProfile() {
     setIsEditing(false);
   };
 
+  const handlePhotoChange = (event) => {
+    setPhotoError('');
+    const file = event.target.files?.[0];
+    if (!file) {
+      setPhotoFile(null);
+      return;
+    }
+    setPhotoFile(file);
+  };
+
+  const handlePhotoUpload = async () => {
+    if (!photoFile) {
+      setPhotoError('Please choose an image to upload.');
+      return;
+    }
+
+    setPhotoError('');
+    setSuccessMessage('');
+    setUploadingPhoto(true);
+
+    try {
+      const result = await uploadCitizenProfilePhoto(photoFile);
+      const updatedProfile = { ...profile, profileImage: result.profileImage || result.data?.profileImage };
+      setProfile(updatedProfile);
+      setPhotoFile(null);
+      setSuccessMessage('Profile photo uploaded successfully.');
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          ...JSON.parse(localStorage.getItem('user') || '{}'),
+          profileImage: updatedProfile.profileImage,
+        })
+      );
+      window.dispatchEvent(new Event('auth-user-updated'));
+    } catch (err) {
+      setPhotoError(err?.response?.data?.detail || err?.message || 'Failed to upload photo.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const joinedDate = profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '-';
   const constituencyLabel = profile?.constituencyId || 'Not available';
 
@@ -121,17 +165,70 @@ export default function CitizenProfile() {
             <div className="text-slate-600">Loading profile...</div>
           ) : (
             <>
-              <div className="mb-8 flex items-center gap-4 border-b border-slate-200 pb-6">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-200 text-2xl">
-                  <FaUser className="h-8 w-8 text-slate-500" />
+              <div className="mb-8 flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-2xl">
+                      {profile?.profileImage ? (
+                        <img
+                          src={profile.profileImage.startsWith('http') ? profile.profileImage : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/${profile.profileImage}`}
+                          alt="Profile"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <FaUser className="h-8 w-8 text-slate-500" />
+                      )}
+                    </div>
+                    <label className="absolute bottom-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white shadow-sm text-slate-700 transition hover:bg-slate-100">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                        className="hidden"
+                      />
+                      <FaCamera className="h-4 w-4" />
+                    </label>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">{profile?.fullName || profile?.email || 'Citizen'}</h2>
+                    <p className="text-sm text-slate-600">{constituencyLabel}</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900">{profile?.fullName}</h2>
-                  <p className="text-sm text-slate-600">{constituencyLabel}</p>
+                <div className="flex flex-col items-start gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePhotoUpload}
+                    disabled={uploadingPhoto || !photoFile}
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  >
+                    {uploadingPhoto ? 'Uploading...' : 'Upload Photo'}
+                  </button>
+                  {photoError && (
+                    <p className="text-sm text-red-600">{photoError}</p>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900">
+                    <div className="mb-2 flex items-center gap-2">
+                      <FaUser className="h-4 w-4 text-blue-600" />
+                      Name
+                    </div>
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      className="w-full rounded-lg border border-slate-200 px-4 py-2 focus:border-blue-600 focus:outline-none"
+                    />
+                  ) : (
+                    <p className="text-slate-600">{profile?.fullName || 'Not provided'}</p>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-slate-900">
                     <div className="mb-2 flex items-center gap-2">
