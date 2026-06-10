@@ -47,6 +47,12 @@ export default function OtpVerify() {
       }
       sessionStorage.removeItem("authValue");
 
+      // Check if profile is created (has fullName)
+      if (res.role === "CITIZEN" && (!res.user || !res.user.fullName)) {
+        navigate("/profile-creation", { replace: true });
+        return;
+      }
+
       const destination = roleRedirect[res.role] || "/";
       navigate(destination, { replace: true });
     } catch (err) {

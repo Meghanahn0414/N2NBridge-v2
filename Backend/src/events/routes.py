@@ -3,6 +3,7 @@ Event Routes
 """
 import logging
 
+from config.database import MongoDatabase
 from events.model import (EventCreate, EventRegistrationCreate,
                           EventRegistrationResponse, EventResponse,
                           EventUpdate)
@@ -129,3 +130,30 @@ async def mark_attendance(
     return success_response(None, "Attendance marked successfully")
 
 
+@router.get("/stats/summary", response_model=dict)
+async def get_event_stats():
+    """Get event statistics summary"""
+    try:
+        # Get total registered events and upcoming events count
+        all_events = EventService.list_events(0, 10000)  # Get all events
+        total_events = len(all_events) if all_events else 0
+        
+        # Get total registrations
+        db = MongoDatabase.get_db()
+        registrations_count = db["event_registrations"].count_documents({})
+        attended_count = db["event_registrations"].count_documents({"status": "attended"})
+        
+        stats = {
+            "total": total_events,
+            "registered": registrations_count,
+            "upcoming": max(0, total_events - registrations_count),
+            "attended": attended_count
+        }
+        
+        return success_response(
+            data=stats,
+            message="Event stats retrieved successfully"
+        )
+    except Exception as e:
+        logger.error(f"Error fetching event stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

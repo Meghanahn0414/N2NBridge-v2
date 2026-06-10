@@ -1,0 +1,32 @@
+.mobile-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.mobile-layout-content {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 768px) {
+  .mobile-layout {
+    position: relative;
+  }
+
+  .mobile-layout-content {
+    padding-bottom: 80px;
+    /* Account for safe areas on notched devices */
+    padding-bottom: max(80px, calc(env(safe-area-inset-bottom) + 80px));
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-layout-content {
+    padding-bottom: 0;
+  }
+}

@@ -1,0 +1,395 @@
+/* Citizen Events Page Styling */
+
+.citizen-events-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+}
+
+/* Header */
+.events-header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  color: white;
+  padding: 16px 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.events-back-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.events-back-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.events-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+/* Ward Info Section */
+.ward-info-section {
+  padding: 16px;
+  background-color: #f5f5f5;
+}
+
+.ward-info-banner {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ward-calendar-icon {
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+}
+
+.ward-info-text h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Events Content */
+.events-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  padding-bottom: 80px;
+}
+
+/* Events Section */
+.events-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #666;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  padding: 0 4px;
+}
+
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Event Card */
+.event-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e5e5;
+  transition: box-shadow 0.2s ease;
+}
+
+.event-card:active {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.event-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  flex: 1;
+}
+
+.event-status {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: center;
+  min-width: 70px;
+}
+
+.event-status.registered {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.event-status.open {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+/* Event Details */
+.event-details {
+  margin-bottom: 12px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #555;
+}
+
+.detail-label {
+  min-width: 20px;
+  display: flex;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.detail-text {
+  flex: 1;
+  line-height: 1.4;
+  color: #333;
+  font-weight: 500;
+}
+
+.event-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: #666;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Action Buttons */
+.event-action-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.register-btn {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(30, 58, 138, 0.2);
+}
+
+.register-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 2px rgba(30, 58, 138, 0.15);
+}
+
+.unregister-btn {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.unregister-btn:active {
+  background-color: #fecaca;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  margin: 12px 0 8px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #666;
+}
+
+.empty-state small {
+  display: block;
+  font-size: 13px;
+  color: #999;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .events-content {
+    padding: 12px;
+    padding-bottom: 100px;
+  }
+
+  .event-card {
+    padding: 14px;
+  }
+
+  .event-title {
+    font-size: 15px;
+  }
+
+  .detail-text {
+    font-size: 13px;
+  }
+
+  .event-action-btn {
+    padding: 11px 14px;
+    font-size: 13px;
+  }
+
+  .ward-info-banner {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .ward-calendar-icon {
+    font-size: 24px;
+  }
+
+  .ward-info-text h2 {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .events-header {
+    padding: 12px 12px 16px;
+  }
+
+  .events-title {
+    font-size: 20px;
+  }
+
+  .events-content {
+    padding: 10px;
+    padding-bottom: 90px;
+  }
+
+  .events-list {
+    gap: 10px;
+  }
+
+  .event-card {
+    padding: 12px;
+    border-radius: 10px;
+  }
+
+  .event-header {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .event-title {
+    font-size: 14px;
+  }
+
+  .event-status {
+    padding: 3px 10px;
+    font-size: 11px;
+    min-width: 65px;
+  }
+
+  .detail-row {
+    gap: 6px;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .event-meta {
+    gap: 10px;
+    font-size: 12px;
+  }
+
+  .event-action-btn {
+    padding: 10px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+
+  .section-title {
+    font-size: 11px;
+  }
+
+  .ward-info-banner {
+    padding: 12px;
+    border-radius: 10px;
+    gap: 8px;
+  }
+
+  .ward-calendar-icon {
+    font-size: 22px;
+    min-width: 36px;
+  }
+
+  .ward-info-text h2 {
+    font-size: 15px;
+  }
+}
+
+/* Scrollbar Styling */
+.events-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.events-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.events-content::-webkit-scrollbar-thumb {
+  background: #d0d0d0;
+  border-radius: 3px;
+}
+
+.events-content::-webkit-scrollbar-thumb:hover {
+  background: #b0b0b0;
+}

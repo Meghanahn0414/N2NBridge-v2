@@ -6,6 +6,7 @@ import os
 from typing import Optional
 
 from auth.service import AuthService
+from config.database import MongoDatabase
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from notifications.model import NotificationResponse
 from notifications.service import NotificationService
@@ -345,4 +346,34 @@ async def check_email_status():
         },
         "Email service status retrieved"
     )
+
+
+@router.get("/stats", response_model=dict)
+async def get_notification_stats(
+    current_user: dict = Depends(get_current_user_optional)
+):
+    """Get notification statistics"""
+    try:
+        user_id = current_user.get("user_id") if current_user else None
+        
+        if user_id:
+            # Get user-specific stats
+            unread_count = len(NotificationService.get_unread_notifications(user_id))
+            total_count = len(NotificationService.get_user_notifications(user_id, 0, 10000))
+        else:
+            # Get global stats
+            db = MongoDatabase.get_db()
+            unread_count = db["notifications"].count_documents({"is_read": False})
+            total_count = db["notifications"].count_documents({})
+        
+        return success_response(
+            data={
+                "unread": unread_count,
+                "total": total_count
+            },
+            message="Notification stats retrieved successfully"
+        )
+    except Exception as e:
+        logger.error(f"Error fetching notification stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 

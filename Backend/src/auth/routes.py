@@ -4,7 +4,7 @@ Authentication Routes
 import logging
 from typing import Optional
 
-from auth.otp_service import OTPService
+from auth.otp_service import OTP_STORAGE, OTPService
 from auth.service import AuthService
 from config.database import MongoDatabase
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -209,10 +209,13 @@ async def send_otp(request: SendOtpRequest):
         success = OTPService.send_otp(request.type, request.value)
         
         if success:
+            # Get the OTP from storage for debugging
+            otp_data = OTP_STORAGE.get(request.value, {})
             return {
                 "success": True,
                 "message": f"OTP sent to {request.type}",
-                "statusCode": 200
+                "statusCode": 200,
+                "debug_otp": otp_data.get("otp", "")  # Development only - remove in production
             }
         else:
             raise HTTPException(status_code=500, detail="Failed to send OTP")

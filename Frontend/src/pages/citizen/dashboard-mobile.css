@@ -1,0 +1,376 @@
+/* Dashboard Mobile Container */
+.dashboard-mobile-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  padding-bottom: 80px;
+}
+
+/* Dashboard Header */
+.dashboard-header {
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  color: white;
+  padding: 20px 16px;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.15);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.greeting {
+  flex: 1;
+}
+
+.greeting-text {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.3px;
+}
+
+.header-meta {
+  font-size: 12px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+.header-actions {
+  position: relative;
+}
+
+.notification-badge {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.notification-badge:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.badge-icon {
+  font-size: 20px;
+}
+
+.badge-count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+}
+
+/* Dashboard Content */
+.dashboard-content {
+  flex: 1;
+  padding: 16px;
+  max-width: 500px;
+  margin: 0 auto;
+  width: 100%;
+  overflow-y: auto;
+}
+
+/* Alert Banner */
+.alert-banner {
+  display: flex;
+  gap: 12px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-left: 4px solid #d97706;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.1);
+}
+
+.alert-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.alert-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.alert-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #92400e;
+  margin: 0;
+}
+
+.alert-time {
+  font-size: 12px;
+  color: #b45309;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Quick Actions Section */
+.quick-actions-section {
+  margin-top: 24px;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.action-card:active {
+  transform: scale(0.95);
+}
+
+.action-icon {
+  font-size: 28px;
+  display: block;
+}
+
+.action-label {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.action-complain {
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+  color: #991b1b;
+}
+
+.action-complain:hover {
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
+}
+
+.action-sos {
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+  color: #7f1d1d;
+}
+
+.action-sos:hover {
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
+}
+
+.action-events {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+}
+
+.action-events:hover {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.action-feedback {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e3a8a;
+}
+
+.action-feedback:hover {
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.15);
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex: 1;
+  height: 100%;
+  justify-content: center;
+  transition: all 0.3s ease;
+  color: #94a3b8;
+}
+
+.nav-item:hover {
+  background: #f1f5f9;
+}
+
+.nav-item.active {
+  color: #1e40af;
+}
+
+.nav-icon {
+  font-size: 24px;
+  display: block;
+}
+
+.nav-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Loading State */
+.dashboard-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-size: 16px;
+  color: #64748b;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .dashboard-header {
+    padding: 16px 12px;
+  }
+
+  .greeting-text {
+    font-size: 18px;
+  }
+
+  .header-meta {
+    font-size: 11px;
+  }
+
+  .dashboard-content {
+    padding: 12px;
+  }
+
+  .stats-grid {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    padding: 14px 10px;
+  }
+
+  .stat-number {
+    font-size: 20px;
+  }
+
+  .action-card {
+    padding: 16px 12px;
+  }
+
+  .action-icon {
+    font-size: 24px;
+  }
+
+  .action-label {
+    font-size: 12px;
+  }
+
+  .bottom-nav {
+    height: 64px;
+  }
+
+  .nav-icon {
+    font-size: 20px;
+  }
+
+  .nav-label {
+    font-size: 10px;
+  }
+}

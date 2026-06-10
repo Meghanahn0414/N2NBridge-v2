@@ -9,6 +9,7 @@ export const ROUTES = {
   citizenComplaintList: "/citizen/complaints",
   citizenComplaintDetails: "/citizen/complaints/:id",
   citizenEmergency: "/citizen/emergency",
+  citizenSOS: "/citizen/sos",
   citizenEvents: "/citizen/events",
   citizenNotifications: "/citizen/notifications",
   citizenFeedback: "/citizen/feedback",

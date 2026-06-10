@@ -1,197 +1,155 @@
-import React, { useEffect, useState } from 'react';
-import { FaStar } from 'react-icons/fa';
-import {
-  getCitizenComplaints,
-  submitComplaintFeedback,
-} from '../../shared/services/citizenService';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import "./citizen-feedback.css";
 
 export default function CitizenFeedback() {
-  const [feedback, setFeedback] = useState({
-    complaintId: '',
-    rating: 0,
-    message: '',
+  const navigate = useNavigate();
+  const [ratings, setRatings] = useState({
+    garbage_collection: 4,
+    road_maintenance: 2,
   });
-  const [complaints, setComplaints] = useState([]);
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  const loadComplaints = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getCitizenComplaints();
-      setComplaints(result || []);
-    } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to load complaints.');
-    } finally {
-      setLoading(false);
-    }
+  const [hoveredService, setHoveredService] = useState(null);
+  const [tempRating, setTempRating] = useState(null);
+
+  const recentServices = [
+    {
+      id: "garbage_collection",
+      name: "Garbage collection",
+      details: "Last pickup: Jun 9",
+      icon: "🗑️",
+    },
+    {
+      id: "road_maintenance",
+      name: "Road maintenance",
+      details: "Ward officer: Ramesh K.",
+      icon: "🛣️",
+    },
+  ];
+
+  const activeSurvey = {
+    id: 1,
+    title: "Ward satisfaction survey 2026",
+    questions: 5,
+    duration: "~2 min",
+    icon: "📋",
   };
 
-  useEffect(() => {
-    loadComplaints();
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!feedback.complaintId) {
-      setError('Please select a complaint to rate.');
-      return;
-    }
-
-    if (!feedback.rating) {
-      setError('Please choose a rating.');
-      return;
-    }
-
-    try {
-      await submitComplaintFeedback(feedback.complaintId, {
-        rating: feedback.rating,
-        comments: feedback.message,
-      });
-      setSubmitted(true);
-      setFeedback({ complaintId: '', rating: 0, message: '' });
-      await loadComplaints();
-    } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to submit feedback.');
-    }
+  const handleStarHover = (serviceId, rating) => {
+    setHoveredService(serviceId);
+    setTempRating(rating);
   };
 
-  const feedbackHistory = complaints.filter((complaint) => complaint.feedback);
+  const handleStarClick = (serviceId, rating) => {
+    setRatings({
+      ...ratings,
+      [serviceId]: rating,
+    });
+    setHoveredService(null);
+    setTempRating(null);
+  };
+
+  const handleSurveyStart = () => {
+    alert("Survey will launch soon! Thank you for your interest.");
+  };
+
+  const StarRating = ({ serviceId, currentRating }) => {
+    const displayRating =
+      hoveredService === serviceId ? tempRating : currentRating;
+
+    return (
+      <div className="star-rating">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            className={`star-btn ${star <= displayRating ? "filled" : ""}`}
+            onMouseEnter={() => handleStarHover(serviceId, star)}
+            onMouseLeave={() => setHoveredService(null)}
+            onClick={() => handleStarClick(serviceId, star)}
+            aria-label={`Rate ${star} stars`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="mb-8 text-3xl font-bold text-slate-900">Feedback</h1>
-
-        {error && (
-          <div className="mb-6 rounded-lg bg-red-100 p-4 text-red-800">{error}</div>
-        )}
-
-        {submitted && (
-          <div className="mb-6 rounded-lg bg-green-100 p-4 text-green-800">
-            ✓ Thank you for your feedback!
-          </div>
-        )}
-
-        <div className="rounded-lg bg-white p-6 shadow-sm">
-          {loading ? (
-            <div className="text-slate-600">Loading complaints...</div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">
-                  Which complaint would you like to rate?
-                </label>
-                <select
-                  value={feedback.complaintId}
-                  onChange={(e) =>
-                    setFeedback({ ...feedback, complaintId: e.target.value })
-                  }
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-4 py-2 focus:border-blue-600 focus:outline-none"
-                >
-                  <option value="">Select a complaint...</option>
-                  {complaints.map((complaint) => (
-                    <option key={complaint.id} value={complaint.id}>
-                      {complaint.complaintNumber || complaint.id} - {complaint.description?.slice(0, 50)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">
-                  How satisfied are you with the resolution?
-                </label>
-                <div className="mt-3 flex gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setFeedback({ ...feedback, rating: star })}
-                      className="transition hover:scale-110"
-                    >
-                      <FaStar
-                        className={`h-8 w-8 ${
-                          star <= feedback.rating ? 'text-yellow-400' : 'text-slate-300'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-                {feedback.rating > 0 && (
-                  <p className="mt-2 text-sm text-slate-600">
-                    {feedback.rating === 1 && 'Very Dissatisfied'}
-                    {feedback.rating === 2 && 'Dissatisfied'}
-                    {feedback.rating === 3 && 'Neutral'}
-                    {feedback.rating === 4 && 'Satisfied'}
-                    {feedback.rating === 5 && 'Very Satisfied'}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">
-                  Additional Comments
-                </label>
-                <textarea
-                  value={feedback.message}
-                  onChange={(e) =>
-                    setFeedback({ ...feedback, message: e.target.value })
-                  }
-                  placeholder="Share your thoughts and suggestions..."
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-blue-600 focus:outline-none"
-                  rows="5"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700"
-              >
-                Submit Feedback
-              </button>
-            </form>
-          )}
+    <div className="citizen-feedback-container">
+      {/* Header */}
+      <div className="feedback-header">
+        <button
+          className="feedback-back-btn"
+          onClick={() => navigate("/citizen")}
+        >
+          ← Back
+        </button>
+        <div className="header-content">
+          <h1 className="header-title">Feedback & surveys</h1>
+          <p className="header-subtitle">Help improve your ward</p>
         </div>
+        <div className="header-star">⭐</div>
+      </div>
 
-        <div className="mt-8">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Your Feedback History</h2>
-          {loading ? (
-            <div className="rounded-lg bg-white p-8 text-slate-600 shadow-sm">Loading history...</div>
-          ) : feedbackHistory.length === 0 ? (
-            <div className="rounded-lg bg-white p-8 text-slate-600 shadow-sm">No feedback submitted yet.</div>
-          ) : (
-            <div className="space-y-3">
-              {feedbackHistory.map((complaint) => (
-                <div key={complaint.id} className="rounded-lg bg-white p-4 shadow-sm">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="font-medium text-slate-900">
-                      {complaint.complaintNumber || complaint.id}
-                    </span>
-                    <div className="flex gap-1">
-                      {[...Array(5)].map((_, index) => (
-                        <FaStar
-                          key={index}
-                          className={`h-4 w-4 ${
-                            complaint.feedback && index < complaint.feedback.rating
-                              ? 'text-yellow-400'
-                              : 'text-slate-300'
-                          }`}
-                        />
-                      ))}
+      {/* Content */}
+      <div className="feedback-content">
+        {/* Rate Recent Services Section */}
+        <div className="feedback-section">
+          <h2 className="section-title">RATE RECENT SERVICES</h2>
+
+          <div className="services-list">
+            {recentServices.map((service) => (
+              <div key={service.id} className="service-card">
+                <div className="service-header">
+                  <div className="service-info">
+                    <div className="service-icon">{service.icon}</div>
+                    <div className="service-text">
+                      <h3 className="service-name">{service.name}</h3>
+                      <p className="service-details">{service.details}</p>
                     </div>
                   </div>
-                  <p className="mt-2 text-sm text-slate-600">
-                    {complaint.feedback?.comments || 'No additional comments.'}
-                  </p>
                 </div>
-              ))}
+                <div className="service-footer">
+                  <StarRating
+                    serviceId={service.id}
+                    currentRating={ratings[service.id] || 0}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Active Survey Section */}
+        <div className="feedback-section">
+          <h2 className="section-title">ACTIVE SURVEY</h2>
+
+          <div className="survey-card">
+            <div className="survey-header">
+              <div className="survey-icon">{activeSurvey.icon}</div>
+              <div className="survey-info">
+                <h3 className="survey-title">{activeSurvey.title}</h3>
+                <p className="survey-duration">
+                  {activeSurvey.questions} questions • {activeSurvey.duration}
+                </p>
+              </div>
             </div>
-          )}
+
+            <button
+              className="survey-btn"
+              onClick={handleSurveyStart}
+            >
+              Start survey
+            </button>
+          </div>
+        </div>
+
+        {/* Feedback Prompt */}
+        <div className="feedback-prompt">
+          <p className="prompt-text">
+            Your feedback helps us improve services in your ward. Thank you!
+          </p>
         </div>
       </div>
     </div>

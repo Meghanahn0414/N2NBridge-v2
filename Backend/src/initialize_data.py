@@ -12,10 +12,11 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from datetime import datetime, timedelta
+
 from bson import ObjectId
 from config.database import MongoDatabase
-from config.settings import settings
 from config.security import SecurityManager, UserRole
+from config.settings import settings
 
 
 def initialize_database():
@@ -98,24 +99,37 @@ def initialize_database():
     officer_id = str(result.inserted_id)
     print(f"✓ Field officer created: {officer_id}")
     
-    # Create citizen
-    citizen_user = {
-        "fullName": "Citizen User",
-        "mobile": "9999999996",
-        "email": "citizen@crm.com",
-        "passwordHash": SecurityManager.hash_password("citizen@123"),
-        "role": UserRole.CITIZEN,
-        "status": "ACTIVE",
-        "lastLoginAt": None,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
-        "createdBy": admin_id,
-        "updatedBy": admin_id,
-        "isDeleted": False
-    }
-    result = db.users.insert_one(citizen_user)
-    citizen_id = str(result.inserted_id)
-    print(f"✓ Citizen user created: {citizen_id}")
+    # Create multiple citizens
+    citizen_ids = []
+    citizens_data = [
+        {"fullName": "Rajesh Kumar", "mobile": "9999999996", "email": "rajesh@crm.com"},
+        {"fullName": "Priya Singh", "mobile": "9999999991", "email": "priya@crm.com"},
+        {"fullName": "Amit Patel", "mobile": "9999999992", "email": "amit@crm.com"},
+        {"fullName": "Neha Verma", "mobile": "9999999993", "email": "neha@crm.com"},
+        {"fullName": "Vikram Desai", "mobile": "9999999994", "email": "vikram@crm.com"},
+        {"fullName": "Anjali Sharma", "mobile": "9988888881", "email": "anjali@crm.com"},
+        {"fullName": "Rohan Gupta", "mobile": "9988888882", "email": "rohan@crm.com"},
+        {"fullName": "Maya Nair", "mobile": "9988888883", "email": "maya@crm.com"},
+    ]
+    for idx, citizen_data in enumerate(citizens_data):
+        user = {
+            "fullName": citizen_data["fullName"],
+            "mobile": citizen_data["mobile"],
+            "email": citizen_data["email"],
+            "passwordHash": SecurityManager.hash_password("citizen@123"),
+            "role": UserRole.CITIZEN,
+            "status": "ACTIVE",
+            "lastLoginAt": None,
+            "createdAt": datetime.utcnow() - timedelta(days=10-idx),
+            "updatedAt": datetime.utcnow(),
+            "createdBy": admin_id,
+            "updatedBy": admin_id,
+            "isDeleted": False
+        }
+        result = db.users.insert_one(user)
+        citizen_ids.append(str(result.inserted_id))
+    print(f"✓ {len(citizen_ids)} citizen users created")
+    citizen_id = citizen_ids[0]  # Use first citizen for other references
     
     # Create constituencies
     print("\n🏛️  Creating constituencies...")
@@ -214,72 +228,91 @@ def initialize_database():
     category_ids = [str(id) for id in result.inserted_ids]
     print(f"✓ {len(category_ids)} categories created")
     
-    # Create sample grievances
+    # Create sample grievances (15+ complaints with varied statuses)
     print("\n📋 Creating sample grievances...")
-    grievances_data = [
-        {
-            "complaintNumber": "GRV202400001",
-            "citizenId": citizen_id,
-            "categoryId": category_ids[0],
-            "description": "Deep pothole on Main Street causing accidents",
-            "address": "Main Street, Bangalore South",
-            "wardId": ward_ids[0],
-            "constituencyId": constituency_ids[0],
+    grievance_templates = [
+        # Pothole complaints (different citizens)
+        {"catIdx": 0, "description": "Deep pothole on Main Street causing accidents", "address": "Main Street, Bangalore South", "wardIdx": 0, "priority": "HIGH", "status": "NEW"},
+        {"catIdx": 0, "description": "Multiple potholes on Indiranagar Road", "address": "Indiranagar Road", "wardIdx": 1, "priority": "MEDIUM", "status": "ASSIGNED"},
+        {"catIdx": 0, "description": "Severe road damage near shopping mall", "address": "Commercial Complex Road", "wardIdx": 0, "priority": "HIGH", "status": "IN_PROGRESS"},
+        {"catIdx": 0, "description": "Pothole in residential area causing property damage", "address": "Lavelle Road", "wardIdx": 2, "priority": "MEDIUM", "status": "RESOLVED"},
+        
+        # Water supply complaints
+        {"catIdx": 1, "description": "No water supply for 3 days", "address": "Park Street, Bangalore South", "wardIdx": 0, "priority": "CRITICAL", "status": "ASSIGNED"},
+        {"catIdx": 1, "description": "Low water pressure in entire ward", "address": "Whitefield Area", "wardIdx": 1, "priority": "HIGH", "status": "IN_PROGRESS"},
+        {"catIdx": 1, "description": "Contaminated water from tap", "address": "Jayanagar", "wardIdx": 2, "priority": "CRITICAL", "status": "NEW"},
+        
+        # Street light complaints
+        {"catIdx": 2, "description": "20 street lights not working on Main Road", "address": "Main Road, Bangalore", "wardIdx": 0, "priority": "HIGH", "status": "NEW"},
+        {"catIdx": 2, "description": "Street light causing flickering issue", "address": "MG Road", "wardIdx": 1, "priority": "MEDIUM", "status": "RESOLVED"},
+        
+        # Garbage complaints
+        {"catIdx": 3, "description": "Garbage not collected for 5 days", "address": "Residential Area A", "wardIdx": 0, "priority": "HIGH", "status": "ASSIGNED"},
+        {"catIdx": 3, "description": "Overflowing garbage bins near market", "address": "Market Area", "wardIdx": 1, "priority": "MEDIUM", "status": "IN_PROGRESS"},
+        {"catIdx": 3, "description": "Illegal dumping site in residential zone", "address": "Zone B", "wardIdx": 2, "priority": "HIGH", "status": "NEW"},
+        
+        # Traffic complaints
+        {"catIdx": 4, "description": "Traffic signal not working at intersection", "address": "Main Intersection", "wardIdx": 0, "priority": "CRITICAL", "status": "IN_PROGRESS"},
+        {"catIdx": 4, "description": "Dangerous driving near school", "address": "School Street", "wardIdx": 1, "priority": "HIGH", "status": "NEW"},
+        {"catIdx": 4, "description": "Inadequate parking affecting traffic", "address": "Commercial Hub", "wardIdx": 2, "priority": "MEDIUM", "status": "ASSIGNED"},
+        
+        # Mixed complaints
+        {"catIdx": 1, "description": "Broken water pipe in main road", "address": "Central Road", "wardIdx": 0, "priority": "HIGH", "status": "RESOLVED"},
+    ]
+    
+    grievance_ids = []
+    coords_list = [
+        [77.5963, 12.9716], [77.6100, 12.9800], [77.5800, 12.9600],
+        [77.6200, 12.9500], [77.5900, 12.9750], [77.6300, 12.9650],
+        [77.5700, 12.9700], [77.6000, 12.9550], [77.6100, 12.9900],
+        [77.5850, 12.9800], [77.6150, 12.9700], [77.5950, 12.9600],
+        [77.6050, 12.9750], [77.5850, 12.9650], [77.6200, 12.9850],
+        [77.5900, 12.9700]
+    ]
+    
+    statuses = ["NEW", "ASSIGNED", "IN_PROGRESS", "RESOLVED"]
+    
+    for idx, template in enumerate(grievance_templates):
+        citizen_idx = idx % len(citizen_ids)
+        complaint_num = f"GRV{datetime.utcnow().year}{(idx+1):06d}"
+        
+        grievance = {
+            "complaintNumber": complaint_num,
+            "citizenId": citizen_ids[citizen_idx],
+            "categoryId": category_ids[template["catIdx"]],
+            "description": template["description"],
+            "address": template["address"],
+            "wardId": ward_ids[template["wardIdx"]],
+            "constituencyId": constituency_ids[template["wardIdx"]],
             "gpsLocation": {
                 "type": "Point",
-                "coordinates": [77.5963, 12.9716]
+                "coordinates": coords_list[idx % len(coords_list)]
             },
-            "priority": "HIGH",
-            "status": "NEW",
+            "priority": template["priority"],
+            "status": template["status"],
             "escalationLevel": 0,
-            "assignedOfficerId": None,
-            "attachments": [],
-            "history": [],
-            "feedback": None,
-            "aiAnalysis": None,
-            "createdAt": datetime.utcnow(),
-            "updatedAt": datetime.utcnow(),
-            "createdBy": citizen_id,
-            "updatedBy": citizen_id,
-            "isDeleted": False
-        },
-        {
-            "complaintNumber": "GRV202400002",
-            "citizenId": citizen_id,
-            "categoryId": category_ids[1],
-            "description": "No water supply for 3 days",
-            "address": "Park Street, Bangalore South",
-            "wardId": ward_ids[0],
-            "constituencyId": constituency_ids[0],
-            "gpsLocation": {
-                "type": "Point",
-                "coordinates": [77.6000, 12.9750]
-            },
-            "priority": "CRITICAL",
-            "status": "ASSIGNED",
-            "escalationLevel": 0,
-            "assignedOfficerId": officer_id,
+            "assignedOfficerId": officer_id if template["status"] in ["ASSIGNED", "IN_PROGRESS", "RESOLVED"] else None,
             "attachments": [],
             "history": [
                 {
                     "oldStatus": "NEW",
-                    "newStatus": "ASSIGNED",
-                    "remarks": "Assigned to Field Officer",
-                    "updatedBy": manager_id,
-                    "createdAt": datetime.utcnow() - timedelta(hours=1)
+                    "newStatus": template["status"],
+                    "remarks": f"Status updated to {template['status']}",
+                    "updatedBy": manager_id if template["status"] != "NEW" else citizen_ids[citizen_idx],
+                    "createdAt": datetime.utcnow() - timedelta(hours=idx)
                 }
-            ],
+            ] if template["status"] != "NEW" else [],
             "feedback": None,
             "aiAnalysis": None,
-            "createdAt": datetime.utcnow() - timedelta(days=1),
-            "updatedAt": datetime.utcnow() - timedelta(hours=1),
-            "createdBy": citizen_id,
-            "updatedBy": manager_id,
+            "createdAt": datetime.utcnow() - timedelta(days=max(0, 5-idx//3)),
+            "updatedAt": datetime.utcnow() - timedelta(hours=idx),
+            "createdBy": citizen_ids[citizen_idx],
+            "updatedBy": manager_id if template["status"] != "NEW" else citizen_ids[citizen_idx],
             "isDeleted": False
         }
-    ]
-    result = db.grievances.insert_many(grievances_data)
-    grievance_ids = [str(id) for id in result.inserted_ids]
+        result = db.grievances.insert_one(grievance)
+        grievance_ids.append(str(result.inserted_id))
+    
     print(f"✓ {len(grievance_ids)} grievances created")
     
     # Create sample alerts

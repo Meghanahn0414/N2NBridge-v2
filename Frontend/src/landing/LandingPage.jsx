@@ -33,7 +33,10 @@ export default function LandingPage() {
             <div className="login-options-grid">
               <div 
                 className="login-option-card citizen"
-                onClick={() => handleLogin("/citizen-login")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLogin("/citizen-login");
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyPress={(e) => e.key === "Enter" && handleLogin("/citizen-login")}
@@ -45,7 +48,10 @@ export default function LandingPage() {
               
               <div 
                 className="login-option-card admin"
-                onClick={() => handleLogin("/admin-signup")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLogin("/admin-signup");
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-signup")}
@@ -57,7 +63,10 @@ export default function LandingPage() {
               
               <div 
                 className="login-option-card manager"
-                onClick={() => handleLogin("/admin-login?role=MANAGER")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLogin("/admin-login?role=MANAGER");
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-login?role=MANAGER")}
@@ -69,7 +78,10 @@ export default function LandingPage() {
               
               <div 
                 className="login-option-card officer"
-                onClick={() => handleLogin("/admin-login?role=FIELD_OFFICER")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLogin("/admin-login?role=FIELD_OFFICER");
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-login?role=FIELD_OFFICER")}
@@ -81,7 +93,10 @@ export default function LandingPage() {
               
               <div 
                 className="login-option-card representative"
-                onClick={() => handleLogin("/admin-login?role=REPRESENTATIVE")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLogin("/admin-login?role=REPRESENTATIVE");
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-login?role=REPRESENTATIVE")}

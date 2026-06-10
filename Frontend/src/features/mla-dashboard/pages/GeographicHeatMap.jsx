@@ -43,7 +43,7 @@ export default function GeographicHeatMap() {
   const filteredComplaints = (dashboard?.recentComplaints || []).filter((complaint) => {
     const wardName = complaint.wardId || complaint.location || '';
     const matchesWard = selectedWard === 'all' || wardName === selectedWard;
-    const matchesCategory = selectedCategory === 'all' || complaint.categoryId === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || complaint.categoryId?.toLowerCase().includes(selectedCategory.toLowerCase());
     return matchesWard && matchesCategory;
   });
 
@@ -94,14 +94,13 @@ export default function GeographicHeatMap() {
 
           <div className="filter-group">
             <label>Issue Category</label>
-            <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-              <option value="all">All Issues</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.categoryName}
-                </option>
-              ))}
-            </select>
+            <input
+              type="text"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              placeholder="Type category name or 'all' to see all"
+              className="filter-input"
+            />
           </div>
 
           <div className="filter-group">
