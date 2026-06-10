@@ -1,111 +1,212 @@
-import React, { useState } from 'react';
-import { FaCalendarAlt, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import eventService from "../../services/eventService";
+import "./citizen-events.css";
 
 export default function CitizenEvents() {
-  const [events] = useState([
-    {
-      id: 1,
-      title: '',
-      date: '',
-      time: '',
-      location: '',
-      attendees: '',
-      registered: false,
-    },
-    {
-      id: 2,
-      title: '',
-      date: '',
-      time: '',
-      location: '',
-      attendees: '',
-      registered: true,
-    },
-    {
-      id: 3,
-      title: '',
-      date: '',
-      time: '',
-      location: '',
-      attendees:'',
-      registered: false,
-    },
-  ]);
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [registeredEvents, setRegisteredEvents] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [error, setError] = useState(null);
 
-  const handleRegister = async (eventId) => {
-    setRegistering(eventId);
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
     try {
-      await registerForEvent(eventId);
-      await loadEvents();
+      setLoading(true);
+      setError(null);
+      const data = await eventService.getCitizenEvents();
+      setRegisteredEvents(data.registered || []);
+      setUpcomingEvents(data.upcoming || []);
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to register for the event.');
+      console.error("Failed to fetch events:", err);
+      setError("Failed to load events. Please try again.");
+      setRegisteredEvents([]);
+      setUpcomingEvents([]);
     } finally {
-      setRegistering(null);
+      setLoading(false);
+    }
+  };
+
+  const handleRegisterEvent = async (eventId) => {
+    try {
+      await eventService.registerForEvent(eventId);
+      const event = upcomingEvents.find((e) => e.id === eventId);
+      if (event) {
+        alert(`✅ Successfully registered for "${event.title}"`);
+        // Refresh events list
+        fetchEvents();
+      }
+    } catch (err) {
+      console.error("Error registering for event:", err);
+      alert(`Failed to register: ${err.message}`);
+    }
+  };
+
+  const handleUnregisterEvent = async (eventId) => {
+    try {
+      await eventService.unregisterFromEvent(eventId);
+      const event = registeredEvents.find((e) => e.id === eventId);
+      if (event) {
+        alert(`Unregistered from "${event.title}"`);
+        // Refresh events list
+        fetchEvents();
+      }
+    } catch (err) {
+      console.error("Error unregistering from event:", err);
+      alert(`Failed to unregister: ${err.message}`);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-4xl">
-        <h1 className="mb-8 text-3xl font-bold text-slate-900">Events</h1>
+    <div className="citizen-events-container">
+      {/* Header */}
+      <div className="events-header">
+        <button
+          className="events-back-btn"
+          onClick={() => navigate("/citizen")}
+        >
+          ← Back
+        </button>
+        <h1 className="events-title">Events & programs</h1>
+      </div>
 
-        {/* Events List */}
-        <div className="space-y-4">
-          {events.map((event) => (
-            <div key={event.id} className="rounded-lg bg-white p-6 shadow-sm">
-              <div className="mb-4 flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-900">{event.title}</h2>
-                </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-sm font-medium ${
-                    event.registered
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-slate-100 text-slate-800'
-                  }`}
-                >
-                  {event.registered ? '✓ Registered' : 'Not Registered'}
-                </span>
-              </div>
-
-              <div className="mb-4 space-y-2 text-sm text-slate-600">
-                <div className="flex items-center gap-2">
-                  <FaCalendarAlt className="text-blue-600" />
-                  <span>{event.date}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FaClock className="text-blue-600" />
-                  <span>{event.time}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FaMapMarkerAlt className="text-blue-600" />
-                  <span>{event.location}</span>
-                </div>
-              </div>
-
-              <div className="mb-4 flex items-center gap-2 text-sm text-slate-600">
-                <span className="inline-block h-8 w-8 rounded-full bg-slate-200"></span>
-                <span>{event.attendees} people attending</span>
-              </div>
-
-              {!event.registered && (
-                <button
-                  onClick={() => handleRegister(event.id)}
-                  className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
-                >
-                  Register for Event
-                </button>
-              )}
-            </div>
-          ))}
+      {/* Loading State */}
+      {loading && (
+        <div className="events-content">
+          <div className="loading-state">Loading events...</div>
         </div>
+      )}
 
-        {events.length === 0 && (
-          <div className="rounded-lg bg-white p-8 text-center">
-            <p className="text-slate-600">No upcoming events</p>
+      {/* Error State */}
+      {error && !loading && (
+        <div className="events-content">
+          <div className="error-state">
+            <p>{error}</p>
+            <button className="retry-btn" onClick={fetchEvents}>
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && registeredEvents.length === 0 && upcomingEvents.length === 0 && (
+        <div className="events-content">
+          <div className="empty-state">
+            <p>No events available for your ward.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content - Show only when loaded successfully */}
+      {!loading && !error && (registeredEvents.length > 0 || upcomingEvents.length > 0) && (
+        <>
+          {/* Ward and Date Info */}
+          <div className="ward-info-section">
+            <div className="ward-info-banner">
+              <div className="ward-calendar-icon">📅</div>
+              <div className="ward-info-text">
+                <h2>Ward Events</h2>
+              </div>
+            </div>
+          </div>
+
+      {/* Events Content */}
+      <div className="events-content">
+        {/* Registered Events Section */}
+        {registeredEvents.length > 0 && (
+          <div className="events-section">
+            <h3 className="section-title">REGISTERED</h3>
+            <div className="events-list">
+              {registeredEvents.map((event) => (
+                <div key={event.id} className="event-card">
+                  <div className="event-header">
+                    <h4 className="event-title">{event.title}</h4>
+                    <span className="event-status registered">
+                      {event.status}
+                    </span>
+                  </div>
+                  <div className="event-details">
+                    <div className="detail-row">
+                      <span className="detail-label">📅</span>
+                      <span className="detail-text">
+                        {event.date} · {event.time}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">📍</span>
+                      <span className="detail-text">{event.location}</span>
+                    </div>
+                    <div className="event-meta">
+                      <span className="meta-item">👥 {event.attendees} attending</span>
+                      <span className="meta-item">{event.type}</span>
+                    </div>
+                  </div>
+                  <button
+                    className="event-action-btn unregister-btn"
+                    onClick={() => handleUnregisterEvent(event.id)}
+                  >
+                    Cancel registration
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Upcoming Events Section */}
+        {upcomingEvents.length > 0 && (
+          <div className="events-section">
+            <h3 className="section-title">UPCOMING NEAR YOU</h3>
+            <div className="events-list">
+              {upcomingEvents.map((event) => (
+                <div key={event.id} className="event-card">
+                  <div className="event-header">
+                    <h4 className="event-title">{event.title}</h4>
+                    <span className="event-status open">{event.status}</span>
+                  </div>
+                  <div className="event-details">
+                    <div className="detail-row">
+                      <span className="detail-label">📅</span>
+                      <span className="detail-text">
+                        {event.date} · {event.time}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">📍</span>
+                      <span className="detail-text">{event.location}</span>
+                    </div>
+                    <div className="event-meta">
+                      <span className="meta-item">{event.type}</span>
+                    </div>
+                  </div>
+                  <button
+                    className="event-action-btn register-btn"
+                    onClick={() => handleRegisterEvent(event.id)}
+                  >
+                    Register free
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {registeredEvents.length === 0 && upcomingEvents.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-icon">📅</div>
+            <p>No events available at the moment</p>
+            <small>Check back later for upcoming programs</small>
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

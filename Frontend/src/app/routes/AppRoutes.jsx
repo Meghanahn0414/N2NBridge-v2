@@ -2,15 +2,20 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Sidebar from "../../Sidebar";
 import Header from "../../Header";
+import MobileLayout from "../layouts/MobileLayout";
 import OtpVerify from "../../features/auth/OtpVerify";
 import AdminSignup from "../../features/auth/AdminSignup";
 import AdminLogin from "../../features/auth/AdminLogin";
+import CitizenSplash from "../../features/auth/CitizenSplash";
 import CitizenLogin from "../../features/auth/CitizenLogin";
+import ProfileCreation from "../../pages/citizen/ProfileCreation";
+import CitizenDashboardNew from "../../pages/citizen/CitizenDashboardNew";
 import CitizenDashboard from "../../features/dashboard/pages/CitizenDashboard";
 import CreateComplaint from "../../pages/citizen/CreateComplaint";
-import ComplaintList from "../../pages/citizen/ComplaintList";
-import ComplaintDetails from "../../pages/citizen/ComplaintDetails";
+import MyComplaints from "../../pages/citizen/MyComplaints";
+import ComplaintDetail from "../../pages/citizen/ComplaintDetail";
 import CitizenEmergency from "../../pages/citizen/CitizenEmergency";
+import EmergencySOS from "../../pages/citizen/EmergencySOS";
 import CitizenEvents from "../../pages/citizen/CitizenEvents";
 import CitizenNotifications from "../../pages/citizen/CitizenNotifications";
 import CitizenFeedback from "../../pages/citizen/CitizenFeedback";
@@ -65,7 +70,7 @@ import DailyBriefing from "../../features/mla-dashboard/pages/DailyBriefing";
 
 function AppRoutesContent() {
   const location = useLocation();
-  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, "/citizen-login", "/admin-login"].includes(location.pathname);
+  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, "/citizen-splash", "/citizen-login", "/admin-login", "/profile-creation"].includes(location.pathname);
 
   return (
     <div className="App">
@@ -78,22 +83,25 @@ function AppRoutesContent() {
       <main className={`${isLanding ? 'app-main--landing' : 'app-main'}`}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/citizen-login" replace /></PublicRoute>} />
-          <Route path="/citizen-login" element={<PublicRoute><CitizenLogin /></PublicRoute>} />
+          <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/citizen-splash" replace /></PublicRoute>} />
+          <Route path="/citizen-splash" element={<PublicRoute><MobileLayout><CitizenSplash /></MobileLayout></PublicRoute>} />
+          <Route path="/citizen-login" element={<PublicRoute><MobileLayout><CitizenLogin /></MobileLayout></PublicRoute>} />
           <Route path="/admin-login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
           <Route path={ROUTES.otp} element={<PublicRoute><OtpVerify /></PublicRoute>} />
           <Route path={ROUTES.adminSignup} element={<PublicRoute><AdminSignup /></PublicRoute>} />
+          <Route path="/profile-creation" element={<RoleRoute allowedRoles={["CITIZEN"]}><ProfileCreation /></RoleRoute>} />
           
           {/* Citizen Routes */}
-          <Route path={ROUTES.citizen} element={<RoleRoute allowedRoles={["CITIZEN"]}><CitizenDashboard /></RoleRoute>} />
-          <Route path={ROUTES.citizenCreateComplaint} element={<RoleRoute allowedRoles={["CITIZEN"]}><CreateComplaint /></RoleRoute>} />
-          <Route path={ROUTES.citizenComplaintList} element={<RoleRoute allowedRoles={["CITIZEN"]}><ComplaintList /></RoleRoute>} />
-          <Route path={ROUTES.citizenComplaintDetails} element={<RoleRoute allowedRoles={["CITIZEN"]}><ComplaintDetails /></RoleRoute>} />
-          <Route path={ROUTES.citizenEmergency} element={<RoleRoute allowedRoles={["CITIZEN"]}><CitizenEmergency /></RoleRoute>} />
-          <Route path={ROUTES.citizenEvents} element={<RoleRoute allowedRoles={["CITIZEN"]}><CitizenEvents /></RoleRoute>} />
-          <Route path={ROUTES.citizenNotifications} element={<RoleRoute allowedRoles={["CITIZEN"]}><CitizenNotifications /></RoleRoute>} />
-          <Route path={ROUTES.citizenFeedback} element={<RoleRoute allowedRoles={["CITIZEN"]}><CitizenFeedback /></RoleRoute>} />
-          <Route path={ROUTES.citizenProfile} element={<RoleRoute allowedRoles={["CITIZEN"]}><CitizenProfile /></RoleRoute>} />
+          <Route path={ROUTES.citizen} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenDashboardNew /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenCreateComplaint} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CreateComplaint /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenComplaintList} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><MyComplaints /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenComplaintDetails} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><ComplaintDetail /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenEmergency} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenEmergency /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenSOS} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><EmergencySOS /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenEvents} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenEvents /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenNotifications} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenNotifications /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenFeedback} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenFeedback /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenProfile} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenProfile /></MobileLayout></RoleRoute>} />
           
           {/* Dashboard Routes */}
           <Route path={ROUTES.field} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldDashboard /></RoleRoute>} />
