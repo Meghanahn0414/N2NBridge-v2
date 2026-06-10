@@ -104,6 +104,7 @@ class GrievanceResponse(BaseModel):
     createdBy: str
     updatedBy: str
     isDeleted: bool
+    citizenName: Optional[str] = None
     
     class Config:
         populate_by_name = True

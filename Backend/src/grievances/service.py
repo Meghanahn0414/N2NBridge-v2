@@ -7,6 +7,10 @@ from typing import Dict, List, Optional
 
 from bson import ObjectId
 from config.database import MongoDatabase
+from bson import ObjectId
+from typing import Optional, List, Dict
+from datetime import datetime
+import logging
 from utils.helper import Helper
 from utils.id_generator import IDGenerator
 
@@ -16,6 +20,27 @@ logger = logging.getLogger(__name__)
 class GrievanceService:
     """Grievance business logic"""
     
+    @staticmethod
+    def _populate_citizen_name(grievance: dict) -> dict:
+        """Attach citizen fullName from profile if missing."""
+        if not grievance or not grievance.get("citizenId"):
+            return grievance
+        if grievance.get("citizenName"):
+            return grievance
+
+        db = MongoDatabase.get_db()
+        try:
+            user = db.users.find_one(
+                {"_id": ObjectId(grievance["citizenId"]), "isDeleted": False},
+                {"fullName": 1}
+            )
+            if user and user.get("fullName"):
+                grievance["citizenName"] = user["fullName"]
+        except Exception:
+            logger.warning(f"Unable to resolve citizen name for citizenId={grievance.get('citizenId')}")
+
+        return grievance
+
     @staticmethod
     def create_grievance(grievance_data: dict, user_id: str) -> str:
         """Create grievance"""
@@ -42,6 +67,16 @@ class GrievanceService:
                 logger.warning(f"Invalid gpsLocation format: {gps_location}. Setting to null.")
                 grievance_data["gpsLocation"] = None
         
+        # Store citizen name for activity feeds and complaint display
+        citizen_id = grievance_data.get("citizenId")
+        if citizen_id:
+            try:
+                user = db.users.find_one({"_id": ObjectId(citizen_id), "isDeleted": False}, {"fullName": 1})
+                if user and user.get("fullName"):
+                    grievance_data["citizenName"] = user["fullName"]
+            except Exception:
+                logger.warning(f"Unable to resolve citizen name for citizenId={citizen_id}")
+
         # Handle audit fields - use "system" for public creation (when user_id is None)
         audit_user_id = user_id if user_id else "system"
         grievance_data.update(Helper.audit_fields(audit_user_id))
@@ -54,19 +89,21 @@ class GrievanceService:
     def get_grievance_by_id(grievance_id: str) -> Optional[dict]:
         """Get grievance by ID"""
         db = MongoDatabase.get_db()
-        return db.grievances.find_one({
+        grievance = db.grievances.find_one({
             "_id": ObjectId(grievance_id),
             "isDeleted": False
         })
+        return GrievanceService._populate_citizen_name(grievance)
     
     @staticmethod
     def get_grievance_by_complaint_number(complaint_number: str) -> Optional[dict]:
         """Get grievance by complaint number"""
         db = MongoDatabase.get_db()
-        return db.grievances.find_one({
+        grievance = db.grievances.find_one({
             "complaintNumber": complaint_number,
             "isDeleted": False
         })
+        return GrievanceService._populate_citizen_name(grievance)
     
     @staticmethod
     def list_grievances(skip: int = 0, limit: int = 10, filters: dict = None) -> List[dict]:
@@ -86,7 +123,8 @@ class GrievanceService:
             if filters.get("assignedOfficerId"):
                 query["assignedOfficerId"] = filters["assignedOfficerId"]
         
-        return list(db.grievances.find(query).skip(skip).limit(limit))
+        grievances = list(db.grievances.find(query).skip(skip).limit(limit))
+        return [GrievanceService._populate_citizen_name(g) for g in grievances]
     
     @staticmethod
     def update_grievance_status(
@@ -187,10 +225,11 @@ class GrievanceService:
     def get_grievances_by_citizen(citizen_id: str, skip: int = 0, limit: int = 10) -> List[dict]:
         """Get grievances by citizen"""
         db = MongoDatabase.get_db()
-        return list(db.grievances.find({
+        grievances = list(db.grievances.find({
             "citizenId": citizen_id,
             "isDeleted": False
         }).skip(skip).limit(limit))
+        return [GrievanceService._populate_citizen_name(g) for g in grievances]
     
     @staticmethod
     def count_grievances_by_status() -> Dict[str, int]:

@@ -21,8 +21,21 @@ export default function ComplaintList() {
           getCitizenComplaints(),
           fetchComplaintCategories(),
         ]);
-        setComplaints(complaintData);
-        setCategories(categoryData);
+
+        const complaintsArray = Array.isArray(complaintData)
+          ? complaintData
+          : Array.isArray(complaintData?.data)
+          ? complaintData.data
+          : [];
+
+        const categoriesArray = Array.isArray(categoryData)
+          ? categoryData
+          : Array.isArray(categoryData?.data)
+          ? categoryData.data
+          : [];
+
+        setComplaints(complaintsArray);
+        setCategories(categoriesArray);
       } catch (err) {
         setError(err.message || "Unable to load complaints.");
       } finally {
@@ -57,31 +70,58 @@ export default function ComplaintList() {
             No complaints found. Create one to get started.
           </div>
         ) : (
-          <div className="space-y-4">
-            {complaints.map((complaint) => (
-              <button
-                key={complaint.id}
-                type="button"
-                onClick={() => navigate(`/citizen/complaints/${complaint.id}`)}
-                className="w-full rounded-3xl border border-slate-200 bg-slate-50 p-6 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-500">{complaint.complaintNumber}</p>
-                    <h2 className="mt-2 text-xl font-semibold text-slate-900">
-                      {mapCategoryName(complaint.categoryId, categories)}
-                    </h2>
-                  </div>
-                  <p className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
-                    {complaint.status.replace(/_/g, " ")}
-                  </p>
-                </div>
-                <div className="mt-3 text-sm text-slate-600">
-                  <p>{complaint.description}</p>
-                  <p className="mt-2 text-slate-500">Ward: {complaint.wardId || "N/A"}</p>
-                </div>
-              </button>
-            ))}
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Complaint ID
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Category
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Description
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Ward
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {complaints.map((complaint, index) => {
+                    const complaintId = complaint.id || complaint._id || complaint.complaintNumber || String(index);
+                    const complaintKey = complaint.id || complaint._id || complaint.complaintNumber || `row-${index}`;
+                    const complaintLinkId = complaint.id || complaint._id || complaintId;
+                    const complaintStatus = complaint.status ? complaint.status.replace(/_/g, " ") : "Unknown";
+
+                    return (
+                      <tr
+                        key={complaintKey}
+                        onClick={() => navigate(`/citizen/complaints/${complaintLinkId}`)}
+                        className="cursor-pointer hover:bg-slate-50"
+                      >
+                        <td className="px-6 py-4 text-sm text-slate-900">{complaint.complaintNumber || complaintId}</td>
+                        <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                          {complaintStatus}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-700">
+                          {mapCategoryName(complaint.categoryId, categories)}
+                        </td>
+                        <td className="px-6 py-4 max-w-xl truncate text-sm text-slate-700">
+                          {complaint.description || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-700">{complaint.wardId || "N/A"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
     </CitizenPageLayout>

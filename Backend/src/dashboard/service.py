@@ -2,7 +2,10 @@
 Dashboard Service
 """
 from analytics.service import AnalyticsService
+from bson import ObjectId
 from config.database import MongoDatabase
+from grievances.service import GrievanceService
+from utils.helper import Helper
 from datetime import datetime, timedelta
 import logging
 
@@ -24,10 +27,13 @@ class DashboardService:
         ).sort("createdAt", -1).limit(limit))
         
         for g in recent_grievances:
+            grievance = GrievanceService._populate_citizen_name(g)
+            citizen_name = grievance.get("citizenName")
+
             activities.append({
-                "time": g.get("createdAt"),
+                "time": grievance.get("createdAt"),
                 "type": "COMPLAINT",
-                "message": f"Complaint #{str(g.get('_id', ''))[:8]} created by {g.get('citizenName', 'Unknown')}",
+                "message": f"Complaint #{str(grievance.get('_id', ''))[:8]} created by {citizen_name or 'Unknown'}",
                 "icon": "FaClipboardList"
             })
         
@@ -283,8 +289,13 @@ class DashboardService:
         if satisfaction_agg:
             avg_satisfaction = round(satisfaction_agg[0].get("avgRating", 0), 1)
 
-        recent_alerts = list(db.alerts.find({}).sort("createdAt", -1).limit(5))
-        recent_complaints = list(db.grievances.find({"isDeleted": False}).sort("createdAt", -1).limit(5))
+        recent_alerts = [Helper.convert_mongo_doc(alert) for alert in db.alerts.find({}).sort("createdAt", -1).limit(5)]
+        recent_complaints = []
+        for complaint in db.grievances.find({"isDeleted": False}).sort("createdAt", -1).limit(5):
+            complaint = GrievanceService._populate_citizen_name(complaint)
+            recent_complaints.append(Helper.convert_mongo_doc(complaint))
+
+        recent_activity = DashboardService.get_recent_activity(10)
 
         return {
             "summary": {
@@ -309,6 +320,7 @@ class DashboardService:
             "recentComplaints": recent_complaints,
             "teamPerformance": DashboardService.get_team_performance(),
             "grievanceTrends": DashboardService.get_grievance_trends(7),
+            "recentActivity": recent_activity,
             "systemHealth": health_score
         }
     
@@ -318,22 +330,22 @@ class DashboardService:
         db = MongoDatabase.get_db()
         
         # Get assigned tasks
-        tasks = list(db.tasks.find({
+        tasks = [Helper.convert_mongo_doc(task) for task in db.tasks.find({
             "assignedTo": officer_id,
             "status": {"$ne": "COMPLETED"}
-        }).limit(10))
+        }).limit(10)]
         
         # Get assigned grievances
-        grievances = list(db.grievances.find({
+        grievances = [Helper.convert_mongo_doc(grievance) for grievance in db.grievances.find({
             "assignedOfficerId": officer_id,
             "status": {"$ne": "RESOLVED"}
-        }).limit(10))
+        }).limit(10)]
         
         # Get pending alerts
-        alerts = list(db.alerts.find({
+        alerts = [Helper.convert_mongo_doc(alert) for alert in db.alerts.find({
             "assignedTo": officer_id,
             "status": {"$ne": "RESOLVED"}
-        }).limit(10))
+        }).limit(10)]
         
         return {
             "pendingTasks": len(tasks),
@@ -350,10 +362,10 @@ class DashboardService:
         db = MongoDatabase.get_db()
         
         # Get citizen's grievances
-        grievances = list(db.grievances.find({
+        grievances = [Helper.convert_mongo_doc(grievance) for grievance in db.grievances.find({
             "citizenId": citizen_id,
             "isDeleted": False
-        }))
+        })]
         
         # Get grievance summary
         grievance_summary = {
@@ -363,14 +375,14 @@ class DashboardService:
         }
         
         # Get recent notifications
-        notifications = list(db.notifications.find({
+        notifications = [Helper.convert_mongo_doc(notification) for notification in db.notifications.find({
             "userId": citizen_id
-        }).sort("createdAt", -1).limit(5))
+        }).sort("createdAt", -1).limit(5)]
         
         # Get registered events
-        events = list(db.event_registrations.find({
+        events = [Helper.convert_mongo_doc(event) for event in db.event_registrations.find({
             "citizenId": citizen_id
-        }).limit(5))
+        }).limit(5)]
         
         return {
             "grievanceSummary": grievance_summary,

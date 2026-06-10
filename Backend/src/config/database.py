@@ -33,7 +33,9 @@ class MongoDatabase:
     def get_db(cls):
         """Get database instance"""
         if cls._db is None:
-            raise RuntimeError("Database not initialized. Call connect() first.")
+            logger.warning("Database not initialized. Attempting automatic connection.")
+            from config.settings import settings
+            cls.connect(settings.MONGODB_URL, settings.MONGODB_DB)
         return cls._db
 
     @classmethod

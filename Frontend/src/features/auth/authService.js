@@ -1,14 +1,21 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-const BASE_URL = `${API_BASE_URL}/api/auth`;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim();
+const BASE_URL = API_BASE_URL ? `${API_BASE_URL.replace(/\/$/, "")}/api/auth` : "/api/auth";
 
 async function callApi(path, payload) {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const url = `${BASE_URL}${path}`;
+  let response;
+
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    throw new Error(`Network request failed for ${url}: ${error.message}`);
+  }
 
   const data = await response.json();
   if (!response.ok) {

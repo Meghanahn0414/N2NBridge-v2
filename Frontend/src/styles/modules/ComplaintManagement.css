@@ -39,9 +39,14 @@
   margin-top: 24px;
 }
 
+.complaints-table {
+  margin-top: 0;
+}
+
 .complaints-table table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 10px;
 }
 
 .complaints-table thead {
@@ -50,35 +55,40 @@
 }
 
 .complaints-table th {
-  padding: 16px;
+  padding: 6px 8px !important;
   text-align: left;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 10px !important;
+  font-weight: 700;
   color: #374151;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
 }
 
 .complaints-table tbody tr {
   border-bottom: 1px solid #e5e7eb;
   transition: background-color 0.2s ease;
+  min-height: unset !important;
+  height: auto !important;
 }
 
 .complaints-table tbody tr:hover {
-  background-color: #f9fafb;
+  background-color: #f7f8fa;
 }
 
 .complaints-table td {
-  padding: 14px 16px;
-  font-size: 14px;
+  padding: 4px 6px !important;
+  font-size: 10px !important;
   color: #4b5563;
+  line-height: 1.1;
+  vertical-align: top;
+  white-space: nowrap;
 }
 
 .complaints-table .no-data {
   text-align: center;
   color: #9ca3af;
   font-style: italic;
-  padding: 32px 16px !important;
+  padding: 28px 16px !important;
 }
 
 .status-badge {
@@ -130,30 +140,54 @@
   padding: 6px 12px;
   font-size: 12px;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .action-buttons {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   justify-content: center;
   flex-wrap: wrap;
 }
 
 .action-buttons button {
-  padding: 6px 8px;
-  font-size: 14px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  background: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.12);
 }
 
 .action-buttons button:hover {
-  transform: scale(1.2);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 10px rgba(59, 130, 246, 0.14);
+}
+
+.action-buttons button.close {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+}
+
+.action-buttons button.download {
+  background: linear-gradient(135deg, #64748b 0%, #334155 100%);
+}
+
+.action-buttons button.reassign {
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+}
+
+.action-buttons button.escalate {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
 
 .complaint-actions .btn-view {
