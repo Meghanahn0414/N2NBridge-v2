@@ -128,6 +128,36 @@ async def delete_notification(
     return success_response(None, "Notification deleted successfully")
 
 
+@router.get("/stats/stats")
+async def get_notification_stats(
+    current_user: dict = Depends(get_current_user_optional)
+):
+    """Get notification statistics"""
+    try:
+        user_id = current_user.get("user_id") if current_user else None
+        db = MongoDatabase.get_db()
+        
+        # Count unread and total notifications for user
+        unread_count = db.notifications.count_documents({
+            "recipientId": user_id,
+            "isRead": False
+        }) if user_id else 0
+        
+        total_count = db.notifications.count_documents({
+            "recipientId": user_id
+        }) if user_id else 0
+        
+        stats = {
+            "unread": unread_count,
+            "total": total_count
+        }
+        
+        return success_response(stats, "Notification statistics retrieved")
+    except Exception as e:
+        logger.error(f"Error retrieving notification stats: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve statistics")
+
+
 # ======================== SMS & Email Service Testing ========================
 
 # Request Models

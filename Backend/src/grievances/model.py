@@ -1,10 +1,11 @@
 """
 Grievance Model and Schemas
 """
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class GrievanceStatus(str, Enum):
@@ -25,6 +26,14 @@ class GrievancePriority(str, Enum):
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
 
+class GrievanceCategory(str, Enum):
+    """Grievance category"""
+    ROAD_ISSUE = "ROAD_ISSUE"
+    WATER_SUPPLY = "WATER_SUPPLY"
+    ELECTRICITY = "ELECTRICITY"
+    GARBAGE = "GARBAGE"
+    NOISE_POLLUTION = "NOISE_POLLUTION"
+    OTHER = "OTHER"
 
 class AttachmentSchema(BaseModel):
     """Attachment schema"""
@@ -59,7 +68,7 @@ class AIAnalysisSchema(BaseModel):
 
 class GrievanceBase(BaseModel):
     """Base grievance schema"""
-    categoryId: str
+    category: GrievanceCategory
     description: str
     address: str
     wardId: Optional[str] = None
@@ -67,9 +76,14 @@ class GrievanceBase(BaseModel):
     priority: GrievancePriority = GrievancePriority.MEDIUM
 
 
-class GrievanceCreate(GrievanceBase):
+class GrievanceCreate(BaseModel):
     """Grievance creation"""
     citizenId: str
+    categoryId: str
+    description: str
+    address: str
+    wardId: Optional[str] = None
+    priority: str = "MEDIUM"
     gpsLocation: Optional[dict] = None
 
 
@@ -86,7 +100,8 @@ class GrievanceResponse(BaseModel):
     id: str = Field(alias="_id")
     complaintNumber: str
     citizenId: str
-    categoryId: str
+    categoryId: Optional[str] = None
+    category: Optional[GrievanceCategory] = None
     description: str
     address: str
     wardId: Optional[str] = None
@@ -131,3 +146,4 @@ class GrievanceFeedbackCreate(BaseModel):
     """Grievance feedback"""
     rating: int = Field(ge=1, le=5)
     comments: str
+    submittedAt: datetime

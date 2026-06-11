@@ -177,7 +177,7 @@ export default function CitizenProfile() {
                     <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-2xl">
                       {profile?.profileImage ? (
                         <img
-                          src={profile.profileImage.startsWith('http') ? profile.profileImage : `${import.meta.env.VITE_API_BASE_URL || 'http://10.62.179.92:8000/'}/${profile.profileImage}`}
+                          src={profile.profileImage.startsWith('http') ? profile.profileImage : `${import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || 'http://127.0.0.1:8000'}/${profile.profileImage}`}
                           alt="Profile"
                           className="h-full w-full object-cover"
                         />

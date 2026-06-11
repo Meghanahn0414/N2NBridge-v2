@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import { getAuthToken, getAuthUser } from '../../services/authStorage';
 import { ROUTES } from './RouteConstants';
 
 /**
@@ -8,13 +9,13 @@ import { ROUTES } from './RouteConstants';
  * If already logged in, redirects to dashboard
  */
 export default function AdminSignupRoute({ children }) {
-  const token = localStorage.getItem('token');
-  const user = localStorage.getItem('user');
+  const token = getAuthToken();
+  const user = getAuthUser();
 
   // If already authenticated, redirect to appropriate dashboard
   if (token && user) {
     try {
-      const userData = JSON.parse(user);
+      const userData = user;
       const role = userData.role || userData.user?.role;
 
       // Admin users go to admin dashboard
