@@ -401,7 +401,7 @@ def initialize_database():
     print(f"  Manager:      manager@crm.com / manager@123")
     print(f"  Field Officer: officer@crm.com / officer@123")
     print(f"  Citizen:      citizen@crm.com / citizen@123")
-    print("\n🔗 Access the API at: http://localhost:8000/api/docs")
+    print("\n🔗 Access the API at: http://${window.location.hostname}:8000/api/docs")
     print("="*50)
     
     MongoDatabase.close()

@@ -1,3 +1,17 @@
+function readStorage(key) {
+  return sessionStorage.getItem(key) ?? localStorage.getItem(key);
+}
+
+function writeStorage(key, value) {
+  sessionStorage.setItem(key, value);
+  localStorage.removeItem(key);
+}
+
+function removeStorage(key) {
+  sessionStorage.removeItem(key);
+  localStorage.removeItem(key);
+}
+
 function parseJwt(token) {
   if (!token) return null;
   try {
@@ -16,32 +30,37 @@ function parseJwt(token) {
 }
 
 export function getAuthRole() {
-  return localStorage.getItem('role');
+  return readStorage('role');
+}
+
+export function getAuthToken() {
+  return readStorage('token');
 }
 
 export function setAuthToken(token) {
-  localStorage.setItem('token', token);
+  if (!token) return;
+  writeStorage('token', token);
 }
 
 export function setAuthRole(role) {
-  localStorage.setItem('role', role);
+  if (!role) return;
+  writeStorage('role', role);
 }
 
 export function setAuthUser(user) {
   if (!user) return;
-  localStorage.setItem('user', JSON.stringify(user));
+  writeStorage('user', JSON.stringify(user));
 }
 
 export function updateAuthUser(changes) {
   const existingUser = getAuthUser() || {};
   const merged = { ...existingUser, ...changes };
-  localStorage.setItem('user', JSON.stringify(merged));
+  writeStorage('user', JSON.stringify(merged));
   return merged;
 }
 
 export function getAuthUser() {
-  // First try to get full user data from localStorage (includes profileImage)
-  const storedUser = localStorage.getItem("user");
+  const storedUser = readStorage("user");
   if (storedUser) {
     try {
       return JSON.parse(storedUser);
@@ -51,7 +70,7 @@ export function getAuthUser() {
   }
 
   // Fallback to JWT payload
-  const token = localStorage.getItem('token');
+  const token = getAuthToken();
   const payload = parseJwt(token);
   if (!payload) return null;
   return {
@@ -63,7 +82,7 @@ export function getAuthUser() {
 }
 
 export function clearAuth() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('role');
-  localStorage.removeItem('user');
+  removeStorage('token');
+  removeStorage('role');
+  removeStorage('user');
 }

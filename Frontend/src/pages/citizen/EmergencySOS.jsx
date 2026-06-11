@@ -20,8 +20,8 @@ export default function EmergencySOS() {
     setLoading(true);
     try {
       // Get JWT token from localStorage
-      const token = localStorage.getItem("token");
-      const userStr = localStorage.getItem("user");
+      const token = (typeof sessionStorage !== "undefined" && sessionStorage.getItem("token")) || localStorage.getItem("token");
+      const userStr = (typeof sessionStorage !== "undefined" && sessionStorage.getItem("user")) || localStorage.getItem("user");
       const user = userStr ? JSON.parse(userStr) : null;
 
       if (!token || !user) {
@@ -61,8 +61,10 @@ export default function EmergencySOS() {
         shareLocation: shareLocation,
       };
 
+      const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000";
+
       // Submit to backend
-      const response = await fetch("http://localhost:8000/api/emergency/send-alert", {
+      const response = await fetch(`${baseUrl}/api/emergency/send-alert`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

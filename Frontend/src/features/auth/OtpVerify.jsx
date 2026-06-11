@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { setAuthRole, setAuthToken, setAuthUser } from "../../services/authStorage";
 import { verifyOtp } from "./authService";
 import "./auth.css";
 
@@ -39,10 +40,10 @@ export default function OtpVerify() {
 
     try {
       const res = await verifyOtp({ value: authState.value, otp });
-      localStorage.setItem("token", res.token);
-      localStorage.setItem("role", res.role);
+      setAuthToken(res.token);
+      setAuthRole(res.role);
       if (res.user) {
-        localStorage.setItem("user", JSON.stringify(res.user));
+        setAuthUser(res.user);
         window.dispatchEvent(new Event('auth-user-updated'));
       }
       sessionStorage.removeItem("authValue");

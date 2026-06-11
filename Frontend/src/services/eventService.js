@@ -3,14 +3,14 @@
  * Handles all event-related API calls
  */
 
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000"}/api`;
 
 class EventService {
   /**
    * Get authorization header with Bearer token
    */
   static getAuthToken() {
-    return localStorage.getItem("token");
+    return (typeof sessionStorage !== "undefined" && sessionStorage.getItem("token")) || localStorage.getItem("token");
   }
 
   static getHeaders() {

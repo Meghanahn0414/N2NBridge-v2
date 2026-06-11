@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { loginAdmin } from "./authService";
-import { setAuthToken, setAuthRole } from "../../services/authStorage";
+import { setAuthToken, setAuthRole, setAuthUser } from "../../services/authStorage";
 import "./auth.css";
 
 export default function AdminLogin() {
@@ -43,7 +43,7 @@ export default function AdminLogin() {
       setAuthToken(response.accessToken);
       const userRole = response.user?.role || "ADMIN";
       setAuthRole(userRole);
-      localStorage.setItem("user", JSON.stringify(response.user));
+      setAuthUser(response.user);
 
       // Redirect based on user role
       const redirectPath = redirectByRole[userRole] || "/admin";

@@ -2,7 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim();
 const API_BASE = API_BASE_URL ? `${API_BASE_URL.replace(/\/$/, "")}/api` : "/api";
 
 function getAuthHeaders(contentType = "application/json") {
-  const token = localStorage.getItem("token");
+  const token = (typeof sessionStorage !== "undefined" && sessionStorage.getItem("token")) || localStorage.getItem("token");
   const headers = {};
 
   if (contentType !== null) {
@@ -35,7 +35,7 @@ function parseJwt(token) {
 
 function getStoredUserId() {
   try {
-    const storedUser = localStorage.getItem("user");
+    const storedUser = (typeof sessionStorage !== "undefined" && sessionStorage.getItem("user")) || localStorage.getItem("user");
     if (!storedUser) return null;
     const user = JSON.parse(storedUser);
     return user?.user_id || user?.id || user?._id || null;
@@ -45,7 +45,7 @@ function getStoredUserId() {
 }
 
 export function getCurrentUserId() {
-  const token = localStorage.getItem("token");
+  const token = (typeof sessionStorage !== "undefined" && sessionStorage.getItem("token")) || localStorage.getItem("token");
   const payload = parseJwt(token);
   const userId = payload?.user_id || payload?.id || payload?._id;
   return userId || getStoredUserId() || null;

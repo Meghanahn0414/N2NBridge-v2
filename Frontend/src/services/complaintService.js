@@ -2,13 +2,13 @@
  * Complaint Service - API calls for complaint operations
  */
 
-const API_BASE_URL = "http://localhost:8000/api/complaints";
+const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000"}/api/complaints`;
 
 /**
  * Get the authorization token from localStorage
  */
 function getAuthToken() {
-  return localStorage.getItem("token");
+  return (typeof sessionStorage !== "undefined" && sessionStorage.getItem("token")) || localStorage.getItem("token");
 }
 
 /**
