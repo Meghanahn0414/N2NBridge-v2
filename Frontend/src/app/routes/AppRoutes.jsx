@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Sidebar from "../../Sidebar";
 import Header from "../../Header";
@@ -70,17 +70,48 @@ import DailyBriefing from "../../features/mla-dashboard/pages/DailyBriefing";
 
 function AppRoutesContent() {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+
   const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, "/citizen-splash", "/citizen-login", "/admin-login", "/profile-creation"].includes(location.pathname);
+  const isCitizenRoute = location.pathname.startsWith("/citizen");
+  const isAdminDashboard = location.pathname === ROUTES.admin;
+  const hideHeader = isLanding || isCitizenRoute || isAdminDashboard;
+  const hideSidebar = isLanding || isCitizenRoute;
+
+  // Close mobile menu on route change
+  useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
+
+  // Track mobile viewport
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mq.matches);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // Listen for hamburger clicks from admin mobile dashboard
+  useEffect(() => {
+    const handler = () => setMobileMenuOpen(o => !o);
+    window.addEventListener('admin-mobile-menu-click', handler);
+    return () => window.removeEventListener('admin-mobile-menu-click', handler);
+  }, []);
 
   return (
     <div className="App">
-      {/* Header - hide on landing, login pages, and signup */}
-      {!isLanding && <Header />}
+      {/* Header - hide on landing, login pages, signup, and citizen mobile flows */}
+      {!hideHeader && <Header onMobileMenuClick={() => setMobileMenuOpen(o => !o)} />}
 
-      {/* Sidebar - hide on landing, login pages, and signup */}
-      {!isLanding && <Sidebar />}
+      {/* Sidebar - hide on landing, login pages, signup, and citizen mobile flows */}
+      {!hideSidebar && (
+        <Sidebar
+          mobileOpen={mobileMenuOpen}
+          onMobileClose={() => setMobileMenuOpen(false)}
+        />
+      )}
 
-      <main className={`${isLanding ? 'app-main--landing' : 'app-main'}`}>
+      <main className={`${isLanding ? 'app-main--landing' : (isCitizenRoute || isAdminDashboard) ? 'app-main--citizen' : 'app-main'}`}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/citizen-splash" replace /></PublicRoute>} />

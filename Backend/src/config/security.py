@@ -25,7 +25,11 @@ class SecurityManager:
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verify password"""
-        return pwd_context.verify(plain_password, hashed_password)
+        try:
+            return pwd_context.verify(plain_password, hashed_password)
+        except Exception:
+            # Hash is in an unrecognised format (e.g. plain-text or wrong scheme)
+            return False
     
     @staticmethod
     def create_access_token(

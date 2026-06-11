@@ -48,7 +48,7 @@ export default function ComplaintDetail() {
         <div className="error-state">
           <p>Complaint not found</p>
           <button className="go-back-btn" onClick={() => navigate("/citizen/complaints")}>
-            ← Go Back
+            ←
           </button>
         </div>
       </div>

@@ -397,7 +397,7 @@ export default function CreateComplaint() {
       });
 
       // Submit to backend
-      const response = await fetch("http://localhost:8000/api/complaints/create", {
+      const response = await fetch("http://10.62.179.92:8000/api/complaints/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

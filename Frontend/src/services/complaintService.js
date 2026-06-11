@@ -2,7 +2,7 @@
  * Complaint Service - API calls for complaint operations
  */
 
-const API_BASE_URL = "http://localhost:8000/api/complaints";
+const API_BASE_URL = "http://10.62.179.92:8000/api/complaints";
 
 /**
  * Get the authorization token from localStorage

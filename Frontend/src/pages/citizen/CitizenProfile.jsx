@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit, FaCamera } from 'react-icons/fa';
 import { getCitizenProfile, updateCitizenProfile, uploadCitizenProfilePhoto } from '../../shared/services/citizenService';
 
 export default function CitizenProfile() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -19,7 +21,11 @@ export default function CitizenProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
-
+  const handleLogout = () => {
+  // Clear auth tokens/session
+  localStorage.removeItem("token");
+  navigate("/login");
+};
   useEffect(() => {
     let active = true;
 
@@ -171,7 +177,7 @@ export default function CitizenProfile() {
                     <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-2xl">
                       {profile?.profileImage ? (
                         <img
-                          src={profile.profileImage.startsWith('http') ? profile.profileImage : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/${profile.profileImage}`}
+                          src={profile.profileImage.startsWith('http') ? profile.profileImage : `${import.meta.env.VITE_API_BASE_URL || 'http://10.62.179.92:8000/'}/${profile.profileImage}`}
                           alt="Profile"
                           className="h-full w-full object-cover"
                         />
@@ -191,7 +197,7 @@ export default function CitizenProfile() {
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900">{profile?.fullName || profile?.email || 'Citizen'}</h2>
-                    <p className="text-sm text-slate-600">{constituencyLabel}</p>
+                    {/* <p className="text-sm text-slate-600">{constituencyLabel}</p> */}
                   </div>
                 </div>
                 <div className="flex flex-col items-start gap-2">
@@ -324,6 +330,12 @@ export default function CitizenProfile() {
           </button>
           <button className="mt-3 block rounded-lg border border-slate-300 px-4 py-2 text-slate-900 transition hover:bg-slate-50">
             Two-Factor Authentication
+          </button>
+        </div>
+        {/* Logout */}
+        <div className="logout-section">
+          <button className="logout-btn" onClick={handleLogout}>
+             🚪 Log out
           </button>
         </div>
       </div>

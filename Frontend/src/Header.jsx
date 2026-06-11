@@ -10,7 +10,7 @@ import {
 } from './services/authStorage';
 import NotificationModal from "./common/NotificationModal";
 
-export default function Header() {
+export default function Header({ onMobileMenuClick }) {
   const [notificationCount, setNotificationCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [showNotificationsList, setShowNotificationsList] = useState(false);
@@ -44,7 +44,7 @@ export default function Header() {
       return img;
     }
     // Otherwise, prepend the backend base URL
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://10.62.179.92:8000';
     return `${baseUrl}/${img.startsWith('/') ? img.slice(1) : img}`;
   };
 
@@ -329,6 +329,14 @@ export default function Header() {
     <header className="app-header">
       <div className="header-container">
         <div className="header-left">
+          {/* Hamburger — visible only on mobile/tablet */}
+          <button
+            className="hamburger-btn header-hamburger"
+            onClick={onMobileMenuClick}
+            aria-label="Open navigation menu"
+          >
+            <FaBars />
+          </button>
           {!hideHeaderBrand && routePageTitle && (
             <div className="header-page-title">{routePageTitle}</div>
           )}

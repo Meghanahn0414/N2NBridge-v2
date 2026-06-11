@@ -25,6 +25,16 @@
   overflow-x: hidden;
 }
 
+.app-main--citizen {
+  flex: 1;
+  margin-left: 0;
+  margin-top: 0;
+  padding: 0;
+  background: transparent;
+  min-height: 100vh;
+  width: 100%;
+}
+
 /* Ensure any page section headers do not get hidden behind fixed top navbar */
 .card-header,
 .page-header,
@@ -70,6 +80,27 @@ main > div {
 
 body.sidebar-collapsed .app-main {
   margin-left: 0;
+}
+
+/* ── Responsive layout ── */
+@media (max-width: 1024px) {
+  .app-main {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-main {
+    padding: 12px;
+    padding-top: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-main {
+    padding: 8px;
+    padding-top: 6px;
+  }
 }
 
 

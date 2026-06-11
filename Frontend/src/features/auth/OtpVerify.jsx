@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { verifyOtp } from "./authService";
+import { sendOtp, verifyOtp } from "./authService";
 import "./auth.css";
 
 const roleRedirect = {

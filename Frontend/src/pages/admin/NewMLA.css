@@ -261,17 +261,57 @@
 }
 
 @media (max-width: 720px) {
+  .new-mla-container {
+    padding: 16px;
+    align-items: flex-start;
+  }
+
   .new-mla-card {
     border-radius: 20px;
   }
 
   .new-mla-header,
   .new-mla-form {
-    padding-left: 24px;
-    padding-right: 24px;
+    padding-left: 20px;
+    padding-right: 20px;
   }
 
   .new-mla-phone-field {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .new-mla-container {
+    padding: 10px;
+    min-height: unset;
+  }
+
+  .new-mla-header {
+    padding: 20px 16px 16px;
+  }
+
+  .new-mla-title {
+    font-size: 22px;
+  }
+
+  .new-mla-subtitle {
+    font-size: 13px;
+    margin-top: 6px;
+  }
+
+  .new-mla-form {
+    padding: 16px;
+  }
+
+  .new-mla-input,
+  .new-mla-textarea {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .new-mla-submit {
+    padding: 14px;
+    font-size: 14px;
   }
 }

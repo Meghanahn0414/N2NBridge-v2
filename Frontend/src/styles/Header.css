@@ -1,7 +1,7 @@
 .app-header {
   width: calc(100% - var(--sidebar-width)) !important;
   height: var(--header-height) !important;
-  background: linear-gradient(to right, #3E5C84 0%, #2F6C8F 55%, #2FA6A3 100%) !important;
+  background: #1a5290 !important;
   position: fixed !important;
   top: 0 !important;
   left: var(--sidebar-width) !important;
@@ -557,41 +557,97 @@ body.sidebar-collapsed .app-header {
   transform: translateY(-1px);
 }
 
+/* Header hamburger — hidden on desktop, shown on tablet/mobile */
+.header-hamburger {
+  display: none;
+}
+
 /* Responsive */
+@media (max-width: 1024px) {
+  /* Header stretches full width when sidebar is off-screen */
+  .app-header {
+    left: 0 !important;
+    width: 100% !important;
+  }
+
+  .header-hamburger {
+    display: flex;
+    font-size: 20px;
+    padding: 8px;
+    margin-right: 4px;
+  }
+}
+
 @media (max-width: 768px) {
   .header-container {
-    padding: 0 20px;
+    padding: 0 12px;
   }
 
   .header-left {
-    gap: 15px;
+    gap: 8px;
   }
 
   .header-right {
-    gap: 15px;
+    gap: 12px;
   }
 
-  .header-logo img {
-    height: 40px;
+  /* Hide date filter on small screens */
+  .header-date-filter {
+    display: none;
   }
 
-  .hamburger-btn {
-    font-size: 20px;
+  /* Hide Export button text, keep icon */
+  .header-action-btn span {
+    display: none;
+  }
+
+  .header-action-btn {
+    padding: 8px;
+    min-width: 36px;
+    justify-content: center;
+  }
+
+  .header-page-title {
+    font-size: 1.4rem;
+  }
+
+  .dashboard-title {
+    font-size: 1.3rem;
+  }
+
+  .dashboard-subtitle {
+    font-size: 11px;
   }
 
   .notification-icon,
   .user-icon {
-    width: 34px;
-    height: 34px;
-    font-size: 13px;
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
   }
 
   .notification-dropdown {
-    width: 320px;
+    width: min(320px, 90vw);
     max-height: 400px;
+    right: -8px;
   }
 
-  .user-dropdown {
-    width: 200px;
+  .user-profile-dropdown {
+    width: min(280px, 90vw);
+    right: -8px;
+  }
+
+  .user-profile-name-text {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-action-btn {
+    display: none;
+  }
+
+  .header-page-title {
+    font-size: 1.1rem;
   }
 }

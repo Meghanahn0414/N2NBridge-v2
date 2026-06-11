@@ -1,12 +1,12 @@
 .rep-dashboard-page {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 8px;
-  padding: 10px 16px 20px;
+  gap: 10px;
+  padding: 10px 16px 24px;
   min-height: calc(100vh - 88px);
-  background: #f8fafc;
+  background: var(--color-page);
   font-family: 'Inter', system-ui, sans-serif;
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .rep-dashboard-status {
@@ -38,15 +38,15 @@
 }
 
 .rep-summary-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--color-card);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 20px;
-  padding: 4px 6px;
+  padding: 10px 12px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 6px;
-  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.04);
+  gap: 10px;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
   min-width: 0;
 }
 
@@ -233,8 +233,8 @@
 }
 
 .rep-alert-badge.critical {
-  background: #fee2e2;
-  color: #991b1b;
+  background: rgba(163, 45, 45, 0.12);
+  color: var(--color-critical);
 }
 
 .rep-overview-body {
@@ -504,11 +504,20 @@
 
 @media (max-width: 760px) {
   .rep-dashboard-page {
-    padding: 20px 18px 32px;
+    padding: 14px 12px 24px;
   }
 
   .rep-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rep-top-grid,
+  .rep-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rep-bottom-row {
+    grid-template-columns: 1fr;
   }
 
   .rep-panel-header {
@@ -518,5 +527,54 @@
 
   .rep-panel-button {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .rep-dashboard-page {
+    padding: 10px 8px 20px;
+  }
+
+  .rep-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .rep-summary-card {
+    padding: 8px 10px;
+  }
+
+  .rep-card-title {
+    font-size: 10px;
+  }
+
+  .rep-card-value {
+    font-size: 13px;
+  }
+
+  .rep-card-detail {
+    font-size: 9px;
+  }
+
+  .rep-panel-header h2 {
+    font-size: 12px;
+  }
+
+  .rep-panel-subtitle {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .rep-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rep-card-title {
+    font-size: 11px;
+  }
+
+  .rep-card-value {
+    font-size: 15px;
   }
 }

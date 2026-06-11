@@ -1,4 +1,4 @@
-const baseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
+const baseUrl = import.meta.env.VITE_API_BASE_URL || `http://10.62.179.92:8000`;
 
 const buildUrl = (path) => {
 	if (!path) return baseUrl;
