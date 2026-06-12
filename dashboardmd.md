@@ -11,3 +11,4 @@
 | AWS Hosting                | Prep Study/Document | Open        |                                               | Santosh         |
 | AWS Hosting                | Demo                | Open        |                                               | Santosh         |
 | Mobile Ui design           | Code                | Completed   |                                               | Fatima/Meghana
+| Integration Testing        | Code                | Started     |                                               | Fatima/Meghana
