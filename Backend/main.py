@@ -91,8 +91,25 @@ except Exception as e:
 # Middleware for logging requests
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log all requests"""
+    """Log all requests and handle CORS preflight requests safely."""
     start_time = datetime.utcnow()
+
+    if request.method == "OPTIONS":
+        origin = request.headers.get("origin", "*")
+        requested_headers = request.headers.get("access-control-request-headers", "content-type, authorization")
+        response = JSONResponse(
+            content={},
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+                "Access-Control-Allow-Headers": requested_headers,
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Max-Age": "600",
+            },
+        )
+        logger.info(f"[MIDDLEWARE] {request.method} {request.url.path} - Preflight handled")
+        return response
     
     # Log Authorization header for protected endpoints
     if request.url.path.startswith("/api/"):

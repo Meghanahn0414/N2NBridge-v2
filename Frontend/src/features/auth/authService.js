@@ -1,5 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim();
-const BASE_URL = API_BASE_URL ? `${API_BASE_URL.replace(/\/$/, "")}/api/auth` : "/api/auth";
+const BASE_URL = import.meta.env.DEV
+  ? "/api/auth"
+  : API_BASE_URL
+    ? `${API_BASE_URL.replace(/\/$/, "")}/api/auth`
+    : "/api/auth";
 
 async function callApi(path, payload) {
   const url = `${BASE_URL}${path}`;
