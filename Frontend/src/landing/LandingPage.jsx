@@ -31,15 +31,15 @@ export default function LandingPage() {
           <div className="login-options-modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="login-options-title">Select Your Login Type</h2>
             <div className="login-options-grid">
-              <div 
+              <div
                 className="login-option-card citizen"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleLogin("/citizen-login");
+                  handleLogin("/citizen-splash");
                 }}
                 role="button"
                 tabIndex={0}
-                onKeyPress={(e) => e.key === "Enter" && handleLogin("/citizen-login")}
+                onKeyPress={(e) => e.key === "Enter" && handleLogin("/citizen-splash")}
               >
                 <div className="login-option-icon">👤</div>
                 <h3>Citizen</h3>

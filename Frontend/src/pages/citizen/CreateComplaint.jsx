@@ -355,7 +355,8 @@ export default function CreateComplaint() {
       }
 
       // Get citizen ID from various possible sources
-      const citizenId = user?.citizenId || user?.id || userId;
+      // Backend returns _id (Pydantic alias), not id
+      const citizenId = user?.citizenId || user?._id || user?.id || userId;
       
       if (!citizenId) {
         alert("User information not found. Please login again.");

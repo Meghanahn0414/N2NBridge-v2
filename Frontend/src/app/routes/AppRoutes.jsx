@@ -76,8 +76,9 @@ function AppRoutesContent() {
   const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, "/citizen-splash", "/citizen-login", "/admin-login", "/profile-creation"].includes(location.pathname);
   const isCitizenRoute = location.pathname.startsWith("/citizen");
   const isAdminDashboard = location.pathname === ROUTES.admin;
-  const hideHeader = isLanding || isCitizenRoute || isAdminDashboard;
-  const hideSidebar = isLanding || isCitizenRoute;
+  const isRepDashboard = location.pathname === ROUTES.rep || location.pathname === ROUTES.mlaExecutiveDashboard;
+  const hideHeader = isLanding || isCitizenRoute || isAdminDashboard || isRepDashboard;
+  const hideSidebar = isLanding || isCitizenRoute || isRepDashboard;
 
   // Close mobile menu on route change
   useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
@@ -111,7 +112,7 @@ function AppRoutesContent() {
         />
       )}
 
-      <main className={`${isLanding ? 'app-main--landing' : (isCitizenRoute || isAdminDashboard) ? 'app-main--citizen' : 'app-main'}`}>
+      <main className={`${isLanding ? 'app-main--landing' : (isCitizenRoute || isAdminDashboard || isRepDashboard) ? 'app-main--citizen' : 'app-main'}`}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/citizen-splash" replace /></PublicRoute>} />

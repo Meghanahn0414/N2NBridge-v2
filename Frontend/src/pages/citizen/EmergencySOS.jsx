@@ -45,7 +45,7 @@ export default function EmergencySOS() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          citizenId: user.citizenId,
+          citizenId: user._id || user.citizenId || user.id,
           type: selectedEmergency,
           details: details || "No additional details provided",
           latitude, longitude, shareLocation,

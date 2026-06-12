@@ -1,205 +1,433 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
+} from 'recharts';
+import {
+  FaBell, FaHome, FaClipboardList, FaMapMarkedAlt,
+  FaExclamationCircle, FaUserCircle, FaRegSquare,
+} from 'react-icons/fa';
 import { ROUTES } from '../../../app/routes/RouteConstants';
-import '../../../styles/mla-dashboard/mla-dashboard.css';
-import '../../../styles/mla-dashboard/ExecutiveDashboard.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+import { fetchGrievances } from '../../grievances/grievanceService';
+import { getAuthUser } from '../../../services/authStorage';
+import '../../../styles/mla-dashboard/ExecutiveDashboard.css';
 
-const formatNumber = (value) => {
-  if (value == null || value === '') return '-';
-  if (typeof value === 'number') return value.toLocaleString();
-  return value;
+function HealthGauge({ score }) {
+  const radius = 36;
+  const cx = 50;
+  const cy = 50;
+  const circumference = 2 * Math.PI * radius;
+  const pct = Math.min(100, Math.max(0, Number(score) || 0));
+  const offset = circumference - (pct / 100) * circumference;
+
+  return (
+    <svg width="100" height="100" viewBox="0 0 100 100">
+      <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#e5e7eb" strokeWidth="10" />
+      <circle
+        cx={cx} cy={cy} r={radius}
+        fill="none"
+        stroke="#22c55e"
+        strokeWidth="10"
+        strokeDasharray={`${circumference}`}
+        strokeDashoffset={`${offset}`}
+        strokeLinecap="round"
+        style={{ transform: 'rotate(-90deg)', transformOrigin: '50px 50px' }}
+      />
+      <text x={cx} y={cy - 4} textAnchor="middle" fill="#1f2937" fontSize="13" fontWeight="700">
+        {pct > 0 ? `${pct}%` : '—'}
+      </text>
+      <text x={cx} y={cy + 10} textAnchor="middle" fill="#6b7280" fontSize="9">
+        Score
+      </text>
+    </svg>
+  );
+}
+
+const CATEGORY_SHORT = {
+  Water: 'Water', Roads: 'Roads', Electricity: 'Elec.', Drainage: 'Drain.',
+  Health: 'Health', Sanitation: 'Sanit.', Infrastructure: 'Infra.',
+  Education: 'Educ.', Transport: 'Trans.',
 };
+
+function shortenCategory(name) {
+  return CATEGORY_SHORT[name] || (name.length > 6 ? name.slice(0, 5) + '.' : name);
+}
+
+function wardSeverity(count) {
+  if (count >= 30) return { bg: '#fee2e2', text: '#dc2626', label: 'High' };
+  if (count >= 15) return { bg: '#fef9c3', text: '#d97706', label: 'Med' };
+  return { bg: '#dcfce7', text: '#16a34a', label: 'Low' };
+}
 
 export default function ExecutiveDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { dashboard, loading, error } = useMlaDashboard();
+  const [recentGrievances, setRecentGrievances] = useState([]);
+
+  const user = getAuthUser();
+  const initials = user?.name
+    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 3)
+    : 'MLA';
+
+  useEffect(() => {
+    fetchGrievances(1, 5)
+      .then(data => setRecentGrievances(Array.isArray(data) ? data.slice(0, 5) : []))
+      .catch(() => setRecentGrievances([]));
+  }, []);
+
   const kpis = dashboard?.summary || {};
+  const grievanceStats = dashboard?.metrics?.grievances || {};
 
-  const handleNavigate = (route) => () => navigate(route);
-  const handleAttentionClick = () => navigate(ROUTES.mlaComplaintsDashboard);
   const totalComplaints = Number(kpis.totalComplaints || 0);
-  const complaintsResolutionPct = totalComplaints > 0
-    ? Math.min(100, Math.round((Number(kpis.resolvedThisMonth || 0) / totalComplaints) * 100))
-    : 0;
-  const citizenSatisfactionPct = kpis.citizenSatisfaction != null
-    ? Math.min(100, Math.round((Number(kpis.citizenSatisfaction || 0) / 5) * 100))
-    : 0;
-  const alertTotal = Number(dashboard?.overview?.alerts?.total || 0);
-  const alertResponsePct = alertTotal > 0
-    ? Math.min(100, Math.round((1 - (Number(kpis.criticalAlerts || 0) / alertTotal)) * 100))
-    : 0;
-  const avgRegistrationsPerEvent = Number(dashboard?.overview?.events?.avgRegistrationsPerEvent || 0);
-  const eventParticipationPct = Math.min(100, Math.round(avgRegistrationsPerEvent * 10));
+  const openComplaints = Number(kpis.openComplaints || 0);
+  const resolvedComplaints = Number(
+    kpis.resolvedThisMonth || grievanceStats.byStatus?.RESOLVED || 0
+  );
+  const criticalAlerts = Number(kpis.criticalAlerts || 0);
+  const weeklyNew = Number(kpis.weeklyNewComplaints || kpis.newThisWeek || 0);
+  const escalated = Number(grievanceStats.byStatus?.ESCALATED || 0);
+  const resolutionPct = totalComplaints > 0
+    ? Math.round((resolvedComplaints / totalComplaints) * 100) : 0;
+  const unackCount = (dashboard?.recentAlerts || []).filter(
+    a => !a.acknowledged && !a.isAcknowledged
+  ).length;
 
-  const attentionNeeded = (dashboard?.recentAlerts || []).slice(0, 4).map((alert, idx) => {
-    let ward = 'Unknown location';
-    if (alert.wardId && typeof alert.wardId === 'string') {
-      ward = alert.wardId;
-    } else if (alert.location?.type === 'Point' && alert.location?.coordinates) {
-      const [lon, lat] = alert.location.coordinates;
-      ward = `📍 ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  const rawHealth = kpis.healthScore;
+  const healthScore = rawHealth != null
+    ? Number(String(rawHealth).replace('%', '')) : 0;
+
+  const satisfaction = Number(kpis.citizenSatisfaction || 0);
+  const upcomingEvents = Number(kpis.upcomingEvents || 0);
+  const activeOfficers = Number(kpis.activeOfficers || 0);
+
+  const byCategory = grievanceStats.byCategory || {};
+  const openRatio = totalComplaints > 0 ? openComplaints / totalComplaints : 0;
+  const categoryData = Object.entries(byCategory)
+    .map(([key, val]) => {
+      const total = typeof val === 'object'
+        ? Number(val.total || val.count || 0)
+        : Number(val) || 0;
+      const open = typeof val === 'object' && val.open != null
+        ? Number(val.open)
+        : Math.round(total * openRatio);
+      return { name: shortenCategory(key), Total: total, Open: open };
+    })
+    .filter(d => d.Total > 0);
+
+  const wardData = (() => {
+    if (Array.isArray(dashboard?.wardStats) && dashboard.wardStats.length) {
+      return dashboard.wardStats.map(w => ({
+        name: w.name || w.wardId || w.ward || 'Ward',
+        count: Number(w.count || w.issues || 0),
+      }));
     }
-    return {
-      id: alert._id || idx,
-      icon: '⚠️',
-      title: alert.alertType || alert.type || 'Alert',
-      ward,
-      priority: (alert.priority || 'LOW').toLowerCase(),
-    };
+    const complaints = dashboard?.recentComplaints || [];
+    if (complaints.length > 0) {
+      const map = {};
+      complaints.forEach(c => {
+        const ward = c.wardId || c.ward || 'Other';
+        map[ward] = (map[ward] || 0) + 1;
+      });
+      return Object.entries(map)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+    }
+    return [];
+  })();
+
+  const today = new Date().toLocaleDateString('en-US', {
+    month: '2-digit', day: '2-digit', year: 'numeric',
   });
 
+  const navItems = [
+    { label: 'Home', Icon: FaHome, route: ROUTES.rep },
+    { label: 'Complaints', Icon: FaClipboardList, route: ROUTES.mlaComplaintsDashboard },
+    { label: 'Wards', Icon: FaMapMarkedAlt, route: ROUTES.mlaHeatMap },
+    { label: 'Alerts', Icon: FaExclamationCircle, route: ROUTES.mlaEmergencyCenter },
+    { label: 'Profile', Icon: FaUserCircle, route: null },
+  ];
+
+  const activeNav = navItems.find(n => n.route && location.pathname === n.route)?.label || 'Home';
+
+  if (loading) return <div className="rep-loading">Loading dashboard&hellip;</div>;
+  if (error) return <div className="rep-error">{error}</div>;
+
   return (
-    <div className="mla-container">
-      <div className="mla-header">
-        <h1>🏛️ Executive Dashboard</h1>
-        <p>Your constituency command center</p>
-      </div>
-
-      {loading ? (
-        <div className="mla-loading">Loading executive dashboard...</div>
-      ) : error ? (
-        <div className="mla-error">{error}</div>
-      ) : (
-        <>
-          {/* KPI Cards Grid */}
-          <div className="mla-kpi-grid">
-            <div className="mla-kpi-card">
-              <div className="kpi-label">Total Citizens</div>
-              <div className="kpi-value">{formatNumber(kpis.registeredCitizens)}</div>
-              <div className="kpi-change"></div>
-            </div>
-
-            <div className="mla-kpi-card alert">
-              <div className="kpi-label">Open Complaints</div>
-              <div className="kpi-value">{formatNumber(kpis.openComplaints)}</div>
-              <div className="kpi-change"></div>
-            </div>
-
-            <div className="mla-kpi-card success">
-              <div className="kpi-label">Resolved This Month</div>
-              <div className="kpi-value">{formatNumber(kpis.resolvedThisMonth)}</div>
-              <div className="kpi-change"></div>
-            </div>
-
-            <div className="mla-kpi-card danger">
-              <div className="kpi-label">Critical Alerts</div>
-              <div className="kpi-value">{formatNumber(kpis.criticalAlerts)}</div>
-              <div className="kpi-change"></div>
-            </div>
-
-            <div className="mla-kpi-card">
-              <div className="kpi-label">Upcoming Events</div>
-              <div className="kpi-value">{formatNumber(kpis.upcomingEvents)}</div>
-              <div className="kpi-change"></div>
-            </div>
-
-            <div className="mla-kpi-card success">
-              <div className="kpi-label">Citizen Satisfaction</div>
-              <div className="kpi-value">{formatNumber(kpis.citizenSatisfaction)}/5 ⭐</div>
-              <div className="kpi-change"></div>
-            </div>
-
-            <div className="mla-kpi-card success">
-              <div className="kpi-label">Health Score</div>
-              <div className="kpi-value">{kpis.healthScore}</div>
-              <div className="kpi-change"></div>
-            </div>
-
-            <div className="mla-kpi-card">
-              <div className="kpi-label">Active Officers</div>
-              <div className="kpi-value">{formatNumber(kpis.activeOfficers)}</div>
-              <div className="kpi-change"></div>
-            </div>
-          </div>
-
-          {/* Constituency Health Score */}
-      <div className="mla-section">
-        <div className="health-score-container">
-          <div className="health-score-circle">
-            <div className="health-score-value">{kpis.healthScore}</div>
-            <div className="health-score-label">Health Score</div>
-          </div>
-          <div className="health-score-details">
-            <h3>Constituency Health Metrics</h3>
-            <div className="health-metrics">
-              <div className="metric">
-                <span className="metric-name">Complaints Resolution</span>
-                <div className="metric-bar">
-                  <div className="metric-progress" style={{ width: `${complaintsResolutionPct}%` }}></div>
-                </div>
-                <span className="metric-value">{complaintsResolutionPct}%</span>
-              </div>
-              <div className="metric">
-                <span className="metric-name">Citizen Satisfaction</span>
-                <div className="metric-bar">
-                  <div className="metric-progress" style={{ width: `${citizenSatisfactionPct}%` }}></div>
-                </div>
-                <span className="metric-value">{citizenSatisfactionPct}%</span>
-              </div>
-              <div className="metric">
-                <span className="metric-name">Alert Response</span>
-                <div className="metric-bar">
-                  <div className="metric-progress" style={{ width: `${alertResponsePct}%` }}></div>
-                </div>
-                <span className="metric-value">{alertResponsePct}%</span>
-              </div>
-              <div className="metric">
-                <span className="metric-name">Event Participation</span>
-                <div className="metric-bar">
-                  <div className="metric-progress" style={{ width: `${eventParticipationPct}%` }}></div>
-                </div>
-                <span className="metric-value">{eventParticipationPct}%</span>
-              </div>
-            </div>
-          </div>
+    <div className="rep-dashboard">
+      {/* Header */}
+      <div className="rep-header">
+        <div className="rep-header-left">
+          <h1 className="rep-header-title">Welcome {user?.name || 'Representative'}</h1>
+          <span className="rep-header-date">&#9633; {today}</span>
+        </div>
+        <div className="rep-header-right">
+          <button
+            className="rep-bell-btn"
+            onClick={() => navigate(ROUTES.mlaEmergencyCenter)}
+            aria-label="Alerts"
+          >
+            <FaBell />
+            {criticalAlerts > 0 && (
+              <span className="rep-bell-badge">{criticalAlerts}</span>
+            )}
+          </button>
+          <div className="rep-avatar">{initials}</div>
         </div>
       </div>
 
-      {/* Today's Attention Needed */}
-      <div className="mla-section">
-        <h2>⚠️ Today's Attention Needed</h2>
-        <div className="attention-grid">
-          {attentionNeeded.length > 0 ? (
-            attentionNeeded.map(item => (
-              <div
-                key={item.id}
-                className={`attention-card ${item.priority}`}
-                onClick={handleAttentionClick}
-              >
-                <div className="attention-icon">{item.icon}</div>
-                <div className="attention-content">
-                  <h4>{item.title}</h4>
-                  {item.ward && <p>{item.ward}</p>}
-                </div>
-                <div className="attention-arrow">→</div>
-              </div>
-            ))
-          ) : (
-            <div className="attention-card no-data">
-              <div className="attention-content">
-                <h4>No alerts found</h4>
-                <p>All current alerts have been cleared or there is no active alert data.</p>
-              </div>
-            </div>
+      {/* KPI Cards */}
+      <div className="rep-kpi-row">
+        <div className="rep-kpi rep-kpi--blue">
+          <div className="rep-kpi-label">TOTAL</div>
+          <div className="rep-kpi-value">{totalComplaints || '—'}</div>
+          {weeklyNew > 0 && (
+            <div className="rep-kpi-sub rep-kpi-sub--blue">&#8593; {weeklyNew} this week</div>
+          )}
+        </div>
+        <div className="rep-kpi rep-kpi--orange">
+          <div className="rep-kpi-label">OPEN</div>
+          <div className="rep-kpi-value rep-kpi-value--orange">{openComplaints || '—'}</div>
+          {escalated > 0 && (
+            <div className="rep-kpi-sub rep-kpi-sub--orange">&#8593; {escalated} escalated</div>
+          )}
+        </div>
+        <div className="rep-kpi rep-kpi--green">
+          <div className="rep-kpi-label">RESOLVED</div>
+          <div className="rep-kpi-value rep-kpi-value--green">{resolvedComplaints || '—'}</div>
+          <div className="rep-kpi-sub rep-kpi-sub--green">{resolutionPct}% rate</div>
+        </div>
+        <div className="rep-kpi rep-kpi--red">
+          <div className="rep-kpi-label">ALERTS</div>
+          <div className="rep-kpi-value rep-kpi-value--red">{criticalAlerts || '—'}</div>
+          {unackCount > 0 && (
+            <div className="rep-kpi-sub rep-kpi-sub--red">{unackCount} unack.</div>
           )}
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mla-section">
-        <h2>Quick Actions</h2>
-        <div className="quick-actions">
-          <button className="action-btn" onClick={handleNavigate(ROUTES.mlaHeatMap)}>📊 View Heat Map</button>
-          <button className="action-btn" onClick={handleNavigate(ROUTES.mlaCommunications)}>📢 Send Broadcast</button>
-          <button className="action-btn" onClick={handleNavigate(ROUTES.mlaEvents)}>📅 Schedule Event</button>
-          <button className="action-btn" onClick={handleNavigate(ROUTES.mlaTeamPerformance)}>👥 Check Team Status</button>
-          <button className="action-btn" onClick={handleNavigate(ROUTES.mlaDailyBriefing)}>📋 View Daily Briefing</button>
-          <button className="action-btn" onClick={handleNavigate(ROUTES.mlaAIInsights)}>🤖 AI Insights</button>
+      {/* Middle row: 3 panels */}
+      <div className="rep-mid-row">
+        {/* By Category chart */}
+        <div className="rep-card">
+          <div className="rep-card-title">
+            <div className="rep-card-icon" /> By category
+          </div>
+          {categoryData.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart
+                  data={categoryData}
+                  barSize={10}
+                  margin={{ top: 5, right: 8, left: -28, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                  />
+                  <Bar dataKey="Total" fill="#bfdbfe" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Open" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="rep-legend">
+                <span className="rep-legend-item">
+                  <span className="rep-legend-dot" style={{ background: '#bfdbfe' }} /> Total
+                </span>
+                <span className="rep-legend-item">
+                  <span className="rep-legend-dot" style={{ background: '#3b82f6' }} /> Open
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="rep-empty">No category data available</div>
+          )}
+        </div>
+
+        {/* Ward Heat Map */}
+        <div className="rep-card">
+          <div className="rep-card-title">
+            <div className="rep-card-icon" />Ward heat map
+          </div>
+          {wardData.length > 0 ? (
+            <>
+              <div className="rep-ward-grid">
+                {wardData.slice(0, 4).map((ward, i) => {
+                  const sev = wardSeverity(ward.count);
+                  return (
+                    <div
+                      key={i}
+                      className="rep-ward-tile"
+                      style={{ backgroundColor: sev.bg }}
+                    >
+                      <div className="rep-ward-name" style={{ color: sev.text }}>
+                        {ward.name}
+                      </div>
+                      <div className="rep-ward-count" style={{ color: sev.text }}>
+                        {ward.count} issues
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="rep-legend">
+                <span className="rep-legend-item">
+                  <span className="rep-legend-dot" style={{ background: '#fca5a5' }} /> High
+                </span>
+                <span className="rep-legend-item">
+                  <span className="rep-legend-dot" style={{ background: '#fde68a' }} /> Med
+                </span>
+                <span className="rep-legend-item">
+                  <span className="rep-legend-dot" style={{ background: '#86efac' }} /> Low
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="rep-empty">No ward data available</div>
+          )}
+        </div>
+
+        {/* Constituency Health */}
+        <div className="rep-card">
+          <div className="rep-card-title">
+            <div className="rep-card-icon" /> Constituency health
+          </div>
+          <div className="rep-health-gauge-wrap">
+            <HealthGauge score={healthScore} />
+          </div>
+          <div className="rep-health-metrics">
+            <div className="rep-health-row">
+              <span className="rep-health-key">Satisfaction</span>
+              <span className="rep-health-val">
+                {satisfaction > 0 ? satisfaction : 0}/5 &#11088;
+              </span>
+            </div>
+            <div className="rep-health-row">
+              <span className="rep-health-key">Events</span>
+              <span className="rep-health-val">
+                <strong>{upcomingEvents}</strong> upcoming
+              </span>
+            </div>
+            <div className="rep-health-row">
+              <span className="rep-health-key">Officers</span>
+              <span className="rep-health-val">
+                <strong>{activeOfficers}</strong> active
+              </span>
+            </div>
+            <div className="rep-health-row">
+              <span className="rep-health-key">Resolution</span>
+              <span className="rep-health-val">
+                <strong>{resolutionPct}%</strong>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
-        </>
-      )}
+
+      {/* Recent Grievances */}
+      <div className="rep-card rep-card--full">
+        <div className="rep-card-title">
+          <div className="rep-card-icon" /> Recent grievances
+        </div>
+        <div className="rep-table-wrap">
+          <table className="rep-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>CITIZEN</th>
+                <th>CATEGORY</th>
+                <th>WARD</th>
+                <th>PRIORITY</th>
+                <th>ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentGrievances.length > 0 ? (
+                recentGrievances.map((g, i) => {
+                  const label = `G-${String(i + 1).padStart(3, '0')}`;
+                  const citizen =
+                    g.citizenName ||
+                    g.citizen?.name ||
+                    g.submittedBy?.name ||
+                    g.createdBy?.name ||
+                    'Unknown';
+                  const category = g.category || '-';
+                  const ward = g.wardId || g.ward || '-';
+                  const priority = (g.priority || 'LOW').toUpperCase();
+                  const isUnassigned = !g.assignedTo || g.status === 'NEW';
+                  const priorityClass =
+                    priority === 'HIGH'
+                      ? 'rep-priority--high'
+                      : priority === 'MEDIUM'
+                      ? 'rep-priority--medium'
+                      : 'rep-priority--low';
+
+                  return (
+                    <tr key={g._id || i}>
+                      <td>
+                        <span
+                          className="rep-grievance-id"
+                          onClick={() => navigate(ROUTES.mlaComplaintsDashboard)}
+                        >
+                          {label}
+                        </span>
+                      </td>
+                      <td>{citizen}</td>
+                      <td>{category}</td>
+                      <td>{ward}</td>
+                      <td>
+                        <span className={`rep-priority ${priorityClass}`}>{priority}</span>
+                      </td>
+                      <td>
+                        {isUnassigned ? (
+                          <button
+                            className="rep-btn-assign"
+                            onClick={() => navigate(ROUTES.mlaComplaintsDashboard)}
+                          >
+                            Assign
+                          </button>
+                        ) : (
+                          <button
+                            className="rep-btn-view"
+                            onClick={() => navigate(ROUTES.mlaComplaintsDashboard)}
+                          >
+                            View
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6} className="rep-table-empty">
+                    No recent grievances
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <nav className="rep-bottom-nav">
+        {navItems.map(({ label, Icon, route }) => {
+          const isActive = label === activeNav;
+          return (
+            <button
+              key={label}
+              className={`rep-nav-item${isActive ? ' rep-nav-item--active' : ''}`}
+              onClick={() => route && navigate(route)}
+            >
+              <Icon className="rep-nav-icon" />
+              <span className="rep-nav-label">{label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

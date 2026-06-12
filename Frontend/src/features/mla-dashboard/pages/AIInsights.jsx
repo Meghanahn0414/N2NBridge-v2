@@ -100,7 +100,7 @@ export default function AIInsights() {
   return (
     <div className="mla-container">
       <div className="mla-header">
-        <h1>🤖 AI Insights & Predictions</h1>
+        <h1>🤖Insights & Predictions</h1>
         <p>AI-powered constituency intelligence and recommendations</p>
       </div>
 
