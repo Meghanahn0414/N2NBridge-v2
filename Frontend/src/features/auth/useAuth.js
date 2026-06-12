@@ -1,24 +1,25 @@
 import { useEffect, useState } from "react";
+import { clearAuth, getAuthRole, getAuthToken, setAuthRole, setAuthToken } from "../../services/authStorage";
 
 export default function useAuth() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+    const token = getAuthToken();
+    const role = getAuthRole();
     if (token && role) {
       setUser({ token, role });
     }
   }, []);
 
   const login = (data) => {
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("role", data.role);
+    setAuthToken(data.token);
+    setAuthRole(data.role);
     setUser(data);
   };
 
   const logout = () => {
-    localStorage.clear();
+    clearAuth();
     setUser(null);
     window.location.href = "/";
   };

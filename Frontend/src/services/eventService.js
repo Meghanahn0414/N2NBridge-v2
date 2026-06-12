@@ -3,14 +3,14 @@
  * Handles all event-related API calls
  */
 
-const API_BASE_URL = "http://10.62.179.92:8000/api";
+const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000"}/api`;
 
 class EventService {
   /**
    * Get authorization header with Bearer token
    */
   static getAuthToken() {
-    return localStorage.getItem("token");
+    return (typeof sessionStorage !== "undefined" && sessionStorage.getItem("token")) || localStorage.getItem("token");
   }
 
   static getHeaders() {
@@ -188,7 +188,7 @@ class EventService {
       }
 
       const response = await fetch(
-        `${API_BASE_URL}/complaints/stats/summary`,
+        `${API_BASE_URL}/grievances/stats/summary`,
         { headers: this.getHeaders() }
       );
 
@@ -216,7 +216,7 @@ class EventService {
       }
 
       const response = await fetch(
-        `${API_BASE_URL}/notifications/stats`,
+        `${API_BASE_URL}/notifications/stats/stats`,
         { headers: this.getHeaders() }
       );
 

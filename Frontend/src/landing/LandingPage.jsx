@@ -8,10 +8,7 @@ export default function LandingPage() {
 
   const handleLogin = (path) => {
     setShowLoginOptions(false);
-    // Use a small delay to ensure modal closes before navigation
-    setTimeout(() => {
-      navigate(path);
-    }, 100);
+    navigate(path, { replace: false });
   };
 
   return (
@@ -31,80 +28,70 @@ export default function LandingPage() {
           <div className="login-options-modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="login-options-title">Select Your Login Type</h2>
             <div className="login-options-grid">
-              <div
+              <button
+                type="button"
                 className="login-option-card citizen"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleLogin("/citizen-splash");
                 }}
-                role="button"
-                tabIndex={0}
-                onKeyPress={(e) => e.key === "Enter" && handleLogin("/citizen-splash")}
               >
                 <div className="login-option-icon">👤</div>
                 <h3>Citizen</h3>
                 <p>Login as a citizen</p>
-              </div>
+              </button>
               
-              <div 
+              <button
+                type="button"
                 className="login-option-card admin"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleLogin("/admin-signup");
+                  handleLogin("/admin-login");
                 }}
-                role="button"
-                tabIndex={0}
-                onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-signup")}
               >
                 <div className="login-option-icon">👨‍💼</div>
                 <h3>Admin</h3>
-                <p>Create new account</p>
-              </div>
+                <p>Login as admin</p>
+              </button>
               
-              <div 
+              <button
+                type="button"
                 className="login-option-card manager"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleLogin("/admin-login?role=MANAGER");
                 }}
-                role="button"
-                tabIndex={0}
-                onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-login?role=MANAGER")}
               >
                 <div className="login-option-icon">📋</div>
                 <h3>Manager</h3>
                 <p>Constituency Manager</p>
-              </div>
+              </button>
               
-              <div 
+              <button
+                type="button"
                 className="login-option-card officer"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleLogin("/admin-login?role=FIELD_OFFICER");
                 }}
-                role="button"
-                tabIndex={0}
-                onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-login?role=FIELD_OFFICER")}
               >
                 <div className="login-option-icon">🚗</div>
                 <h3>Field Officer</h3>
                 <p>Login as field officer</p>
-              </div>
+              </button>
               
-              <div 
+              <button
+                type="button"
                 className="login-option-card representative"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleLogin("/admin-login?role=REPRESENTATIVE");
                 }}
-                role="button"
-                tabIndex={0}
-                onKeyPress={(e) => e.key === "Enter" && handleLogin("/admin-login?role=REPRESENTATIVE")}
               >
                 <div className="login-option-icon">🏛️</div>
                 <h3>Representative</h3>
                 <p>MLA/Representative Login</p>
-              </div>
+              </button>
             </div>
             <button 
               className="close-modal-btn"

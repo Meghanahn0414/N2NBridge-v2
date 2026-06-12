@@ -11,7 +11,7 @@ const buildUrl = (path) => {
 async function request(method, url, { params, data, headers } = {}) {
 	const query = params ? `?${new URLSearchParams(params).toString()}` : "";
 	// Automatically include Authorization header if token exists
-	const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+	const token = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('token')) || localStorage.getItem('token');
 	const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 	
 	// Check if data is FormData early (before logging)

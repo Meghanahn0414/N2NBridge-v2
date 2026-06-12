@@ -1,30 +1,41 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { createComplaint, fetchComplaintCategories, getCurrentUserId, uploadComplaintAttachment } from "../../features/complaints/complaintService";
 import "./complaint-form.css";
 
 export default function CreateComplaint() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategoryName, setSelectedCategoryName] = useState("Roads");
 
-  // Form data
+  // Form data - match backend schema
   const [formData, setFormData] = useState({
-    category: "Roads",
+    category:'Roads',
     description: "",
-    photos: [],
-    location: "",
-    ward: "",
+    address: "",
+    wardId: "",
+    priority: "MEDIUM",
     latitude: null,
     longitude: null,
-    priority: "Normal",
-    contactPhone: "",
-    confirmAccuracy: false, // Add checkbox state
+    confirmAccuracy: false,
+    photoFiles: [],
+    photoPreview: [],
   });
-
-  const categories = ["Roads", "Water", "Waste", "Electricity", "Parks", "Drainage", "Street Light", "Other"];
-  const priorities = ["Low", "Normal", "High"];
-
-  // Step 1: Category Selection
+    const category = [ "Roads","Water","Noise","Electricity","Waste","Other"];  
+    const priority = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+    
+    // Category mapping to backend category IDs
+    const categoryMapping = {
+      "Roads": "ROAD_ISSUE",
+      "Water": "WATER_SUPPLY",
+      "Waste": "GARBAGE",
+      "Electricity": "ELECTRICITY",
+      "Noise": "NOISE_POLLUTION",
+      "Other": "OTHER"
+    };
+    // Step 1: Category Selection
   const renderStep1 = () => (
     <div className="complaint-step">
       <div className="step-header">
@@ -32,10 +43,11 @@ export default function CreateComplaint() {
         <p className="step-subtitle">Step 1 of 4 — category</p>
       </div>
 
+
       <div className="form-section">
         <label className="form-label">SELECT CATEGORY *</label>
         <div className="category-grid">
-          {categories.map((cat) => (
+          {category.map((cat) => (
             <button
               key={cat}
               type="button"
@@ -48,19 +60,22 @@ export default function CreateComplaint() {
         </div>
       </div>
 
+      
+         
+
       <div className="form-section">
         <label className="form-label">PRIORITY LEVEL</label>
         <div className="priority-options">
-          {priorities.map((priority) => (
-            <label key={priority} className="radio-label">
+          {priority.map((priorityOption) => (
+            <label key={priorityOption} className="radio-label">
               <input
                 type="radio"
                 name="priority"
-                value={priority}
-                checked={formData.priority === priority}
+                value={priorityOption}
+                checked={formData.priority === priorityOption}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
               />
-              <span>{priority}</span>
+              <span>{priorityOption}</span>
             </label>
           ))}
         </div>
@@ -92,7 +107,7 @@ export default function CreateComplaint() {
       </div>
 
       <div className="form-section">
-        <label className="form-label">ATTACH PHOTO</label>
+        <label className="form-label">ATTACH PHOTOS (OPTIONAL)</label>
         <div className="photo-upload">
           <input
             type="file"
@@ -109,28 +124,29 @@ export default function CreateComplaint() {
           </label>
         </div>
 
-        {formData.photos.length > 0 && (
+        {formData.photoPreview.length > 0 && (
           <div className="photo-preview">
             <div className="photos-grid">
-              {formData.photos.map((photo, index) => (
+              {formData.photoPreview.map((photo, index) => (
                 <div key={index} className="photo-item">
                   <img src={photo} alt={`Photo ${index + 1}`} />
                   <button
                     type="button"
                     className="remove-photo"
-                    onClick={() =>
+                    onClick={() => {
                       setFormData({
                         ...formData,
-                        photos: formData.photos.filter((_, i) => i !== index),
-                      })
-                    }
+                        photoFiles: formData.photoFiles.filter((_, i) => i !== index),
+                        photoPreview: formData.photoPreview.filter((_, i) => i !== index),
+                      });
+                    }}
                   >
                     ✕
                   </button>
                 </div>
               ))}
             </div>
-            <p className="photos-count">{formData.photos.length} photo(s) added</p>
+            <p className="photos-count">{formData.photoPreview.length} photo(s) added</p>
           </div>
         )}
       </div>
@@ -151,8 +167,8 @@ export default function CreateComplaint() {
           type="text"
           className="form-input"
           placeholder="Enter street, area, or landmark"
-          value={formData.location}
-          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+          value={formData.address}
+          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
           required
         />
       </div>
@@ -161,13 +177,13 @@ export default function CreateComplaint() {
         <label className="form-label">WARD *</label>
         <select
           className="form-select"
-          value={formData.ward}
-          onChange={(e) => setFormData({ ...formData, ward: e.target.value })}
+          value={formData.wardId}
+          onChange={(e) => setFormData({ ...formData, wardId: e.target.value })}
           required
         >
           <option value="">Select Ward</option>
           {Array.from({ length: 50 }, (_, i) => i + 1).map((ward) => (
-            <option key={ward} value={ward}>
+            <option key={ward} value={String(ward)}>
               Ward {ward}
             </option>
           ))}
@@ -189,17 +205,6 @@ export default function CreateComplaint() {
           </p>
         )}
       </div>
-
-      <div className="form-section">
-        <label className="form-label">CONTACT PHONE (OPTIONAL)</label>
-        <input
-          type="tel"
-          className="form-input"
-          placeholder="Phone number for updates"
-          value={formData.contactPhone}
-          onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-        />
-      </div>
     </div>
   );
 
@@ -214,7 +219,7 @@ export default function CreateComplaint() {
       <div className="review-section">
         <div className="review-item">
           <span className="review-label">Category:</span>
-          <span className="review-value">{formData.category}</span>
+          <span className="review-value">{selectedCategoryName}</span>
         </div>
         <div className="review-item">
           <span className="review-label">Priority:</span>
@@ -226,16 +231,16 @@ export default function CreateComplaint() {
         </div>
         <div className="review-item">
           <span className="review-label">Location:</span>
-          <span className="review-value">{formData.location}</span>
+          <span className="review-value">{formData.address}</span>
         </div>
         <div className="review-item">
           <span className="review-label">Ward:</span>
-          <span className="review-value">Ward {formData.ward}</span>
+          <span className="review-value">Ward {formData.wardId}</span>
         </div>
-        {formData.photos.length > 0 && (
+        {formData.photoPreview.length > 0 && (
           <div className="review-item">
             <span className="review-label">Photos:</span>
-            <span className="review-value">{formData.photos.length} attached</span>
+            <span className="review-value">{formData.photoPreview.length} attached</span>
           </div>
         )}
       </div>
@@ -257,22 +262,24 @@ export default function CreateComplaint() {
   // Handle photo upload
   const handlePhotoUpload = (e) => {
     const files = Array.from(e.target.files);
-    if (formData.photos.length + files.length > 5) {
+    if (formData.photoFiles.length + files.length > 5) {
       alert("Maximum 5 photos allowed");
       return;
     }
 
     files.forEach((file) => {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Each photo must be less than 5MB");
+        alert(`${file.name} is larger than 5MB. Please choose a smaller file.`);
         return;
       }
 
+      // Create preview
       const reader = new FileReader();
       reader.onload = (event) => {
         setFormData((prev) => ({
           ...prev,
-          photos: [...prev.photos, event.target.result],
+          photoFiles: [...prev.photoFiles, file],
+          photoPreview: [...prev.photoPreview, event.target.result],
         }));
       };
       reader.readAsDataURL(file);
@@ -308,7 +315,7 @@ export default function CreateComplaint() {
       case 2:
         return formData.description.trim().length > 0;
       case 3:
-        return formData.location.trim().length > 0 && formData.ward;
+        return formData.address.trim().length > 0 && formData.wardId;
       case 4:
         return formData.confirmAccuracy; // Must check the checkbox
       default:
@@ -342,117 +349,80 @@ export default function CreateComplaint() {
 
     setLoading(true);
     try {
-      // Get JWT token from localStorage
-      const token = localStorage.getItem("token");
-      const userStr = localStorage.getItem("user");
-      const userId = localStorage.getItem("userId");
-      const user = userStr ? JSON.parse(userStr) : null;
-
-      if (!token) {
-        alert("Session expired. Please login again.");
-        navigate("/citizen-login");
-        return;
-      }
-
-      // Get citizen ID from various possible sources
-      // Backend returns _id (Pydantic alias), not id
-      const citizenId = user?.citizenId || user?._id || user?.id || userId;
+      // Get citizen ID from JWT token
+      const citizenId = getCurrentUserId();
       
       if (!citizenId) {
         alert("User information not found. Please login again.");
         navigate("/citizen-login");
+        setLoading(false);
         return;
       }
 
       // Validate required fields
-      if (!formData.category || !formData.description.trim() || !formData.location.trim() || !formData.ward) {
+      if (!formData.category || !formData.description.trim() || !formData.address.trim() || !formData.wardId) {
         alert("Please fill in all required fields");
         setLoading(false);
         return;
       }
 
-      // Prepare complaint data - match backend schema exactly
-      const complaintPayload = {
-        citizenId: String(citizenId), // Ensure string
-        category: String(formData.category), // Must match enum
+      // Prepare grievance data - match backend schema
+      const grievancePayload = {
+        citizenId: String(citizenId),
+        categoryId: String(categoryMapping[formData.category] || formData.category),
         description: String(formData.description).trim(),
-        location: String(formData.location).trim(),
-        ward: parseInt(formData.ward, 10), // Convert to integer
-        priority: String(formData.priority) || "Normal",
-        photos: Array.isArray(formData.photos) ? formData.photos : [], // Ensure array
-        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-        contactPhone: formData.contactPhone?.trim() || null,
+        address: String(formData.address).trim(),
+        wardId: String(formData.wardId),
+        priority: String(formData.priority),
+        // Convert coordinates to GeoJSON format if available
+        gpsLocation: formData.latitude && formData.longitude 
+          ? {
+              type: "Point",
+              coordinates: [formData.longitude, formData.latitude]
+            }
+          : null
       };
 
-      // Validate ward is within range
-      if (complaintPayload.ward < 1 || complaintPayload.ward > 50) {
-        alert("Ward must be between 1 and 50");
-        setLoading(false);
-        return;
-      }
+      console.log("📤 Submitting grievance with data:", grievancePayload);
 
-      console.log("📤 Submitting complaint with data:", {
-        ...complaintPayload,
-        photos: `[${complaintPayload.photos.length} images]` // Don't log full base64
-      });
+      // Submit to backend using service
+      const response = await createComplaint(grievancePayload);
+      
+      console.log("📥 Backend response:", response);
 
-      // Submit to backend
-      const response = await fetch("http://10.62.179.92:8000/api/complaints/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify(complaintPayload),
-      });
+      const complaintId = response.id || response._id || response.complaintNumber || "Created";
 
-      const responseData = await response.json();
-      console.log("📥 Backend response:", responseData);
-
-      if (!response.ok) {
-        // Extract detailed error message
-        let errorMessage = "Failed to file complaint";
-        
-        if (responseData.detail) {
-          errorMessage = responseData.detail;
-          // Parse FastAPI validation errors
-          if (Array.isArray(responseData.detail)) {
-            errorMessage = responseData.detail
-              .map(err => `${err.loc?.join(".")} - ${err.msg}`)
-              .join("\n");
+      // Upload photos if any
+      if (formData.photoFiles.length > 0) {
+        console.log("📸 Uploading photos...");
+        for (let i = 0; i < formData.photoFiles.length; i++) {
+          try {
+            const uploadResult = await uploadComplaintAttachment(complaintId, formData.photoFiles[i]);
+            console.log(`✅ Photo ${i + 1} uploaded:`, uploadResult);
+          } catch (photoError) {
+            console.warn(`⚠️ Failed to upload photo ${i + 1}:`, photoError);
+            // Don't stop submission if photo upload fails
           }
-        } else if (responseData.message) {
-          errorMessage = responseData.message;
-        } else if (typeof responseData === 'string') {
-          errorMessage = responseData;
         }
-        
-        console.error("❌ Backend error:", errorMessage);
-        throw new Error(errorMessage);
       }
 
-      // Extract complaint ID from response
-      const complaintId = responseData.data?.complaintId || 
-                          responseData.complaintId || 
-                          responseData.data?.message?.complaintId ||
-                          "CMP-" + Date.now();
-
-      alert(`✅ Complaint filed successfully!\n\nComplaint ID: ${complaintId}`);
+      alert(`✅ Complaint filed successfully!\n\nComplaint ID: ${complaintId}\n\n${formData.photoFiles.length > 0 ? formData.photoFiles.length + ' photo(s) uploaded' : 'No photos attached'}`);
       
       // Reset form and navigate
       setFormData({
         category: "Roads",
         description: "",
-        photos: [],
-        location: "",
-        ward: "",
+        address: "",
+        wardId: "",
+        priority: "MEDIUM",
         latitude: null,
         longitude: null,
-        priority: "Normal",
-        contactPhone: "",
+        confirmAccuracy: false,
+        photoFiles: [],
+        photoPreview: [],
       });
       setCurrentStep(1);
+      setSelectedCategoryName("");
       
       navigate("/citizen/complaints");
     } catch (error) {

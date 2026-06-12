@@ -1,9 +1,10 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
+import { getAuthRole, getAuthToken } from "../../services/authStorage";
 
 export default function RoleRoute({ children, allowedRoles }) {
-  const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
+  const token = getAuthToken();
+  const role = getAuthRole();
 
   if (!token || !role) {
     return <Navigate to="/login" replace />;

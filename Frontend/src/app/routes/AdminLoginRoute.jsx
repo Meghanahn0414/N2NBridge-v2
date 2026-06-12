@@ -1,5 +1,6 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
+import { getAuthRole, getAuthToken } from "../../services/authStorage";
 import { ROUTES } from "./RouteConstants";
 
 /**
@@ -9,8 +10,8 @@ import { ROUTES } from "./RouteConstants";
  * - Authenticated citizens: redirects to citizen dashboard (not admin login)
  */
 export default function AdminLoginRoute({ children }) {
-  const role = localStorage.getItem("role");
-  const token = localStorage.getItem("token");
+  const role = getAuthRole();
+  const token = getAuthToken();
 
   const redirectByRole = {
     CITIZEN: ROUTES.citizen, // Citizens redirect to citizen dashboard

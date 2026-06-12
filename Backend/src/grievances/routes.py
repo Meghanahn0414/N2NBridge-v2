@@ -154,6 +154,29 @@ async def add_feedback(
     return success_response(None, "Feedback added successfully")
 
 
+# Statistics Endpoints - Must come before /{grievance_id} routes
+@router.get("/stats/summary")
+async def get_grievance_stats():
+    """Get grievance statistics summary"""
+    try:
+        status_counts = GrievanceService.count_grievances_by_status()
+        total_grievances = sum(status_counts.values())
+        
+        stats = {
+            "total": total_grievances,
+            "open": status_counts.get("NEW", 0),
+            "assigned": status_counts.get("ASSIGNED", 0),
+            "resolved": status_counts.get("RESOLVED", 0),
+            "closed": status_counts.get("CLOSED", 0),
+            "byStatus": status_counts
+        }
+        
+        return success_response(stats, "Grievance statistics retrieved")
+    except Exception as e:
+        logger.error(f"Error retrieving stats: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve statistics")
+
+
 # File Upload Endpoints
 @router.post("/{grievance_id}/upload")
 async def upload_grievance_attachment(

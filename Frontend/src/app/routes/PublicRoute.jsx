@@ -1,5 +1,6 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
+import { getAuthRole, getAuthToken } from "../../services/authStorage";
 import { ROUTES } from "./RouteConstants";
 
 const redirectByRole = {
@@ -11,8 +12,8 @@ const redirectByRole = {
 };
 
 export default function PublicRoute({ children }) {
-  const role = localStorage.getItem("role");
-  const token = localStorage.getItem("token");
+  const role = getAuthRole();
+  const token = getAuthToken();
 
   if (token && role) {
     return <Navigate to={redirectByRole[role] ?? "/"} replace />;

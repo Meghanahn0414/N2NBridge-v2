@@ -18,10 +18,20 @@ export default function EmergencySOS() {
     if (!selectedEmergency) { alert("Please select an emergency type"); return; }
     setLoading(true);
     try {
-      const token   = localStorage.getItem("token");
-      const userStr = localStorage.getItem("user");
-      const user    = userStr ? JSON.parse(userStr) : null;
-      if (!token || !user) { alert("Please login first"); navigate("/citizen-login"); return; }
+      // Get JWT token from localStorage
+      const token = (typeof sessionStorage !== "undefined" && sessionStorage.getItem("token")) || localStorage.getItem("token");
+      const userStr = (typeof sessionStorage !== "undefined" && sessionStorage.getItem("user")) || localStorage.getItem("user");
+      const user = userStr ? JSON.parse(userStr) : null;
+
+      if (!token || !user) {
+        alert("Please login first");
+        navigate("/citizen-login");
+        return;
+      }
+
+      // Get location if user wants to share it
+      let latitude = null;
+      let longitude = null;
 
       let latitude = null, longitude = null;
       if (shareLocation) {
@@ -38,7 +48,20 @@ export default function EmergencySOS() {
         }
       }
 
-      const response = await fetch("http://10.62.179.92:8000/api/emergency/send-alert", {
+      // Prepare alert data for backend
+      const alertPayload = {
+        citizenId: user.citizenId,
+        type: selectedEmergency,
+        details: details || "No additional details provided",
+        latitude: latitude,
+        longitude: longitude,
+        shareLocation: shareLocation,
+      };
+
+      const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000";
+
+      // Submit to backend
+      const response = await fetch(`${baseUrl}/api/emergency/send-alert`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
