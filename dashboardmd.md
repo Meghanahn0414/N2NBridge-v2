@@ -10,4 +10,4 @@
 | Android Hosting - Costing  | Prep Study/Document | INPROGRESS  | firsthand info updated                        | Phani           |
 | AWS Hosting                | Prep Study/Document | Open        |                                               | Santosh         |
 | AWS Hosting                | Demo                | Open        |                                               | Santosh         |
-|
+| Mobile Ui design           | Code                | Completed   |                                               | Fatima/Meghana
