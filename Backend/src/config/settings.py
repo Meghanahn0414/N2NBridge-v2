@@ -39,6 +39,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5174",
         "http://localhost:5175",
         "http://127.0.0.1:5175",
+        "http://10.62.179.92:3000",
     ]
     
     # File upload - use absolute path to project root/uploads

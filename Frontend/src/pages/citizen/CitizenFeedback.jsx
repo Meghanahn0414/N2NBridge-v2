@@ -83,11 +83,11 @@ export default function CitizenFeedback() {
           className="feedback-back-btn"
           onClick={() => navigate("/citizen")}
         >
-          ← Back
+          ← 
         </button>
-        <div className="header-content">
-          <h1 className="header-title">Feedback & surveys</h1>
-          <p className="header-subtitle">Help improve your ward</p>
+        <div className="feedback-header-content">
+          <h1 className="feedback-title">Feedback & surveys</h1>
+          <p className="feedback-subtitle">Help improve your ward</p>
         </div>
         <div className="header-star">⭐</div>
       </div>

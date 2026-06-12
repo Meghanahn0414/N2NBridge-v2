@@ -8,9 +8,8 @@ export default function MobileBottomNav() {
 
   const navItems = [
     { label: "Home", icon: "🏠", path: "/citizen", id: "home" },
-    { label: "Complain", icon: "✎", path: "/citizen/complaints", id: "complain" },
-    { label: "Map", icon: "📍", path: "/citizen/map", id: "map" },
-    { label: "Alerts", icon: "🔔", path: "/citizen/alerts", id: "alerts" },
+    { label: "Cases", icon: "📌", path: "/citizen/complaints", id: "cases" },
+    { label: "Events", icon: "📅", path: "/citizen/events", id: "events" },
     { label: "Profile", icon: "👤", path: "/citizen/profile", id: "profile" },
   ];
 

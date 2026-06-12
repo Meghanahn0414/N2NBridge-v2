@@ -15,6 +15,19 @@ html, body, #root {
 
 :root {
   --sidebar-width: 200px;
+  --color-header: #0F4C75;
+  --color-footer: #0A3855;
+  --color-page: #EEF4FA;
+  --color-primary: #5DCAA5;
+  --color-critical: #A32D2D;
+  --color-card: #ffffff;
+  --color-text: #0F172A;
+  --color-muted: #64748B;
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-text);
 }
 
 /* Main app content area (adjusts with sidebar and header) */
@@ -45,7 +58,7 @@ body.sidebar-collapsed .app-main {
   transform: translateX(0) !important;
   transition: transform 0.3s ease-in-out !important;
 
-  background: linear-gradient(180deg, #3E5C84 0%, #2F6C8F 55%, #2FA6A3 100%) !important;
+  background: #1a5290 !important;
   color: #ffffff !important;
   border-right: none !important;
   box-shadow: none !important;
@@ -195,7 +208,7 @@ body.sidebar-collapsed .app-main {
   left: 0;
   z-index: 1000;
 
-  background: linear-gradient(to bottom, #3E5C84 0%, #2F6C8F 55%, #2FA6A3 100%);
+  background: #1a5290;
   box-shadow: none;
   color: #ffffff;
   padding: 12px 0 20px;

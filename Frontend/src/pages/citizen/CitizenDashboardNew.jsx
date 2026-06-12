@@ -1,223 +1,212 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { getCitizenProfile } from "../../shared/services/citizenService";
 import eventService from "../../services/eventService";
+import complaintService from "../../services/complaintService";
 import "./dashboard-mobile.css";
 
 export default function CitizenDashboardNew() {
-  const [profile, setProfile] = useState(null);
-  const [stats, setStats] = useState({
-    complaints: 0,
-    alerts: 0,
-    events: 0,
-  });
+  const [profile, setProfile]                         = useState(null);
+  const [stats, setStats]                             = useState({ open: 0, inProgress: 0, resolved: 0 });
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [activeTab, setActiveTab] = useState("home");
+  const [recentComplaints, setRecentComplaints]       = useState([]);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     loadProfileData();
     loadStats();
     loadNotifications();
+    loadRecentComplaints();
   }, []);
 
+  const getInitials = (name) =>
+    name.split(" ").filter(Boolean).map((p) => p[0]?.toUpperCase()).slice(0, 2).join("");
+
   const loadProfileData = async () => {
-    try {
-      const data = await getCitizenProfile();
-      setProfile(data);
-    } catch (error) {
-      console.error("Failed to load profile:", error);
-    }
+    try { setProfile(await getCitizenProfile()); }
+    catch (e) { console.error("profile:", e); }
   };
 
   const loadStats = async () => {
     try {
-      // Fetch stats from backend APIs
-      const complaintStats = await eventService.getComplaintStats();
-      const alertStats = await eventService.getAlertStats();
-      const eventStats = await eventService.getEventStats();
-
-      setStats({
-        complaints: complaintStats.total || complaintStats.open || 0,
-        alerts: alertStats.unread || 0,
-        events: eventStats.registered || 0,
-      });
-    } catch (error) {
-      console.error("Failed to load stats:", error);
-      // Keep default values on error
-      setStats({
-        complaints: 0,
-        alerts: 0,
-        events: 0,
-      });
-    }
+      const s = await complaintService.getComplaintStats();
+      setStats({ open: s.open || 0, inProgress: s.assigned || 0, resolved: s.resolved || 0 });
+    } catch { setStats({ open: 0, inProgress: 0, resolved: 0 }); }
   };
 
   const loadNotifications = async () => {
-    try {
-      // Fetch notifications/alerts from backend
-      const alertStats = await eventService.getAlertStats();
-      setUnreadNotifications(alertStats.unread || 0);
-    } catch (error) {
-      console.error("Failed to load notifications:", error);
-    }
+    try { const a = await eventService.getAlertStats(); setUnreadNotifications(a.unread || 0); }
+    catch { /* silent */ }
   };
 
-  const handleTabClick = (tab) => {
-    setActiveTab(tab);
-    switch (tab) {
-      case "home":
-        navigate("/citizen");
-        break;
-      case "complain":
-        navigate("/citizen/create-complaint");
-        break;
-      case "map":
-        navigate("/citizen/map");
-        break;
-      case "alerts":
-        navigate("/citizen/notifications");
-        break;
-      case "profile":
-        navigate("/citizen/profile");
-        break;
-      default:
-        break;
-    }
+  const loadRecentComplaints = async () => {
+    try { const r = await complaintService.getMyComplaints(1, 3); setRecentComplaints(r.complaints || []); }
+    catch { setRecentComplaints([]); }
   };
 
-  const handleEmergency = () => {
-    navigate("/citizen/sos");
+  const handleComplaintClick = (c) => {
+    const id = c.id || c._id || c.complaintId;
+    if (id) navigate(`/citizen/complaints/${id}`);
   };
 
-  if (!profile) {
-    return <div className="dashboard-loading">Loading...</div>;
-  }
+  const isActive = (path) => location.pathname.startsWith(path);
+
+  const displayName = profile?.fullName || profile?.mobile || "Citizen";
+
+  if (!profile) return <div className="dashboard-loading">Loading…</div>;
 
   return (
     <div className="dashboard-mobile-container">
-      {/* Dashboard Header */}
-      <div className="dashboard-header">
-        <div className="header-content">
-          <div className="greeting">
-            <h1 className="greeting-text">Good morning, {profile.fullName || "Citizen"}</h1>
-            <p className="header-meta">
-              {profile.ward || "Ward"} - {new Date().toLocaleDateString("en-US", {
-                weekday: "short",
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
-            </p>
+
+      {/* ══ TOP BAR — flat box, greeting inside ══ */}
+      <header className="dashboard-topbar">
+        <div className="topbar-inner">
+
+          {/* Greeting replaces brand logo+title */}
+          <div className="topbar-greeting">
+            <span className="topbar-namaste">Namaste,</span>
+            <span className="topbar-username">{displayName}</span>
           </div>
-          <div className="header-actions">
-            <div className="notification-badge">
-              <span className="badge-count">{unreadNotifications}</span>
-              <span className="badge-icon">🔔</span>
-            </div>
+
+          <div className="topbar-actions">
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => navigate("/citizen/notifications")}
+              aria-label="Notifications"
+            >
+              <span className="topbar-icon">🔔</span>
+              {unreadNotifications > 0 && (
+                <span className="notification-dot">{unreadNotifications}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              className="avatar-button"
+              onClick={() => navigate("/citizen/profile")}
+              aria-label="Profile"
+            >
+              {getInitials(displayName)}
+            </button>
           </div>
+
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="dashboard-content">
-        {/* Alert Banner */}
-        
+      {/* ══ MAIN CONTENT — white page ══ */}
+      <main className="dashboard-main-card">
 
-        {/* Stats Grid */}
-        <div className="stats-grid">
-          <div 
-            className="stat-card"
-            onClick={() => navigate("/citizen/complaints")}
-            style={{ cursor: "pointer" }}
+        {/* Stats */}
+        <section className="stats-summary-row" aria-label="Complaint statistics">
+          <div
+            className="stat-item"
+            role="button" tabIndex={0}
+            onClick={() => navigate("/citizen/complaints?status=open")}
+            onKeyDown={(e) => e.key === "Enter" && navigate("/citizen/complaints?status=open")}
           >
-            <span className="stat-number">{stats.complaints}</span>
-            <span className="stat-label">Complaints</span>
+            <span className="stat-value">{stats.open}</span>
+            <span className="stat-label">Open</span>
           </div>
-          <div className="stat-card">
-            <span className="stat-number">{stats.alerts}</span>
-            <span className="stat-label">Alerts</span>
+          <div className="stat-item">
+            <span className="stat-value">{stats.inProgress}</span>
+            <span className="stat-label">In{"\n"}Progress</span>
           </div>
-          <div className="stat-card">
-            <span className="stat-number">{stats.events}</span>
-            <span className="stat-label">Events</span>
+          <div className="stat-item">
+            <span className="stat-value">{stats.resolved}</span>
+            <span className="stat-label">Resolved</span>
           </div>
-        </div>
+        </section>
 
         {/* Quick Actions */}
-        <div className="quick-actions-section">
-          <h3 className="section-title">QUICK ACTIONS</h3>
-          <div className="actions-grid">
-            <div
-              className="action-card action-complain"
-              onClick={() => navigate("/citizen/create-complaint")}
-            >
+        <section className="quick-actions-section">
+          <h2 className="section-heading">Quick Actions</h2>
+          <div className="action-grid">
+            <button type="button" className="action-card action-file"
+              onClick={() => navigate("/citizen/create-complaint")}>
               <span className="action-icon">📝</span>
-              <span className="action-label">File complaint</span>
-            </div>
-            <div
-              className="action-card action-sos"
-              onClick={handleEmergency}
-            >
+              <span className="action-title">File Complaint</span>
+            </button>
+            <button type="button" className="action-card action-alert"
+              onClick={() => navigate("/citizen/sos")}>
               <span className="action-icon">🚨</span>
-              <span className="action-label">SOS</span>
-            </div>
-            <div
-              className="action-card action-events"
-              onClick={() => navigate("/citizen/events")}
-            >
+              <span className="action-title">Raise Alert</span>
+            </button>
+            <button type="button" className="action-card action-events"
+              onClick={() => navigate("/citizen/events")}>
               <span className="action-icon">📅</span>
-              <span className="action-label">Events</span>
-            </div>
-            <div
-              className="action-card action-feedback"
-              onClick={() => navigate("/citizen/feedback")}
-            >
+              <span className="action-title">Events</span>
+            </button>
+            <button type="button" className="action-card action-contact"
+              onClick={() => navigate("/citizen/feedback")}>
               <span className="action-icon">💬</span>
-              <span className="action-label">Feedback</span>
-            </div>
+              <span className="action-title">Feedback</span>
+            </button>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Bottom Navigation */}
-      <div className="bottom-nav">
-        <button
-          className={`nav-item ${activeTab === "home" ? "active" : ""}`}
-          onClick={() => handleTabClick("home")}
-        >
-          <span className="nav-icon">🏠</span>
-          <span className="nav-label">Home</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "complain" ? "active" : ""}`}
-          onClick={() => handleTabClick("complain")}
-        >
-          <span className="nav-icon">📝</span>
-          <span className="nav-label">Complain</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "map" ? "active" : ""}`}
-          onClick={() => handleTabClick("map")}
-        >
-          <span className="nav-icon">🗺️</span>
-          <span className="nav-label">Map</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "alerts" ? "active" : ""}`}
-          onClick={() => handleTabClick("alerts")}
-        >
-          <span className="nav-icon">🔔</span>
-          <span className="nav-label">Alerts</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "profile" ? "active" : ""}`}
-          onClick={() => handleTabClick("profile")}
-        >
-          <span className="nav-icon">👤</span>
-          <span className="nav-label">Profile</span>
-        </button>
-      </div>
+        {/* Recent Complaints */}
+        <section className="recent-complaints-section">
+          <div className="recent-heading-row">
+            <h2 className="section-heading">Recent Complaints</h2>
+          </div>
+
+          {recentComplaints.length > 0 ? recentComplaints.map((complaint) => {
+            const id = complaint.id || complaint._id || complaint.complaintId || complaint.reference;
+            const rawStatus = complaint.status?.toLowerCase().replace(/\s+/g, "") || "open";
+            const statusKey = rawStatus;
+            const displayStatus =
+              statusKey === "inprogress" || statusKey === "assigned" ? "In Progress" :
+              statusKey === "resolved" ? "Resolved" : "Open";
+
+            return (
+              <button
+                key={id || complaint.title}
+                type="button"
+                className="recent-card"
+                onClick={() => handleComplaintClick(complaint)}
+              >
+                <span className={`recent-card-accent ${statusKey}`} />
+                <div className="recent-card-text">
+                  <p className="recent-card-title">
+                    {complaint.title || complaint.subject || "Complaint"}
+                  </p>
+                  <p className="recent-card-subtitle">
+                    #{id || "N/A"} &bull; {complaint.age || "recently"}
+                  </p>
+                </div>
+                <span className={`complaint-status ${statusKey}`}>{displayStatus}</span>
+              </button>
+            );
+          }) : (
+            <div className="recent-empty">No recent complaints yet.</div>
+          )}
+        </section>
+
+      </main>
+
+      {/* ══ BOTTOM NAV — flat top, full width ══ */}
+      <nav className="bottom-nav" aria-label="Main navigation">
+        {[
+          { icon: "🏠", label: "Home",    path: "/citizen/dashboard" },
+          { icon: "📋", label: "Complaints",   path: "/citizen/complaints" },
+          { icon: "📅", label: "Events",  path: "/citizen/events" },
+          { icon: "👤", label: "Profile", path: "/citizen/profile" },
+        ].map(({ icon, label, path }) => (
+          <button
+            key={label}
+            type="button"
+            className={`nav-item${isActive(path) ? " active" : ""}`}
+            onClick={() => navigate(path)}
+            aria-label={label}
+            aria-current={isActive(path) ? "page" : undefined}
+          >
+            <span className="nav-icon">{icon}</span>
+            {label}
+          </button>
+        ))}
+      </nav>
+
     </div>
   );
 }

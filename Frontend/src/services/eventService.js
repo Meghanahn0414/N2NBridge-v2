@@ -3,7 +3,11 @@
  * Handles all event-related API calls
  */
 
+<<<<<<< HEAD
+const API_BASE_URL = "http://10.62.179.92:8000/api";
+=======
 const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000"}/api`;
+>>>>>>> 20a18193d3cef22f3d84f679d7fb6d7075fb1c49
 
 class EventService {
   /**

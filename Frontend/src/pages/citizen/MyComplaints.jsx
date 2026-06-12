@@ -76,13 +76,13 @@ export default function MyComplaints() {
           className="complaints-back-btn"
           onClick={() => navigate("/citizen")}
         >
-          ← Back
+          ←
         </button>
-        <div className="header-content">
-          <h1 className="header-title">My Complaints</h1>
-          <p className="header-subtitle">Track and manage your complaints</p>
+        <div className="complaints-header-content">
+          <h1 className="complaints-title">My Complaints</h1>
+          <p className="complaints-subtitle">Track and manage your complaints</p>
         </div>
-        <div className="header-icon">📋</div>
+        <div className="complaints-header-icon">📋</div>
       </div>
 
       {/* Filter Tabs */}

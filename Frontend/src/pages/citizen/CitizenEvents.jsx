@@ -65,15 +65,14 @@ export default function CitizenEvents() {
     <div className="citizen-events-container">
       {/* Header */}
       <div className="events-header">
-        <button
-          className="events-back-btn"
-          onClick={() => navigate("/citizen")}
-        >
-          ← Back
-        </button>
-        <h1 className="events-title">Events & programs</h1>
-      </div>
-
+  <button className="events-back-btn" onClick={() => navigate("/citizen")}>
+    ←
+  </button>
+  <div className="events-header-content">
+    <h1 className="events-title">Events &amp; programs</h1>
+    <p className="events-subtitle">Upcoming ward events</p>
+  </div>
+</div>
       {/* Loading State */}
       {loading && (
         <div className="events-content">

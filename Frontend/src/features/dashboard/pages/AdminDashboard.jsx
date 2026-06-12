@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getDashboardForRole } from "../../../shared/services/dashboardService";
 import { getAuthRole } from "../../../services/authStorage";
+import AdminDashboardMobile from "./AdminDashboardMobile";
 import {
   FaBell,
   FaClipboardList,
@@ -25,6 +26,8 @@ import {
   FaHdd,
 } from "react-icons/fa";
 import "../../../styles/AdminDashboard.css";
+import { getAuthUser } from '../../../services/authStorage';
+import api from '../../../shared/services/api';
 
 const StatCard = ({ label, value, trend, icon: Icon, color }) => {
   // Format number with commas
@@ -35,7 +38,7 @@ const StatCard = ({ label, value, trend, icon: Icon, color }) => {
   };
 
   return (
-    <div className="stat-card">
+    <div className={`stat-card stat-${color}`}>
       <div className="stat-card-header">
         <div className="stat-info">
           <p className="stat-label">{label}</p>
@@ -79,7 +82,26 @@ export default function AdminDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
   const role = getAuthRole();
+  const user = getAuthUser();
+  const userName = user?.fullName || user?.name || 'Admin';
+  const initial = userName.charAt(0).toUpperCase();
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    api.get('/api/notifications/unread')
+      .then(r => setUnread(r.data?.count || r.data?.unread_count || 0))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mq.matches);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -172,10 +194,33 @@ export default function AdminDashboard() {
 
   const recentActivity = dashboard?.recentActivity || [];
 
+  if (isMobile) {
+    return <AdminDashboardMobile dashboard={dashboard} loading={loading} />;
+  }
+
   return (
     <div className="admin-dashboard-container">
       {loading && <div className="loading-message">Loading dashboard...</div>}
       {error && <div className="error-message">{error}</div>}
+
+      {/* Dashboard Header */}
+      <div className="adm-desk-header">
+        <div className="adm-desk-header-left">
+          <h1 className="adm-desk-title">Dashboard</h1>
+          <p className="adm-desk-subtitle">Welcome back, {userName}! Here's what's happening in your platform.</p>
+        </div>
+        <div className="adm-desk-header-right">
+          <span className="adm-desk-date">
+            {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+          </span>
+          <button className="adm-desk-export"><FaDownload /> Export Report</button>
+          <button className="adm-desk-bell" aria-label="Notifications">
+            <FaBell />
+            {unread > 0 && <span className="adm-desk-badge">{unread > 9 ? '9+' : unread}</span>}
+          </button>
+          <div className="adm-desk-avatar">{initial}</div>
+        </div>
+      </div>
 
       {/* Stats Grid */}
       <div className="stats-grid">
