@@ -30,8 +30,6 @@ export default function EmergencySOS() {
       }
 
       // Get location if user wants to share it
-      let latitude = null;
-      let longitude = null;
 
       let latitude = null, longitude = null;
       if (shareLocation) {

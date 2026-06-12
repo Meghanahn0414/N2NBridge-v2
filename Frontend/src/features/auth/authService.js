@@ -1,18 +1,10 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim();
-<<<<<<< HEAD
-const BASE_URL = import.meta.env.DEV
-  ? "/api/auth"
-  : API_BASE_URL
-    ? `${API_BASE_URL.replace(/\/$/, "")}/api/auth`
-    : "/api/auth";
-=======
 const BASE_URL = API_BASE_URL
   ? `${API_BASE_URL.replace(/\/$/, "")}/api/auth`
   : "/api/auth";
 
 console.log("API_BASE_URL =", API_BASE_URL);
 console.log("BASE_URL =", BASE_URL);
->>>>>>> eb24f061c4df4ce1177b4fc0bcf37c2ee9f884fa
 
 async function callApi(path, payload) {
   const url = `${BASE_URL}${path}`;
