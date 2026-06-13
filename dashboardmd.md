@@ -12,3 +12,5 @@
 | AWS Hosting                | Demo                | Open        |                                               | Santosh         |
 | Mobile Ui design           | Code                | Completed   |                                               | Fatima/Meghana
 | Integration Testing        | Code                | Started     |                                               | Fatima/Meghana
+| Complaint Creation by      |code                 |  Completed  |                                               |Team    
+category and Event Creation|
