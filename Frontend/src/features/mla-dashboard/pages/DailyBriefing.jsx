@@ -4,6 +4,7 @@ import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/DailyBriefing.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+import PageHeader from '../../../components/PageHeader';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
@@ -52,11 +53,9 @@ export default function DailyBriefing() {
   };
 
   return (
-    <div className="mla-container daily-briefing-container">
-      <div className="daily-briefing-header">
-        <h1>{briefing.greeting} 👋</h1>
-        <p>{briefing.date}</p>
-      </div>
+    <div>
+      <PageHeader subtitle={briefing.date} />
+      <div className="mla-container daily-briefing-container">
 
       {/* Today's Summary Card */}
       <div className="mla-section briefing-summary">
@@ -157,7 +156,7 @@ export default function DailyBriefing() {
             <div className="metric-icon">💚</div>
             <div className="metric-text">
               <div className="metric-label">Health Score</div>
-              <div className="metric-value">{metrics.healthScore}%</div>
+              <div className="metric-value">{metrics.healthScore}</div>
             </div>
           </div>
           <div className="briefing-metric">
@@ -203,5 +202,6 @@ export default function DailyBriefing() {
         <p>Last updated: {new Date().toLocaleTimeString()}</p>
       </div>
     </div>
+  </div>
   );
 }

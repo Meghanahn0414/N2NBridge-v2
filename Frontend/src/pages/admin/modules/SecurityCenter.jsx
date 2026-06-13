@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/SecurityCenter.css';
+import PageHeader from "../../../components/PageHeader";
 
 export default function SecurityCenter() {
   const [threats, setThreats] = useState([]);
@@ -26,12 +27,9 @@ export default function SecurityCenter() {
   };
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>🛡️ Security Center</h1>
-        <p>Monitor security threats, access logs, and system health</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Monitor security threats, access logs, and system health" />
+      <div className="module-container">
       <div className="module-controls">
         <input type="text" placeholder="Search incidents, users, IPs..." />
         <select>
@@ -140,6 +138,7 @@ export default function SecurityCenter() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -14,7 +14,6 @@ html, body, #root {
 }
 
 :root {
-  --sidebar-width: 200px;
   --color-header: #0F4C75;
   --color-footer: #0A3855;
   --color-page: #EEF4FA;
@@ -28,6 +27,32 @@ html, body, #root {
 body {
   background: var(--color-page);
   color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+h1 { font-size: 24px; }
+h2 { font-size: 20px; }
+h3 { font-size: 17px; }
+h4 { font-size: 15px; }
+
+p, span, label, td, th, input, textarea, select, button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+button {
+  font-weight: 500;
 }
 
 /* Main app content area (adjusts with sidebar and header) */

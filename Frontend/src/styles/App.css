@@ -23,6 +23,7 @@
   min-height: calc(100vh - var(--header-height));
   min-width: 0;
   overflow-x: hidden;
+  transition: margin-left 0.25s ease;
 }
 
 .app-main--citizen {
@@ -33,6 +34,36 @@
   background: transparent;
   min-height: 100vh;
   width: 100%;
+}
+
+/* Full-width desktop layout for field officer, manager etc. (no sidebar, no top header offset) */
+.app-main--full {
+  flex: 1;
+  margin-left: 0;
+  margin-top: 0;
+  padding: 0;
+  background: transparent;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sidebar present but no top header (field officer, manager with own page headers) */
+.app-main--no-header {
+  flex: 1;
+  margin-left: 220px; /* hardcoded fallback */
+  margin-left: var(--main-offset, 220px); /* JS-driven CSS variable, falls back to 220px */
+  margin-top: 0;
+  padding: 0;
+  background: transparent;
+  min-height: 100vh;
+  transition: margin-left 0.25s ease;
+}
+
+/* Belt-and-suspenders: body class set by Sidebar.jsx when collapsed */
+body.sidebar-collapsed .app-main--no-header {
+  margin-left: 60px !important;
 }
 
 /* Ensure any page section headers do not get hidden behind fixed top navbar */

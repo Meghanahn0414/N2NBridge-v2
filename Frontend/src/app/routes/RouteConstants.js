@@ -63,4 +63,10 @@ export const ROUTES = {
   mlaGovernmentSchemes: "/rep/government-schemes",
   mlaAIInsights: "/rep/ai-insights",
   mlaDailyBriefing: "/rep/daily-briefing",
+  // Field Officer Routes
+  fieldGrievances: "/field/grievances",
+  fieldTasks: "/field/tasks",
+  fieldAlerts: "/field/alerts",
+  fieldProfile: "/field/profile",
+  fieldEvents: "/field/events",
 };

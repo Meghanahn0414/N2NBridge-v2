@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Cell,
 } from 'recharts';
 import {
   FaBell, FaHome, FaClipboardList, FaMapMarkedAlt,
@@ -12,6 +12,7 @@ import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import { fetchGrievances } from '../../grievances/grievanceService';
 import { getAuthUser } from '../../../services/authStorage';
 import '../../../styles/mla-dashboard/ExecutiveDashboard.css';
+import PageHeader from '../../../components/PageHeader';
 
 function HealthGauge({ score }) {
   const radius = 36;
@@ -44,19 +45,34 @@ function HealthGauge({ score }) {
   );
 }
 
-const CATEGORY_SHORT = {
-  Water: 'Water', Roads: 'Roads', Electricity: 'Elec.', Drainage: 'Drain.',
-  Health: 'Health', Sanitation: 'Sanit.', Infrastructure: 'Infra.',
-  Education: 'Educ.', Transport: 'Trans.',
-};
+const CAT_COLORS = [
+  '#3b82f6', // blue
+  '#f97316', // orange
+  '#10b981', // green
+  '#8b5cf6', // purple
+  '#ef4444', // red
+  '#f59e0b', // amber
+  '#06b6d4', // cyan
+  '#ec4899', // pink
+];
 
 function shortenCategory(name) {
-  return CATEGORY_SHORT[name] || (name.length > 6 ? name.slice(0, 5) + '.' : name);
+  if (!name) return '?';
+  const SHORT = {
+    'Water Supply': 'Water', 'Road Issue': 'Roads', 'Roads': 'Roads',
+    'Electricity': 'Elec.', 'Drainage': 'Drain.', 'Health': 'Health',
+    'Sanitation': 'Sanit.', 'Infrastructure': 'Infra.',
+    'Education': 'Educ.', 'Transport': 'Trans.',
+    'Street Light': 'S.Light', 'Garbage': 'Garbg.',
+    'Park Maintenance': 'Park', 'Noise Pollution': 'Noise',
+  };
+  return SHORT[name] || (name.length > 7 ? name.slice(0, 6) + '.' : name);
 }
 
-function wardSeverity(count) {
-  if (count >= 30) return { bg: '#fee2e2', text: '#dc2626', label: 'High' };
-  if (count >= 15) return { bg: '#fef9c3', text: '#d97706', label: 'Med' };
+function wardSeverity(ward) {
+  const p = (ward.highestPriority || 'LOW').toUpperCase();
+  if (p === 'CRITICAL' || p === 'HIGH') return { bg: '#fee2e2', text: '#dc2626', label: 'High' };
+  if (p === 'MEDIUM') return { bg: '#fef9c3', text: '#d97706', label: 'Med' };
   return { bg: '#dcfce7', text: '#16a34a', label: 'Low' };
 }
 
@@ -72,8 +88,8 @@ export default function ExecutiveDashboard() {
     : 'MLA';
 
   useEffect(() => {
-    fetchGrievances(1, 5)
-      .then(data => setRecentGrievances(Array.isArray(data) ? data.slice(0, 5) : []))
+    fetchGrievances(1, 100)
+      .then(data => setRecentGrievances(Array.isArray(data) ? data : []))
       .catch(() => setRecentGrievances([]));
   }, []);
 
@@ -121,6 +137,7 @@ export default function ExecutiveDashboard() {
       return dashboard.wardStats.map(w => ({
         name: w.name || w.wardId || w.ward || 'Ward',
         count: Number(w.count || w.issues || 0),
+        highestPriority: w.highestPriority || 'LOW',
       }));
     }
     const complaints = dashboard?.recentComplaints || [];
@@ -156,26 +173,7 @@ export default function ExecutiveDashboard() {
 
   return (
     <div className="rep-dashboard">
-      {/* Header */}
-      <div className="rep-header">
-        <div className="rep-header-left">
-          <h1 className="rep-header-title">Welcome {user?.name || 'Representative'}</h1>
-          <span className="rep-header-date">&#9633; {today}</span>
-        </div>
-        <div className="rep-header-right">
-          <button
-            className="rep-bell-btn"
-            onClick={() => navigate(ROUTES.mlaEmergencyCenter)}
-            aria-label="Alerts"
-          >
-            <FaBell />
-            {criticalAlerts > 0 && (
-              <span className="rep-bell-badge">{criticalAlerts}</span>
-            )}
-          </button>
-          <div className="rep-avatar">{initials}</div>
-        </div>
-      </div>
+      <PageHeader subtitle="Constituency overview and key performance indicators" />
 
       {/* KPI Cards */}
       <div className="rep-kpi-row">
@@ -228,17 +226,25 @@ export default function ExecutiveDashboard() {
                   <Tooltip
                     contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
                   />
-                  <Bar dataKey="Total" fill="#bfdbfe" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="Open" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Total" radius={[3, 3, 0, 0]}>
+                    {categoryData.map((_, i) => (
+                      <Cell key={i} fill={CAT_COLORS[i % CAT_COLORS.length]} fillOpacity={0.35} />
+                    ))}
+                  </Bar>
+                  <Bar dataKey="Open" radius={[3, 3, 0, 0]}>
+                    {categoryData.map((_, i) => (
+                      <Cell key={i} fill={CAT_COLORS[i % CAT_COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              <div className="rep-legend">
-                <span className="rep-legend-item">
-                  <span className="rep-legend-dot" style={{ background: '#bfdbfe' }} /> Total
-                </span>
-                <span className="rep-legend-item">
-                  <span className="rep-legend-dot" style={{ background: '#3b82f6' }} /> Open
-                </span>
+              <div className="rep-legend" style={{ flexWrap: 'wrap', gap: '6px 12px' }}>
+                {categoryData.map((entry, i) => (
+                  <span key={entry.name} className="rep-legend-item">
+                    <span className="rep-legend-dot" style={{ background: CAT_COLORS[i % CAT_COLORS.length] }} />
+                    {entry.name}
+                  </span>
+                ))}
               </div>
             </>
           ) : (
@@ -253,9 +259,9 @@ export default function ExecutiveDashboard() {
           </div>
           {wardData.length > 0 ? (
             <>
-              <div className="rep-ward-grid">
-                {wardData.slice(0, 4).map((ward, i) => {
-                  const sev = wardSeverity(ward.count);
+              <div className="rep-ward-grid" style={{ maxHeight: 220, overflowY: 'auto' }}>
+                {wardData.map((ward, i) => {
+                  const sev = wardSeverity(ward);
                   return (
                     <div
                       key={i}
@@ -263,10 +269,10 @@ export default function ExecutiveDashboard() {
                       style={{ backgroundColor: sev.bg }}
                     >
                       <div className="rep-ward-name" style={{ color: sev.text }}>
-                        {ward.name}
+                        Ward {ward.name}
                       </div>
                       <div className="rep-ward-count" style={{ color: sev.text }}>
-                        {ward.count} issues
+                        {ward.count} {ward.count === 1 ? 'issue' : 'issues'}
                       </div>
                     </div>
                   );
@@ -353,7 +359,10 @@ export default function ExecutiveDashboard() {
                     g.submittedBy?.name ||
                     g.createdBy?.name ||
                     'Unknown';
-                  const category = g.category || '-';
+                  const rawCat = g.categoryName || g.category || g.categoryId || '';
+                  const category = rawCat
+                    ? rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                    : '-';
                   const ward = g.wardId || g.ward || '-';
                   const priority = (g.priority || 'LOW').toUpperCase();
                   const isUnassigned = !g.assignedTo || g.status === 'NEW';

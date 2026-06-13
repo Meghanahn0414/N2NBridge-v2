@@ -25,7 +25,7 @@
 
 /* ---- Header ---- */
 .rep-header {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%);
+  background: #1a5290;
   color: #fff;
   padding: 18px 20px 14px;
   display: flex;
@@ -45,6 +45,7 @@
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.2px;
+  color: #fff;
   line-height: 1.2;
 }
 

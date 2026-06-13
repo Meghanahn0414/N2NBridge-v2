@@ -9,6 +9,7 @@ export default function EmergencySOS() {
   const [details, setDetails]                     = useState("");
   const [shareLocation, setShareLocation]         = useState(true);
   const [loading, setLoading]                     = useState(false);
+  const [locationWarning, setLocationWarning]     = useState("");
 
   const emergencyTypes = ["Medical", "Fire", "Flood", "Accident", "Other"];
 
@@ -32,17 +33,29 @@ export default function EmergencySOS() {
       // Get location if user wants to share it
 
       let latitude = null, longitude = null;
+      setLocationWarning("");
       if (shareLocation) {
-        try {
-          const pos = await new Promise((res, rej) =>
-            navigator.geolocation.getCurrentPosition(res, rej, {
-              enableHighAccuracy: true, timeout: 10000, maximumAge: 0,
-            })
-          );
-          latitude  = pos.coords.latitude;
-          longitude = pos.coords.longitude;
-        } catch {
-          alert("Warning: Could not access your location. Alert will still be sent.");
+        if (!navigator.geolocation) {
+          setLocationWarning("Geolocation not supported by this browser.");
+        } else {
+          try {
+            const pos = await new Promise((res, rej) => {
+              // Try high accuracy first, fall back to low accuracy on failure
+              navigator.geolocation.getCurrentPosition(res,
+                () => {
+                  // Retry with low accuracy (works better on HTTP)
+                  navigator.geolocation.getCurrentPosition(res, rej, {
+                    enableHighAccuracy: false, timeout: 10000, maximumAge: 60000,
+                  });
+                },
+                { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+              );
+            });
+            latitude  = pos.coords.latitude;
+            longitude = pos.coords.longitude;
+          } catch {
+            setLocationWarning("GPS unavailable — alert sent without location.");
+          }
         }
       }
 
@@ -163,6 +176,12 @@ export default function EmergencySOS() {
                 <span className="checkbox-text">Share my live location with responders</span>
               </label>
             </div>
+
+            {locationWarning && (
+              <p style={{ color: '#d97706', fontSize: 13, margin: '0 0 8px' }}>
+                ⚠️ {locationWarning}
+              </p>
+            )}
 
             {/* Send button */}
             <button

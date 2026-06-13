@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit, FaCamera } from 'react-icons/fa';
 import { getCitizenProfile, updateCitizenProfile, uploadCitizenProfilePhoto } from '../../shared/services/citizenService';
+import { getWards } from '../../features/constituencies/constituencyService';
 
 export default function CitizenProfile() {
   const navigate = useNavigate();
@@ -12,8 +13,10 @@ export default function CitizenProfile() {
     mobile: '',
     address: '',
     constituencyId: '',
+    wardId: '',
     createdAt: '',
   });
+  const [wards, setWards] = useState([]);
   const [photoFile, setPhotoFile] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState('');
@@ -22,10 +25,12 @@ export default function CitizenProfile() {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const handleLogout = () => {
-  // Clear auth tokens/session
-  localStorage.removeItem("token");
-  navigate("/login");
-};
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    navigate("/citizen-login");
+  };
   useEffect(() => {
     let active = true;
 
@@ -40,8 +45,16 @@ export default function CitizenProfile() {
           mobile: result.mobile || '',
           address: result.address || '',
           constituencyId: result.constituencyId || '',
+          wardId: result.wardId || '',
           createdAt: result.createdAt || '',
         });
+        // Fetch wards for this citizen's constituency
+        if (result.constituencyId) {
+          try {
+            const wardList = await getWards(result.constituencyId);
+            setWards(wardList);
+          } catch { /* wards optional */ }
+        }
       } catch (err) {
         if (!active) return;
         setError(err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to load profile');
@@ -66,6 +79,7 @@ export default function CitizenProfile() {
         email: formData.email,
         mobile: formData.mobile,
         address: formData.address,
+        wardId: formData.wardId || null,
       };
       const updated = await updateCitizenProfile(payload);
       setProfile(updated);
@@ -75,6 +89,7 @@ export default function CitizenProfile() {
         mobile: updated.mobile || '',
         address: updated.address || '',
         constituencyId: updated.constituencyId || '',
+        wardId: updated.wardId || '',
         createdAt: updated.createdAt || '',
       });
       setIsEditing(false);
@@ -92,6 +107,7 @@ export default function CitizenProfile() {
         mobile: profile.mobile || '',
         address: profile.address || '',
         constituencyId: profile.constituencyId || '',
+        wardId: profile.wardId || '',
         createdAt: profile.createdAt || '',
       });
     }
@@ -141,6 +157,16 @@ export default function CitizenProfile() {
 
   const joinedDate = profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '-';
   const constituencyLabel = profile?.constituencyId || 'Not available';
+
+  // Derive ward display label
+  const wardLabel = (() => {
+    if (profile?.wardId) {
+      const match = wards.find(w => String(w.wardNumber) === String(profile.wardId) || String(w._id) === String(profile.wardId));
+      return match ? `Ward ${match.wardNumber} – ${match.wardName}` : `Ward ${profile.wardId}`;
+    }
+    if (profile?.constituencyId && wards.length === 0) return `Area ${profile.constituencyId}`;
+    return 'Not assigned';
+  })();
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
@@ -197,7 +223,9 @@ export default function CitizenProfile() {
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900">{profile?.fullName || profile?.email || 'Citizen'}</h2>
-                    {/* <p className="text-sm text-slate-600">{constituencyLabel}</p> */}
+                    {profile?.citizenId && (
+                      <p className="mt-1 text-sm font-medium text-blue-600">ID: {profile.citizenId}</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col items-start gap-2">
@@ -298,9 +326,51 @@ export default function CitizenProfile() {
                 </div>
 
                 <div>
+                  <label className="block text-sm font-semibold text-slate-900">
+                    <div className="mb-2 flex items-center gap-2">
+                      <FaMapMarkerAlt className="h-4 w-4 text-blue-600" />
+                      Ward
+                    </div>
+                  </label>
+                  {isEditing ? (
+                    wards.length > 0 ? (
+                      <select
+                        value={formData.wardId}
+                        onChange={(e) => setFormData({ ...formData, wardId: e.target.value })}
+                        className="w-full rounded-lg border border-slate-200 px-4 py-2 focus:border-blue-600 focus:outline-none"
+                      >
+                        <option value="">Select your ward</option>
+                        {wards.map(w => (
+                          <option key={w._id || w.wardNumber} value={w.wardNumber}>
+                            Ward {w.wardNumber}{w.wardName ? ` – ${w.wardName}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={formData.wardId}
+                        onChange={(e) => setFormData({ ...formData, wardId: e.target.value })}
+                        placeholder="Enter ward number"
+                        className="w-full rounded-lg border border-slate-200 px-4 py-2 focus:border-blue-600 focus:outline-none"
+                      />
+                    )
+                  ) : (
+                    <p className="text-slate-600">{wardLabel}</p>
+                  )}
+                </div>
+
+                <div>
                   <label className="block text-sm font-semibold text-slate-900">Member Since</label>
                   <p className="text-slate-600">{joinedDate}</p>
                 </div>
+
+                {profile?.citizenId && (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900">Citizen ID</label>
+                    <p className="font-mono text-slate-600">{profile.citizenId}</p>
+                  </div>
+                )}
               </div>
 
               {isEditing && (

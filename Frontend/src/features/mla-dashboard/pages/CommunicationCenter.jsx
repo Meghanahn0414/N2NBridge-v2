@@ -5,6 +5,7 @@ import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/CommunicationCenter.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import { getCommunicationChannels, getAudienceSegments } from '../../../shared/services/lookupService';
+import PageHeader from '../../../components/PageHeader';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value.toLocaleString());
 
@@ -83,11 +84,9 @@ export default function CommunicationCenter() {
   };
 
   return (
-    <div className="mla-container">
-      <div className="mla-header">
-        <h1>💬 Communication Center</h1>
-        <p>Communicate with citizens through multiple channels</p>
-      </div>
+    <div>
+      <PageHeader subtitle="Communicate with citizens through multiple channels" />
+      <div className="mla-container">
 
       {/* Quick Broadcast */}
       <div className="mla-section">
@@ -189,5 +188,6 @@ export default function CommunicationCenter() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

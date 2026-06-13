@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../shared/services/api';
 import './NewMLA.css';
+import PageHeader from "../../components/PageHeader";
 
 export default function AdminUsers(){
   const [users, setUsers] = useState([]);
@@ -24,12 +25,10 @@ export default function AdminUsers(){
   };
 
   return (
-    <div className="new-mla-container">
+    <div>
+      <PageHeader subtitle="All registered citizens in the system" />
+      <div className="new-mla-container">
       <div className="new-mla-card">
-        <div className="new-mla-header">
-          <h1 className="new-mla-title">CITIZENS</h1>
-          <p className="new-mla-subtitle">All registered citizens in the system</p>
-        </div>
         <div style={{ padding: 30 }}>
           {loading && <div>Loading...</div>}
           {error && <div className="new-mla-alert new-mla-alert--error">{error}</div>}
@@ -48,6 +47,7 @@ export default function AdminUsers(){
             </ul>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

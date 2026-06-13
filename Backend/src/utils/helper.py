@@ -77,10 +77,22 @@ class Helper:
     
     @staticmethod
     def convert_mongo_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert MongoDB document to JSON-serializable dict"""
+        """Convert MongoDB document to JSON-serializable dict, handling nested ObjectIds"""
         if not doc:
-            return None
-        result = dict(doc)
-        if "_id" in result and isinstance(result["_id"], ObjectId):
-            result["_id"] = str(result["_id"])
+            return {}
+        result = {}
+        for key, value in doc.items():
+            if isinstance(value, ObjectId):
+                result[key] = str(value)
+            elif isinstance(value, dict):
+                result[key] = Helper.convert_mongo_doc(value)
+            elif isinstance(value, list):
+                result[key] = [
+                    Helper.convert_mongo_doc(v) if isinstance(v, dict)
+                    else str(v) if isinstance(v, ObjectId)
+                    else v
+                    for v in value
+                ]
+            else:
+                result[key] = value
         return result

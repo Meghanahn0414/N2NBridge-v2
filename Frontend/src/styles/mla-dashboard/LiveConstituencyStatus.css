@@ -14,12 +14,12 @@
 }
 
 .status-section-title {
-  font-size: 20px;
+  font-size: 13px;
   font-weight: 700;
   color: #0f172a;
   margin: 0;
-  padding-bottom: 12px;
-  border-bottom: 3px solid #3b82f6;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #3b82f6;
 }
 
 .status-widgets-grid {

@@ -54,20 +54,44 @@ class AnalyticsService:
             {"$group": {"_id": "$priority", "count": {"$sum": 1}}}
         ])
         
-        # Get grievances by category
+        # Get grievances by category — use `category` enum field first, fall back to categoryId
+        from bson import ObjectId as _ObjId
         by_category_raw = list(db.grievances.aggregate([
             {"$match": {"isDeleted": False}},
-            {"$group": {"_id": "$categoryId", "count": {"$sum": 1}}}
+            {"$group": {
+                "_id": {"$ifNull": ["$category", "$categoryId"]},
+                "count": {"$sum": 1}
+            }}
         ]))
-        
-        # Convert categoryId to categoryName by looking up in categories collection
+
         by_category = {}
         for item in by_category_raw:
-            category_id = item["_id"]
-            if category_id:
-                category = db.grievance_categories.find_one({"_id": category_id})
-                category_name = category.get("categoryName", "Unknown") if category else "Unknown"
-                by_category[category_name] = item["count"]
+            cat_key = item["_id"]
+            count = item["count"]
+            if not cat_key:
+                continue
+            # Try ObjectId lookup in categories collection
+            category_name = None
+            try:
+                cat_doc = db.grievance_categories.find_one({"_id": _ObjId(str(cat_key))})
+                if cat_doc:
+                    category_name = cat_doc.get("categoryName") or cat_doc.get("name")
+            except Exception:
+                pass
+            if not category_name:
+                # Humanise the enum value e.g. "ROAD_ISSUE" → "Road Issue"
+                category_name = str(cat_key).replace("_", " ").title()
+            # Normalise aliases so the same category isn't split across bars
+            _NORMALIZE = {
+                "Water": "Water Supply",
+                "Roads": "Road Issue",
+                "Waste": "Garbage",
+                "Noise": "Noise Pollution",
+                "Electricity Supply": "Electricity",
+                "Other": "Other",
+            }
+            category_name = _NORMALIZE.get(category_name, category_name)
+            by_category[category_name] = by_category.get(category_name, 0) + count
         
         return {
             "total": total,

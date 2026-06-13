@@ -4,6 +4,7 @@ import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/LiveConstituencyStatus.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+import PageHeader from '../../../components/PageHeader';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
@@ -35,11 +36,9 @@ export default function LiveConstituencyStatus() {
   };
 
   return (
-    <div className="mla-container">
-      <div className="mla-header">
-        <h1>📊 Live Constituency Status</h1>
-        <p>Real-time command center view</p>
-      </div>
+    <div>
+      <PageHeader subtitle="Real-time command center view" />
+      <div className="mla-container">
 
       {/* Complaints Widget */}
       <div className="mla-section">
@@ -126,5 +125,6 @@ export default function LiveConstituencyStatus() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

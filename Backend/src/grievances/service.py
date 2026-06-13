@@ -241,6 +241,16 @@ class GrievanceService:
         ])
         return {item["_id"]: item["count"] for item in result}
 
+    @staticmethod
+    def count_grievances_by_citizen_and_status(citizen_id: str) -> Dict[str, int]:
+        """Count grievances for a specific citizen, grouped by status"""
+        db = MongoDatabase.get_db()
+        result = db.grievances.aggregate([
+            {"$match": {"citizenId": citizen_id, "isDeleted": False}},
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+        ])
+        return {item["_id"]: item["count"] for item in result}
+
 
 class GrievanceCategoryService:
     """Grievance category business logic"""

@@ -30,41 +30,44 @@ export default function MyComplaints() {
     fetchComplaints();
   }, []);
 
+  const STATUS_OPEN    = ["NEW", "IN_PROGRESS", "ON_HOLD"];
+  const STATUS_ASSIGNED = ["ASSIGNED"];
+  const STATUS_RESOLVED = ["RESOLVED", "CLOSED"];
+
   const getStatusColor = (status) => {
-    switch (status) {
-      case "Open":
-        return "status-open";
-      case "Assigned":
-        return "status-assigned";
-      case "Pending":
-        return "status-pending";
-      case "Resolved":
-        return "status-resolved";
-      default:
-        return "status-open";
-    }
+    if (STATUS_RESOLVED.includes(status)) return "status-resolved";
+    if (STATUS_ASSIGNED.includes(status)) return "status-assigned";
+    return "status-open";
+  };
+
+  const getStatusLabel = (status) => {
+    const map = {
+      NEW: "New",
+      ASSIGNED: "Assigned",
+      IN_PROGRESS: "In Progress",
+      ON_HOLD: "On Hold",
+      RESOLVED: "Resolved",
+      CLOSED: "Closed",
+      REJECTED: "Rejected",
+    };
+    return map[status] || status;
   };
 
   const getCategoryIcon = (category) => {
-    const icons = {
-      Roads: "🛣️",
-      Water: "💧",
-      Waste: "🗑️",
-      Electricity: "⚡",
-      Parks: "🌳",
-      Drainage: "🌊",
-      "Street Light": "💡",
-      Other: "📝",
-    };
-    return icons[category] || "📝";
+    const s = (category || "").toUpperCase();
+    if (s.includes("ROAD")) return "🛣️";
+    if (s.includes("WATER")) return "💧";
+    if (s.includes("ELECTRIC")) return "⚡";
+    if (s.includes("GARBAGE") || s.includes("WASTE")) return "🗑️";
+    if (s.includes("NOISE")) return "🔊";
+    return "📝";
   };
 
   const filteredComplaints = complaints.filter((complaint) => {
     if (filter === "all") return true;
-    if (filter === "open") return complaint.status === "Open";
-    if (filter === "assigned") return complaint.status === "Assigned";
-    if (filter === "pending") return complaint.status === "Pending";
-    if (filter === "resolved") return complaint.status === "Resolved";
+    if (filter === "open") return STATUS_OPEN.includes(complaint.status);
+    if (filter === "assigned") return STATUS_ASSIGNED.includes(complaint.status);
+    if (filter === "resolved") return STATUS_RESOLVED.includes(complaint.status);
     return true;
   });
 
@@ -97,19 +100,19 @@ export default function MyComplaints() {
           className={`filter-btn ${filter === "open" ? "active" : ""}`}
           onClick={() => setFilter("open")}
         >
-          Open ({complaints.filter((c) => c.status === "Open").length})
+          Open ({complaints.filter((c) => STATUS_OPEN.includes(c.status)).length})
         </button>
         <button
           className={`filter-btn ${filter === "assigned" ? "active" : ""}`}
           onClick={() => setFilter("assigned")}
         >
-          Assigned ({complaints.filter((c) => c.status === "Assigned").length})
+          Assigned ({complaints.filter((c) => STATUS_ASSIGNED.includes(c.status)).length})
         </button>
         <button
           className={`filter-btn ${filter === "resolved" ? "active" : ""}`}
           onClick={() => setFilter("resolved")}
         >
-          Resolved ({complaints.filter((c) => c.status === "Resolved").length})
+          Resolved ({complaints.filter((c) => STATUS_RESOLVED.includes(c.status)).length})
         </button>
       </div>
 
@@ -127,49 +130,54 @@ export default function MyComplaints() {
         ) : (
           filteredComplaints.map((complaint) => (
             <div
-              key={complaint.id}
+              key={complaint.id || complaint._id || complaint.complaintNumber}
               className="complaint-card"
-              onClick={() => navigate(`/citizen/complaints/${complaint.id}`)}
+              onClick={() => {
+                const cid = complaint.id || complaint._id;
+                if (cid) navigate(`/citizen/complaints/${cid}`);
+              }}
             >
               <div className="complaint-header-row">
                 <div className="complaint-id-section">
-                  <h3 className="complaint-id">{complaint.complaintId}</h3>
+                  <h3 className="complaint-id">{complaint.complaintNumber}</h3>
                   <span className={`complaint-status ${getStatusColor(complaint.status)}`}>
-                    {complaint.status}
+                    {getStatusLabel(complaint.status)}
                   </span>
                 </div>
-                <p className="complaint-time">Submitted {getTimeAgo(complaint.submittedDate)}</p>
+                <p className="complaint-time">Submitted {getTimeAgo(complaint.createdAt)}</p>
               </div>
 
               <div className="complaint-title">
-                {getCategoryIcon(complaint.category)} {complaint.title}
+                {getCategoryIcon(complaint.category || complaint.categoryId)} {complaint.description}
               </div>
 
               <div className="complaint-details">
                 <p className="detail-line">
-                  {complaint.category} · Ward {complaint.ward} · {complaint.location}
+                  {complaint.category || complaint.categoryId || "General"}
+                  {complaint.wardId ? ` · Ward ${complaint.wardId}` : ""}
+                  {complaint.address ? ` · ${complaint.address}` : ""}
                 </p>
               </div>
 
               <div className="complaint-priority">
-                <span className={`priority-badge priority-${complaint.priority.toLowerCase()}`}>
-                  {complaint.priority} Priority
+                <span className={`priority-badge priority-${(complaint.priority || "medium").toLowerCase()}`}>
+                  {complaint.priority || "MEDIUM"} Priority
                 </span>
               </div>
 
               <div className="complaint-footer">
                 <div className="rating-preview">
-                  {complaint.rating > 0 ? (
+                  {complaint.feedback?.rating > 0 ? (
                     <>
                       {[...Array(5)].map((_, i) => (
                         <span
                           key={i}
-                          className={`star-small ${i < complaint.rating ? "filled" : ""}`}
+                          className={`star-small ${i < complaint.feedback.rating ? "filled" : ""}`}
                         >
                           ★
                         </span>
                       ))}
-                      <span className="rating-value">({complaint.rating}/5)</span>
+                      <span className="rating-value">({complaint.feedback.rating}/5)</span>
                     </>
                   ) : (
                     <span className="no-rating">No rating yet</span>
@@ -186,8 +194,10 @@ export default function MyComplaints() {
 }
 
 function getTimeAgo(dateString) {
+  if (!dateString) return "unknown date";
   const date = new Date(dateString);
-  const now = new Date("2026-06-10"); // Using the app's current date
+  if (isNaN(date.getTime())) return "unknown date";
+  const now = new Date();
   const diffMs = now - date;
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 

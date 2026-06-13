@@ -87,7 +87,17 @@ export default function CitizenDashboardNew() {
               onClick={() => navigate("/citizen/profile")}
               aria-label="Profile"
             >
-              {getInitials(displayName)}
+              {profile?.profileImage ? (
+                <img
+                  src={profile.profileImage.startsWith("http")
+                    ? profile.profileImage
+                    : `${import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000"}/${profile.profileImage}`}
+                  alt="Profile"
+                  className="topbar-avatar-img"
+                />
+              ) : (
+                getInitials(displayName)
+              )}
             </button>
           </div>
 

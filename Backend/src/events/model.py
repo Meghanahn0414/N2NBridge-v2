@@ -30,6 +30,7 @@ class EventBase(BaseModel):
 class EventCreate(EventBase):
     """Event creation"""
     organizerId: str
+    wardId: Optional[str] = None
 
 
 class EventUpdate(BaseModel):
@@ -53,6 +54,8 @@ class EventResponse(BaseModel):
     capacity: int
     qrEnabled: bool
     registrationCount: int
+    status: Optional[str] = "DRAFT"
+    wardId: Optional[str] = None
     createdAt: datetime
     updatedAt: datetime
     
@@ -62,7 +65,7 @@ class EventResponse(BaseModel):
 
 class EventRegistrationCreate(BaseModel):
     """Event registration creation"""
-    eventId: str
+    eventId: Optional[str] = None
     citizenId: str
 
 

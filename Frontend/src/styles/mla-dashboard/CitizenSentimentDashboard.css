@@ -55,7 +55,7 @@
 }
 
 .sentiment-status {
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
 }
@@ -97,9 +97,42 @@
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
 }
 
+/* ---- Feedback by Category ---- */
+.feedback-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feedback-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.feedback-item .category-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  min-width: 100px;
+}
+
+.feedback-item .category-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-left: auto;
+}
+
 .sentiment-emoji {
-  font-size: 28px;
-  min-width: 36px;
+  font-size: 18px;
+  min-width: 24px;
 }
 
 .sentiment-content {
@@ -116,7 +149,7 @@
 }
 
 .sentiment-percentage {
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 700;
   color: #0f172a;
 }
@@ -173,11 +206,11 @@
 }
 
 .concerns-icon {
-  font-size: 28px;
+  font-size: 18px;
 }
 
 .concerns-title {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 700;
   color: #0f172a;
   margin: 0;
@@ -255,11 +288,11 @@
 }
 
 .keywords-icon {
-  font-size: 28px;
+  font-size: 18px;
 }
 
 .keywords-title {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 700;
   color: #0f172a;
   margin: 0;

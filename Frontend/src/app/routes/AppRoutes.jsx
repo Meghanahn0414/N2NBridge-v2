@@ -67,17 +67,25 @@ import CitizenSentimentDashboard from "../../features/mla-dashboard/pages/Citize
 import GovernmentSchemeDashboard from "../../features/mla-dashboard/pages/GovernmentSchemeDashboard";
 import AIInsights from "../../features/mla-dashboard/pages/AIInsights";
 import DailyBriefing from "../../features/mla-dashboard/pages/DailyBriefing";
+import FieldOfficerGrievances from "../../features/field-officer/pages/FieldOfficerGrievances";
+import FieldOfficerAlerts from "../../features/field-officer/pages/FieldOfficerAlerts";
+import FieldOfficerProfile from "../../features/field-officer/pages/FieldOfficerProfile";
+import FieldOfficerEvents from "../../features/field-officer/pages/FieldOfficerEvents";
 
 function AppRoutesContent() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, "/citizen-splash", "/citizen-login", "/admin-login", "/profile-creation"].includes(location.pathname);
+  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, ROUTES.otp, "/citizen-splash", "/citizen-login", "/admin-login", "/otp", "/profile-creation"].includes(location.pathname);
   const isCitizenRoute = location.pathname.startsWith("/citizen");
-  const isAdminDashboard = location.pathname === ROUTES.admin;
+  const isAdminRoute = location.pathname.startsWith("/admin");
   const isRepDashboard = location.pathname === ROUTES.rep || location.pathname === ROUTES.mlaExecutiveDashboard;
-  const hideHeader = isLanding || isCitizenRoute || isAdminDashboard || isRepDashboard;
+  const isRepSubRoute = location.pathname.startsWith("/rep/");
+  const isFieldRoute = location.pathname.startsWith("/field");
+  const isManagerRoute = location.pathname === ROUTES.manager;
+  const hideHeader = true;
   const hideSidebar = isLanding || isCitizenRoute || isRepDashboard;
 
   // Close mobile menu on route change
@@ -101,18 +109,26 @@ function AppRoutesContent() {
 
   return (
     <div className="App">
-      {/* Header - hide on landing, login pages, signup, and citizen mobile flows */}
+      {/* Header - hide on landing, login, citizen, admin, rep, field, manager routes */}
       {!hideHeader && <Header onMobileMenuClick={() => setMobileMenuOpen(o => !o)} />}
 
-      {/* Sidebar - hide on landing, login pages, signup, and citizen mobile flows */}
+      {/* Sidebar - hide on landing, login, citizen, rep, field, manager routes */}
       {!hideSidebar && (
         <Sidebar
           mobileOpen={mobileMenuOpen}
           onMobileClose={() => setMobileMenuOpen(false)}
+          onToggle={(isOpen) => setSidebarOpen(isOpen)}
         />
       )}
 
-      <main className={`${isLanding ? 'app-main--landing' : (isCitizenRoute || isAdminDashboard || isRepDashboard) ? 'app-main--citizen' : 'app-main'}`}>
+      <main
+        className={`${isLanding ? 'app-main--landing' : isFieldRoute || isManagerRoute || isRepSubRoute || isAdminRoute ? 'app-main--no-header' : (isCitizenRoute || isRepDashboard) ? 'app-main--citizen' : 'app-main'}`}
+        style={
+          (isFieldRoute || isManagerRoute || isRepSubRoute || isAdminRoute) && !hideSidebar
+            ? { marginLeft: sidebarOpen ? '220px' : '60px', transition: 'margin-left 0.25s ease', width: 'auto', minHeight: '100vh' }
+            : undefined
+        }
+      >
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/citizen-splash" replace /></PublicRoute>} />
@@ -137,7 +153,11 @@ function AppRoutesContent() {
           
           {/* Dashboard Routes */}
           <Route path={ROUTES.field} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldDashboard /></RoleRoute>} />
-          <Route path={ROUTES.manager} element={<RoleRoute allowedRoles={["CONSTITUENCY_MANAGER"]}><ManagerDashboard /></RoleRoute>} />
+          <Route path={ROUTES.fieldGrievances} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldOfficerGrievances /></RoleRoute>} />
+          <Route path={ROUTES.fieldAlerts} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldOfficerAlerts /></RoleRoute>} />
+          <Route path={ROUTES.fieldProfile} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldOfficerProfile /></RoleRoute>} />
+          <Route path={ROUTES.fieldEvents} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldOfficerEvents /></RoleRoute>} />
+          <Route path={ROUTES.manager} element={<RoleRoute allowedRoles={["CONSTITUENCY_MANAGER", "MANAGER"]}><ManagerDashboard /></RoleRoute>} />
           <Route path={ROUTES.rep} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><ExecutiveDashboard /></RoleRoute>} />
           <Route path={ROUTES.admin} element={<RoleRoute allowedRoles={["ADMIN"]}><AdminDashboard /></RoleRoute>} />
           
@@ -160,7 +180,7 @@ function AppRoutesContent() {
           <Route path={ROUTES.eventManagement} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><EventManagement /></RoleRoute>} />
           <Route path={ROUTES.communicationHub} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><CommunicationHub /></RoleRoute>} />
           <Route path={ROUTES.campaignManagement} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><CampaignManagement /></RoleRoute>} />
-          <Route path={ROUTES.teamManagement} element={<RoleRoute allowedRoles={["ADMIN", "CONSTITUENCY_MANAGER"]}><TeamManagement /></RoleRoute>} />
+          <Route path={ROUTES.teamManagement} element={<RoleRoute allowedRoles={["ADMIN", "CONSTITUENCY_MANAGER", "MANAGER"]}><TeamManagement /></RoleRoute>} />
           <Route path={ROUTES.analyticsReports} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><AnalyticsReports /></RoleRoute>} />
           <Route path={ROUTES.aiServices} element={<RoleRoute allowedRoles={["ADMIN"]}><AIServices /></RoleRoute>} />
           <Route path={ROUTES.integrations} element={<RoleRoute allowedRoles={["ADMIN"]}><Integrations /></RoleRoute>} />

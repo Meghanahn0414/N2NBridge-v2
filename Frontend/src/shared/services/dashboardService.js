@@ -6,6 +6,7 @@ const ROLE_ENDPOINT = {
   ADMIN: "/api/dashboard/admin",
   REPRESENTATIVE: "/api/dashboard/mla",
   CONSTITUENCY_MANAGER: "/api/dashboard/mla",
+  MANAGER: "/api/dashboard/mla",
   MLA: "/api/dashboard/mla",
 };
 

@@ -148,9 +148,19 @@ button { font: inherit; border: none; background: none; cursor: pointer; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  overflow: hidden;
+  padding: 0;
+  transition: background 0.15s, box-shadow 0.15s;
 }
-.avatar-button:hover { background: #3479d4; }
+.avatar-button:hover { box-shadow: 0 0 0 2px rgba(255,255,255,0.5); }
+
+.topbar-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
 
 .topbar-icon { font-size: 19px; }
 

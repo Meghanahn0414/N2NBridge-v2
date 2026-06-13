@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/AlertManagement.css';
+import PageHeader from "../../../components/PageHeader";
 import { fetchAlerts, broadcastAlert } from '../../../features/alerts/alertService';
 
 export default function AlertManagement() {
@@ -68,12 +69,9 @@ export default function AlertManagement() {
   };
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>🚨 Alert Management</h1>
-        <p>Monitor and manage emergency alerts in real-time</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Monitor and manage emergency alerts in real-time" />
+      <div className="module-container">
       <div className="module-controls">
         <input type="text" placeholder="Search alerts by location, type, reporter..." />
         
@@ -219,6 +217,7 @@ export default function AlertManagement() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

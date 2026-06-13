@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/AnalyticsReports.css';
+import PageHeader from "../../../components/PageHeader";
 import { getGrievanceStats, getAlertStats, getEventStats, getDashboardMetrics } from '../../../features/analytics/analyticsService';
 
 export default function AnalyticsReports() {
@@ -84,12 +85,9 @@ export default function AnalyticsReports() {
   const metrics = getMetricsForType(reportType);
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>📊 Analytics & Reports</h1>
-        <p>Generate and view detailed platform analytics and reports</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Generate and view detailed platform analytics and reports" />
+      <div className="module-container">
       <div className="module-controls">
         <select value={reportType} onChange={(e) => setReportType(e.target.value)}>
           <option value="COMPLAINTS">Complaint Analytics</option>
@@ -244,7 +242,7 @@ export default function AnalyticsReports() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
-

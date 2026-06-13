@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/Integrations.css';
+import PageHeader from "../../../components/PageHeader";
 
 export default function Integrations() {
   const [integrations, setIntegrations] = useState([
@@ -15,12 +16,9 @@ export default function Integrations() {
   const [showConfig, setShowConfig] = useState(null);
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>🔗 Integration Management</h1>
-        <p>Manage third-party service integrations and API credentials</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Manage third-party service integrations and API credentials" />
+      <div className="module-container">
       <div className="module-controls">
         <input type="text" placeholder="Search integrations..." />
         <button className="btn-primary">+ Add Integration</button>
@@ -77,6 +75,7 @@ export default function Integrations() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

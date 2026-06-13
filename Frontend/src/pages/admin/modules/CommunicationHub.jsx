@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
+import PageHeader from "../../../components/PageHeader";
 import { fetchNotifications } from '../../../features/communications/communicationService';
 
 export default function CommunicationHub() {
@@ -42,12 +43,9 @@ export default function CommunicationHub() {
   };
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>💬 Communication Hub</h1>
-        <p>Send messages through multiple channels (SMS, WhatsApp, Email, Push)</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Send messages through multiple channels" />
+      <div className="module-container">
       <div className="module-controls">
         <div className="channel-tabs">
           {channels.map(channel => (
@@ -161,6 +159,7 @@ export default function CommunicationHub() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

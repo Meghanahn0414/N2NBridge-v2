@@ -5,6 +5,7 @@ import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/GeographicHeatMap.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import { getGrievanceCategories } from '../../../shared/services/lookupService';
+import PageHeader from '../../../components/PageHeader';
 
 export default function GeographicHeatMap() {
   const navigate = useNavigate();
@@ -71,11 +72,9 @@ export default function GeographicHeatMap() {
   const handleViewWardDetails = () => navigate(ROUTES.mlaComplaintsDashboard);
 
   return (
-    <div className="mla-container">
-      <div className="mla-header">
-        <h1>🗺️ Geographic Heat Map</h1>
-        <p>View issues and alerts by ward and location</p>
-      </div>
+    <div>
+      <PageHeader subtitle="View issues and alerts by ward and location" />
+      <div className="mla-container">
 
       {/* Filters */}
       <div className="mla-section">
@@ -179,5 +178,6 @@ export default function GeographicHeatMap() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

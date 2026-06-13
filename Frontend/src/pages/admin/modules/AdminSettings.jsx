@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
+import PageHeader from "../../../components/PageHeader";
 
 export default function AdminSettings() {
   const [userPreferences, setUserPreferences] = useState({
@@ -22,12 +23,9 @@ export default function AdminSettings() {
   };
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>⚙️ Admin Settings</h1>
-        <p>Manage your account preferences and settings</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Manage your account preferences and settings" />
+      <div className="module-container">
       <div className="settings-sections">
         <div className="settings-section">
           <h3>👤 Profile Information</h3>
@@ -148,6 +146,7 @@ export default function AdminSettings() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

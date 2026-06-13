@@ -174,20 +174,37 @@
   box-shadow: 0 6px 10px rgba(59, 130, 246, 0.14);
 }
 
-.action-buttons button.close {
-  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-}
-
-.action-buttons button.download {
-  background: linear-gradient(135deg, #64748b 0%, #334155 100%);
-}
-
-.action-buttons button.reassign {
+.action-buttons button.close,
+.action-buttons .btn-resolve {
   background: linear-gradient(135deg, #10b981 0%, #047857 100%);
 }
 
-.action-buttons button.escalate {
+.action-buttons .btn-resolve:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.action-buttons button.download,
+.action-buttons .btn-download {
+  background: linear-gradient(135deg, #64748b 0%, #334155 100%);
+}
+
+.action-buttons button.reassign,
+.action-buttons .btn-reassign {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.action-buttons button.escalate,
+.action-buttons .btn-status {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.modal-subtitle {
+  color: #6b7280;
+  font-size: 13px;
+  margin-bottom: 16px;
 }
 
 .complaint-actions .btn-view {

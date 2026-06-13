@@ -21,7 +21,7 @@ async def create_event(
     event_data: EventCreate
 ):
     """Create event"""
-    event_id = EventService.create_event(event_data.dict(), None)
+    event_id = EventService.create_event(event_data.model_dump(), None)
     event = EventService.get_event_by_id(event_id)
     
     return EventResponse(**Helper.convert_mongo_doc(event))
@@ -60,7 +60,7 @@ async def update_event(
     """Update event"""
     success = EventService.update_event(
         event_id,
-        update_data.dict(exclude_unset=True),
+        update_data.model_dump(exclude_unset=True),
         "system"
     )
     
@@ -69,6 +69,19 @@ async def update_event(
     
     event = EventService.get_event_by_id(event_id)
     return EventResponse(**Helper.convert_mongo_doc(event))
+
+
+@router.delete("/{event_id}")
+async def delete_event(
+    event_id: str
+):
+    """Delete event"""
+    success = EventService.delete_event(event_id)
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    return success_response(None, "Event deleted successfully")
 
 
 @router.post("/{event_id}/publish")
@@ -85,18 +98,33 @@ async def publish_event(
 
 
 # Registration Endpoints
-@router.post("/{event_id}/register", response_model=EventRegistrationResponse)
+@router.post("/{event_id}/register")
 async def register_for_event(
     event_id: str,
     registration_data: EventRegistrationCreate
 ):
     """Register for event"""
-    registration_data_dict = registration_data.dict()
-    registration_data_dict["eventId"] = event_id
-    # registration_id = EventRegistrationService.register_citizen(registration_data_dict)
-    
-    registration = EventRegistrationService.get_registration(event_id, registration_data.citizenId)
-    return EventRegistrationResponse(**Helper.convert_mongo_doc(registration))
+    try:
+        citizen_id = registration_data.citizenId
+
+        # Return existing registration if already registered
+        existing = EventRegistrationService.get_registration(event_id, citizen_id)
+        if existing:
+            return {"success": True, "message": "Already registered", "data": Helper.convert_mongo_doc(existing)}
+
+        reg_dict = {"eventId": event_id, "citizenId": citizen_id}
+        EventRegistrationService.register_citizen(reg_dict)
+
+        registration = EventRegistrationService.get_registration(event_id, citizen_id)
+        if not registration:
+            raise HTTPException(status_code=500, detail="Registration created but could not be retrieved")
+
+        return {"success": True, "message": "Registered successfully", "data": Helper.convert_mongo_doc(registration)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[REGISTER] Error: citizen={registration_data.citizenId} event={event_id} err={e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e) or "Registration failed")
 
 
 @router.get("/{event_id}/registrations", response_model=list[EventRegistrationResponse])

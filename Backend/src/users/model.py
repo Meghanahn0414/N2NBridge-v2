@@ -36,25 +36,27 @@ class UserUpdate(BaseModel):
     profileImage: Optional[str] = None
     constituencyId: Optional[str] = None
     wardId: Optional[str] = None
+    status: Optional[str] = None
 
 
 class UserResponse(BaseModel):
     """User response schema"""
     id: str = Field(alias="_id")
-    fullName: str
-    mobile: str
-    email: str
-    role: str
+    citizenId: Optional[str] = None
+    fullName: Optional[str] = None
+    mobile: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None
     constituencyId: Optional[str] = None
     wardId: Optional[str] = None
     boothNumber: Optional[str] = None
     address: Optional[str] = None
     profileImage: Optional[str] = None
-    status: str
+    status: Optional[str] = 'ACTIVE'
     lastLoginAt: Optional[datetime] = None
-    createdAt: datetime
-    updatedAt: datetime
-    
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
+
     class Config:
         populate_by_name = True
 
@@ -101,24 +103,34 @@ class OtpResponse(BaseModel):
 
 class ConstituencyCreate(BaseModel):
     """Constituency creation"""
-    constituencyCode: str
+    constituencyCode: Optional[str] = None
     name: str
     district: str
     state: str
+    representativeId: Optional[str] = None
+
+
+class ConstituencyUpdate(BaseModel):
+    """Constituency update"""
+    constituencyCode: Optional[str] = None
+    name: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
     representativeId: Optional[str] = None
 
 
 class ConstituencyResponse(BaseModel):
     """Constituency response"""
     id: str = Field(alias="_id")
-    constituencyCode: str
-    name: str
-    district: str
-    state: str
+    constituencyCode: Optional[str] = None
+    name: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
     representativeId: Optional[str] = None
+    wardCount: Optional[int] = 0
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
-    
+
     class Config:
         populate_by_name = True
 
@@ -133,11 +145,11 @@ class WardCreate(BaseModel):
 class WardResponse(BaseModel):
     """Ward response"""
     id: str = Field(alias="_id")
-    wardNumber: str
-    wardName: str
-    constituencyId: str
+    wardNumber: Optional[str] = None
+    wardName: Optional[str] = None
+    constituencyId: Optional[str] = None
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
-    
+
     class Config:
         populate_by_name = True

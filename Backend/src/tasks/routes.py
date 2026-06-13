@@ -42,15 +42,18 @@ async def get_task(
 async def list_tasks(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=1000),
-    status: str = None
+    status: str = None,
+    assigned_to: str = None,
 ):
     """List tasks"""
     skip, limit = Helper.paginate(page, per_page)
     filters = {}
-    
+
     if status:
         filters["status"] = status
-    
+    if assigned_to:
+        filters["assignedTo"] = assigned_to
+
     tasks = TaskService.list_tasks(skip, limit, filters)
     return [TaskResponse(**Helper.convert_mongo_doc(t)) for t in tasks]
 

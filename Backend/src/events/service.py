@@ -54,6 +54,13 @@ class EventService:
         return result.modified_count > 0
     
     @staticmethod
+    def delete_event(event_id: str) -> bool:
+        """Delete event"""
+        db = MongoDatabase.get_db()
+        result = db.events.delete_one({"_id": ObjectId(event_id)})
+        return result.deleted_count > 0
+
+    @staticmethod
     def publish_event(event_id: str, user_id: str) -> bool:
         """Publish event"""
         db = MongoDatabase.get_db()

@@ -1,106 +1,139 @@
 import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/UserManagement.css';
-import { fetchUsers, createUser } from '../../../features/team-management/userService';
+import PageHeader from "../../../components/PageHeader";
+import { fetchUsers, updateUser, deleteUser, resetUserPassword } from '../../../features/team-management/userService';
+import api from '../../../shared/services/api';
+
+const EMPTY_EDIT = { fullName: '', mobile: '', email: '', role: '', address: '', constituencyId: '' };
+
+const extractError = (err) =>
+  err?.message || err?.response?.data?.detail || 'Operation failed';
 
 export default function UserManagement() {
-  const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('ALL');
-  const [filterStatus, setFilterStatus] = useState('ALL');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addingUser, setAddingUser] = useState(false);
 
-  useEffect(() => {
-    loadUsers();
-  }, [filterRole]);
+  // Edit modal
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState(EMPTY_EDIT);
+  const [saving, setSaving] = useState(false);
+
+  // Delete confirmation
+  const [deletingUser, setDeletingUser] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Reset password result
+  const [resetResult, setResetResult] = useState(null); // { userName, tempPassword }
+
+  // Block in-progress tracker
+  const [blockingId, setBlockingId] = useState(null);
+
+  useEffect(() => { loadUsers(); }, []);
 
   const loadUsers = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchUsers(1, 1000, filterRole);
-      setUsers(data);
+      const data = await fetchUsers(1, 1000);
+      setAllUsers(data);
     } catch (err) {
-      setError(err.message || 'Failed to load users');
-      console.error('Error loading users:', err);
+      setError(extractError(err));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddUser = async (formData) => {
-    try {
-      setAddingUser(true);
-      const userData = {
-        fullName: formData.get('fullName'),
-        mobile: formData.get('mobile'),
-        email: formData.get('email') || '',
-        role: formData.get('role'),
-        constituencyId: formData.get('constituency') || null,
-        password: Math.random().toString(36).slice(-8), // Generate temporary password
-      };
-      
-      await createUser(userData);
-      await loadUsers();
-      setShowAddModal(false);
-    } catch (err) {
-      setError(err.message || 'Failed to add user');
-      console.error('Error adding user:', err);
-    } finally {
-      setAddingUser(false);
-    }
-  };
-
-  const handleEditUser = (userId, formData) => {
-    // TODO: Implement edit user functionality
-    console.log('Editing user:', userId, formData);
-  };
-
-  const handleDeleteUser = (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      // TODO: Call API to delete user
-      console.log('Deleting user:', userId);
-    }
-  };
-
-  const handleBlockUser = (userId) => {
-    // TODO: Call API to block user
-    console.log('Blocking user:', userId);
-  };
-
-  const handleResetPassword = (userId) => {
-    // TODO: Call API to reset password
-    console.log('Resetting password for user:', userId);
-  };
-
-  // Filter users based on search term, role, and status
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.mobile?.includes(searchTerm) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRole = filterRole === 'ALL' || user.role === filterRole;
-    const matchesStatus = filterStatus === 'ALL' || user.status === filterStatus;
-    
-    return matchesSearch && matchesRole && matchesStatus;
+  // Client-side filter
+  const filteredUsers = allUsers.filter(u => {
+    const q = searchTerm.trim().toLowerCase();
+    const matchSearch = !q ||
+      (u.fullName || '').toLowerCase().includes(q) ||
+      (u.mobile || '').includes(q) ||
+      (u.email || '').toLowerCase().includes(q);
+    const matchRole = filterRole === 'ALL' || u.role === filterRole;
+    return matchSearch && matchRole;
   });
 
-  // Calculate stats
-  const totalUsers = users.length;
-  const activeUsers = users.filter(u => u.status === 'ACTIVE').length;
-  const blockedUsers = users.filter(u => u.status === 'BLOCKED').length;
+  // ── Edit ──────────────────────────────────────────────────
+  const openEdit = (user) => {
+    setEditingUser(user);
+    setEditForm({
+      fullName: user.fullName || '',
+      mobile: user.mobile || '',
+      email: user.email || '',
+      role: user.role || '',
+      address: user.address || '',
+      constituencyId: user.constituencyId || '',
+    });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      await updateUser(editingUser._id || editingUser.id, editForm);
+      setEditingUser(null);
+      await loadUsers();
+    } catch (err) {
+      alert(extractError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Delete ────────────────────────────────────────────────
+  const handleDeleteConfirm = async () => {
+    try {
+      setDeleting(true);
+      await deleteUser(deletingUser._id || deletingUser.id);
+      setDeletingUser(null);
+      await loadUsers();
+    } catch (err) {
+      alert(extractError(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // ── Block / Unblock ───────────────────────────────────────
+  const handleToggleBlock = async (user) => {
+    const id = user._id || user.id;
+    const newStatus = user.status === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED';
+    try {
+      setBlockingId(id);
+      await updateUser(id, { status: newStatus });
+      setAllUsers(prev => prev.map(u =>
+        (u._id || u.id) === id ? { ...u, status: newStatus } : u
+      ));
+    } catch (err) {
+      alert(extractError(err));
+    } finally {
+      setBlockingId(null);
+    }
+  };
+
+  // ── Reset Password ────────────────────────────────────────
+  const handleResetPassword = async (user) => {
+    const id = user._id || user.id;
+    try {
+      const res = await api.post(`/api/users/${id}/reset-password`, {});
+      const tempPassword = res.data?.data?.tempPassword || res.data?.tempPassword;
+      setResetResult({ userName: user.fullName || user.email, tempPassword });
+    } catch (err) {
+      alert(extractError(err));
+    }
+  };
+
+  const totalUsers = allUsers.length;
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>👥 User Management</h1>
-        <p>Manage citizens, staff members, and system users</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Manage citizens, staff members, and system users" />
+      <div className="module-container">
       <div className="module-controls">
         <div className="search-bar">
           <input
@@ -110,7 +143,6 @@ export default function UserManagement() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-
         <div className="filters">
           <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
             <option value="ALL">All Roles</option>
@@ -120,18 +152,7 @@ export default function UserManagement() {
             <option value="REPRESENTATIVE">Representative</option>
             <option value="ADMIN">Admin</option>
           </select>
-{/* 
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="ALL">All Status</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="BLOCKED">Blocked</option>
-          </select> */}
         </div>
-
-        <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-          + Add New User
-        </button>
       </div>
 
       <div className="module-stats">
@@ -139,14 +160,14 @@ export default function UserManagement() {
           <span className="stat-label">Total Users</span>
           <span className="stat-value">{totalUsers}</span>
         </div>
-        {/* <div className="stat-card">
-          <span className="stat-label">Active Users</span>
-          <span className="stat-value">{activeUsers}</span>
-        </div> */}
-        {/* <div className="stat-card">
-          <span className="stat-label">Blocked Users</span>
-          <span className="stat-value">{blockedUsers}</span>
-        </div> */}
+        <div className="stat-card">
+          <span className="stat-label">Active</span>
+          <span className="stat-value">{allUsers.filter(u => u.status !== 'BLOCKED').length}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Blocked</span>
+          <span className="stat-value">{allUsers.filter(u => u.status === 'BLOCKED').length}</span>
+        </div>
       </div>
 
       {loading ? (
@@ -158,12 +179,13 @@ export default function UserManagement() {
           <table>
             <thead>
               <tr>
+                <th>#</th>
                 <th>Name</th>
                 <th>Mobile</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Status</th>
                 <th>Ward/Constituency</th>
-                {/* <th>Status</th> */}
                 <th>Last Login</th>
                 <th>Actions</th>
               </tr>
@@ -171,55 +193,57 @@ export default function UserManagement() {
             <tbody>
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="no-data">
-                    {users.length === 0 
-                      ? 'No users found. Click "Add New User" to create one.'
+                  <td colSpan="9" className="no-data">
+                    {allUsers.length === 0
+                      ? 'No users found.'
                       : 'No users match your search criteria.'}
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map(user => (
-                  <tr key={user._id || user.id}>
-                    <td>{user.fullName}</td>
-                    <td>{user.mobile}</td>
-                    <td>{user.email}</td>
-                    <td>{user.role}</td>
-                    <td>{user.constituencyId || user.wardId || '-'}</td>
-                    {/* <td>
-                      <span className={`status-badge status-${user.status?.toLowerCase() || 'active'}`}>
+                filteredUsers.map((user, idx) => (
+                  <tr key={user._id || user.id} className={user.status === 'BLOCKED' ? 'row-blocked' : ''}>
+                    <td className="row-num">{idx + 1}</td>
+                    <td className="user-name-cell">{user.fullName || '-'}</td>
+                    <td>{user.mobile || '-'}</td>
+                    <td>{user.email || '-'}</td>
+                    <td>
+                      <span className={`role-badge role-${(user.role || '').toLowerCase()}`}>
+                        {user.role || '-'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`event-status-badge status-${(user.status || 'active').toLowerCase()}`}>
                         {user.status || 'ACTIVE'}
                       </span>
-                    </td> */}
-                    <td>{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</td>
-                    <td className="actions">
-                      <button 
-                        className="action-btn edit" 
-                        onClick={() => handleEditUser(user._id || user.id, null)}
-                        title="Edit"
-                      >
-                        ✏️
-                      </button>
-                      <button 
-                        className="action-btn reset" 
-                        onClick={() => handleResetPassword(user._id || user.id)}
-                        title="Reset Password"
-                      >
-                        🔑
-                      </button>
-                      <button 
-                        className="action-btn block" 
-                        onClick={() => handleBlockUser(user._id || user.id)}
-                        title="Block"
-                      >
-                        🚫
-                      </button>
-                      <button 
-                        className="action-btn delete" 
-                        onClick={() => handleDeleteUser(user._id || user.id)}
-                        title="Delete"
-                      >
-                        🗑️
-                      </button>
+                    </td>
+                    <td>{user.constituencyId || user.wardId || '-'}</td>
+                    <td>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</td>
+                    <td>
+                      <div className="action-btns">
+                        <button
+                          className="action-btn edit"
+                          title="Edit user"
+                          onClick={() => openEdit(user)}
+                        >✏️</button>
+                        <button
+                          className="action-btn reset"
+                          title="Reset password"
+                          onClick={() => handleResetPassword(user)}
+                        >🔑</button>
+                        <button
+                          className="action-btn block"
+                          title={user.status === 'BLOCKED' ? 'Unblock user' : 'Block user'}
+                          onClick={() => handleToggleBlock(user)}
+                          disabled={blockingId === (user._id || user.id)}
+                        >
+                          {user.status === 'BLOCKED' ? '✅' : '🚫'}
+                        </button>
+                        <button
+                          className="action-btn delete"
+                          title="Delete user"
+                          onClick={() => setDeletingUser(user)}
+                        >🗑️</button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -229,63 +253,91 @@ export default function UserManagement() {
         </div>
       )}
 
-      {showAddModal && (
-        <div className="modal-overlay">
+      {/* Edit Modal */}
+      {editingUser && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setEditingUser(null)}>
           <div className="modal-content">
-            <button className="modal-close" onClick={() => setShowAddModal(false)}>✕</button>
-            <h2>Add New User</h2>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              handleAddUser(new FormData(e.target));
-            }}>
+            <h2>✏️ Edit User</h2>
+            <form onSubmit={handleEditSubmit}>
               <div className="form-group">
-                <label>Full Name *</label>
-                <input type="text" name="fullName" required />
+                <label>Full Name</label>
+                <input type="text" value={editForm.fullName}
+                  onChange={(e) => setEditForm(p => ({ ...p, fullName: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label>Mobile *</label>
-                <input type="tel" name="mobile" required />
+                <label>Mobile</label>
+                <input type="tel" value={editForm.mobile}
+                  onChange={(e) => setEditForm(p => ({ ...p, mobile: e.target.value }))} />
               </div>
               <div className="form-group">
                 <label>Email</label>
-                <input type="email" name="email" />
+                <input type="email" value={editForm.email}
+                  onChange={(e) => setEditForm(p => ({ ...p, email: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label>Role *</label>
-                <select name="role" required>
-                  <option value="">Select Role</option>
-                  <option value="CITIZEN">Citizen</option>
-                  <option value="FIELD_OFFICER">Field Officer</option>
-                  <option value="MANAGER">Manager</option>
-                  <option value="REPRESENTATIVE">Representative</option>
-                  <option value="ADMIN">Admin</option>
-                </select>
+                <label>Address</label>
+                <input type="text" value={editForm.address}
+                  onChange={(e) => setEditForm(p => ({ ...p, address: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label>Ward/Constituency</label>
-                <input type="text" name="constituency" placeholder="Optional" />
+                <label>Ward / Constituency</label>
+                <input type="text" value={editForm.constituencyId}
+                  onChange={(e) => setEditForm(p => ({ ...p, constituencyId: e.target.value }))} />
               </div>
-              {error && <div className="error-message">{error}</div>}
               <div className="form-actions">
-                <button 
-                  type="button" 
-                  onClick={() => setShowAddModal(false)}
-                  disabled={addingUser}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn-primary"
-                  disabled={addingUser}
-                >
-                  {addingUser ? 'Adding...' : 'Add User'}
+                <button type="button" onClick={() => setEditingUser(null)} disabled={saving}>Cancel</button>
+                <button type="submit" className="btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingUser && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setDeletingUser(null)}>
+          <div className="modal-content delete-confirm-modal">
+            <div className="delete-icon">🗑️</div>
+            <h2>Delete User?</h2>
+            <p className="delete-msg">
+              Are you sure you want to delete <strong>{deletingUser.fullName || deletingUser.email}</strong>?
+              This action cannot be undone.
+            </p>
+            <div className="form-actions">
+              <button type="button" onClick={() => setDeletingUser(null)} disabled={deleting}>Cancel</button>
+              <button type="button" className="btn-danger" onClick={handleDeleteConfirm} disabled={deleting}>
+                {deleting ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Result Modal */}
+      {resetResult && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setResetResult(null)}>
+          <div className="modal-content delete-confirm-modal">
+            <div className="delete-icon">🔑</div>
+            <h2>Password Reset</h2>
+            <p className="delete-msg">
+              Password for <strong>{resetResult.userName}</strong> has been reset.
+            </p>
+            <div className="temp-password-box">
+              <span>Temporary Password:</span>
+              <strong>{resetResult.tempPassword}</strong>
+            </div>
+            <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>
+              Share this with the user. They should change it on next login.
+            </p>
+            <div className="form-actions">
+              <button type="button" className="btn-primary" onClick={() => setResetResult(null)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
     </div>
   );
 }

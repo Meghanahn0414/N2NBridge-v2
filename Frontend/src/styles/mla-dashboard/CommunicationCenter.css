@@ -28,7 +28,7 @@
 }
 
 .broadcast-icon {
-  font-size: 36px;
+  font-size: 20px;
 }
 
 .broadcast-label {
@@ -200,8 +200,8 @@
 }
 
 .broadcast-channel {
-  font-size: 24px;
-  min-width: 36px;
+  font-size: 16px;
+  min-width: 28px;
 }
 
 .broadcast-info {

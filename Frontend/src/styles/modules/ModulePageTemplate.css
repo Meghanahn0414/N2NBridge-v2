@@ -1,7 +1,7 @@
 /* Module Pages - General Styles */
 
 .module-container {
-  padding: 32px;
+  padding: 24px 32px 32px;
   max-width: 1400px;
   margin: 0 auto;
   animation: fadeIn 0.3s ease-in;
@@ -18,24 +18,9 @@
   }
 }
 
-/* Header */
+/* Legacy module-header — hidden now that PageHeader is used */
 .module-header {
-  margin-bottom: 32px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.module-header h1 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 8px 0;
-}
-
-.module-header p {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0;
+  display: none;
 }
 
 /* Controls */
@@ -823,6 +808,197 @@ form {
   }
 }
 
+/* Events Table */
+.events-table-wrapper {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  overflow-x: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-bottom: 32px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 750px;
+  font-size: 14px;
+}
+
+.data-table thead {
+  background-color: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.data-table th {
+  padding: 13px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.15s ease;
+}
+
+.data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background-color: #f8faff;
+}
+
+.data-table td {
+  padding: 14px 16px;
+  color: #4b5563;
+  vertical-align: middle;
+}
+
+.data-table .row-num {
+  color: #9ca3af;
+  font-size: 13px;
+  width: 40px;
+}
+
+.data-table .event-name-cell {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.data-table .center {
+  text-align: center;
+}
+
+/* Event Status Badges */
+.event-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.event-status-badge.status-draft {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.event-status-badge.status-published {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.event-status-badge.status-ongoing {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.event-status-badge.status-completed {
+  background-color: #ede9fe;
+  color: #5b21b6;
+}
+
+.event-status-badge.status-cancelled {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Action Buttons in Table */
+.action-btns {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.action-btn {
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.action-btn:hover {
+  border-color: #d1d5db;
+  background-color: #f9fafb;
+  transform: scale(1.1);
+}
+
+.action-btn.publish {
+  border-color: #10b981;
+  background-color: #d1fae5;
+}
+
+.action-btn.publish:hover {
+  background-color: #10b981;
+  border-color: #059669;
+}
+
+/* Delete Confirmation Modal */
+.delete-confirm-modal {
+  max-width: 420px;
+  text-align: center;
+  padding: 32px 32px 24px;
+}
+
+.delete-confirm-modal .delete-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.delete-confirm-modal h2 {
+  padding: 0;
+  margin: 0 0 12px;
+  font-size: 22px;
+  color: #dc2626;
+}
+
+.delete-confirm-modal .delete-msg {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+.delete-confirm-modal .form-actions {
+  justify-content: center;
+  border-top: none;
+  margin-top: 24px;
+  padding-top: 0;
+}
+
+/* Loading and Error States */
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 15px;
+}
+
+.loading-state {
+  color: #6b7280;
+}
+
+.error-state {
+  color: #dc2626;
+  background-color: #fef2f2;
+  border-radius: 8px;
+  margin: 16px;
+  padding: 24px;
+}
+
 /* Loading State */
 .loading {
   text-align: center;
@@ -857,5 +1033,180 @@ form {
   padding: 16px;
   border-radius: 8px;
   margin-bottom: 20px;
+  font-size: 14px;
+}
+
+/* ── Inline wards inside create modal ── */
+.inline-wards-section {
+  border-top: 1px dashed #e5e7eb;
+  padding-top: 14px;
+  margin-top: 4px;
+}
+.optional-tag {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 400;
+  margin-left: 4px;
+}
+.inline-ward-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.inline-ward-row input:first-child {
+  width: 80px;
+  flex: none;
+}
+.inline-ward-row input:nth-child(2) {
+  flex: 1;
+}
+.ward-inline-add-btn {
+  background: #1d4ed8;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.ward-inline-add-btn:hover { background: #1e40af; }
+.inline-wards-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.inline-wards-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 14px;
+  color: #374151;
+}
+.inline-wards-list li span:last-of-type { flex: 1; }
+.ward-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ward-remove-btn {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.ward-remove-btn:hover { color: #ef4444; background: #fee2e2; }
+
+/* ── Ward count button in table ── */
+.ward-count-btn {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s;
+}
+.ward-count-btn:hover {
+  background: #dbeafe;
+}
+.ward-plus {
+  font-size: 15px;
+  color: #2563eb;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ── Wards modal ── */
+.wards-modal {
+  max-width: 600px;
+  width: 100%;
+}
+.wards-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.wards-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #1e293b;
+}
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.modal-close-btn:hover {
+  background: #f3f4f6;
+}
+.ward-add-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.ward-add-form input {
+  flex: 1;
+  min-width: 120px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.ward-add-form input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+}
+.ward-error {
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.wards-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.wards-empty {
+  padding: 24px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+.wards-table {
+  margin: 0;
+}
+.wards-table th,
+.wards-table td {
+  padding: 10px 14px;
   font-size: 14px;
 }

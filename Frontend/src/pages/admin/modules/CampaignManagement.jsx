@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import { fetchCampaigns } from '../../../features/campaigns/campaignService';
+import PageHeader from "../../../components/PageHeader";
 
 export default function CampaignManagement() {
   const [campaigns, setCampaigns] = useState([]);
@@ -37,12 +38,9 @@ export default function CampaignManagement() {
   };
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>📢 Campaign Management</h1>
-        <p>Design and launch targeted awareness campaigns</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Design and launch targeted awareness campaigns" />
+      <div className="module-container">
       <div className="module-controls">
         <input type="text" placeholder="Search campaigns..." />
         <button className="btn-primary" onClick={() => setShowBuilder(true)}>
@@ -178,6 +176,7 @@ export default function CampaignManagement() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
