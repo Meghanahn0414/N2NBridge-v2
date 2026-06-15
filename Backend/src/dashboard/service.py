@@ -139,10 +139,7 @@ class DashboardService:
             if assigned_grievances > 0:
                 grievance_resolution_rate = (resolved_grievances / assigned_grievances * 100)
                 rating_components.append(grievance_resolution_rate / 100 * 5)
-            else:
-                # If no grievances, give baseline rating for being available
-                rating_components.append(3.0)
-            
+
             # Average customer satisfaction (if available)
             satisfaction_ratings = list(db.grievances.aggregate([
                 {
@@ -158,12 +155,12 @@ class DashboardService:
                     }
                 }
             ]))
-            
+
             if satisfaction_ratings and satisfaction_ratings[0].get("avgRating"):
                 rating_components.append(satisfaction_ratings[0]["avgRating"])
-            
-            # Calculate final rating as average of components
-            rating = round(sum(rating_components) / len(rating_components), 1) if rating_components else 3.0
+
+            # Only compute rating if there is real activity data
+            rating = round(sum(rating_components) / len(rating_components), 1) if rating_components else 0.0
             rating = min(5, max(0, rating))  # Clamp between 0 and 5
             
             team_data.append({
@@ -207,34 +204,73 @@ class DashboardService:
         return dict(trend_list)
     
     @staticmethod
-    def get_system_health() -> str:
-        """Calculate system health based on database status and active services"""
+    def get_category_complaints() -> dict:
+        """Real complaint counts per category broken down by status."""
         db = MongoDatabase.get_db()
-        
+        _NORMALIZE = {
+            "Water": "Water Supply", "Roads": "Road Issue", "Road": "Road Issue",
+            "Waste": "Garbage", "Electricity": "Power Outage",
+            "WATER_SUPPLY": "Water Supply", "ROAD_ISSUE": "Road Issue",
+            "GARBAGE": "Garbage", "POWER_OUTAGE": "Power Outage",
+            "STREET_LIGHT": "Street Light", "DRAINAGE": "Drainage",
+            "SANITATION": "Sanitation", "PARKS": "Parks & Recreation",
+        }
+        rows = list(db.grievances.aggregate([
+            {"$match": {"isDeleted": False}},
+            {"$group": {
+                "_id": {
+                    "category": {"$ifNull": ["$category", "$categoryId"]},
+                    "status": "$status"
+                },
+                "count": {"$sum": 1}
+            }}
+        ]))
+        result = {}
+        for row in rows:
+            raw_cat = str(row["_id"].get("category") or "Unknown").strip()
+            cat = _NORMALIZE.get(raw_cat, raw_cat.replace("_", " ").title())
+            if not cat or cat == "None":
+                continue
+            status = str(row["_id"].get("status") or "OPEN").upper()
+            count = row["count"]
+            if cat not in result:
+                result[cat] = {"total": 0, "open": 0, "resolved": 0, "inProgress": 0, "escalated": 0}
+            result[cat]["total"] += count
+            if status in ("OPEN", "NEW", "PENDING"):
+                result[cat]["open"] += count
+            elif status == "RESOLVED":
+                result[cat]["resolved"] += count
+            elif status in ("IN_PROGRESS", "ASSIGNED"):
+                result[cat]["inProgress"] += count
+            elif status == "ESCALATED":
+                result[cat]["escalated"] += count
+            else:
+                result[cat]["open"] += count
+        return result
+
+    @staticmethod
+    def get_system_health() -> str:
+        """Calculate health score from real complaint resolution data."""
+        db = MongoDatabase.get_db()
         try:
-            # Check MongoDB connection by attempting a simple query
-            db.users.count_documents({})
-            
-            # Count active users
-            active_count = db.users.count_documents({"isDeleted": False})
-            
-            # Count grievances in last 7 days
-            week_ago = datetime.utcnow() - timedelta(days=7)
-            grievance_count = db.grievances.count_documents({
-                "createdAt": {"$gte": week_ago},
-                "isDeleted": False
+            total = db.grievances.count_documents({"isDeleted": False})
+            if total == 0:
+                return "N/A"
+            resolved = db.grievances.count_documents({"isDeleted": False, "status": "RESOLVED"})
+            critical_open = db.grievances.count_documents({
+                "isDeleted": False,
+                "priority": {"$in": ["CRITICAL", "HIGH"]},
+                "status": {"$nin": ["RESOLVED", "CLOSED"]}
             })
-            
-            # Calculate health score (0-100%)
-            # Base 80% for being online + activity-based bonus
-            base_health = 80
-            activity_bonus = min(20, (active_count / 10) + (grievance_count / 50))
-            health_score = base_health + activity_bonus
-            
-            return f"{min(100, round(health_score, 1))}%"
+            # Resolution rate (0–100)
+            resolution_rate = (resolved / total) * 100
+            # Penalty: each unresolved critical complaint costs 2 points (max 30 deduction)
+            critical_penalty = min(30, critical_open * 2)
+            score = max(0, round(resolution_rate - critical_penalty, 1))
+            return f"{score}%"
         except Exception as e:
             logger.error(f"Error calculating system health: {str(e)}")
-            return "Unknown"
+            return "N/A"
     
     @staticmethod
     def get_admin_dashboard() -> dict:
@@ -289,10 +325,46 @@ class DashboardService:
         if satisfaction_agg:
             avg_satisfaction = round(satisfaction_agg[0].get("avgRating", 0), 1)
 
+        # Aggregate all complaints by ward with priority breakdown
+        def _highest_priority(priorities):
+            if "CRITICAL" in priorities: return "CRITICAL"
+            if "HIGH" in priorities: return "HIGH"
+            if "MEDIUM" in priorities: return "MEDIUM"
+            return "LOW"
+
+        ward_stats_raw = list(db.grievances.aggregate([
+            {"$match": {"isDeleted": False, "wardId": {"$exists": True, "$ne": None, "$ne": ""}}},
+            {"$group": {
+                "_id": "$wardId",
+                "count": {"$sum": 1},
+                "priorities": {"$push": "$priority"}
+            }}
+        ]))
+        ward_stats = sorted(
+            [{"name": str(item["_id"]), "wardId": str(item["_id"]),
+              "count": item["count"],
+              "highestPriority": _highest_priority(item.get("priorities", []))}
+             for item in ward_stats_raw if item["_id"]],
+            key=lambda x: (["LOW","MEDIUM","HIGH","CRITICAL"].index(x["highestPriority"]), x["count"]),
+            reverse=True
+        )
+
         recent_alerts = [Helper.convert_mongo_doc(alert) for alert in db.alerts.find({}).sort("createdAt", -1).limit(5)]
         recent_complaints = []
-        for complaint in db.grievances.find({"isDeleted": False}).sort("createdAt", -1).limit(5):
+        for complaint in db.grievances.find({"isDeleted": False}).sort("createdAt", -1).limit(50):
             complaint = GrievanceService._populate_citizen_name(complaint)
+            # Resolve category name from categoryId if not already human-readable
+            if complaint.get("categoryId") and not complaint.get("categoryName"):
+                try:
+                    from bson import ObjectId
+                    cat_doc = db.grievance_categories.find_one({"_id": ObjectId(str(complaint["categoryId"]))})
+                    if cat_doc:
+                        complaint["categoryName"] = cat_doc.get("categoryName") or cat_doc.get("name")
+                except Exception:
+                    pass
+            # Humanise the enum category field as fallback
+            if not complaint.get("categoryName") and complaint.get("category"):
+                complaint["categoryName"] = str(complaint["category"]).replace("_", " ").title()
             recent_complaints.append(Helper.convert_mongo_doc(complaint))
 
         recent_activity = DashboardService.get_recent_activity(10)
@@ -316,12 +388,14 @@ class DashboardService:
                 "users": AnalyticsService.get_user_stats(),
                 "events": AnalyticsService.get_event_stats()
             },
+            "wardStats": ward_stats,
             "recentAlerts": recent_alerts,
             "recentComplaints": recent_complaints,
             "teamPerformance": DashboardService.get_team_performance(),
             "grievanceTrends": DashboardService.get_grievance_trends(7),
             "recentActivity": recent_activity,
-            "systemHealth": health_score
+            "systemHealth": health_score,
+            "categoryComplaints": DashboardService.get_category_complaints()
         }
     
     @staticmethod

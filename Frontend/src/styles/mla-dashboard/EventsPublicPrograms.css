@@ -24,12 +24,12 @@
 }
 
 .event-metric-icon {
-  font-size: 32px;
-  margin-bottom: 12px;
+  font-size: 20px;
+  margin-bottom: 8px;
 }
 
 .event-metric-value {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 700;
   color: #0f172a;
   margin-bottom: 4px;
@@ -77,7 +77,7 @@
 }
 
 .event-date-day {
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 700;
   color: #0c2d6b;
   line-height: 1;

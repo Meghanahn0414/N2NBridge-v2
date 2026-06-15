@@ -4,6 +4,7 @@ import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/TeamPerformanceDashboard.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+import PageHeader from '../../../components/PageHeader';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
@@ -20,22 +21,28 @@ export default function TeamPerformanceDashboard() {
   const handleScheduleMeeting = () => navigate(ROUTES.mlaEvents);
   const handleViewAnalytics = () => navigate(ROUTES.mlaAIInsights);
   const handleSendReport = () => navigate(ROUTES.mlaCommunications);
-  const managers = teamData.slice(0, 3).map((member, idx) => ({
-    id: idx + 1,
-    name: member.name || 'Unknown',
-    complaints: member.assigned || 0,
-    resolved: member.completed || 0,
-    rating: member.rating || '0.0',
-    ward: member.role || 'Field Officer',
-  }));
+  const managers = teamData
+    .filter(member => (member.completed || 0) > 0 || (member.assigned || 0) > 0)
+    .slice(0, 3)
+    .map((member, idx) => ({
+      id: idx + 1,
+      name: member.name || 'Unknown',
+      complaints: member.assigned || 0,
+      resolved: member.completed || 0,
+      rating: member.rating || '0.0',
+      ward: member.role || 'Field Officer',
+    }));
 
-  const officers = teamData.slice(0, 4).map((member, idx) => ({
-    rank: idx + 1,
-    name: member.name || 'Officer',
-    resolved: member.completed || 0,
-    rating: member.rating || '0.0',
-    wards: member.role || 'N/A',
-  }));
+  const officers = teamData
+    .filter(member => (member.completed || 0) > 0 || (member.assigned || 0) > 0)
+    .slice(0, 4)
+    .map((member, idx) => ({
+      rank: idx + 1,
+      name: member.name || 'Officer',
+      resolved: member.completed || 0,
+      rating: member.rating || '0.0',
+      wards: member.role || 'N/A',
+    }));
 
   const averageRating = teamData.length
     ? (teamData.reduce((sum, member) => sum + Number(member.rating || 0), 0) / teamData.length).toFixed(1)
@@ -51,11 +58,9 @@ export default function TeamPerformanceDashboard() {
   }));
 
   return (
-    <div className="mla-container">
-      <div className="mla-header">
-        <h1>👥 Team Performance Dashboard</h1>
-        <p>Monitor staff performance and team metrics</p>
-      </div>
+    <div>
+      <PageHeader subtitle="Monitor staff performance and team metrics" />
+      <div className="mla-container">
 
       {/* Team Summary */}
       <div className="mla-section">
@@ -95,7 +100,13 @@ export default function TeamPerformanceDashboard() {
               </tr>
             </thead>
             <tbody>
-              {managers.map(mgr => (
+              {managers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px', fontSize: 13 }}>
+                    No manager activity yet
+                  </td>
+                </tr>
+              ) : managers.map(mgr => (
                 <tr key={mgr.id}>
                   <td><strong>{mgr.name}</strong></td>
                   <td>{mgr.ward}</td>
@@ -113,27 +124,33 @@ export default function TeamPerformanceDashboard() {
       {/* Officers Ranking */}
       <div className="mla-section">
         <h2>🏆 Top Performing Officers</h2>
-        <div className="ranking-list">
-          {officers.map(officer => (
-            <div key={officer.rank} className="ranking-item">
-              <div className="rank-badge">#{officer.rank}</div>
-              <div className="officer-info">
-                <h4>{officer.name}</h4>
-                <p className="officer-wards">{officer.wards}</p>
-              </div>
-              <div className="officer-stats">
-                <div className="stat">
-                  <span className="stat-label">Resolved</span>
-                  <span className="stat-value">{officer.resolved}</span>
+        {officers.length === 0 ? (
+          <p style={{ color: '#94a3b8', fontSize: 13, padding: '16px 0' }}>
+            No performance data yet — officers will appear here once complaints are assigned and resolved.
+          </p>
+        ) : (
+          <div className="ranking-list">
+            {officers.map(officer => (
+              <div key={officer.rank} className="ranking-item">
+                <div className="rank-badge">#{officer.rank}</div>
+                <div className="officer-info">
+                  <h4>{officer.name}</h4>
+                  <p className="officer-wards">{officer.wards}</p>
                 </div>
-                <div className="stat">
-                  <span className="stat-label">Rating</span>
-                  <span className="stat-value">⭐ {officer.rating}</span>
+                <div className="officer-stats">
+                  <div className="stat">
+                    <span className="stat-label">Resolved</span>
+                    <span className="stat-value">{officer.resolved}</span>
+                  </div>
+                  <div className="stat">
+                    <span className="stat-label">Rating</span>
+                    <span className="stat-value">⭐ {officer.rating}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Poor Performance Alerts */}
@@ -175,5 +192,6 @@ export default function TeamPerformanceDashboard() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

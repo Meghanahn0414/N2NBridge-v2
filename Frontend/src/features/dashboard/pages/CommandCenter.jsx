@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../../../styles/CommandCenter.css"
 import { getAuthRole } from "../../../services/authStorage";
 import { getDashboardForRole } from "../../../shared/services/dashboardService";
+import { ROUTES } from "../../../app/routes/RouteConstants";
 import {
   FaBell,
   FaClipboardList,
@@ -15,13 +17,21 @@ import {
   FaShieldAlt,
   FaChartLine,
 } from "react-icons/fa";
+import PageHeader from "../../../components/PageHeader";
 
-const quickActions = [
+const adminQuickActions = [
   { label: "Create Event", icon: FaCalendarAlt },
   { label: "Send Message", icon: FaBell },
   { label: "Launch Survey", icon: FaLightbulb },
   { label: "Review Complaints", icon: FaClipboardList },
   { label: "Generate Report", icon: FaChartLine },
+];
+
+const officerQuickActions = [
+  { label: "My Grievances", icon: FaClipboardList, route: ROUTES.fieldGrievances },
+  { label: "Alerts", icon: FaBell, route: ROUTES.fieldAlerts },
+  { label: "My Profile", icon: FaShieldAlt, route: ROUTES.fieldProfile },
+  { label: "Dashboard", icon: FaHome, route: ROUTES.field },
 ];
 
 const navigationTabs = [
@@ -79,6 +89,7 @@ const getActionItems = (dashboard, role) => {
         button: "Review",
         icon: FaClipboardList,
         accent: "bg-amber-100",
+        route: ROUTES.fieldGrievances,
       },
       {
         title: "Assigned Alerts",
@@ -87,14 +98,7 @@ const getActionItems = (dashboard, role) => {
         button: "Manage",
         icon: FaBell,
         accent: "bg-rose-100",
-      },
-      {
-        title: "Pending Tasks",
-        subtitle: `${formatNumber(dashboard?.pendingTasks)} tasks outstanding`,
-        description: "Complete assigned tasks to clear your queue.",
-        button: "Open",
-        icon: FaCalendarAlt,
-        accent: "bg-sky-100",
+        route: ROUTES.fieldAlerts,
       },
     ];
   }
@@ -175,50 +179,71 @@ const getMapInsight = (dashboard) => {
   return "Map overview shows no active complaints or alerts at the moment.";
 };
 
-const getAiInsights = (dashboard) => {
+const getAiInsights = (dashboard, role) => {
   const insights = [];
+  const isOfficer = role === "FIELD_OFFICER";
+
+  if (isOfficer) {
+    const pending = dashboard?.pendingGrievances ?? 0;
+    const alerts = dashboard?.pendingAlerts ?? 0;
+    const total = (dashboard?.tasks?.length || 0) + (dashboard?.grievances?.length || 0);
+
+    if (pending > 5) {
+      insights.push({
+        title: `You have ${pending} unresolved grievances.`,
+        action: "Review and update grievance statuses to keep response times low.",
+      });
+    } else if (pending > 0) {
+      insights.push({
+        title: `${pending} grievance${pending > 1 ? 's' : ''} need your attention.`,
+        action: "Update status on assigned grievances to reflect progress.",
+      });
+    }
+
+    if (alerts > 0) {
+      insights.push({
+        title: `${alerts} emergency alert${alerts > 1 ? 's are' : ' is'} unresolved.`,
+        action: "Acknowledge and resolve active alerts immediately.",
+      });
+    }
+
+    if (!insights.length) {
+      insights.push({
+        title: "All grievances and alerts are up to date.",
+        action: "Great work! Check for any new assignments regularly.",
+      });
+    }
+    return insights.slice(0, 2);
+  }
+
   const openComplaints = dashboard?.metrics?.grievances?.byStatus?.OPEN ?? dashboard?.metrics?.grievances?.total;
   const criticalAlerts = dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total;
   const satisfaction = dashboard?.summary?.citizenSatisfaction;
 
   if (criticalAlerts > 0) {
-    insights.push({
-      title: `${formatNumber(criticalAlerts)} critical alerts require immediate response.`,
-      action: "Review urgent alert clusters.",
-    });
+    insights.push({ title: `${formatNumber(criticalAlerts)} critical alerts require immediate response.`, action: "Review urgent alert clusters." });
   }
-
   if (openComplaints > 0) {
-    insights.push({
-      title: `${formatNumber(openComplaints)} open complaints are still unresolved.`,
-      action: "Prioritize grievance triage.",
-    });
+    insights.push({ title: `${formatNumber(openComplaints)} open complaints are still unresolved.`, action: "Prioritize grievance triage." });
   }
-
   if (typeof satisfaction === "number") {
-    insights.push({
-      title: `Citizen satisfaction is at ${formatNumber(satisfaction)} / 5.`,
-      action: "Plan outreach and grievance camps.",
-    });
+    insights.push({ title: `Citizen satisfaction is at ${formatNumber(satisfaction)} / 5.`, action: "Plan outreach and grievance camps." });
   }
-
   if (!insights.length) {
-    insights.push({
-      title: "No AI-driven insights are available yet.",
-      action: "Dashboard data is still loading.",
-    });
+    insights.push({ title: "No AI-driven insights are available yet.", action: "Dashboard data is still loading." });
   }
-
   return insights.slice(0, 2);
 };
 
 
 export default function CommandCenter({ title = "Dashboard", subtitle }) {
+  const navigate = useNavigate();
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const role = getAuthRole();
+  const isOfficerRole = role === "FIELD_OFFICER";
 
   useEffect(() => {
     async function loadDashboard() {
@@ -241,25 +266,22 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
   const summaryCards = getSummaryCards(dashboard, role);
   const actionItems = getActionItems(dashboard, role);
   const isCitizen = role === "CITIZEN";
+  const quickActions = isOfficerRole ? officerQuickActions : adminQuickActions;
   const mapInsightText = getMapInsight(dashboard);
-  const aiInsights = getAiInsights(dashboard);
-  const overviewItems = [
-    {
-      label: "Open Complaints",
-      value: formatNumber(dashboard?.metrics?.grievances?.byStatus?.OPEN ?? dashboard?.metrics?.grievances?.total),
-    },
-    {
-      label: "Critical Alerts",
-      value: formatNumber(dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total),
-    },
-    {
-      label: "Total Users",
-      value: formatNumber(dashboard?.metrics?.users?.total),
-    },
+  const aiInsights = getAiInsights(dashboard, role);
+  const overviewItems = isOfficerRole ? [
+    { label: "Assigned Grievances", value: formatNumber(dashboard?.pendingGrievances), route: ROUTES.fieldGrievances },
+    { label: "Pending Alerts", value: formatNumber(dashboard?.pendingAlerts), route: ROUTES.fieldAlerts },
+    { label: "My Profile", value: "View →", route: ROUTES.fieldProfile },
+  ] : [
+    { label: "Open Complaints", value: formatNumber(dashboard?.metrics?.grievances?.byStatus?.OPEN ?? dashboard?.metrics?.grievances?.total) },
+    { label: "Critical Alerts", value: formatNumber(dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total) },
+    { label: "Total Users", value: formatNumber(dashboard?.metrics?.users?.total) },
   ];
 
   return (
     <div className="rep-dashboard-page min-h-screen bg-slate-50 pb-32">
+      <PageHeader subtitle={subtitle || title} />
       <div className="mx-auto w-full px-4 py-8 sm:px-6 lg:px-8" style={{ maxWidth: isCitizen ? '900px' : '1280px' }}>
 
         {loading && (
@@ -321,7 +343,10 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
                         </div>
                       </div>
                       <div className="mt-4">
-                        <button className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
+                        <button
+                          className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+                          onClick={() => item.route && navigate(item.route)}
+                        >
                           {item.button}
                         </button>
                       </div>
@@ -341,7 +366,14 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
               </div>
               <div className="space-y-3">
                 {overviewItems.map((item) => (
-                  <div key={item.label} className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
+                  <div
+                    key={item.label}
+                    onClick={() => item.route && navigate(item.route)}
+                    className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700"
+                    style={{ cursor: item.route ? 'pointer' : 'default', transition: 'background 0.15s' }}
+                    onMouseEnter={e => { if (item.route) e.currentTarget.style.background = '#f1f5f9'; }}
+                    onMouseLeave={e => { if (item.route) e.currentTarget.style.background = ''; }}
+                  >
                     <span className="font-medium text-slate-900">{item.label}:</span> {item.value}
                   </div>
                 ))}
@@ -420,7 +452,11 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
               {quickActions.slice(0, 4).map((action) => {
                 const ActionIcon = action.icon;
                 return (
-                  <button key={action.label} className="flex items-center gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50">
+                  <button
+                    key={action.label}
+                    onClick={() => action.route && navigate(action.route)}
+                    className="flex items-center gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
+                  >
                     <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-900 shadow-sm">
                       <ActionIcon className="h-5 w-5" />
                     </span>

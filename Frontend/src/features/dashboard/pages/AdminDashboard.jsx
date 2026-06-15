@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getDashboardForRole } from "../../../shared/services/dashboardService";
 import { getAuthRole } from "../../../services/authStorage";
+import PageHeader from "../../../components/PageHeader";
+import { ROUTES } from "../../../app/routes/RouteConstants";
 import AdminDashboardMobile from "./AdminDashboardMobile";
 import {
   FaBell,
@@ -57,8 +60,8 @@ const StatCard = ({ label, value, trend, icon: Icon, color }) => {
   );
 };
 
-const QuickActionBtn = ({ label, icon: Icon }) => (
-  <button className="quick-action-btn">
+const QuickActionBtn = ({ label, icon: Icon, onClick }) => (
+  <button className="quick-action-btn" onClick={onClick}>
     <div className="quick-action-icon">
       <Icon />
     </div>
@@ -79,6 +82,7 @@ const SystemStatusItem = ({ label, status, icon: Icon }) => (
 );
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -175,14 +179,12 @@ export default function AdminDashboard() {
   ] : [];
 
   const quickActions = [
-    // { label: "Add Complaint", icon: FaPlus },
-    { label: "Broadcast Alert", icon: FaBroadcastTower },
-    { label: "Create Event", icon: FaCalendarAlt },
-    { label: "Send Campaign", icon: FaBell },
-    { label: "Add Staff", icon: FaUserTie },
-    // { label: "Generate Report", icon: FaDownload },
-    { label: "System Backup", icon: FaCog },
-    { label: "View Analytics", icon: FaChartLine },
+    { label: "Broadcast Alert", icon: FaBroadcastTower, onClick: () => navigate(ROUTES.alertManagement) },
+    { label: "Create Event",    icon: FaCalendarAlt,   onClick: () => navigate(ROUTES.eventManagement) },
+    { label: "Send Campaign",   icon: FaBell,           onClick: () => navigate(ROUTES.campaignManagement) },
+    { label: "Add Staff",       icon: FaUserTie,        onClick: () => navigate(ROUTES.register) },
+    { label: "System Backup",   icon: FaCog,            onClick: () => navigate(ROUTES.systemConfiguration) },
+    { label: "View Analytics",  icon: FaChartLine,      onClick: () => navigate(ROUTES.analyticsReports) },
   ];
 
   const grievanceTrends = dashboard?.grievanceTrends || {};
@@ -200,27 +202,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-dashboard-container">
+      <PageHeader subtitle="Platform administration and oversight" />
       {loading && <div className="loading-message">Loading dashboard...</div>}
       {error && <div className="error-message">{error}</div>}
-
-      {/* Dashboard Header */}
-      <div className="adm-desk-header">
-        <div className="adm-desk-header-left">
-          <h1 className="adm-desk-title">Dashboard</h1>
-          <p className="adm-desk-subtitle">Welcome back, {userName}! Here's what's happening in your platform.</p>
-        </div>
-        <div className="adm-desk-header-right">
-          <span className="adm-desk-date">
-            {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-          </span>
-          <button className="adm-desk-export"><FaDownload /> Export Report</button>
-          <button className="adm-desk-bell" aria-label="Notifications">
-            <FaBell />
-            {unread > 0 && <span className="adm-desk-badge">{unread > 9 ? '9+' : unread}</span>}
-          </button>
-          <div className="adm-desk-avatar">{initial}</div>
-        </div>
-      </div>
 
       {/* Stats Grid */}
       <div className="stats-grid">
@@ -321,38 +305,42 @@ export default function AdminDashboard() {
             <h2 className="card-title">Team Performance (This Month)</h2>
             {/* <a href="#" className="view-all-link">View All</a> */}
           </div>
-          <div className="team-table">
-            <div className="table-header">
-              <div className="col-name">Team/Officer</div>
-              <div className="col-assigned">Tasks Assigned</div>
-              <div className="col-completed">Completed</div>
-              <div className="col-time">Resolution Time</div>
-              <div className="col-rating">Rating</div>
-            </div>
-            {teamData && teamData.length > 0 ? (
-              teamData.map((member, idx) => (
-                <div key={idx} className="table-row">
-                  <div className="col-name">
-                    <div className="member-avatar">{member.name ? member.name.charAt(0) : '?'}</div>
-                    <div className="member-info">
-                      <p className="member-name">{member.name || 'Unknown'}</p>
-                      <p className="member-role">{member.role || 'Officer'}</p>
-                    </div>
-                  </div>
-                  <div className="col-assigned">{member.assigned || 0}</div>
-                  <div className="col-completed">{member.completed || 0}</div>
-                  <div className="col-time">{member.time || '0 Days'}</div>
-                  <div className="col-rating">
-                    <span className="stars">★ {member.rating || '0.0'}</span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div style={{ padding: '20px', textAlign: 'center', color: '#999', gridColumn: '1/-1' }}>
-                <p>No team data available</p>
-              </div>
-            )}
-          </div>
+          <table className="team-table">
+            <thead>
+              <tr>
+                <th>Team / Officer</th>
+                <th>Tasks Assigned</th>
+                <th>Completed</th>
+                <th>Resolution Time</th>
+                <th>Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teamData && teamData.length > 0 ? (
+                teamData.map((member, idx) => (
+                  <tr key={idx}>
+                    <td>
+                      <div className="member-cell">
+                        <div className="member-avatar">{member.name ? member.name.charAt(0) : '?'}</div>
+                        <div className="member-info">
+                          <p className="member-name">{member.name || 'Unknown'}</p>
+                          <p className="member-role">{member.role || 'Officer'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{member.assigned || 0}</td>
+                    <td>{member.completed || 0}</td>
+                    <td>{member.time || '0 Days'}</td>
+                    <td><span className="stars">★ {member.rating || '0.0'}</span></td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px 0' }}>No team data available</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -584,7 +572,7 @@ export default function AdminDashboard() {
           <h2 className="card-title">Quick Actions</h2>
           <div className="quick-actions-grid">
             {quickActions.map((action) => (
-              <QuickActionBtn key={action.label} label={action.label} icon={action.icon} />
+              <QuickActionBtn key={action.label} label={action.label} icon={action.icon} onClick={action.onClick} />
             ))}
           </div>
         </div>

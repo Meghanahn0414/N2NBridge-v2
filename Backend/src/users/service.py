@@ -3,6 +3,7 @@ User Service
 """
 import logging
 import re
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from bson import ObjectId
@@ -127,8 +128,14 @@ class UserService:
         if "mobile" in update_data:
             update_data["mobile"] = UserService.normalize_mobile(update_data["mobile"])
 
+        # Generate citizenId for CITIZEN users who don't have one yet
+        existing = db.users.find_one({"_id": ObjectId(user_id), "isDeleted": False}, {"role": 1, "citizenId": 1})
+        if existing and existing.get("role") == "CITIZEN" and not existing.get("citizenId"):
+            update_data["citizenId"] = IDGenerator.generate_citizen_id()
+            logger.info(f"Generated citizenId for existing citizen {user_id}: {update_data['citizenId']}")
+
         update_data.update(Helper.audit_fields(updated_by, is_update=True))
-        
+
         result = db.users.update_one(
             {"_id": ObjectId(user_id), "isDeleted": False},
             {"$set": update_data}
@@ -193,6 +200,24 @@ class ConstituencyService:
         return db.constituencies.find_one({"_id": ObjectId(constituency_id)})
     
     @staticmethod
+    def update_constituency(constituency_id: str, data: dict) -> bool:
+        """Update constituency"""
+        db = MongoDatabase.get_db()
+        data["updatedAt"] = datetime.utcnow()
+        result = db.constituencies.update_one(
+            {"_id": ObjectId(constituency_id)},
+            {"$set": data}
+        )
+        return result.modified_count > 0
+
+    @staticmethod
+    def delete_constituency(constituency_id: str) -> bool:
+        """Delete constituency"""
+        db = MongoDatabase.get_db()
+        result = db.constituencies.delete_one({"_id": ObjectId(constituency_id)})
+        return result.deleted_count > 0
+
+    @staticmethod
     def search_constituencies(query: str) -> List[dict]:
         """Search constituencies"""
         db = MongoDatabase.get_db()
@@ -214,6 +239,12 @@ class WardService:
         result = db.wards.insert_one(data)
         return str(result.inserted_id)
     
+    @staticmethod
+    def get_all_wards() -> List[dict]:
+        """Get all wards"""
+        db = MongoDatabase.get_db()
+        return list(db.wards.find())
+
     @staticmethod
     def get_wards_by_constituency(constituency_id: str) -> List[dict]:
         """Get wards by constituency"""

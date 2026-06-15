@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../../shared/services/api";
 import "./NewMLA.css";
+import PageHeader from "../../components/PageHeader";
 
 export default function ManagerList() {
   const [managers, setManagers] = useState([]);
@@ -31,12 +32,10 @@ export default function ManagerList() {
   };
 
   return (
-    <div className="new-mla-container">
+    <div>
+      <PageHeader subtitle="Registered Managers" />
+      <div className="new-mla-container">
       <div className="new-mla-card">
-        <div className="new-mla-header">
-          <h1 className="new-mla-title">Managers</h1>
-          <p className="new-mla-subtitle">Registered Managers</p>
-        </div>
         <div style={{ padding: 30 }}>
           {loading && <div>Loading...</div>}
           {!loading && (
@@ -79,6 +78,7 @@ export default function ManagerList() {
             </>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

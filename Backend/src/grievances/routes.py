@@ -23,7 +23,7 @@ async def create_grievance(
 ):
     """Create grievance"""
     grievance_id = GrievanceService.create_grievance(
-        grievance_data.dict(),
+        grievance_data.model_dump(),
         None
     )
     
@@ -37,19 +37,31 @@ async def list_grievances(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=1000),
     status: Optional[str] = None,
-    priority: Optional[str] = None
+    priority: Optional[str] = None,
+    assigned_officer_id: Optional[str] = None,
 ):
     """List grievances"""
-    skip, limit = Helper.paginate(page, per_page)
-    filters = {}
-    
-    if status:
-        filters["status"] = status
-    if priority:
-        filters["priority"] = priority
-    
-    grievances = GrievanceService.list_grievances(skip, limit, filters)
-    return [GrievanceResponse(**Helper.convert_mongo_doc(g)) for g in grievances]
+    try:
+        skip, limit = Helper.paginate(page, per_page)
+        filters = {}
+        if status:
+            filters["status"] = status
+        if priority:
+            filters["priority"] = priority
+        if assigned_officer_id:
+            filters["assignedOfficerId"] = assigned_officer_id
+
+        grievances = GrievanceService.list_grievances(skip, limit, filters)
+        result = []
+        for g in grievances:
+            try:
+                result.append(GrievanceResponse(**Helper.convert_mongo_doc(g)))
+            except Exception as e:
+                logger.warning(f"Skipping malformed grievance {g.get('_id')}: {e}")
+        return result
+    except Exception as e:
+        logger.error(f"list_grievances failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Category Endpoints - Must be before /{grievance_id} routes
@@ -58,7 +70,7 @@ async def create_category(
     data: GrievanceCategoryCreate
 ):
     """Create grievance category"""
-    category_id = GrievanceCategoryService.create_category(data.dict())
+    category_id = GrievanceCategoryService.create_category(data.model_dump())
     category = GrievanceCategoryService.get_category_by_id(category_id)
     
     category = Helper.convert_mongo_doc(category)
@@ -91,11 +103,14 @@ async def get_grievance(
     grievance_id: str
 ):
     """Get grievance by ID"""
-    grievance = GrievanceService.get_grievance_by_id(grievance_id)
-    
+    try:
+        grievance = GrievanceService.get_grievance_by_id(grievance_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Grievance not found")
+
     if not grievance:
         raise HTTPException(status_code=404, detail="Grievance not found")
-    
+
     grievance = Helper.convert_mongo_doc(grievance)
     return GrievanceResponse(**grievance)
 
@@ -145,7 +160,7 @@ async def add_feedback(
     """Add feedback to grievance"""
     success = GrievanceService.add_grievance_feedback(
         grievance_id,
-        feedback.dict()
+        feedback.model_dump()
     )
     
     if not success:
@@ -161,7 +176,7 @@ async def get_grievance_stats():
     try:
         status_counts = GrievanceService.count_grievances_by_status()
         total_grievances = sum(status_counts.values())
-        
+
         stats = {
             "total": total_grievances,
             "open": status_counts.get("NEW", 0),
@@ -170,10 +185,32 @@ async def get_grievance_stats():
             "closed": status_counts.get("CLOSED", 0),
             "byStatus": status_counts
         }
-        
+
         return success_response(stats, "Grievance statistics retrieved")
     except Exception as e:
         logger.error(f"Error retrieving stats: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve statistics")
+
+
+@router.get("/stats/citizen/{citizen_id}")
+async def get_citizen_grievance_stats(citizen_id: str):
+    """Get grievance statistics for a specific citizen"""
+    try:
+        status_counts = GrievanceService.count_grievances_by_citizen_and_status(citizen_id)
+        total = sum(status_counts.values())
+
+        stats = {
+            "total": total,
+            "open": status_counts.get("NEW", 0),
+            "assigned": status_counts.get("ASSIGNED", 0),
+            "resolved": status_counts.get("RESOLVED", 0),
+            "closed": status_counts.get("CLOSED", 0),
+            "byStatus": status_counts
+        }
+
+        return success_response(stats, "Citizen grievance statistics retrieved")
+    except Exception as e:
+        logger.error(f"Error retrieving citizen stats: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve statistics")
 
 

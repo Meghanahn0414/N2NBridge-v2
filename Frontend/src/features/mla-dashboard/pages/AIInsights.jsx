@@ -4,6 +4,7 @@ import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/AIInsights.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+import PageHeader from '../../../components/PageHeader';
 
 const formatNumber = (value) => {
   if (value == null || value === '') return '-';
@@ -15,8 +16,10 @@ export default function AIInsights() {
   const { dashboard, loading, error } = useMlaDashboard();
 
   const handleTakeAction = () => navigate(ROUTES.mlaCommunications);
-  const handleViewForecast = () => navigate(ROUTES.mlaAIInsights);
-  const handleViewDetailedAnalysis = () => navigate(ROUTES.mlaAIInsights);
+  const handleViewComplaintForecast = () => navigate(ROUTES.mlaComplaintsDashboard);
+  const handleViewEventForecast = () => navigate(ROUTES.mlaEvents);
+  const handleViewSentimentForecast = () => navigate(ROUTES.mlaCitizenSentiment);
+  const handleViewDetailedAnalysis = () => navigate(ROUTES.mlaConstituencyStatus);
   const handleExportReport = () => window.alert('Exporting AI insights report...');
   const handleScheduleReview = () => navigate(ROUTES.mlaEvents);
   const alertsTrend = dashboard?.metrics?.alerts?.trend || 0;
@@ -98,11 +101,9 @@ export default function AIInsights() {
   ];
 
   return (
-    <div className="mla-container">
-      <div className="mla-header">
-        <h1>🤖Insights & Predictions</h1>
-        <p>AI-powered constituency intelligence and recommendations</p>
-      </div>
+    <div>
+      <PageHeader subtitle="AI-powered constituency intelligence and recommendations" />
+      <div className="mla-container">
 
       {/* AI Recommendations */}
       <div className="mla-section">
@@ -163,41 +164,23 @@ export default function AIInsights() {
             <h4>Complaint Forecast</h4>
             <p className="forecast-value">{grievancesTrend >= 0 ? `+${grievancesTrend}%` : `${grievancesTrend}%`}</p>
             <p className="forecast-insight">Complaints are {grievancesTrend >= 0 ? 'increasing' : 'decreasing'} based on last month.</p>
-            <button type="button" className="btn-secondary" onClick={handleViewForecast}>View Forecast</button>
+            <button type="button" className="btn-secondary" onClick={handleViewComplaintForecast}>View Forecast</button>
           </div>
           <div className="prediction-card">
             <h4>Event Participation</h4>
             <p className="forecast-value">{eventTrend >= 0 ? `+${eventTrend}%` : `${eventTrend}%`}</p>
             <p className="forecast-insight">Event attendance is {eventTrend >= 0 ? 'trending upward' : 'showing a dip'}.</p>
-            <button type="button" className="btn-secondary" onClick={handleViewForecast}>View Forecast</button>
+            <button type="button" className="btn-secondary" onClick={handleViewEventForecast}>View Forecast</button>
           </div>
           <div className="prediction-card">
             <h4>Citizen Sentiment</h4>
             <p className="forecast-value">{dashboard?.summary?.citizenSatisfaction ?? 'N/A'}/5</p>
             <p className="forecast-insight">Sentiment analysis shows overall {dashboard?.summary?.citizenSatisfaction ? 'a ' + (dashboard.summary.citizenSatisfaction >= 3 ? 'positive' : 'neutral') + ' trend' : 'no sentiment data'}.</p>
-            <button type="button" className="btn-secondary" onClick={handleViewForecast}>View Forecast</button>
+            <button type="button" className="btn-secondary" onClick={handleViewSentimentForecast}>View Forecast</button>
           </div>
         </div>
       </div>
 
-      {/* Historical Insights */}
-      <div className="mla-section">
-        <h2>📈 Seasonal Insights</h2>
-        <div className="insights-list">
-          <div className="insight-item">
-            <span className="insight-season">Monsoon Season (Jun-Sep):</span>
-            <span className="insight-data">{totalEvents > 0 ? `${formatNumber(totalEvents)} events managed` : 'No event data available'}</span>
-          </div>
-          <div className="insight-item">
-            <span className="insight-season">Summer (Apr-May):</span>
-            <span className="insight-data">{totalComplaints > 0 ? `${formatNumber(totalComplaints)} complaints tracked` : 'No complaint data available'}</span>
-          </div>
-          <div className="insight-item">
-            <span className="insight-season">Winter (Dec-Feb):</span>
-            <span className="insight-data">{totalUsers > 0 ? `${formatNumber(totalUsers)} active users` : 'No user data available'}</span>
-          </div>
-        </div>
-      </div>
 
       {/* Quick Actions */}
       <div className="mla-section">
@@ -208,5 +191,6 @@ export default function AIInsights() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

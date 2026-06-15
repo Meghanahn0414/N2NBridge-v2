@@ -4,6 +4,7 @@ import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/CitizenSentimentDashboard.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+import PageHeader from '../../../components/PageHeader';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
@@ -38,11 +39,9 @@ export default function CitizenSentimentDashboard() {
       : 'Negative';
 
   return (
-    <div className="mla-container">
-      <div className="mla-header">
-        <h1>😊 Citizen Sentiment Dashboard</h1>
-        <p>AI-powered citizen feedback analysis</p>
-      </div>
+    <div>
+      <PageHeader subtitle="AI-powered citizen feedback analysis" />
+      <div className="mla-container">
 
       {/* Sentiment Meter */}
       <div className="mla-section">
@@ -172,5 +171,6 @@ export default function CitizenSentimentDashboard() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

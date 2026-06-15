@@ -193,7 +193,8 @@
 }
 
 .status-open {
-  background-color: #ef4444;
+  background-color: #3b82f6;
+  color: #ffffff;
 }
 
 .status-assigned {
@@ -242,25 +243,19 @@
   gap: 6px;
 }
 
-.priority-badge {
-  padding: 4px 8px;
+.complaint-priority .priority-badge,
+.complaint-priority .priority-badge.priority-high,
+.complaint-priority .priority-badge.priority-medium,
+.complaint-priority .priority-badge.priority-normal,
+.complaint-priority .priority-badge.priority-low,
+.complaint-priority .priority-badge.priority-critical {
+  padding: 4px 12px;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
   text-transform: capitalize;
-  color: white;
-}
-
-.priority-high {
-  background-color: #ef4444;
-}
-
-.priority-normal {
-  background-color: #f59e0b;
-}
-
-.priority-low {
-  background-color: #6366f1;
+  background-color: #2563eb !important;
+  color: #ffffff !important;
 }
 
 .complaint-footer {

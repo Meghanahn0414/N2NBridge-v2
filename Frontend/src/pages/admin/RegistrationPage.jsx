@@ -4,6 +4,7 @@ import api from "../../shared/services/api";
 import { getUserRoles } from "../../shared/services/lookupService";
 import { ROUTES } from "../../app/routes/RouteConstants";
 import "./NewMLA.css";
+import PageHeader from "../../components/PageHeader";
 
 const initialFormState = {
   fullName: "",
@@ -216,13 +217,10 @@ export default function RegistrationPage() {
   };
 
   return (
-    <div className="new-mla-container">
+    <div>
+      <PageHeader subtitle="Register new staff and administrators" />
+      <div className="new-mla-container">
       <div className="new-mla-card">
-        <div className="new-mla-header">
-          <h1 className="new-mla-title">Registration</h1>
-          <p className="new-mla-subtitle">Register a new MLA, Manager, or Field Officer from one unified form.</p>
-        </div>
-
         <form onSubmit={handleSubmit} className="new-mla-form">
           {error && <div className="new-mla-alert new-mla-alert--error">{error}</div>}
           {success && <div className="new-mla-alert new-mla-alert--success">{success}</div>}
@@ -550,6 +548,7 @@ export default function RegistrationPage() {
         <div className="new-mla-footer">
           <p className="new-mla-footer-text">* Required fields</p>
         </div>
+      </div>
       </div>
     </div>
   );

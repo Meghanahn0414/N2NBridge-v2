@@ -4,6 +4,7 @@ import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/EmergencyCommandCenter.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+import PageHeader from '../../../components/PageHeader';
 
 export default function EmergencyCommandCenter() {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ export default function EmergencyCommandCenter() {
   const { dashboard, loading, error } = useMlaDashboard();
 
   const handleAlertAllOfficers = () => navigate(ROUTES.mlaCommunications);
-  const handleViewDetails = () => navigate(ROUTES.mlaEmergencyCenter);
+  const handleViewDetails = () => navigate(ROUTES.mlaComplaintsDashboard);
   const handleDispatchTeam = () => navigate(ROUTES.mlaTeamPerformance);
   const handleEscalate = () => navigate(ROUTES.mlaCommunications);
   const handleSendEmergencyBroadcast = () => navigate(ROUTES.mlaCommunications);
@@ -37,11 +38,9 @@ export default function EmergencyCommandCenter() {
   }));
 
   return (
-    <div className="mla-container">
-      <div className="mla-header alert-header">
-        <h1>🚨 Emergency Command Center</h1>
-        <p>Real-time emergency response coordination</p>
-      </div>
+    <div>
+      <PageHeader subtitle="Real-time emergency response coordination" />
+      <div className="mla-container">
 
       {/* Critical Alert Count */}
       <div className="mla-section">
@@ -142,5 +141,6 @@ export default function EmergencyCommandCenter() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

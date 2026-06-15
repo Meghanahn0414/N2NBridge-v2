@@ -11,7 +11,10 @@ export async function fetchTasks(page = 1, perPage = 1000, filters = {}) {
     if (filters.priority && filters.priority !== "ALL") {
       params.priority = filters.priority;
     }
-    const response = await api.get(TASK_ENDPOINT, { params });
+    if (filters.assignedTo) {
+      params.assigned_to = filters.assignedTo;
+    }
+    const response = await api.get(`${TASK_ENDPOINT}/`, { params });
     return Array.isArray(response.data) ? response.data : response.data?.data || [];
   } catch (error) {
     console.error("Error fetching tasks:", error);

@@ -35,17 +35,19 @@ export default function Header({ onMobileMenuClick }) {
   const getProfileImageUrl = () => {
     if (!user?.profileImage) return null;
     const img = user.profileImage;
-    // If it's a data URL (base64 from file upload), use it as-is
-    if (img.startsWith('data:image/')) {
-      return img;
-    }
-    // If it's already a full URL, use it as-is
+    // Base64 data URL — use as-is
+    if (img.startsWith('data:image/')) return img;
+    // Full URL with /uploads/ path — strip the host so Vite proxy handles it
     if (img.startsWith('http://') || img.startsWith('https://')) {
-      return img;
+      try {
+        const { pathname } = new URL(img);
+        return pathname; // e.g. /uploads/filename.jpeg — proxied by Vite
+      } catch {
+        return img;
+      }
     }
-    // Otherwise, prepend the backend base URL
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://10.62.179.92:8000';
-    return `${baseUrl}/${img.startsWith('/') ? img.slice(1) : img}`;
+    // Relative path — use as-is (Vite proxy handles /uploads/...)
+    return img.startsWith('/') ? img : `/${img}`;
   };
 
   const profileImageUrl = getProfileImageUrl();

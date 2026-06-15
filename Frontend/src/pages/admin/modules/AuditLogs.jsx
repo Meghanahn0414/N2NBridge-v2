@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
+import PageHeader from "../../../components/PageHeader";
 
 export default function AuditLogs() {
   const [logs, setLogs] = useState([]);
@@ -17,12 +18,9 @@ export default function AuditLogs() {
   ];
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>📋 Audit Logs</h1>
-        <p>Track all system changes and user actions for compliance</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Track all system changes and user actions for compliance" />
+      <div className="module-container">
       <div className="module-controls">
         <select value={filters.actionType} onChange={(e) => setFilters({...filters, actionType: e.target.value})}>
           <option value="ALL">All Actions</option>
@@ -105,6 +103,7 @@ export default function AuditLogs() {
             <span className="value"></span>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

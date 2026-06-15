@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
+import PageHeader from "../../../components/PageHeader";
 
 export default function AIServices() {
   const [aiMetrics, setAiMetrics] = useState({});
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>🤖 AI Services Administration</h1>
-        <p>Manage AI-powered features (categorization, sentiment analysis, chatbot)</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Manage AI-powered features and automation" />
+      <div className="module-container">
       <div className="module-controls">
         <button className="btn-primary">⚙️ Configure AI Services</button>
         <button className="btn-secondary">🧪 Test Model</button>
@@ -115,6 +113,7 @@ export default function AIServices() {
             </tr>
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   );

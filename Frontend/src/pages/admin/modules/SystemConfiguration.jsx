@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
+import PageHeader from "../../../components/PageHeader";
 
 export default function SystemConfiguration() {
   const [settings, setSettings] = useState({
@@ -31,12 +32,9 @@ export default function SystemConfiguration() {
   };
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>⚙️ System Configuration</h1>
-        <p>Configure platform settings, notifications, and SLA parameters</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Configure platform settings, notifications, and SLA parameters" />
+      <div className="module-container">
       <div className="config-tabs">
         <button className="tab-btn active">General</button>
         <button className="tab-btn">Notifications</button>
@@ -137,6 +135,7 @@ export default function SystemConfiguration() {
             <button className="btn-secondary">Preview</button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

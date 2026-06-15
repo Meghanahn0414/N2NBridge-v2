@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/RolePermissions.css';
+import PageHeader from "../../../components/PageHeader";
 
 const modules = [
   { id: 1, name: 'Complaints', icon: '📋' },
@@ -195,12 +196,9 @@ export default function RolePermissions() {
   };
 
   return (
-    <div className="module-container">
-      <div className="module-header">
-        <h1>🎭 Role & Permission Management</h1>
-        <p>Create new roles and control module-level permissions for your system.</p>
-      </div>
-
+    <div>
+      <PageHeader subtitle="Create and manage roles and permissions" />
+      <div className="module-container">
       <div className="module-controls">
         <button className="btn-primary" onClick={handleCreateClick}>
           + Create New Role
@@ -330,6 +328,7 @@ export default function RolePermissions() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

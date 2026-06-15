@@ -36,8 +36,9 @@ async def send_sos_alert(
 ):
     """Send emergency SOS alert"""
     try:
-        # Ensure citizen ID matches token
-        if sos_data.citizenId != token_data.get("citizenId"):
+        # Verify the citizenId in the request matches the authenticated user
+        token_user_id = token_data.get("user_id") or token_data.get("citizenId") or token_data.get("sub")
+        if token_user_id and sos_data.citizenId not in (token_user_id, token_data.get("citizenId", "")):
             raise HTTPException(status_code=403, detail="Unauthorized citizen")
         
         # Create SOS alert
@@ -57,8 +58,7 @@ async def send_sos_alert(
                 "_id": sos.get("_id"),
                 "message": "Emergency SOS alert sent successfully to nearby officers"
             },
-            message="SOS alert sent successfully",
-            statusCode=201
+            message="SOS alert sent successfully"
         )
     except HTTPException as e:
         raise e

@@ -3,8 +3,28 @@ import { useParams, useNavigate } from "react-router-dom";
 import complaintService from "../../services/complaintService";
 import "./complaint-detail.css";
 
+const STATUS_COLORS = {
+  NEW: "#6366f1",
+  ASSIGNED: "#f59e0b",
+  IN_PROGRESS: "#3b82f6",
+  ON_HOLD: "#f97316",
+  RESOLVED: "#10b981",
+  CLOSED: "#10b981",
+  REJECTED: "#ef4444",
+};
+
+const STATUS_LABELS = {
+  NEW: "New",
+  ASSIGNED: "Assigned",
+  IN_PROGRESS: "In Progress",
+  ON_HOLD: "On Hold",
+  RESOLVED: "Resolved",
+  CLOSED: "Closed",
+  REJECTED: "Rejected",
+};
+
 export default function ComplaintDetail() {
-  const { complaintId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -13,18 +33,19 @@ export default function ComplaintDetail() {
 
   useEffect(() => {
     const fetchComplaint = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
-        // Fetch from API
-        const data = await complaintService.getComplaintDetail(complaintId);
+        const data = await complaintService.getComplaintDetail(id);
         if (data) {
           setComplaint(data);
-          setRating(data.rating || 0);
-        } else {
-          setComplaint(null);
+          setRating(data.feedback?.rating || 0);
         }
       } catch (error) {
-        console.error("Error fetching complaint from API:", error);
+        console.error("Error fetching complaint:", error);
         setComplaint(null);
       } finally {
         setLoading(false);
@@ -32,7 +53,21 @@ export default function ComplaintDetail() {
     };
 
     fetchComplaint();
-  }, [complaintId]);
+  }, [id]);
+
+  const handleRating = async (value) => {
+    setRating(value);
+    try {
+      await complaintService.updateComplaint(id, { rating: value });
+    } catch (error) {
+      console.error("Error submitting rating:", error);
+    }
+  };
+
+  const getRatingLabel = (r) => {
+    const labels = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
+    return labels[r] || "";
+  };
 
   if (loading) {
     return (
@@ -55,82 +90,61 @@ export default function ComplaintDetail() {
     );
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Open":
-        return "#ef4444";
-      case "Assigned":
-        return "#f59e0b";
-      case "Pending":
-        return "#f97316";
-      case "Resolved":
-        return "#10b981";
-      default:
-        return "#6b7280";
-    }
-  };
+  const statusColor = STATUS_COLORS[complaint.status] || "#6b7280";
+  const statusLabel = STATUS_LABELS[complaint.status] || complaint.status;
 
-  const handleRating = async (value) => {
-    setRating(value);
-    
-    // Submit rating to backend
-    if (complaint) {
-      try {
-        await complaintService.updateComplaint(complaint.complaintId, { rating: value });
-        console.log("Rating submitted successfully");
-      } catch (error) {
-        console.error("Error submitting rating:", error);
-        // Rating is still updated locally even if API fails
-      }
-    }
-  };
-
-  const getRatingLabel = (rating) => {
-    if (rating === 0) return "";
-    if (rating === 1) return "Poor";
-    if (rating === 2) return "Fair";
-    if (rating === 3) return "Good";
-    if (rating === 4) return "Very Good";
-    if (rating === 5) return "Excellent";
-  };
+  const timeline = [
+    {
+      title: "Complaint Submitted",
+      date: complaint.createdAt ? new Date(complaint.createdAt).toLocaleString() : "-",
+      details: "Your complaint has been received.",
+    },
+    ...(Array.isArray(complaint.history) ? complaint.history.map((entry) => ({
+      title: STATUS_LABELS[entry.newStatus] || entry.newStatus,
+      date: entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "-",
+      details: entry.remarks || "Status updated.",
+    })) : []),
+  ];
 
   return (
     <div className="complaint-detail-container">
       {/* Header */}
       <div className="detail-header">
         <button className="detail-back-btn" onClick={() => navigate("/citizen/complaints")}>
-          ← Back
+          ←
         </button>
         <div className="detail-header-content">
           <div className="detail-title-section">
-            <h1 className="detail-complaint-id">{complaint.complaintId}</h1>
-            <span className="detail-status" style={{ backgroundColor: getStatusColor(complaint.status) }}>
-              {complaint.status}
+            <h1 className="detail-complaint-id">{complaint.complaintNumber}</h1>
+            <span className="detail-status" style={{ backgroundColor: statusColor }}>
+              {statusLabel}
             </span>
           </div>
-          <p className="detail-submitted">Submitted 3 days ago</p>
+          <p className="detail-submitted">
+            Submitted {complaint.createdAt ? new Date(complaint.createdAt).toLocaleDateString() : "-"}
+          </p>
         </div>
       </div>
 
       {/* Content */}
       <div className="detail-content">
-        {/* Complaint Title */}
+        {/* Description */}
         <div className="detail-section">
-          <h2 className="detail-main-title">{complaint.title}</h2>
+          <h2 className="detail-main-title">{complaint.description}</h2>
           <p className="detail-location">
-            {complaint.category} · Ward {complaint.ward} · {complaint.location}
+            {complaint.category || complaint.categoryId || "General"}
+            {complaint.wardId ? ` · Ward ${complaint.wardId}` : ""}
+            {complaint.address ? ` · ${complaint.address}` : ""}
           </p>
         </div>
 
-        {/* Timeline Section */}
+        {/* Timeline */}
         <div className="detail-section">
           <h3 className="section-title">TIMELINE</h3>
           <div className="timeline">
-            {complaint.timeline.map((event, index) => (
+            {timeline.map((event, index) => (
               <div key={index} className="timeline-event">
-                <div className="timeline-marker" title={event.type}>
-                  {event.icon}
-                </div>
+                <div className="timeline-marker">📌</div>
                 <div className="timeline-content">
                   <h4 className="timeline-event-title">{event.title}</h4>
                   <p className="timeline-date">{event.date}</p>
@@ -141,7 +155,7 @@ export default function ComplaintDetail() {
           </div>
         </div>
 
-        {/* Rating Section */}
+        {/* Rating */}
         <div className="detail-section">
           <h3 className="section-title">RATE THIS RESPONSE</h3>
           <div className="rating-section">
@@ -149,9 +163,7 @@ export default function ComplaintDetail() {
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
-                  className={`rating-star ${
-                    star <= (hoveredRating || rating) ? "filled" : "empty"
-                  }`}
+                  className={`rating-star ${star <= (hoveredRating || rating) ? "filled" : "empty"}`}
                   onMouseEnter={() => setHoveredRating(star)}
                   onMouseLeave={() => setHoveredRating(0)}
                   onClick={() => handleRating(star)}
@@ -160,48 +172,55 @@ export default function ComplaintDetail() {
                 </button>
               ))}
             </div>
-            {rating > 0 && (
-              <p className="rating-label">{getRatingLabel(rating)}</p>
-            )}
+            {rating > 0 && <p className="rating-label">{getRatingLabel(rating)}</p>}
           </div>
         </div>
 
-        {/* Description Section */}
+        {/* Details grid */}
         <div className="detail-section">
           <h3 className="section-title">DETAILS</h3>
           <div className="detail-description">
             <p>{complaint.description}</p>
           </div>
-
           <div className="detail-info-grid">
             <div className="info-item">
               <span className="info-label">Category</span>
-              <span className="info-value">{complaint.category}</span>
+              <span className="info-value">{complaint.category || complaint.categoryId || "N/A"}</span>
             </div>
             <div className="info-item">
               <span className="info-label">Priority</span>
-              <span className={`info-value priority-${complaint.priority.toLowerCase()}`}>
-                {complaint.priority}
-              </span>
+              <span className="info-value">{complaint.priority || "N/A"}</span>
             </div>
             <div className="info-item">
               <span className="info-label">Ward</span>
-              <span className="info-value">{complaint.ward}</span>
+              <span className="info-value">{complaint.wardId || "N/A"}</span>
             </div>
             <div className="info-item">
               <span className="info-label">Status</span>
-              <span className="info-value" style={{ color: getStatusColor(complaint.status) }}>
-                {complaint.status}
-              </span>
+              <span className="info-value" style={{ color: statusColor }}>{statusLabel}</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">Address</span>
+              <span className="info-value">{complaint.address || "N/A"}</span>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="detail-actions">
-          <button className="action-btn primary-btn">View Photos</button>
-          <button className="action-btn secondary-btn">Contact Officer</button>
-        </div>
+        {/* Attachments */}
+        {Array.isArray(complaint.attachments) && complaint.attachments.length > 0 && (
+          <div className="detail-section">
+            <h3 className="section-title">ATTACHMENTS</h3>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {complaint.attachments.map((att) => (
+                <li key={att.fileUrl} style={{ marginBottom: 8 }}>
+                  <a href={att.fileUrl} target="_blank" rel="noreferrer" style={{ color: "#2563eb" }}>
+                    {att.fileName}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

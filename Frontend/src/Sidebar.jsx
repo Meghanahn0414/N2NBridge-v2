@@ -7,9 +7,10 @@ import {
   getAuthUser,
   clearAuth,
 } from './services/authStorage';
+import api from "./shared/services/api";
 import "./styles/sidebar.css";
 
-export default function Sidebar({ mobileOpen, onMobileClose }) {
+export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
   const navigate = useNavigate();
   const location = useLocation();
   const isActive = (path) => location.pathname.startsWith(path);
@@ -41,6 +42,18 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
 
   const user = getAuthUser();
   const userName = user ? (user.name || user.fullName || user.full_name || user.first_name || 'User') : null;
+  const [openComplaintCount, setOpenComplaintCount] = useState(0);
+
+  useEffect(() => {
+    if (role === 'REPRESENTATIVE' || role === 'representative') {
+      api.get('/api/grievances/', { params: { status: 'OPEN', per_page: 1 } })
+        .then(res => {
+          const total = res.data?.total ?? res.data?.data?.total ?? 0;
+          setOpenComplaintCount(Number(total) || 0);
+        })
+        .catch(() => {});
+    }
+  }, [role]);
 
   // Construct profile image URL
   const getProfileImageUrl = () => {
@@ -68,14 +81,26 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
     }
   };
 
-  const toggleSidebar = () => setSidebarOpen((open) => !open);
+  const toggleSidebar = () => {
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      if (onToggle) onToggle(next);
+      return next;
+    });
+  };
 
   useEffect(() => {
     document.body.classList.toggle('sidebar-collapsed', !sidebarOpen);
   }, [sidebarOpen]);
 
+  // Report initial open state on mount
+  useEffect(() => {
+    if (onToggle) onToggle(true);
+  }, []);
+
   useEffect(() => {
     setSidebarOpen(true);
+    if (onToggle) onToggle(true);
     if (onMobileClose) onMobileClose();
   }, [location.pathname]);
 
@@ -128,320 +153,164 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
         <nav className="sidebar-menu">
           {(role === 'ADMIN' || role === 'admin') && (
             <>
-              <button
-                className={`sidebar-item ${isActive(ROUTES.admin) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.admin)}
-              >
-                <span style={{ marginRight: '10px' }}>📊</span> Dashboard
+              {/* ── OVERVIEW ── */}
+              <div className="sidebar-section-label">Overview</div>
+              <button className={`sidebar-item ${isActive(ROUTES.admin) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.admin)}>
+                <span className="sidebar-icon">📊</span> Dashboard
               </button>
 
-              {/* Admin Modules Section */}
-              <div className="sidebar-section-divider" style={{ margin: '15px 0', borderTop: '1px solid #ddd' }}></div>
-              
-              <button
-                className="sidebar-item sidebar-collapse-btn"
-                onClick={() => setAdminModulesOpen(!adminModulesOpen)}
-              >
-                <span style={{ marginRight: '10px' }}>⚙️</span> 
-                <span>Admin Modules</span>
-                <span style={{ marginLeft: 'auto', fontSize: '12px' }}>
-                  {adminModulesOpen ? '▼' : '▶'}
-                </span>
+              <hr className="sidebar-section-hr" />
+
+              {/* ── PEOPLE ── */}
+              <div className="sidebar-section-label">People</div>
+              <button className={`sidebar-item ${isActive(ROUTES.adminUsers) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.adminUsers)}>
+                <span className="sidebar-icon">👥</span> Citizens
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaList) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaList)}>
+                <span className="sidebar-icon">👔</span> Representatives
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.managerList) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.managerList)}>
+                <span className="sidebar-icon">👨‍💼</span> Managers
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.fieldOfficerList) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.fieldOfficerList)}>
+                <span className="sidebar-icon">👷</span> Field Officers
               </button>
 
-              {adminModulesOpen && (
-                <>
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.userManagement) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.userManagement)}
-                  >
-                    <span style={{ marginRight: '8px' }}>👥</span> User Management
-                  </button>
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.constituencyManagement) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.constituencyManagement)}
-                  >
-                    <span style={{ marginRight: '8px' }}>🗳️</span> Constituency Mgmt
-                  </button>
+              <hr className="sidebar-section-hr" />
 
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.complaintManagement) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.complaintManagement)}
-                  >
-                    <span style={{ marginRight: '8px' }}>📋</span> Complaint Mgmt
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.alertManagement) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.alertManagement)}
-                  >
-                    <span style={{ marginRight: '8px' }}>🚨</span> Alert Mgmt
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.eventManagement) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.eventManagement)}
-                  >
-                    <span style={{ marginRight: '8px' }}>📅</span> Event Mgmt
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.communicationHub) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.communicationHub)}
-                  >
-                    <span style={{ marginRight: '8px' }}>💬</span> Communication Hub
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.campaignManagement) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.campaignManagement)}
-                  >
-                    <span style={{ marginRight: '8px' }}>📢</span> Campaign Mgmt
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.teamManagement) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.teamManagement)}
-                  >
-                    <span style={{ marginRight: '8px' }}>👨‍💼</span> Team Mgmt
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.analyticsReports) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.analyticsReports)}
-                  >
-                    <span style={{ marginRight: '8px' }}>📊</span> Analytics & Reports
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.aiServices) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.aiServices)}
-                  >
-                    <span style={{ marginRight: '8px' }}>🤖</span> AI Services
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.integrations) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.integrations)}
-                  >
-                    <span style={{ marginRight: '8px' }}>🔗</span> Integrations
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.systemConfiguration) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.systemConfiguration)}
-                  >
-                    <span style={{ marginRight: '8px' }}>⚙️</span> System Config
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.auditLogs) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.auditLogs)}
-                  >
-                    <span style={{ marginRight: '8px' }}>📝</span> Audit Logs
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.securityCenter) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.securityCenter)}
-                  >
-                    <span style={{ marginRight: '8px' }}>🛡️</span> Security Center
-                  </button>
-
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.adminSettings) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.adminSettings)}
-                  >
-                    <span style={{ marginRight: '8px' }}>⚙️</span> Settings
-                  </button>
-                </>
-              )}
-
-              <div className="sidebar-section-divider" style={{ margin: '15px 0', borderTop: '1px solid #ddd' }}></div>
-
-              <button
-                className={`sidebar-item ${isActive(ROUTES.adminUsers) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.adminUsers)}
-              >
-                <span style={{ marginRight: '10px' }}>👥</span> Citizens
+              {/* ── SERVICES ── */}
+              <div className="sidebar-section-label">Services</div>
+              <button className={`sidebar-item ${isActive(ROUTES.complaintManagement) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.complaintManagement)}>
+                <span className="sidebar-icon">📋</span> Complaints
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.alertManagement) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.alertManagement)}>
+                <span className="sidebar-icon">🚨</span> Alerts
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.eventManagement) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.eventManagement)}>
+                <span className="sidebar-icon">📅</span> Events
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.communicationHub) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.communicationHub)}>
+                <span className="sidebar-icon">💬</span> Communication Hub
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.campaignManagement) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.campaignManagement)}>
+                <span className="sidebar-icon">📢</span> Campaigns
               </button>
 
-              {/* <button
-                className={`sidebar-item ${isActive(ROUTES.events) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.events)}
-              >
-                <span style={{ marginRight: '10px' }}>📅</span> Events
-              </button> */}
+              <hr className="sidebar-section-hr" />
 
-              {/* <button
-                className={`sidebar-item ${isActive(ROUTES.alerts) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.alerts)}
-              >
-                <span style={{ marginRight: '10px' }}>🚨</span> Alerts
-              </button> */}
-
-              <button
-                className={`sidebar-item ${isActive(ROUTES.register) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.register)}
-              >
-                <span style={{ marginRight: '10px' }}>📝</span> Registration
+              {/* ── SYSTEM ── */}
+              <div className="sidebar-section-label">System</div>
+              <button className={`sidebar-item ${isActive(ROUTES.analyticsReports) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.analyticsReports)}>
+                <span className="sidebar-icon">📈</span> Analytics & Reports
               </button>
-              <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.rolePermissions) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.rolePermissions)}
-                  >
-                    <span style={{ marginRight: '8px' }}>🔐</span> Role & Permissions
-                  </button>
-              <button
-                className={`sidebar-item ${isActive(ROUTES.mlaList) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.mlaList)}
-              >
-                <span style={{ marginRight: '10px' }}>👔</span> Representatives
+              <button className={`sidebar-item ${isActive(ROUTES.teamManagement) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.teamManagement)}>
+                <span className="sidebar-icon">🤝</span> Team Management
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.aiServices) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.aiServices)}>
+                <span className="sidebar-icon">🤖</span> AI Services
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.constituencyManagement) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.constituencyManagement)}>
+                <span className="sidebar-icon">🗳️</span> Constituencies
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.integrations) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.integrations)}>
+                <span className="sidebar-icon">🔗</span> Integrations
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.systemConfiguration) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.systemConfiguration)}>
+                <span className="sidebar-icon">🖥️</span> System Config
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.auditLogs) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.auditLogs)}>
+                <span className="sidebar-icon">📝</span> Audit Logs
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.securityCenter) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.securityCenter)}>
+                <span className="sidebar-icon">🛡️</span> Security Center
               </button>
 
-              <button
-                className={`sidebar-item ${isActive(ROUTES.managerList) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.managerList)}
-              >
-                <span style={{ marginRight: '10px' }}>👨‍💼</span> Managers
-              </button>
-
-              <button
-                className={`sidebar-item ${isActive(ROUTES.fieldOfficerList) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.fieldOfficerList)}
-              >
-                <span style={{ marginRight: '10px' }}>👷</span> Field Officers
-              </button>
+              {/* ── PINNED BOTTOM ── */}
+              <div className="sidebar-pinned-bottom">
+                <button className={`sidebar-item ${isActive(ROUTES.userManagement) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.userManagement)}>
+                  <span className="sidebar-icon">⚙️</span> User Management
+                </button>
+                <button className={`sidebar-item ${isActive(ROUTES.register) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.register)}>
+                  <span className="sidebar-icon">📝</span> Registration
+                </button>
+                <button className={`sidebar-item ${isActive(ROUTES.rolePermissions) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.rolePermissions)}>
+                  <span className="sidebar-icon">🔐</span> Role & Permissions
+                </button>
+                <button className={`sidebar-item sidebar-item--settings ${isActive(ROUTES.adminSettings) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.adminSettings)}>
+                  <span className="sidebar-icon">⚙️</span> Settings
+                </button>
+              </div>
             </>
           )}
 
           {(role === 'REPRESENTATIVE' || role === 'representative') && (
             <>
-              {/* MLA Executive Dashboard */}
-              <button
-                className={`sidebar-item ${isActive(ROUTES.mlaExecutiveDashboard) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.mlaExecutiveDashboard)}
-              >
-                <span style={{ marginRight: '10px' }}>🏛️</span> Executive Dashboard
+              {/* ── OVERVIEW ── */}
+              <div className="sidebar-section-label">Overview</div>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaExecutiveDashboard) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaExecutiveDashboard)}>
+                <span className="sidebar-icon">🏛️</span> Executive Dashboard
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaDailyBriefing) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaDailyBriefing)}>
+                <span className="sidebar-icon">📋</span> Daily Briefing
               </button>
 
-              <div className="sidebar-section-divider" style={{ margin: '15px 0', borderTop: '1px solid #ddd' }}></div>
+              <hr className="sidebar-section-hr" />
 
-              {/* Constituency Overview */}
-              <button
-                className="sidebar-item sidebar-collapse-btn"
-                onClick={() => setAdminModulesOpen(!adminModulesOpen)}
-              >
-                <span style={{ marginRight: '10px' }}>🗺️</span>
-                <span>Constituency Overview</span>
-                <span style={{ marginLeft: 'auto', fontSize: '12px' }}>
-                  {adminModulesOpen ? '▼' : '▶'}
-                </span>
+              {/* ── MONITORING ── */}
+              <div className="sidebar-section-label">Monitoring</div>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaConstituencyStatus) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaConstituencyStatus)}>
+                <span className="sidebar-icon">📊</span> Live Status
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaHeatMap) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaHeatMap)}>
+                <span className="sidebar-icon">🗺️</span> Heat Map
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaAIInsights) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaAIInsights)}>
+                <span className="sidebar-icon">🤖</span> AI Insights
               </button>
 
-              {adminModulesOpen && (
-                <>
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.mlaConstituencyStatus) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.mlaConstituencyStatus)}
-                  >
-                    <span style={{ marginRight: '8px' }}>📊</span> Live Status
-                  </button>
+              <hr className="sidebar-section-hr" />
 
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.mlaHeatMap) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.mlaHeatMap)}
-                  >
-                    <span style={{ marginRight: '8px' }}>🗺️</span> Heat Map
-                  </button>
-                </>
-              )}
-
-              {/* Citizen Services */}
-              <button
-                className="sidebar-item sidebar-collapse-btn"
-                onClick={() => setAdminModulesOpen(!adminModulesOpen)}
-              >
-                <span style={{ marginRight: '10px' }}>👥</span>
-                <span>Citizen Services</span>
-                <span style={{ marginLeft: 'auto', fontSize: '12px' }}>
-                  {adminModulesOpen ? '▼' : '▶'}
-                </span>
+              {/* ── CITIZEN SERVICES ── */}
+              <div className="sidebar-section-label">Citizen Services</div>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaComplaintsDashboard) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaComplaintsDashboard)}>
+                <span className="sidebar-icon">📋</span> Complaints
+                {openComplaintCount > 0 && <span className="sidebar-badge">{openComplaintCount}</span>}
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaEmergencyCenter) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaEmergencyCenter)}>
+                <span className="sidebar-icon">🚨</span> Emergency
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaCitizenSentiment) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaCitizenSentiment)}>
+                <span className="sidebar-icon">😊</span> Citizen Sentiment
               </button>
 
-              {adminModulesOpen && (
-                <>
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.mlaComplaintsDashboard) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.mlaComplaintsDashboard)}
-                  >
-                    <span style={{ marginRight: '8px' }}>📋</span> Complaints
-                  </button>
+              <hr className="sidebar-section-hr" />
 
-                  <button
-                    className={`sidebar-item sidebar-sub-item ${isActive(ROUTES.mlaEmergencyCenter) ? 'active' : ''}`}
-                    onClick={() => handleMobileNav(ROUTES.mlaEmergencyCenter)}
-                  >
-                    <span style={{ marginRight: '8px' }}>🚨</span> Emergency Alerts
-                  </button>
-                </>
-              )}
-
-              {/* Events & Outreach */}
-              <button
-                className={`sidebar-item ${isActive(ROUTES.mlaEvents) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.mlaEvents)}
-              >
-                <span style={{ marginRight: '10px' }}>📅</span> Events & Programs
+              {/* ── PROGRAMS ── */}
+              <div className="sidebar-section-label">Programs</div>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaEvents) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaEvents)}>
+                <span className="sidebar-icon">📅</span> Events & Programs
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaGovernmentSchemes) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaGovernmentSchemes)}>
+                <span className="sidebar-icon">🏛️</span> Gov Schemes
               </button>
 
-              {/* People Management */}
-              <button
-                className={`sidebar-item ${isActive(ROUTES.mlaTeamPerformance) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.mlaTeamPerformance)}
-              >
-                <span style={{ marginRight: '10px' }}>👨‍💼</span> Team Performance
+              <hr className="sidebar-section-hr" />
+
+              {/* ── TEAM ── */}
+              <div className="sidebar-section-label">Team</div>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaTeamPerformance) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaTeamPerformance)}>
+                <span className="sidebar-icon">👨‍💼</span> Team Performance
+              </button>
+              <button className={`sidebar-item ${isActive(ROUTES.mlaCommunications) ? 'active' : ''}`} onClick={() => handleMobileNav(ROUTES.mlaCommunications)}>
+                <span className="sidebar-icon">💬</span> Communications
               </button>
 
-              {/* Communications */}
-              <button
-                className={`sidebar-item ${isActive(ROUTES.mlaCommunications) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.mlaCommunications)}
-              >
-                <span style={{ marginRight: '10px' }}>💬</span> Communications
-              </button>
-
-              {/* Analytics */}
-              <button
-                className={`sidebar-item ${isActive(ROUTES.mlaCitizenSentiment) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.mlaCitizenSentiment)}
-              >
-                <span style={{ marginRight: '10px' }}>📊</span> Citizen Sentiment
-              </button>
-
-              {/* Government Schemes */}
-              <button
-                className={`sidebar-item ${isActive(ROUTES.mlaGovernmentSchemes) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.mlaGovernmentSchemes)}
-              >
-                <span style={{ marginRight: '10px' }}>🏛️</span> Schemes
-              </button>
-
-              {/* AI Insights */}
-              <button
-                className={`sidebar-item ${isActive(ROUTES.mlaAIInsights) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.mlaAIInsights)}
-              >
-                <span style={{ marginRight: '10px' }}>🤖</span> AI Insights
-              </button>
-
-              {/* Daily Briefing */}
-              <button
-                className={`sidebar-item ${isActive(ROUTES.mlaDailyBriefing) ? 'active' : ''}`}
-                onClick={() => handleMobileNav(ROUTES.mlaDailyBriefing)}
-              >
-                <span style={{ marginRight: '10px' }}>📋</span> Daily Briefing
-              </button>
+              {/* ── PINNED BOTTOM: Settings ── */}
+              <div className="sidebar-pinned-bottom">
+                <button className="sidebar-item sidebar-item--settings" onClick={() => handleMobileNav(ROUTES.adminSettings || '/settings')}>
+                  <span className="sidebar-icon">⚙️</span> Settings
+                </button>
+              </div>
             </>
           )}
 
@@ -459,6 +328,53 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
                 onClick={() => handleMobileNav(ROUTES.fieldOfficerList)}
               >
                 <span style={{ marginRight: '10px' }}>👷</span> Field Officers
+              </button>
+            </>
+          )}
+
+          {(role === 'FIELD_OFFICER' || role === 'field_officer') && (
+            <>
+              {/* ── OVERVIEW ── */}
+              <div className="sidebar-section-label">Overview</div>
+              <button
+                className={`sidebar-item ${isActive(ROUTES.field) ? 'active' : ''}`}
+                onClick={() => handleMobileNav(ROUTES.field)}
+              >
+                <span className="sidebar-icon">📊</span> Dashboard
+              </button>
+
+              <hr className="sidebar-section-hr" />
+
+              {/* ── WORK ── */}
+              <div className="sidebar-section-label">Work</div>
+              <button
+                className={`sidebar-item ${isActive(ROUTES.fieldGrievances) ? 'active' : ''}`}
+                onClick={() => handleMobileNav(ROUTES.fieldGrievances)}
+              >
+                <span className="sidebar-icon">📋</span> Assigned Grievances
+              </button>
+              <button
+                className={`sidebar-item ${isActive(ROUTES.fieldAlerts) ? 'active' : ''}`}
+                onClick={() => handleMobileNav(ROUTES.fieldAlerts)}
+              >
+                <span className="sidebar-icon">🚨</span> Alerts
+              </button>
+              <button
+                className={`sidebar-item ${isActive(ROUTES.fieldEvents) ? 'active' : ''}`}
+                onClick={() => handleMobileNav(ROUTES.fieldEvents)}
+              >
+                <span className="sidebar-icon">📅</span> Events
+              </button>
+
+              <hr className="sidebar-section-hr" />
+
+              {/* ── ACCOUNT ── */}
+              <div className="sidebar-section-label">Account</div>
+              <button
+                className={`sidebar-item ${isActive(ROUTES.fieldProfile) ? 'active' : ''}`}
+                onClick={() => handleMobileNav(ROUTES.fieldProfile)}
+              >
+                <span className="sidebar-icon">👤</span> My Profile
               </button>
             </>
           )}

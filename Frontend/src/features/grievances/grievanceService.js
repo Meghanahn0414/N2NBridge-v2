@@ -11,7 +11,10 @@ export async function fetchGrievances(page = 1, perPage = 1000, filters = {}) {
     if (filters.priority && filters.priority !== "ALL") {
       params.priority = filters.priority;
     }
-    const response = await api.get(GRIEVANCE_ENDPOINT, { params });
+    if (filters.assignedOfficerId) {
+      params.assigned_officer_id = filters.assignedOfficerId;
+    }
+    const response = await api.get(`${GRIEVANCE_ENDPOINT}/`, { params });
     return Array.isArray(response.data) ? response.data : response.data?.data || [];
   } catch (error) {
     console.error("Error fetching grievances:", error);

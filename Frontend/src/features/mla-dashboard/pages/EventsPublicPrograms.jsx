@@ -4,6 +4,7 @@ import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/EventsPublicPrograms.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
+import PageHeader from '../../../components/PageHeader';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value.toLocaleString());
 
@@ -11,10 +12,10 @@ export default function EventsPublicPrograms() {
   const navigate = useNavigate();
   const { dashboard, loading, error } = useMlaDashboard();
 
-  const handleCreateEvent = () => navigate(ROUTES.mlaEvents);
+  const handleCreateEvent = () => window.alert('Create Event feature coming soon. Please contact your administrator to create events.');
   const handleViewAnalytics = () => navigate(ROUTES.mlaAIInsights);
   const handleSendReminders = () => navigate(ROUTES.mlaCommunications);
-  const handleManageEvent = () => navigate(ROUTES.mlaEvents);
+  const handleManageEvent = () => navigate(ROUTES.mlaCommunications);
   const eventMetrics = dashboard?.metrics?.events || {};
   const events = Array.isArray(eventMetrics.recent) ? eventMetrics.recent.slice(0, 4) : [];
   const totalMetrics = {
@@ -26,11 +27,9 @@ export default function EventsPublicPrograms() {
   };
 
   return (
-    <div className="mla-container">
-      <div className="mla-header">
-        <h1>📅 Events & Public Programs</h1>
-        <p>Manage constituency events and community outreach</p>
-      </div>
+    <div>
+      <PageHeader subtitle="Manage constituency events and community outreach" />
+      <div className="mla-container">
 
       {/* Event Metrics */}
       <div className="mla-section">
@@ -99,5 +98,6 @@ export default function EventsPublicPrograms() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

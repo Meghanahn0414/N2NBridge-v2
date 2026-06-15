@@ -1,48 +1,81 @@
 import api from "../../shared/services/api";
 
-const CONSTITUENCIES_ENDPOINT = "/api/users/constituencies";
+const BASE = "/api/users/constituencies";
+const WARDS_BASE = "/api/users/wards";
 
-export async function fetchConstituencies(page = 1, perPage = 1000) {
+const extractError = (error) => {
+  const detail = error?.response?.data?.detail || error?.response?.data?.message;
+  return new Error(detail || error?.message || "Request failed");
+};
+
+export async function fetchConstituencies() {
   try {
-    const response = await api.get(CONSTITUENCIES_ENDPOINT);
-    // The endpoint returns a simple list, not paginated
-    const allConstituencies = Array.isArray(response.data) ? response.data : response.data?.data || [];
-    // Apply client-side pagination if needed
-    const start = (page - 1) * perPage;
-    const end = start + perPage;
-    return allConstituencies.slice(start, end);
+    const response = await api.get(BASE);
+    return Array.isArray(response.data) ? response.data : response.data?.data || [];
   } catch (error) {
-    console.error("Error fetching constituencies:", error);
-    throw error;
+    throw extractError(error);
   }
 }
 
-export async function searchConstituencies(query) {
+export async function fetchAllWards() {
   try {
-    const response = await api.get(`${CONSTITUENCIES_ENDPOINT}/search/${query}`);
-    return response.data || [];
+    const response = await api.get(WARDS_BASE);
+    return Array.isArray(response.data) ? response.data : response.data?.data || [];
   } catch (error) {
-    console.error("Error searching constituencies:", error);
-    throw error;
+    throw extractError(error);
   }
 }
 
-export async function createConstituency(constituencyData) {
+export async function createConstituency(data) {
   try {
-    const response = await api.post(CONSTITUENCIES_ENDPOINT, constituencyData);
+    const response = await api.post(BASE, data);
     return response.data;
   } catch (error) {
-    console.error("Error creating constituency:", error);
-    throw error;
+    throw extractError(error);
+  }
+}
+
+export async function updateConstituency(id, data) {
+  try {
+    const response = await api.put(`${BASE}/${id}`, data);
+    return response.data;
+  } catch (error) {
+    throw extractError(error);
+  }
+}
+
+export async function deleteConstituency(id) {
+  try {
+    const response = await api.delete(`${BASE}/${id}`);
+    return response.data;
+  } catch (error) {
+    throw extractError(error);
   }
 }
 
 export async function getWards(constituencyId) {
   try {
-    const response = await api.get(`${CONSTITUENCIES_ENDPOINT}/${constituencyId}/wards`);
+    const response = await api.get(`${BASE}/${constituencyId}/wards`);
     return Array.isArray(response.data) ? response.data : response.data?.data || [];
   } catch (error) {
-    console.error("Error fetching wards:", error);
-    throw error;
+    throw extractError(error);
+  }
+}
+
+export async function createWard(data) {
+  try {
+    const response = await api.post(WARDS_BASE, data);
+    return response.data;
+  } catch (error) {
+    throw extractError(error);
+  }
+}
+
+export async function deleteWard(wardId) {
+  try {
+    const response = await api.delete(`${WARDS_BASE}/${wardId}`);
+    return response.data;
+  } catch (error) {
+    throw extractError(error);
   }
 }

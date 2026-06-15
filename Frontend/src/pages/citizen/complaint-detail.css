@@ -10,11 +10,11 @@
 
 /* Header */
 .detail-header {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  background: #1a5290;
   color: white;
   padding: 16px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: sticky;
@@ -23,20 +23,23 @@
 }
 
 .detail-back-btn {
-  background: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
   border: none;
   color: white;
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  transition: background-color 0.2s ease;
 }
 
 .detail-back-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.25);
 }
 
 .detail-header-content {

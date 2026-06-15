@@ -37,18 +37,18 @@ class GrievanceCategory(str, Enum):
 
 class AttachmentSchema(BaseModel):
     """Attachment schema"""
-    fileName: str
-    fileUrl: str
-    uploadedAt: datetime
+    fileName: Optional[str] = None
+    fileUrl: Optional[str] = None
+    uploadedAt: Optional[datetime] = None
 
 
 class HistoryEntry(BaseModel):
     """History entry"""
-    oldStatus: str
-    newStatus: str
+    oldStatus: Optional[str] = None
+    newStatus: Optional[str] = None
     remarks: Optional[str] = None
-    updatedBy: str
-    createdAt: datetime
+    updatedBy: Optional[str] = None
+    createdAt: Optional[datetime] = None
 
 
 class FeedbackSchema(BaseModel):
@@ -98,29 +98,29 @@ class GrievanceUpdate(BaseModel):
 class GrievanceResponse(BaseModel):
     """Grievance response"""
     id: str = Field(alias="_id")
-    complaintNumber: str
-    citizenId: str
+    complaintNumber: Optional[str] = None
+    citizenId: Optional[str] = None
     categoryId: Optional[str] = None
-    category: Optional[GrievanceCategory] = None
-    description: str
-    address: str
+    category: Optional[str] = None
+    description: Optional[str] = None
+    address: Optional[str] = None
     wardId: Optional[str] = None
     constituencyId: Optional[str] = None
-    priority: str
-    status: str
-    escalationLevel: int
+    priority: Optional[str] = "MEDIUM"
+    status: Optional[str] = "NEW"
+    escalationLevel: Optional[int] = 0
     assignedOfficerId: Optional[str] = None
-    attachments: List[AttachmentSchema] = []
-    history: List[HistoryEntry] = []
+    attachments: Optional[List[AttachmentSchema]] = []
+    history: Optional[List[HistoryEntry]] = []
     feedback: Optional[FeedbackSchema] = None
     aiAnalysis: Optional[AIAnalysisSchema] = None
-    createdAt: datetime
-    updatedAt: datetime
-    createdBy: str
-    updatedBy: str
-    isDeleted: bool
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
+    createdBy: Optional[str] = None
+    updatedBy: Optional[str] = None
+    isDeleted: Optional[bool] = False
     citizenName: Optional[str] = None
-    
+
     class Config:
         populate_by_name = True
 

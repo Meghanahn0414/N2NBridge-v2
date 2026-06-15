@@ -5,12 +5,16 @@ import logging
 from typing import Optional
 
 from auth.service import AuthService
+from config.security import SecurityManager
+from bson import ObjectId
+from config.database import MongoDatabase
 from fastapi import (APIRouter, Depends, File, Header, HTTPException, Query,
                      UploadFile)
-from users.model import (ConstituencyCreate, ConstituencyResponse, UserCreate,
-                         UserResponse, UserUpdate, WardCreate, WardResponse)
+from users.model import (ConstituencyCreate, ConstituencyResponse, ConstituencyUpdate,
+                         UserCreate, UserResponse, UserUpdate, WardCreate, WardResponse)
 from users.service import ConstituencyService, UserService, WardService
 from utils.helper import Helper
+from utils.id_generator import IDGenerator
 from utils.jwt import TokenManager
 from utils.response import success_response
 
@@ -55,7 +59,7 @@ def get_current_user(authorization: Optional[str] = Header(None, alias="Authoriz
 async def create_user(user_data: UserCreate):
     """Create a new user"""
     try:
-        user_id = UserService.create_user(user_data.dict(), None)
+        user_id = UserService.create_user(user_data.model_dump(), None)
         if not user_id:
             raise HTTPException(status_code=400, detail="Failed to create user")
         
@@ -72,13 +76,18 @@ async def list_users(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=1000),
     role: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
 ):
-    """List users (requires authentication)"""
+    """List users"""
     skip, limit = Helper.paginate(page, per_page)
     users = UserService.list_users(skip, limit, role)
 
-    return [UserResponse(**Helper.convert_mongo_doc(u)) for u in users]
+    result = []
+    for u in users:
+        try:
+            result.append(UserResponse(**Helper.convert_mongo_doc(u)))
+        except Exception as e:
+            logger.warning(f"Skipping malformed user document {u.get('_id')}: {e}")
+    return result
 
 
 # /me must be declared before /{user_id} so FastAPI doesn't swallow it
@@ -100,7 +109,7 @@ async def create_constituency(
 ):
     """Create constituency"""
     try:
-        constituency_id = ConstituencyService.create_constituency(data.dict())
+        constituency_id = ConstituencyService.create_constituency(data.model_dump())
         constituency = ConstituencyService.get_constituency_by_id(constituency_id)
         
         return success_response({
@@ -120,8 +129,46 @@ async def create_constituency(
 async def list_constituencies():
     """List constituencies"""
     constituencies = ConstituencyService.get_all_constituencies()
-    
-    return [ConstituencyResponse(**Helper.convert_mongo_doc(c)) for c in constituencies]
+    db = MongoDatabase.get_db()
+    result = []
+    for c in constituencies:
+        doc = Helper.convert_mongo_doc(c)
+        doc["wardCount"] = db.wards.count_documents({"constituencyId": doc["_id"]})
+        result.append(ConstituencyResponse(**doc))
+    return result
+
+
+@router.put("/constituencies/{constituency_id}", response_model=ConstituencyResponse)
+async def update_constituency(constituency_id: str, data: ConstituencyUpdate):
+    """Update constituency"""
+    update_data = data.model_dump(exclude_unset=True)
+    success = ConstituencyService.update_constituency(constituency_id, update_data)
+    if not success:
+        raise HTTPException(status_code=404, detail="Constituency not found")
+    constituency = ConstituencyService.get_constituency_by_id(constituency_id)
+    return ConstituencyResponse(**Helper.convert_mongo_doc(constituency))
+
+
+@router.delete("/constituencies/{constituency_id}")
+async def delete_constituency(constituency_id: str):
+    """Delete constituency"""
+    success = ConstituencyService.delete_constituency(constituency_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Constituency not found")
+    return success_response(None, "Constituency deleted successfully")
+
+
+@router.get("/wards", response_model=list[WardResponse])
+async def list_all_wards():
+    """List all wards"""
+    wards = WardService.get_all_wards()
+    result = []
+    for w in wards:
+        try:
+            result.append(WardResponse(**Helper.convert_mongo_doc(w)))
+        except Exception as e:
+            logger.warning(f"Skipping malformed ward {w.get('_id')}: {e}")
+    return result
 
 
 @router.get("/constituencies/search/{query}")
@@ -143,20 +190,23 @@ async def create_ward(
     data: WardCreate
 ):
     """Create ward"""
-    ward_id = WardService.create_ward(data.dict())
+    ward_id = WardService.create_ward(data.model_dump())
     ward = WardService.get_ward_by_id(ward_id)
     
     return WardResponse(**Helper.convert_mongo_doc(ward))
 
 
 @router.get("/constituencies/{constituency_id}/wards", response_model=list[WardResponse])
-async def get_wards(
-    constituency_id: str
-):
+async def get_wards(constituency_id: str):
     """Get wards by constituency"""
     wards = WardService.get_wards_by_constituency(constituency_id)
-    
-    return [WardResponse(**Helper.convert_mongo_doc(w)) for w in wards]
+    result = []
+    for w in wards:
+        try:
+            result.append(WardResponse(**Helper.convert_mongo_doc(w)))
+        except Exception as e:
+            logger.warning(f"Skipping malformed ward {w.get('_id')}: {e}")
+    return result
 
 
 # PROFILE PHOTO UPLOAD - Must come before /{user_id}
@@ -213,10 +263,25 @@ async def upload_profile_photo(
 async def get_user(user_id: str):
     """Get user by ID"""
     user = UserService.get_user_by_id(user_id)
-    
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
+    # Auto-generate citizenId for existing CITIZEN users who don't have one yet
+    if user.get("role") == "CITIZEN" and not user.get("citizenId"):
+        try:
+            new_citizen_id = IDGenerator.generate_citizen_id()
+            db = MongoDatabase.get_db()
+            db.users.update_one(
+                {"_id": ObjectId(user_id), "isDeleted": False},
+                {"$set": {"citizenId": new_citizen_id}}
+            )
+            user = dict(user)
+            user["citizenId"] = new_citizen_id
+            logger.info(f"Auto-generated citizenId {new_citizen_id} for user {user_id}")
+        except Exception as e:
+            logger.warning(f"Could not auto-generate citizenId for {user_id}: {e}")
+
     return UserResponse(**Helper.convert_mongo_doc(user))
 
 
@@ -228,7 +293,7 @@ async def update_user(
     """Update user"""
     success = UserService.update_user(
         user_id,
-        update_data.dict(exclude_unset=True),
+        update_data.model_dump(exclude_unset=True),
         None
     )
     
@@ -237,6 +302,22 @@ async def update_user(
     
     user = UserService.get_user_by_id(user_id)
     return UserResponse(**Helper.convert_mongo_doc(user))
+
+
+@router.post("/{user_id}/reset-password")
+async def reset_user_password(user_id: str):
+    """Reset user password to a temporary one"""
+    import random, string
+    temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+    db = MongoDatabase.get_db()
+    hashed = SecurityManager.hash_password(temp_password)
+    result = db.users.update_one(
+        {"_id": ObjectId(user_id), "isDeleted": False},
+        {"$set": {"passwordHash": hashed}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return success_response({"tempPassword": temp_password}, "Password reset successfully")
 
 
 @router.delete("/{user_id}")
