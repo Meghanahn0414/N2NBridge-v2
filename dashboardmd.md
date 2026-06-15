@@ -1,3 +1,4 @@
+<img width="280" height="281" alt="image" src="https://github.com/user-attachments/assets/bf0221a1-e4fe-4857-9267-3c59badb1fdf" />
 # Project Dashboard
 
 | Item                       | Area/Component      | Status      | Notes                                         | WHO             |
@@ -13,37 +14,7 @@
 | Mobile Ui design           | Code                | Completed   |                                               | Fatima/Meghana  |
 | Integration Testing        | Code                | Started     |                                               | Fatima/Meghana  |
 | category/Event Creation    |code                 | Completed   |                                               | Team            |
-| BOM/Tech Stack- document   |Text                 | Completed   | 
-Backend
-Language: Python
-Version target: Python 3.11 (from pyproject.toml)
-Framework/tooling: FastAPI + Uvicorn
-Key versions:
-FastAPI 0.104.1
-Uvicorn 0.24.0
-Pydantic 2.5.0
-PyMongo 4.6.0
-pytest 8.3.2
-Target: API/server backend
-
-Frontend
-Language: React JS
-Framework/tooling: Vite + React
-Key versions:
-React 18.2.0
-React DOM 18.2.0
-Vite 5.1.0
-Target: Web browser app
-
-Mobile app
-Language: JavaScript/TypeScript with React Native
-Framework/tooling: Expo SDK 56
-Key versions:
-Expo ~56.0.9
-React 19.2.3
-React Native 0.85.3
-Target: Android / iOS / Web  |
-| Meghana         |
+| BOM/Tech Stack - Document | Text | Completed | Backend: Python 3.11, FastAPI 0.104.1, Uvicorn 0.24.0, Pydantic 2.5.0, PyMongo 4.6.0, Pytest 8.3.2 (API/Server Backend). Frontend: React JS, React 18.2.0, React DOM 18.2.0, Vite 5.1.0 (Web Browser App). Mobile App: JavaScript/TypeScript, React Native, Expo SDK ~56.0.9, React 19.2.3, React Native 0.85.3 (Android/iOS/Web). | Meghana |
                                            
 
 
