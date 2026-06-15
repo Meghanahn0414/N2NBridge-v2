@@ -13,7 +13,37 @@
 | Mobile Ui design           | Code                | Completed   |                                               | Fatima/Meghana  |
 | Integration Testing        | Code                | Started     |                                               | Fatima/Meghana  |
 | category/Event Creation    |code                 | Completed   |                                               | Team            |
-| BOM/Tech Stack- document   |code                 | OPEN        |Lang/tool/version/target/android/compatibility | Meghana         |
-                                             
+| BOM/Tech Stack- document   |Text                 | Completed   | 
+Backend
+Language: Python
+Version target: Python 3.11 (from pyproject.toml)
+Framework/tooling: FastAPI + Uvicorn
+Key versions:
+FastAPI 0.104.1
+Uvicorn 0.24.0
+Pydantic 2.5.0
+PyMongo 4.6.0
+pytest 8.3.2
+Target: API/server backend
+
+Frontend
+Language: React JS
+Framework/tooling: Vite + React
+Key versions:
+React 18.2.0
+React DOM 18.2.0
+Vite 5.1.0
+Target: Web browser app
+
+Mobile app
+Language: JavaScript/TypeScript with React Native
+Framework/tooling: Expo SDK 56
+Key versions:
+Expo ~56.0.9
+React 19.2.3
+React Native 0.85.3
+Target: Android / iOS / Web  |
+| Meghana         |
+                                           
 
 
