@@ -4,11 +4,13 @@ Application Settings and Configuration
 from typing import Optional
 import os
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings"""
+
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
     
     # MongoDB
     MONGODB_URL: str = "mongodb://localhost:27017"
@@ -55,10 +57,6 @@ class Settings(BaseSettings):
     # SMS Service
     SMS_API_KEY: Optional[str] = None
     SMS_PROVIDER: Optional[str] = None
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
 
 
 # Create settings instance that loads from .env

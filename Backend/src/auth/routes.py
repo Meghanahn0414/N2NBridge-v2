@@ -13,7 +13,7 @@ from users.model import (OtpResponse, SendOtpRequest, TokenResponse,
                          VerifyOtpRequest)
 from users.service import UserService
 from utils.jwt import TokenManager
-from utils.response import ResponseMessage, error_response, success_response
+from utils.response import success_response
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)

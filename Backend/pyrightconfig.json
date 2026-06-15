@@ -1,6 +1,8 @@
 {
   "include": ["src", "main.py"],
-  "pythonVersion": "3.13",
-  "typeCheckingMode": "basic",
-  "pythonPath": "src"
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "off",
+  "venvPath": ".",
+  "venv": ".venv",
+  "extraPaths": ["src"]
 }

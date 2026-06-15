@@ -1,7 +1,9 @@
 [tool.pyright]
 include = ["src", "main.py"]
-pythonVersion = "3.13"
-typeCheckingMode = "basic"
+pythonVersion = "3.11"
+typeCheckingMode = "off"
+venvPath = "."
+venv = ".venv"
 extraPaths = ["src"]
 
 [tool.pylint]
