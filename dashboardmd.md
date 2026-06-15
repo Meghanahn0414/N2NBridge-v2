@@ -1,4 +1,4 @@
-<img width="280" height="281" alt="image" src="https://github.com/user-attachments/assets/bf0221a1-e4fe-4857-9267-3c59badb1fdf" />
+
 # Project Dashboard
 
 | Item                       | Area/Component      | Status      | Notes                                         | WHO             |
