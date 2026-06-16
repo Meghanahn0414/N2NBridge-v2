@@ -9,12 +9,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Application settings"""
-
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
     
     # MongoDB
-    MONGODB_URL: str = "mongodb://localhost:27017"
-    MONGODB_DB: str = "crm_database"
+    MONGODB_URL: str = os.getenv("MONGODB_URL", os.getenv("MONGODB_URI", "mongodb://localhost:27017"))
+    MONGODB_DB: str = os.getenv("MONGODB_DB", "crm_database")
     
     # JWT
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
@@ -63,4 +62,5 @@ class Settings(BaseSettings):
 
 
 # Create settings instance that loads from .env
+settings = Settings()
 settings = Settings()
