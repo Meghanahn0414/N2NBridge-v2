@@ -4,6 +4,7 @@ User Routes
 import logging
 from typing import Optional
 
+from pymongo.errors import DuplicateKeyError
 from auth.service import AuthService
 from config.security import SecurityManager
 from bson import ObjectId
@@ -291,12 +292,16 @@ async def update_user(
     update_data: UserUpdate
 ):
     """Update user"""
-    success = UserService.update_user(
-        user_id,
-        update_data.model_dump(exclude_unset=True),
-        None
-    )
-    
+    try:
+        success = UserService.update_user(
+            user_id,
+            update_data.model_dump(exclude_unset=True),
+            None
+        )
+    except DuplicateKeyError as e:
+        field = "email" if "email" in str(e) else "mobile" if "mobile" in str(e) else "field"
+        raise HTTPException(status_code=422, detail=f"A user with that {field} already exists")
+
     if not success:
         raise HTTPException(status_code=400, detail="Failed to update user")
     

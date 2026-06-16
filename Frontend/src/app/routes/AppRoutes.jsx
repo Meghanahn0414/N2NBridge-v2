@@ -17,6 +17,7 @@ import ComplaintDetail from "../../pages/citizen/ComplaintDetail";
 import CitizenEmergency from "../../pages/citizen/CitizenEmergency";
 import EmergencySOS from "../../pages/citizen/EmergencySOS";
 import CitizenEvents from "../../pages/citizen/CitizenEvents";
+import CitizenCampaigns from "../../pages/citizen/CitizenCampaigns";
 import CitizenNotifications from "../../pages/citizen/CitizenNotifications";
 import CitizenFeedback from "../../pages/citizen/CitizenFeedback";
 import CitizenProfile from "../../pages/citizen/CitizenProfile";
@@ -147,6 +148,7 @@ function AppRoutesContent() {
           <Route path={ROUTES.citizenEmergency} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenEmergency /></MobileLayout></RoleRoute>} />
           <Route path={ROUTES.citizenSOS} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><EmergencySOS /></MobileLayout></RoleRoute>} />
           <Route path={ROUTES.citizenEvents} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenEvents /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenCampaigns} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenCampaigns /></MobileLayout></RoleRoute>} />
           <Route path={ROUTES.citizenNotifications} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenNotifications /></MobileLayout></RoleRoute>} />
           <Route path={ROUTES.citizenFeedback} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenFeedback /></MobileLayout></RoleRoute>} />
           <Route path={ROUTES.citizenProfile} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenProfile /></MobileLayout></RoleRoute>} />

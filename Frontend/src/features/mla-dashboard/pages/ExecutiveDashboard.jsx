@@ -5,11 +5,12 @@ import {
 } from 'recharts';
 import {
   FaBell, FaHome, FaClipboardList, FaMapMarkedAlt,
-  FaExclamationCircle, FaUserCircle, FaRegSquare,
+  FaExclamationCircle, FaUserCircle, FaRegSquare, FaBullhorn,
 } from 'react-icons/fa';
 import { ROUTES } from '../../../app/routes/RouteConstants';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import { fetchGrievances } from '../../grievances/grievanceService';
+import { fetchCampaigns } from '../../campaigns/campaignService';
 import { getAuthUser } from '../../../services/authStorage';
 import '../../../styles/mla-dashboard/ExecutiveDashboard.css';
 import PageHeader from '../../../components/PageHeader';
@@ -81,6 +82,7 @@ export default function ExecutiveDashboard() {
   const location = useLocation();
   const { dashboard, loading, error } = useMlaDashboard();
   const [recentGrievances, setRecentGrievances] = useState([]);
+  const [activeCampaigns, setActiveCampaigns] = useState([]);
 
   const user = getAuthUser();
   const initials = user?.name
@@ -91,6 +93,9 @@ export default function ExecutiveDashboard() {
     fetchGrievances(1, 100)
       .then(data => setRecentGrievances(Array.isArray(data) ? data : []))
       .catch(() => setRecentGrievances([]));
+    fetchCampaigns(1, 1000, { status: 'ACTIVE' })
+      .then(data => setActiveCampaigns(Array.isArray(data) ? data : []))
+      .catch(() => setActiveCampaigns([]));
   }, []);
 
   const kpis = dashboard?.summary || {};
@@ -159,11 +164,11 @@ export default function ExecutiveDashboard() {
   });
 
   const navItems = [
-    { label: 'Home', Icon: FaHome, route: ROUTES.rep },
-    { label: 'Complaints', Icon: FaClipboardList, route: ROUTES.mlaComplaintsDashboard },
-    { label: 'Wards', Icon: FaMapMarkedAlt, route: ROUTES.mlaHeatMap },
-    { label: 'Alerts', Icon: FaExclamationCircle, route: ROUTES.mlaEmergencyCenter },
-    { label: 'Profile', Icon: FaUserCircle, route: null },
+    { label: 'Home',       Icon: FaHome,            route: ROUTES.rep },
+    { label: 'Complaints', Icon: FaClipboardList,    route: ROUTES.mlaComplaintsDashboard },
+    { label: 'Wards',      Icon: FaMapMarkedAlt,     route: ROUTES.mlaHeatMap },
+    { label: 'Alerts',     Icon: FaExclamationCircle, route: ROUTES.mlaEmergencyCenter },
+    { label: 'Campaigns',  Icon: FaBullhorn,          route: ROUTES.campaignManagement },
   ];
 
   const activeNav = navItems.find(n => n.route && location.pathname === n.route)?.label || 'Home';
@@ -420,6 +425,39 @@ export default function ExecutiveDashboard() {
           </table>
         </div>
       </div>
+
+      {/* Active Campaigns */}
+      {activeCampaigns.length > 0 && (
+        <div className="rep-card rep-card--full" style={{ marginTop: 16 }}>
+          <div className="rep-card-title">
+            <div className="rep-card-icon" /> Active campaigns
+            <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, background: '#dcfce7', color: '#15803d', padding: '2px 10px', borderRadius: 20 }}>
+              {activeCampaigns.length} running
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {activeCampaigns.map((c, i) => (
+              <div key={c._id || c.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 0', borderBottom: i < activeCampaigns.length - 1 ? '1px solid #f1f5f9' : 'none',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>📢</span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{c.name}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                      {c.type} &bull; {(c.channels || []).join(', ') || 'No channels'} &bull; {c.repeat}
+                    </div>
+                  </div>
+                </div>
+                <span style={{ fontSize: 11, color: '#64748b' }}>
+                  {c.startDate ? new Date(c.startDate).toLocaleDateString() : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Bottom Navigation */}
       <nav className="rep-bottom-nav">

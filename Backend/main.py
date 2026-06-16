@@ -12,6 +12,7 @@ _src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src')
 sys.path.insert(0, _src_path)
 
 from alerts.routes import router as alerts_router
+from campaigns.routes import router as campaigns_router
 from analytics.routes import router as analytics_router
 from auth.routes import router as auth_router
 from config.database import MongoDatabase
@@ -169,6 +170,7 @@ app.include_router(notifications_router)
 app.include_router(analytics_router)
 app.include_router(dashboard_router)
 app.include_router(lookups_router)
+app.include_router(campaigns_router)
 
 
 # Global exception handler

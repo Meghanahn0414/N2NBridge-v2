@@ -65,3 +65,13 @@ export async function launchCampaign(campaignId) {
     throw error;
   }
 }
+
+export async function sendCampaignNotifications(campaignId) {
+  try {
+    const response = await api.post(`${CAMPAIGN_ENDPOINT}/${campaignId}/notify`);
+    return response.data;
+  } catch (error) {
+    console.error("Error sending campaign notifications:", error);
+    throw error;
+  }
+}

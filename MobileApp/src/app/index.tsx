@@ -1,98 +1,140 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from "react-native";
+import { useRouter } from "expo-router";
+import axios from "axios";
+import { API_BASE } from "../config";
+import { useAuthStore } from "../store/authStore";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function LoginScreen() {
+  const router = useRouter();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
+  async function handleLogin() {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert("Error", "Please enter email and password");
+      return;
+    }
+    setLoading(true);
+    try {
+      const form = new URLSearchParams();
+      form.append("username", email.trim());
+      form.append("password", password.trim());
+
+      const { data } = await axios.post(`${API_BASE}/api/auth/login`, form.toString(), {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      });
+
+      const u = data.user;
+      setAuth(data.access_token, {
+        id: u._id || u.id,
+        name: u.name || u.full_name || u.email,
+        email: u.email,
+        role: u.role,
+      });
+
+      if (u.role === "CITIZEN") {
+        router.replace("/citizen/" as any);
+      } else {
+        Alert.alert("Info", "Admin portal is on the web app. Citizen login only on mobile.");
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail ?? "Login failed. Check your credentials.";
+      Alert.alert("Login Failed", String(msg));
+    } finally {
+      setLoading(false);
+    }
   }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <KeyboardAvoidingView
+      style={styles.wrapper}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <View style={styles.logoCircle}>
+          <Text style={styles.logoText}>JS</Text>
+        </View>
+        <Text style={styles.title}>Jan Seva CRM</Text>
+        <Text style={styles.subtitle}>Citizen Portal — Sign in</Text>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+        <View style={styles.card}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="you@example.com"
+            placeholderTextColor="#9CA3AF"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="••••••••"
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+  wrapper: { flex: 1, backgroundColor: "#EFF6FF" },
+  scroll: { flexGrow: 1, justifyContent: "center", padding: 24 },
+  logoCircle: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: "#1D4ED8", alignSelf: "center",
+    alignItems: "center", justifyContent: "center", marginBottom: 14,
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+  logoText: { color: "#fff", fontSize: 24, fontWeight: "700" },
+  title: { fontSize: 24, fontWeight: "700", color: "#1E3A8A", textAlign: "center" },
+  subtitle: { fontSize: 14, color: "#6B7280", textAlign: "center", marginBottom: 28, marginTop: 4 },
+  card: {
+    backgroundColor: "#fff", borderRadius: 16, padding: 24,
+    shadowColor: "#000", shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  label: { fontSize: 13, fontWeight: "600", color: "#374151", marginBottom: 6 },
+  input: {
+    borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15,
+    color: "#111827", marginBottom: 16, backgroundColor: "#F9FAFB",
   },
-  title: {
-    textAlign: 'center',
+  button: {
+    backgroundColor: "#1D4ED8", borderRadius: 10,
+    paddingVertical: 14, alignItems: "center", marginTop: 4,
   },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  buttonDisabled: { opacity: 0.6 },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

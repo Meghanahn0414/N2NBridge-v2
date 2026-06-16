@@ -181,6 +181,7 @@ async def get_grievance_stats():
             "total": total_grievances,
             "open": status_counts.get("NEW", 0),
             "assigned": status_counts.get("ASSIGNED", 0),
+            "inProgress": status_counts.get("IN_PROGRESS", 0),
             "resolved": status_counts.get("RESOLVED", 0),
             "closed": status_counts.get("CLOSED", 0),
             "byStatus": status_counts
@@ -203,6 +204,7 @@ async def get_citizen_grievance_stats(citizen_id: str):
             "total": total,
             "open": status_counts.get("NEW", 0),
             "assigned": status_counts.get("ASSIGNED", 0),
+            "inProgress": status_counts.get("IN_PROGRESS", 0),
             "resolved": status_counts.get("RESOLVED", 0),
             "closed": status_counts.get("CLOSED", 0),
             "byStatus": status_counts

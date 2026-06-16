@@ -30,13 +30,13 @@ export default function MyComplaints() {
     fetchComplaints();
   }, []);
 
-  const STATUS_OPEN    = ["NEW", "IN_PROGRESS", "ON_HOLD"];
-  const STATUS_ASSIGNED = ["ASSIGNED"];
-  const STATUS_RESOLVED = ["RESOLVED", "CLOSED"];
+  const STATUS_OPEN       = ["NEW"];
+  const STATUS_INPROGRESS = ["ASSIGNED", "IN_PROGRESS", "ON_HOLD"];
+  const STATUS_RESOLVED   = ["RESOLVED", "CLOSED"];
 
   const getStatusColor = (status) => {
     if (STATUS_RESOLVED.includes(status)) return "status-resolved";
-    if (STATUS_ASSIGNED.includes(status)) return "status-assigned";
+    if (STATUS_INPROGRESS.includes(status)) return "status-assigned";
     return "status-open";
   };
 
@@ -66,7 +66,7 @@ export default function MyComplaints() {
   const filteredComplaints = complaints.filter((complaint) => {
     if (filter === "all") return true;
     if (filter === "open") return STATUS_OPEN.includes(complaint.status);
-    if (filter === "assigned") return STATUS_ASSIGNED.includes(complaint.status);
+    if (filter === "inprogress") return STATUS_INPROGRESS.includes(complaint.status);
     if (filter === "resolved") return STATUS_RESOLVED.includes(complaint.status);
     return true;
   });
@@ -103,10 +103,10 @@ export default function MyComplaints() {
           Open ({complaints.filter((c) => STATUS_OPEN.includes(c.status)).length})
         </button>
         <button
-          className={`filter-btn ${filter === "assigned" ? "active" : ""}`}
-          onClick={() => setFilter("assigned")}
+          className={`filter-btn ${filter === "inprogress" ? "active" : ""}`}
+          onClick={() => setFilter("inprogress")}
         >
-          Assigned ({complaints.filter((c) => STATUS_ASSIGNED.includes(c.status)).length})
+          In Progress ({complaints.filter((c) => STATUS_INPROGRESS.includes(c.status)).length})
         </button>
         <button
           className={`filter-btn ${filter === "resolved" ? "active" : ""}`}

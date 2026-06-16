@@ -14,6 +14,7 @@ export const ROUTES = {
   citizenNotifications: "/citizen/notifications",
   citizenFeedback: "/citizen/feedback",
   citizenProfile: "/citizen/profile",
+  citizenCampaigns: "/citizen/campaigns",
   field: "/field",
   manager: "/manager",
   rep: "/rep",

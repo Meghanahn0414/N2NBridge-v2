@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { getCitizenProfile } from "../../shared/services/citizenService";
 import eventService from "../../services/eventService";
 import complaintService from "../../services/complaintService";
+import { fetchCampaigns } from "../../features/campaigns/campaignService";
 import "./dashboard-mobile.css";
 
 export default function CitizenDashboardNew() {
@@ -10,6 +11,7 @@ export default function CitizenDashboardNew() {
   const [stats, setStats]                             = useState({ open: 0, inProgress: 0, resolved: 0 });
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [recentComplaints, setRecentComplaints]       = useState([]);
+  const [campaigns, setCampaigns]                     = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,6 +20,9 @@ export default function CitizenDashboardNew() {
     loadStats();
     loadNotifications();
     loadRecentComplaints();
+    fetchCampaigns(1, 10, { status: 'ACTIVE' })
+      .then(data => setCampaigns(Array.isArray(data) ? data : []))
+      .catch(() => setCampaigns([]));
   }, []);
 
   const getInitials = (name) =>
@@ -31,7 +36,12 @@ export default function CitizenDashboardNew() {
   const loadStats = async () => {
     try {
       const s = await complaintService.getComplaintStats();
-      setStats({ open: s.open || 0, inProgress: s.assigned || 0, resolved: s.resolved || 0 });
+      const by = s.byStatus || {};
+      setStats({
+        open:       (by.NEW || s.open || 0),
+        inProgress: (by.IN_PROGRESS || 0) + (by.ASSIGNED || s.assigned || 0) + (by.ON_HOLD || 0),
+        resolved:   (by.RESOLVED || s.resolved || 0) + (by.CLOSED || s.closed || 0),
+      });
     } catch { setStats({ open: 0, inProgress: 0, resolved: 0 }); }
   };
 
@@ -193,15 +203,43 @@ export default function CitizenDashboardNew() {
           )}
         </section>
 
+        {/* Active Campaigns */}
+        {campaigns.length > 0 && (
+          <section className="recent-complaints-section">
+            <div className="recent-heading-row">
+              <h2 className="section-heading">📢 Active Programs</h2>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {campaigns.map(c => (
+                <div key={c._id || c.id} style={{
+                  background: 'linear-gradient(135deg, #eff6ff, #f0fdf4)',
+                  borderRadius: 12, padding: '12px 14px',
+                  border: '1px solid #dbeafe',
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#1e3a8a' }}>{c.name}</div>
+                  <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>
+                    {c.type} &bull; via {(c.channels || []).join(', ') || 'announcement'}
+                  </div>
+                  {c.message && (
+                    <div style={{ fontSize: 12, color: '#334155', marginTop: 6, lineHeight: 1.5 }}>
+                      {c.message.length > 120 ? c.message.slice(0, 120) + '…' : c.message}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
       </main>
 
       {/* ══ BOTTOM NAV — flat top, full width ══ */}
       <nav className="bottom-nav" aria-label="Main navigation">
         {[
-          { icon: "🏠", label: "Home",    path: "/citizen/dashboard" },
-          { icon: "📋", label: "Complaints",   path: "/citizen/complaints" },
-          { icon: "📅", label: "Events",  path: "/citizen/events" },
-          { icon: "👤", label: "Profile", path: "/citizen/profile" },
+          { icon: "🏠", label: "Home",       path: "/citizen/dashboard" },
+          { icon: "📋", label: "Complaints", path: "/citizen/complaints" },
+          { icon: "📅", label: "Events",     path: "/citizen/events" },
+          { icon: "📢", label: "Campaigns",  path: "/citizen/campaigns" },
         ].map(({ icon, label, path }) => (
           <button
             key={label}
