@@ -18,10 +18,28 @@ export default function EmergencyCommandCenter() {
   const handleSendEmergencyBroadcast = () => navigate(ROUTES.mlaCommunications);
   const handleCallMeeting = () => navigate(ROUTES.mlaEvents);
   const handleViewResponseLogs = () => window.alert('Opening response logs...');
+
+  const formatLocation = (location) => {
+    if (!location) return 'Unknown';
+    if (typeof location === 'string') return location;
+    if (typeof location === 'object') {
+      if (typeof location.label === 'string' && location.label.trim()) return location.label;
+      if (Array.isArray(location.coordinates)) {
+        const [lng, lat] = location.coordinates;
+        if (Number.isFinite(lng) && Number.isFinite(lat)) {
+          return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        }
+      }
+      if (typeof location.address === 'string' && location.address.trim()) return location.address;
+      return 'Location available';
+    }
+    return String(location);
+  };
+
   const alerts = dashboard?.recentAlerts?.slice(0, 5).map((alert) => ({
     id: alert._id,
     type: alert.alertType || alert.type || 'Emergency Alert',
-    ward: alert.location || alert.wardId || 'Unknown',
+    ward: formatLocation(alert.location || alert.wardId),
     status: alert.status || 'Active',
     time: new Date(alert.createdAt || Date.now()).toLocaleString(),
     priority: (alert.priority || 'medium').toLowerCase(),
