@@ -5,6 +5,8 @@ import { getUserRoles } from "../../shared/services/lookupService";
 import { ROUTES } from "../../app/routes/RouteConstants";
 import "./NewMLA.css";
 import PageHeader from "../../components/PageHeader";
+import PhoneInput from "../../components/PhoneInput";
+import { normalizePhone, sanitizePhoneInput } from "../../utils/phoneUtils";
 
 const initialFormState = {
   fullName: "",
@@ -47,13 +49,6 @@ export default function RegistrationPage() {
     fetchRoles();
   }, []);
 
-  const normalizePhone = (value) => {
-    const raw = value.trim().replace(/\s+/g, "");
-    if (!raw) return "";
-    if (raw.startsWith("+")) return raw;
-    return raw.startsWith("0") ? `+${raw.replace(/^0+/, "")}` : `+91${raw}`;
-  };
-
   const fetchRoles = async () => {
     try {
       const response = await getUserRoles();
@@ -81,6 +76,13 @@ export default function RegistrationPage() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const handlePhoneChange = (name, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: sanitizePhoneInput(value),
     }));
   };
 
@@ -257,13 +259,14 @@ export default function RegistrationPage() {
 
           <div className="new-mla-group">
             <label className="new-mla-label">Mobile Number *</label>
-            <input
-              type="tel"
-              name="mobile"
+            <PhoneInput
               value={formData.mobile}
-              onChange={handleInputChange}
-              placeholder="Enter mobile number"
-              className="new-mla-input"
+              onChange={handlePhoneChange}
+              name="mobile"
+              placeholder="Enter 10 digit mobile number"
+              className="new-mla-phone-shell"
+              inputClassName="new-mla-phone-input"
+              maxLength={10}
             />
           </div>
 

@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerAdmin } from "./authService";
 import api from "../../shared/services/api";
+import PhoneInput from "../../components/PhoneInput";
+import { sanitizePhoneInput } from "../../utils/phoneUtils";
 import "./AdminSignup.css";
 
 const COUNTRY_OPTIONS = [
@@ -105,6 +107,10 @@ export default function AdminSignup() {
     }
   };
 
+  const handlePhoneChange = (name, value) => {
+    setMobile(sanitizePhoneInput(value));
+  };
+
   const handleRegister = async () => {
     const validationError = validateForm();
     if (validationError) {
@@ -205,58 +211,17 @@ export default function AdminSignup() {
             />
           </div>
 
-          <div className="signup-card__group" ref={countryDropdownRef}>
+          <div className="signup-card__group">
             <label className="signup-card__label">Phone Number</label>
-            <div className="signup-card__phone-field">
-              <button
-                type="button"
-                className="signup-card__country-button"
-                onClick={() => setShowCountryDropdown((prev) => !prev)}
-              >
-                <span className="signup-card__country-flag">{country.flag}</span>
-                <span className="signup-card__country-code">{country.dialCode}</span>
-                <span className="signup-card__country-arrow">▾</span>
-              </button>
-              <input
-                type="tel"
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
-                placeholder="Enter your phone number"
-                className="signup-card__input signup-card__input--phone"
-              />
-            </div>
-            {showCountryDropdown && (
-              <div className="signup-card__country-dropdown">
-                <div className="signup-card__country-search">
-                  <span className="signup-card__country-search-icon">🔎</span>
-                  <input
-                    type="text"
-                    value={countrySearch}
-                    onChange={(e) => setCountrySearch(e.target.value)}
-                    placeholder="Search country"
-                    className="signup-card__country-search-input"
-                  />
-                </div>
-                <div className="signup-card__country-list">
-                  {countryOptions.map((option) => (
-                    <button
-                      type="button"
-                      key={`${option.label}-${option.dialCode}`}
-                      className="signup-card__country-item"
-                      onClick={() => {
-                        setCountry(option);
-                        setShowCountryDropdown(false);
-                        setCountrySearch("");
-                      }}
-                    >
-                      <span className="signup-card__country-flag">{option.flag}</span>
-                      <span className="signup-card__country-name">{option.label}</span>
-                      <span className="signup-card__country-dial">{option.dialCode}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <PhoneInput
+              value={mobile}
+              onChange={handlePhoneChange}
+              name="mobile"
+              placeholder="Enter your phone number"
+              className="signup-card__phone-shell"
+              inputClassName="signup-card__phone-input"
+              maxLength={10}
+            />
           </div>
 
           <div className="signup-card__group">

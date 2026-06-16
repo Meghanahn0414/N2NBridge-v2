@@ -31,7 +31,16 @@ export async function fetchAlertById(alertId) {
 
 export async function createAlert(alertData) {
   try {
-    const response = await api.post(ALERT_ENDPOINT, alertData);
+    const normalized = {
+      ...alertData,
+      alertType: (alertData.alertType || alertData.type || "EMERGENCY").toUpperCase(),
+      priority: (alertData.priority || alertData.severity || "HIGH").toUpperCase(),
+      description: alertData.description || alertData.message || alertData.body || "",
+      citizenId: alertData.citizenId || alertData.userId || alertData.reporterId || "",
+      mediaAttachments: Array.isArray(alertData.mediaAttachments) ? alertData.mediaAttachments : [],
+    };
+
+    const response = await api.post(ALERT_ENDPOINT, normalized);
     return response.data;
   } catch (error) {
     console.error("Error creating alert:", error);

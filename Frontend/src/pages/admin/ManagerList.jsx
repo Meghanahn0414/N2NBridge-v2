@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../../shared/services/api";
 import "./NewMLA.css";
 import PageHeader from "../../components/PageHeader";
+import { formatPhoneDisplay } from "../../utils/phoneUtils";
 
 export default function ManagerList() {
   const [managers, setManagers] = useState([]);
@@ -63,7 +64,7 @@ export default function ManagerList() {
                           <tr key={m._id || m.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                             <td style={{ padding: "12px 16px" }}>{m.fullName || m.name || "-"}</td>
                             <td style={{ padding: "12px 16px" }}>{m.email || "-"}</td>
-                            <td style={{ padding: "12px 16px" }}>{m.mobile || "-"}</td>
+                            <td style={{ padding: "12px 16px" }}>{formatPhoneDisplay(m.mobile) || "-"}</td>
                             <td style={{ padding: "12px 16px" }}>{m.department || "-"}</td>
                             <td style={{ padding: "12px 16px" }}>{m.officeLocation || "-"}</td>
                             <td style={{ padding: "12px 16px" }}>{m.managerCode || "-"}</td>

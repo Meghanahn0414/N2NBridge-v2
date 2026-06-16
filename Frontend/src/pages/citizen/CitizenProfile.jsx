@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaEdit, FaCamera } from 'react-icons/fa';
 import { getCitizenProfile, updateCitizenProfile, uploadCitizenProfilePhoto } from '../../shared/services/citizenService';
 import { getWards } from '../../features/constituencies/constituencyService';
+import PhoneInput from '../../components/PhoneInput';
+import { formatPhoneDisplay, sanitizePhoneInput } from '../../utils/phoneUtils';
 
 export default function CitizenProfile() {
   const navigate = useNavigate();
@@ -290,14 +292,16 @@ export default function CitizenProfile() {
                     </div>
                   </label>
                   {isEditing ? (
-                    <input
-                      type="tel"
+                    <PhoneInput
                       value={formData.mobile}
-                      onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                      className="w-full rounded-lg border border-slate-200 px-4 py-2 focus:border-blue-600 focus:outline-none"
+                      onChange={(name, value) => setFormData({ ...formData, [name]: sanitizePhoneInput(value) })}
+                      name="mobile"
+                      placeholder="Enter mobile number"
+                      className="profile-edit-phone-input"
+                      maxLength={10}
                     />
                   ) : (
-                    <p className="text-slate-600">{profile?.mobile}</p>
+                    <p className="text-slate-600">{formatPhoneDisplay(profile?.mobile)}</p>
                   )}
                 </div>
 

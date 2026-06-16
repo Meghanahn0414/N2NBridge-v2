@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../../shared/services/api";
 import "./NewMLA.css";
 import PageHeader from "../../components/PageHeader";
+import { formatPhoneDisplay } from "../../utils/phoneUtils";
 
 export default function FieldOfficerList() {
   const [fieldOfficers, setFieldOfficers] = useState([]);
@@ -62,7 +63,7 @@ export default function FieldOfficerList() {
                           <tr key={officer._id || officer.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                             <td style={{ padding: "12px 16px" }}>{officer.fullName || officer.name || "-"}</td>
                             <td style={{ padding: "12px 16px" }}>{officer.email || "-"}</td>
-                            <td style={{ padding: "12px 16px" }}>{officer.mobile || "-"}</td>
+                            <td style={{ padding: "12px 16px" }}>{formatPhoneDisplay(officer.mobile) || "-"}</td>
                             <td style={{ padding: "12px 16px" }}>{officer.assignedArea || "-"}</td>
                             <td style={{ padding: "12px 16px" }}>{officer.fieldOfficerId || "-"}</td>
                             <td style={{ padding: "12px 16px" }}>{officer.role || "Field Officer"}</td>

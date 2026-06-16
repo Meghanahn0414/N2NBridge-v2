@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../../shared/services/api';
 import './NewMLA.css';
 import PageHeader from "../../components/PageHeader";
+import { formatPhoneDisplay } from "../../utils/phoneUtils";
 
 export default function AdminUsers(){
   const [users, setUsers] = useState([]);
@@ -39,7 +40,7 @@ export default function AdminUsers(){
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ fontWeight: 700 }}>{u.fullName || u.name}</div>
-                      <div style={{ color: '#666' }}>{u.email} · {u.mobile} · {u.role}</div>
+                      <div style={{ color: '#666' }}>{u.email} · {formatPhoneDisplay(u.mobile)} · {u.role}</div>
                     </div>
                   </div>
                 </li>

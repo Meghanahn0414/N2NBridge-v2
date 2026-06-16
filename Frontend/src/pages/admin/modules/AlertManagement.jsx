@@ -68,6 +68,20 @@ export default function AlertManagement() {
     console.log('Marking alert as resolved:', alertId);
   };
 
+  const formatLocation = (location) => {
+    if (!location || typeof location !== 'object') return location || '-';
+    if (Array.isArray(location.coordinates) && location.coordinates.length >= 2) {
+      const [lng, lat] = location.coordinates;
+      return `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`;
+    }
+    return typeof location.name === 'string' ? location.name : '-';
+  };
+
+  const formatText = (value, fallback = '-') => {
+    if (value === null || value === undefined || value === '') return fallback;
+    return typeof value === 'string' ? value : String(value);
+  };
+
   return (
     <div>
       <PageHeader subtitle="Monitor and manage emergency alerts in real-time" />
@@ -137,17 +151,17 @@ export default function AlertManagement() {
             <tbody>
               {alerts.map(alert => (
                 <tr key={alert._id || alert.id}>
-                  <td>{alert.type || 'Emergency'}</td>
+                  <td>{formatText(alert.type || alert.alertType, 'Emergency')}</td>
+                  <td>{formatLocation(alert.location)}</td>
                   <td>
-                    {typeof alert.location === 'object' && alert.location?.coordinates 
-                      ? `${alert.location.coordinates[1]}, ${alert.location.coordinates[0]}` 
-                      : (alert.location || '-')}
+                    <span className="priority-badge" style={{ color: String(alert.priority || '').toLowerCase() }}>
+                      {formatText(alert.priority, 'LOW')}
+                    </span>
                   </td>
-                  <td><span className="priority-badge" style={{color: alert.priority?.toLowerCase()}}>{alert.priority}</span></td>
-                  <td>{alert.reporter || 'System'}</td>
-                  <td>{alert.assignedTeam || 'Unassigned'}</td>
-                  <td><span className="status-badge">{alert.status}</span></td>
-                  <td>{alert.createdDate ? new Date(alert.createdDate).toLocaleDateString() : '-'}</td>
+                  <td>{formatText(alert.reporter || alert.citizenId, 'System')}</td>
+                  <td>{formatText(alert.assignedTeam || alert.assignedTo, 'Unassigned')}</td>
+                  <td><span className="status-badge">{formatText(alert.status, 'OPEN')}</span></td>
+                  <td>{alert.createdAt ? new Date(alert.createdAt).toLocaleDateString() : (alert.createdDate ? new Date(alert.createdDate).toLocaleDateString() : '-')}</td>
                   <td>
                     <button onClick={() => handleAssignTeam(alert._id || alert.id)}>👥</button>
                     <button onClick={() => handleMarkResolved(alert._id || alert.id)}>✓</button>

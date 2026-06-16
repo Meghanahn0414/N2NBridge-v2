@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import api from "../../shared/services/api";
 import { getCountries } from "../../shared/services/lookupService";
 import "./NewMLA.css";
+import PhoneInput from "../../components/PhoneInput";
+import { normalizePhone, sanitizePhoneInput } from "../../utils/phoneUtils";
 
 export default function NewMLA() {
   const [formData, setFormData] = useState({
@@ -75,16 +77,6 @@ export default function NewMLA() {
     opt.dialCode.includes(countrySearch)
   );
 
-  const normalizePhone = (value) => {
-    const raw = value.trim().replace(/\s+/g, "");
-    if (!raw) return "";
-    if (raw.startsWith("+")) {
-      return raw;
-    }
-    const digits = raw.replace(/^0+/, "");
-    return `${country.dialCode}${digits}`;
-  };
-
   const validateForm = () => {
     if (
       !formData.fullName.trim() ||
@@ -116,6 +108,13 @@ export default function NewMLA() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const handlePhoneChange = (name, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: sanitizePhoneInput(value),
     }));
   };
 
@@ -296,57 +295,17 @@ export default function NewMLA() {
           </div>
 
           {/* Phone Number */}
-          <div className="new-mla-group" ref={countryDropdownRef}>
+          <div className="new-mla-group">
             <label className="new-mla-label">Phone Number *</label>
-            <div className="new-mla-phone-field">
-              <button
-                type="button"
-                className="new-mla-country-button"
-                onClick={() => setShowCountryDropdown((prev) => !prev)}
-              >
-                <span className="new-mla-country-flag">{country.flag}</span>
-                <span className="new-mla-country-code">{country.dialCode}</span>
-                <span className="new-mla-country-arrow">▾</span>
-              </button>
-              <input
-                type="tel"
-                name="mobile"
-                value={formData.mobile}
-                onChange={handleInputChange}
-                placeholder="Enter phone number"
-                className="new-mla-input new-mla-input--phone"
-                required
-              />
-              {showCountryDropdown && (
-                <div className="new-mla-country-dropdown">
-                  <input
-                    type="text"
-                    placeholder="Search country..."
-                    value={countrySearch}
-                    onChange={(e) => setCountrySearch(e.target.value)}
-                    className="new-mla-country-search"
-                    autoFocus
-                  />
-                  <div className="new-mla-country-list">
-                    {countryOptions.map((opt) => (
-                      <div
-                        key={opt.label}
-                        className="new-mla-country-item"
-                        onClick={() => {
-                          setCountry(opt);
-                          setShowCountryDropdown(false);
-                          setCountrySearch("");
-                        }}
-                      >
-                        <span className="new-mla-country-flag">{opt.flag}</span>
-                        <span>{opt.label}</span>
-                        <span className="new-mla-country-dial">{opt.dialCode}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <PhoneInput
+              value={formData.mobile}
+              onChange={handlePhoneChange}
+              name="mobile"
+              placeholder="Enter 10 digit phone number"
+              className="new-mla-phone-shell"
+              inputClassName="new-mla-phone-input"
+              maxLength={10}
+            />
           </div>
 
           {/* Constituency */}

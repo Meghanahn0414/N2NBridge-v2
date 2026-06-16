@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { updateCitizenProfile } from "../../shared/services/citizenService";
+import PhoneInput from "../../components/PhoneInput";
+import { sanitizePhoneInput } from "../../utils/phoneUtils";
 import "./profile-creation.css";
 
 export default function ProfileCreation() {
@@ -20,6 +22,13 @@ export default function ProfileCreation() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const handlePhoneChange = (name, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: sanitizePhoneInput(value),
     }));
   };
 
@@ -122,15 +131,14 @@ export default function ProfileCreation() {
         return (
           <div className="form-step">
             <h2>Mobile number</h2>
-            <input
-              type="tel"
-              name="mobile"
+            <PhoneInput
               value={formData.mobile}
-              onChange={handleChange}
+              onChange={handlePhoneChange}
+              name="mobile"
               placeholder="10 digit mobile"
-              className="step-input"
-              maxLength="10"
-              autoFocus
+              className="profile-phone-input"
+              inputClassName="profile-phone-field"
+              maxLength={10}
             />
           </div>
         );
