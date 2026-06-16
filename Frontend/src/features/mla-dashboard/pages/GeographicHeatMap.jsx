@@ -7,6 +7,23 @@ import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import { getGrievanceCategories } from '../../../shared/services/lookupService';
 import PageHeader from '../../../components/PageHeader';
 
+function normalizeWardLabel(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'object') {
+    if (typeof value.label === 'string' && value.label.trim()) return value.label.trim();
+    if (typeof value.address === 'string' && value.address.trim()) return value.address.trim();
+    if (Array.isArray(value.coordinates) && value.coordinates.length >= 2) {
+      const [lng, lat] = value.coordinates;
+      if (Number.isFinite(lng) && Number.isFinite(lat)) {
+        return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      }
+    }
+    return '';
+  }
+  return String(value).trim();
+}
+
 export default function GeographicHeatMap() {
   const navigate = useNavigate();
   const [selectedWard, setSelectedWard] = useState('all');
@@ -31,18 +48,17 @@ export default function GeographicHeatMap() {
 
   useEffect(() => {
     const wardNames = [
-      ...(dashboard?.recentComplaints || []).map((complaint) => complaint.wardId || complaint.location),
-      ...(dashboard?.recentAlerts || []).map((alert) => alert.wardId || alert.location),
+      ...(dashboard?.recentComplaints || []).map((complaint) => normalizeWardLabel(complaint.wardId || complaint.location)),
+      ...(dashboard?.recentAlerts || []).map((alert) => normalizeWardLabel(alert.wardId || alert.location)),
     ]
       .filter(Boolean)
-      .map((name) => name.trim())
       .filter((name, index, self) => self.indexOf(name) === index);
 
     setAvailableWards(wardNames);
   }, [dashboard]);
 
   const filteredComplaints = (dashboard?.recentComplaints || []).filter((complaint) => {
-    const wardName = complaint.wardId || complaint.location || '';
+    const wardName = normalizeWardLabel(complaint.wardId || complaint.location);
     const matchesWard = selectedWard === 'all' || wardName === selectedWard;
     const matchesCategory = selectedCategory === 'all' || complaint.categoryId?.toLowerCase().includes(selectedCategory.toLowerCase());
     return matchesWard && matchesCategory;
@@ -50,8 +66,7 @@ export default function GeographicHeatMap() {
 
   const wardMap = new Map();
   filteredComplaints.forEach((complaint) => {
-    const name = complaint.wardId || complaint.location || 'Unnamed Ward';
-    const normalized = name.trim();
+    const normalized = normalizeWardLabel(complaint.wardId || complaint.location) || 'Unnamed Ward';
     const existing = wardMap.get(normalized) || {
       id: normalized,
       name: normalized,

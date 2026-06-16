@@ -1,18 +1,19 @@
 """
 Application Settings and Configuration
 """
-from typing import Optional
 import os
+from typing import Optional
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings"""
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
     
     # MongoDB
-    MONGODB_URL: str = "mongodb://localhost:27017"
-    MONGODB_DB: str = "crm_database"
+    MONGODB_URL: str = os.getenv("MONGODB_URL", os.getenv("MONGODB_URI", "mongodb://localhost:27017"))
+    MONGODB_DB: str = os.getenv("MONGODB_DB", "crm_database")
     
     # JWT
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
@@ -39,6 +40,9 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5174",
         "http://localhost:5175",
         "http://127.0.0.1:5175",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://192.168.1.10:3000",
         "http://10.62.179.92:3000",
     ]
     
@@ -55,11 +59,8 @@ class Settings(BaseSettings):
     # SMS Service
     SMS_API_KEY: Optional[str] = None
     SMS_PROVIDER: Optional[str] = None
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
 
 
 # Create settings instance that loads from .env
+settings = Settings()
 settings = Settings()

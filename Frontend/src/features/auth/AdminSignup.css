@@ -33,7 +33,7 @@
   flex-shrink: 0;
 }
 
-..signup-card__badge {
+.signup-card__badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;

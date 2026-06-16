@@ -5,8 +5,7 @@ import logging
 from typing import Optional
 
 from auth.service import AuthService
-from emergency.model import (EmergencySOSCreate, EmergencySOSResponse,
-                             EmergencySOSUpdate)
+from emergency.model import (EmergencySOSCreate)
 from emergency.service import EmergencySOSService
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from utils.helper import Helper

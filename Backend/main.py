@@ -130,10 +130,6 @@ async def log_requests(request: Request, call_next):
     
     return response
 
-
-
-
-
 # Root endpoint
 @app.get("/", tags=["Root"])
 async def root():
