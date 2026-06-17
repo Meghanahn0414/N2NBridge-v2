@@ -16,44 +16,75 @@ import axios from "axios";
 import { API_BASE } from "../config";
 import { useAuthStore } from "../store/authStore";
 
+type LoginMethod = "phone" | "email";
+type Step = "input" | "otp";
+
 export default function LoginScreen() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+
+  const [method, setMethod] = useState<LoginMethod>("phone");
+  const [value, setValue] = useState("");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState<Step>("input");
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin() {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter email and password");
+  async function handleSendOtp() {
+    if (!value.trim()) {
+      Alert.alert("Error", method === "phone" ? "Enter your phone number" : "Enter your email");
       return;
     }
     setLoading(true);
     try {
-      const form = new URLSearchParams();
-      form.append("username", email.trim());
-      form.append("password", password.trim());
+      await axios.post(`${API_BASE}/api/auth/send-otp`, {
+        type: method,
+        value: value.trim(),
+      });
+      setStep("otp");
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail ?? "Failed to send OTP. Try again.";
+      Alert.alert("Error", String(msg));
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      const { data } = await axios.post(`${API_BASE}/api/auth/login`, form.toString(), {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  async function handleVerifyOtp() {
+    if (!otp.trim()) {
+      Alert.alert("Error", "Enter the OTP");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data } = await axios.post(`${API_BASE}/api/auth/verify-otp`, {
+        value: value.trim(),
+        otp: otp.trim(),
       });
 
       const u = data.user;
-      setAuth(data.access_token, {
+      setAuth(data.token, {
         id: u._id || u.id,
-        name: u.name || u.full_name || u.email,
+        name: u.fullName || u.name || u.full_name || u.email,
         email: u.email,
         role: u.role,
       });
 
       if (u.role === "CITIZEN") {
         router.replace("/citizen/" as any);
+      } else if (u.role === "ADMIN") {
+        router.replace("/admin/" as any);
+      } else if (u.role === "REPRESENTATIVE") {
+        router.replace("/mla/" as any);
+      } else if (u.role === "FIELD_OFFICER") {
+        router.replace("/field/" as any);
+      } else if (u.role === "CONSTITUENCY_MANAGER") {
+        router.replace("/manager/" as any);
       } else {
-        Alert.alert("Info", "Admin portal is on the web app. Citizen login only on mobile.");
+        router.replace("/citizen/" as any);
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.detail ?? "Login failed. Check your credentials.";
-      Alert.alert("Login Failed", String(msg));
+      const msg = err?.response?.data?.detail ?? "Invalid or expired OTP.";
+      Alert.alert("Verification Failed", String(msg));
     } finally {
       setLoading(false);
     }
@@ -65,45 +96,99 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoText}>JS</Text>
-        </View>
-        <Text style={styles.title}>Jan Seva CRM</Text>
-        <Text style={styles.subtitle}>Citizen Portal — Sign in</Text>
+        <Text style={styles.title}>Citizen Login</Text>
+        <Text style={styles.subtitle}>Enter OTP to Access</Text>
 
         <View style={styles.card}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="you@example.com"
-            placeholderTextColor="#9CA3AF"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
+          {/* Login Method Toggle */}
+          <Text style={styles.sectionLabel}>LOGIN METHOD</Text>
+          <View style={styles.toggleRow}>
+            <TouchableOpacity
+              style={styles.radioOption}
+              onPress={() => { setMethod("phone"); setValue(""); setStep("input"); setOtp(""); }}
+            >
+              <View style={styles.radioOuter}>
+                {method === "phone" && <View style={styles.radioInner} />}
+              </View>
+              <Text style={styles.radioLabel}>Phone</Text>
+            </TouchableOpacity>
 
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            placeholderTextColor="#9CA3AF"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+            <TouchableOpacity
+              style={styles.radioOption}
+              onPress={() => { setMethod("email"); setValue(""); setStep("input"); setOtp(""); }}
+            >
+              <View style={styles.radioOuter}>
+                {method === "email" && <View style={styles.radioInner} />}
+              </View>
+              <Text style={styles.radioLabel}>Email</Text>
+            </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
+          {/* Input Field */}
+          {step === "input" && (
+            <>
+              <Text style={styles.label}>
+                {method === "phone" ? "PHONE NUMBER" : "EMAIL ADDRESS"}
+                <Text style={styles.required}> *</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder={method === "phone" ? "+91 98765 43210" : "you@example.com"}
+                placeholderTextColor="#9CA3AF"
+                keyboardType={method === "phone" ? "phone-pad" : "email-address"}
+                autoCapitalize="none"
+                value={value}
+                onChangeText={setValue}
+              />
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleSendOtp}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>SEND OTP</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* OTP Input */}
+          {step === "otp" && (
+            <>
+              <Text style={styles.sentMsg}>
+                OTP sent to{" "}
+                <Text style={{ fontWeight: "700" }}>{value}</Text>
+              </Text>
+              <Text style={styles.label}>
+                ENTER OTP <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={[styles.input, styles.otpInput]}
+                placeholder="------"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="number-pad"
+                maxLength={6}
+                value={otp}
+                onChangeText={setOtp}
+              />
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleVerifyOtp}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>VERIFY OTP</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.resendBtn} onPress={() => { setStep("input"); setOtp(""); }}>
+                <Text style={styles.resendText}>← Change {method === "phone" ? "number" : "email"}</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -111,30 +196,39 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: "#EFF6FF" },
+  wrapper: { flex: 1, backgroundColor: "#F0F9FF" },
   scroll: { flexGrow: 1, justifyContent: "center", padding: 24 },
-  logoCircle: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: "#1D4ED8", alignSelf: "center",
-    alignItems: "center", justifyContent: "center", marginBottom: 14,
-  },
-  logoText: { color: "#fff", fontSize: 24, fontWeight: "700" },
-  title: { fontSize: 24, fontWeight: "700", color: "#1E3A8A", textAlign: "center" },
-  subtitle: { fontSize: 14, color: "#6B7280", textAlign: "center", marginBottom: 28, marginTop: 4 },
+  title: { fontSize: 26, fontWeight: "700", color: "#0F172A", textAlign: "center" },
+  subtitle: { fontSize: 14, color: "#64748B", textAlign: "center", marginBottom: 28, marginTop: 4 },
   card: {
     backgroundColor: "#fff", borderRadius: 16, padding: 24,
     shadowColor: "#000", shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
   },
-  label: { fontSize: 13, fontWeight: "600", color: "#374151", marginBottom: 6 },
-  input: {
-    borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15,
-    color: "#111827", marginBottom: 16, backgroundColor: "#F9FAFB",
+  sectionLabel: { fontSize: 11, fontWeight: "700", color: "#64748B", letterSpacing: 1, marginBottom: 10 },
+  toggleRow: { flexDirection: "row", gap: 24, marginBottom: 20 },
+  radioOption: { flexDirection: "row", alignItems: "center", gap: 8 },
+  radioOuter: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: "#06B6D4",
+    alignItems: "center", justifyContent: "center",
   },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#06B6D4" },
+  radioLabel: { fontSize: 15, color: "#0F172A", fontWeight: "500" },
+  label: { fontSize: 11, fontWeight: "700", color: "#64748B", letterSpacing: 1, marginBottom: 8 },
+  required: { color: "#EF4444" },
+  input: {
+    borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 13, fontSize: 15,
+    color: "#0F172A", marginBottom: 16, backgroundColor: "#F8FAFC",
+  },
+  otpInput: { textAlign: "center", fontSize: 22, letterSpacing: 8, fontWeight: "700" },
   button: {
-    backgroundColor: "#1D4ED8", borderRadius: 10,
-    paddingVertical: 14, alignItems: "center", marginTop: 4,
+    backgroundColor: "#06B6D4", borderRadius: 10,
+    paddingVertical: 15, alignItems: "center",
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  buttonText: { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 1 },
+  sentMsg: { fontSize: 13, color: "#475569", textAlign: "center", marginBottom: 16 },
+  resendBtn: { marginTop: 14, alignItems: "center" },
+  resendText: { color: "#06B6D4", fontSize: 14, fontWeight: "600" },
 });
