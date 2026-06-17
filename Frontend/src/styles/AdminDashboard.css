@@ -35,12 +35,15 @@
 /* ══ DESKTOP HEADER BAR ══ */
 .adm-desk-header {
   background: var(--ad-header);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 16px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  margin-left: -16px;
+  margin-right: -16px;
+  margin-top: 0;
   box-shadow: 0 4px 20px rgba(21, 94, 94, 0.25);
 }
 

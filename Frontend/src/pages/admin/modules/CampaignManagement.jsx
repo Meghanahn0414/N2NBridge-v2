@@ -144,66 +144,95 @@ export default function CampaignManagement() {
         </div>
 
         {/* List */}
-        <div className="campaigns-list">
+        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(15,23,42,0.08)', overflow: 'hidden', marginTop: 8 }}>
+          {/* Card header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid #e8edf3' }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>All Campaigns</h3>
+            {!loading && !error && (
+              <span style={{ background: '#eff6ff', color: '#3b82f6', borderRadius: 20, fontSize: 12, fontWeight: 700, padding: '3px 12px' }}>
+                {filtered.length} total
+              </span>
+            )}
+          </div>
+
           {loading ? (
-            <div className="loading-state">Loading campaigns...</div>
+            <div style={{ textAlign: 'center', padding: '48px 0', color: '#64748b', fontSize: 14 }}>Loading campaigns...</div>
           ) : error ? (
-            <div className="error-state">{error}</div>
+            <div style={{ margin: 24, padding: '12px 16px', background: '#fef2f2', color: '#b91c1c', borderRadius: 10, fontSize: 13 }}>{error}</div>
           ) : filtered.length === 0 ? (
-            <div className="empty-state">
-              <p>📭 {search ? 'No campaigns match your search.' : 'No campaigns created. Click "Launch Campaign" to get started.'}</p>
+            <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8', fontSize: 14 }}>
+              📭 {search ? 'No campaigns match your search.' : 'No campaigns yet. Click "+ Launch Campaign" to get started.'}
             </div>
           ) : (
-            <table className="data-table">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th>Campaign Name</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Channels</th>
-                  <th>Start Date</th>
-                  <th>Actions</th>
+                  {['#', 'Campaign Name', 'Type', 'Status', 'Channels', 'Start Date', 'Reach', 'Actions'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '10px 16px', background: '#f8fafc', borderBottom: '1px solid #e8edf3' }}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(c => {
+                {filtered.map((c, i) => {
                   const sc = STATUS_COLORS[c.status] || STATUS_COLORS.DRAFT;
+                  const id = c._id || c.id;
+                  const typeColors = {
+                    Awareness: '#3b82f6', Health: '#22c55e', Infrastructure: '#f59e0b',
+                    Education: '#8b5cf6', Welfare: '#ec4899', Other: '#64748b',
+                  };
+                  const typeColor = typeColors[c.type] || '#64748b';
                   return (
-                    <tr key={c._id || c.id}>
-                      <td style={{ fontWeight: 600 }}>{c.name}</td>
-                      <td>{c.type || 'Awareness'}</td>
-                      <td>
-                        <span style={{ background: sc.bg, color: sc.color, borderRadius: 20, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                    <tr key={id} style={{ background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                      <td style={{ padding: '13px 16px', fontSize: 13, color: '#94a3b8', fontWeight: 600, width: 40 }}>{i + 1}</td>
+                      <td style={{ padding: '13px 16px', fontSize: 13 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${typeColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                            📢
+                          </div>
+                          <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{c.name}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '13px 16px', fontSize: 13 }}>
+                        <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: `${typeColor}15`, color: typeColor }}>
+                          {c.type || 'Awareness'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '13px 16px', fontSize: 13 }}>
+                        <span style={{ background: sc.bg, color: sc.color, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
                           {c.status}
                         </span>
                       </td>
-                      <td style={{ fontSize: 12, color: '#64748b' }}>
-                        {(c.channels || []).join(', ') || '—'}
+                      <td style={{ padding: '13px 16px', fontSize: 12, color: '#64748b' }}>
+                        {(c.channels || []).length > 0
+                          ? (c.channels || []).map(ch => (
+                            <span key={ch} style={{ display: 'inline-block', background: '#f1f5f9', color: '#475569', borderRadius: 4, padding: '2px 6px', fontSize: 11, marginRight: 4, marginBottom: 2 }}>{ch}</span>
+                          ))
+                          : <span style={{ color: '#cbd5e1' }}>—</span>}
                       </td>
-                      <td>{c.startDate ? new Date(c.startDate).toLocaleDateString() : '—'}</td>
-                      <td style={{ display: 'flex', gap: 6 }}>
-                        {c.status === 'DRAFT' && (
-                          <button
-                            onClick={() => handleLaunch(c._id || c.id)}
-                            style={{ padding: '4px 10px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-                          >
-                            Launch
+                      <td style={{ padding: '13px 16px', fontSize: 13, color: '#334155' }}>
+                        {c.startDate ? new Date(c.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '13px 16px', fontSize: 13, color: '#334155', fontWeight: 600 }}>
+                        {(c.reach || 0).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '13px 16px' }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {c.status === 'DRAFT' && (
+                            <button onClick={() => handleLaunch(id)} style={{ padding: '5px 12px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                              Launch
+                            </button>
+                          )}
+                          {c.status === 'ACTIVE' && (c.channels || []).includes('Push Notification') && (
+                            <button onClick={() => handleNotify(id, c.name)} style={{ padding: '5px 12px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                              🔔 Notify
+                            </button>
+                          )}
+                          <button onClick={() => handleDelete(id)} style={{ padding: '5px 12px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                            Delete
                           </button>
-                        )}
-                        {c.status === 'ACTIVE' && (c.channels || []).includes('Push Notification') && (
-                          <button
-                            onClick={() => handleNotify(c._id || c.id, c.name)}
-                            style={{ padding: '4px 10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-                          >
-                            🔔 Notify
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(c._id || c.id)}
-                          style={{ padding: '4px 10px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-                        >
-                          Delete
-                        </button>
+                        </div>
                       </td>
                     </tr>
                   );

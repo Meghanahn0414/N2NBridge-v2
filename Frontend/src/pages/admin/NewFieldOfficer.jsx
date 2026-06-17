@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../shared/services/api';
 import { ROUTES } from '../../app/routes/RouteConstants';
+import { normalizePhone } from '../../utils/phoneUtils';
 import "./NewMLA.css";
 
 export default function NewFieldOfficer() {
@@ -19,7 +20,7 @@ export default function NewFieldOfficer() {
       await api.post('/api/auth/register', {
         fullName: name,
         email,
-        mobile,
+        mobile: normalizePhone(mobile),
         role: 'FIELD_OFFICER',
         password: 'ChangeMe123',
       });

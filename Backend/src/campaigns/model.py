@@ -1,7 +1,7 @@
 """
 Campaign Model and Schemas
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -73,6 +73,13 @@ class CampaignResponse(BaseModel):
     roi: float = 0
     createdAt: datetime
     updatedAt: datetime
+
+    @field_validator('startDate', mode='before')
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if v == '' or v is None:
+            return None
+        return v
 
     class Config:
         populate_by_name = True

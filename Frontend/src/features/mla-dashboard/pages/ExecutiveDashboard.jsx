@@ -183,14 +183,14 @@ export default function ExecutiveDashboard() {
       {/* KPI Cards */}
       <div className="rep-kpi-row">
         <div className="rep-kpi rep-kpi--blue">
-          <div className="rep-kpi-label">TOTAL</div>
+          <div className="rep-kpi-label">TOTAL COMPLAINTS</div>
           <div className="rep-kpi-value">{totalComplaints || '—'}</div>
           {weeklyNew > 0 && (
             <div className="rep-kpi-sub rep-kpi-sub--blue">&#8593; {weeklyNew} this week</div>
           )}
         </div>
         <div className="rep-kpi rep-kpi--orange">
-          <div className="rep-kpi-label">OPEN</div>
+          <div className="rep-kpi-label">OPEN COMPLAINTS</div>
           <div className="rep-kpi-value rep-kpi-value--orange">{openComplaints || '—'}</div>
           {escalated > 0 && (
             <div className="rep-kpi-sub rep-kpi-sub--orange">&#8593; {escalated} escalated</div>
@@ -395,21 +395,12 @@ export default function ExecutiveDashboard() {
                         <span className={`rep-priority ${priorityClass}`}>{priority}</span>
                       </td>
                       <td>
-                        {isUnassigned ? (
-                          <button
-                            className="rep-btn-assign"
-                            onClick={() => navigate(ROUTES.mlaComplaintsDashboard)}
-                          >
-                            Assign
-                          </button>
-                        ) : (
-                          <button
-                            className="rep-btn-view"
-                            onClick={() => navigate(ROUTES.mlaComplaintsDashboard)}
-                          >
-                            View
-                          </button>
-                        )}
+                        <button
+                          className="rep-btn-view"
+                          onClick={() => navigate(ROUTES.mlaComplaintsDashboard)}
+                        >
+                          View
+                        </button>
                       </td>
                     </tr>
                   );

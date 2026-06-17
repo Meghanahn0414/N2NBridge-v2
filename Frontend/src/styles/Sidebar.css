@@ -139,6 +139,12 @@
   gap: 6px;
   margin-top: 2px;
   flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.sidebar-menu::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar-item {

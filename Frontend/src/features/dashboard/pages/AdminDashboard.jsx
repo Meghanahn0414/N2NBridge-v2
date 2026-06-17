@@ -201,8 +201,9 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="admin-dashboard-container">
+    <>
       <PageHeader subtitle="Platform administration and oversight" />
+      <div className="admin-dashboard-container">
       {loading && <div className="loading-message">Loading dashboard...</div>}
       {error && <div className="error-message">{error}</div>}
 
@@ -580,5 +581,6 @@ export default function AdminDashboard() {
 
 
     </div>
+    </>
   );
 }

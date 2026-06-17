@@ -35,12 +35,12 @@ export default function CitizenDashboardNew() {
 
   const loadStats = async () => {
     try {
-      const s = await complaintService.getComplaintStats();
-      const by = s.byStatus || {};
+      const r = await complaintService.getMyComplaints(1, 200);
+      const complaints = r.complaints || [];
       setStats({
-        open:       (by.NEW || s.open || 0),
-        inProgress: (by.IN_PROGRESS || 0) + (by.ASSIGNED || s.assigned || 0) + (by.ON_HOLD || 0),
-        resolved:   (by.RESOLVED || s.resolved || 0) + (by.CLOSED || s.closed || 0),
+        open:       complaints.filter(c => ['NEW', 'OPEN'].includes(c.status)).length,
+        inProgress: complaints.filter(c => ['IN_PROGRESS', 'ASSIGNED', 'ON_HOLD'].includes(c.status)).length,
+        resolved:   complaints.filter(c => ['RESOLVED', 'CLOSED'].includes(c.status)).length,
       });
     } catch { setStats({ open: 0, inProgress: 0, resolved: 0 }); }
   };

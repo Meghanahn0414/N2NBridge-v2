@@ -2,6 +2,13 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthUser, clearAuth, getAuthRole } from "../services/authStorage";
 
+const SAMPLE_NOTIFICATIONS = [
+  { id: 1, icon: "📋", text: "New complaint submitted by Suman", time: "2 min ago", unread: true },
+  { id: 2, icon: "✅", text: "Complaint G-002 resolved by field officer", time: "1 hr ago", unread: true },
+  { id: 3, icon: "📢", text: "Campaign 'Clean Drive' starts tomorrow", time: "3 hr ago", unread: false },
+  { id: 4, icon: "⚠️", text: "High-priority complaint assigned to Ward 8", time: "Yesterday", unread: false },
+];
+
 export default function PageHeader({ title, subtitle }) {
   const user = getAuthUser();
   const name = user?.fullName || user?.name || "User";
@@ -13,19 +20,28 @@ export default function PageHeader({ title, subtitle }) {
   });
 
   const [showLogout, setShowLogout] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState(SAMPLE_NOTIFICATIONS);
+  const notifRef = useRef(null);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const role = getAuthRole();
+  const unreadCount = notifications.filter(n => n.unread).length;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowLogout(false);
       }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
 
   const handleLogout = () => {
     clearAuth();
@@ -69,7 +85,99 @@ export default function PageHeader({ title, subtitle }) {
         </div>
       </div>
 
-      {/* Right: avatar + logout trigger */}
+      {/* Right: notifications + avatar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, position: "relative", zIndex: 10 }}>
+
+      {/* Notification Bell */}
+      <div style={{ position: "relative" }} ref={notifRef}>
+        <button
+          onClick={() => { setShowNotifications(s => !s); setShowLogout(false); }}
+          style={{
+            width: 40, height: 40, borderRadius: "50%",
+            background: "rgba(255,255,255,0.12)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "18px", transition: "background 0.15s", position: "relative",
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.22)"}
+          onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
+          title="Notifications"
+        >
+          🔔
+          {unreadCount > 0 && (
+            <span style={{
+              position: "absolute", top: 4, right: 4,
+              width: 16, height: 16, borderRadius: "50%",
+              background: "#ef4444", color: "#fff",
+              fontSize: "9px", fontWeight: 700,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: "2px solid #1a5290",
+            }}>
+              {unreadCount}
+            </span>
+          )}
+        </button>
+
+        {showNotifications && (
+          <div style={{
+            position: "absolute", top: "calc(100% + 12px)", right: 0,
+            width: 320, background: "#fff", borderRadius: 16,
+            boxShadow: "0 16px 48px rgba(15,23,42,0.18)", overflow: "hidden", zIndex: 999,
+          }}>
+            {/* Header */}
+            <div style={{
+              background: "linear-gradient(135deg, #2E63B6, #2FB1D4)",
+              padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <span style={{ color: "#fff", fontWeight: 700, fontSize: "14px" }}>Notifications</span>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllRead}
+                  style={{ background: "none", border: "none", color: "rgba(255,255,255,0.85)", fontSize: "11px", cursor: "pointer", fontWeight: 600 }}
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+
+            {/* List */}
+            <div style={{ maxHeight: 300, overflowY: "auto" }}>
+              {notifications.map((n, i) => (
+                <div
+                  key={n.id}
+                  onClick={() => setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, unread: false } : x))}
+                  style={{
+                    display: "flex", gap: 12, padding: "12px 18px",
+                    borderBottom: i < notifications.length - 1 ? "1px solid #f1f5f9" : "none",
+                    background: n.unread ? "#eff6ff" : "#fff",
+                    cursor: "pointer", transition: "background 0.1s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#f0f9ff"}
+                  onMouseLeave={e => e.currentTarget.style.background = n.unread ? "#eff6ff" : "#fff"}
+                >
+                  <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{n.icon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: "12px", color: "#0f172a", fontWeight: n.unread ? 600 : 400, lineHeight: 1.4 }}>{n.text}</p>
+                    <p style={{ margin: "3px 0 0", fontSize: "10px", color: "#94a3b8" }}>{n.time}</p>
+                  </div>
+                  {n.unread && (
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, marginTop: 6 }} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "10px 18px", borderTop: "1px solid #f1f5f9", textAlign: "center" }}>
+              <span style={{ fontSize: "12px", color: "#64748b" }}>
+                {unreadCount === 0 ? "You're all caught up!" : `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Avatar + logout trigger */}
       <div style={{ position: "relative", zIndex: 10 }} ref={dropdownRef}>
         <button
           onClick={() => setShowLogout(s => !s)}
@@ -159,6 +267,8 @@ export default function PageHeader({ title, subtitle }) {
           </div>
         )}
       </div>
+
+      </div>{/* end right flex wrapper */}
     </div>
   );
 }

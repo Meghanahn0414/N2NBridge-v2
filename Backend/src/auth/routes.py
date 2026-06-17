@@ -155,6 +155,16 @@ async def register(user_data: UserCreate):
     """Register new user (public endpoint)"""
     try:
         logger.info(f"[REGISTER] Received registration request: {user_data.fullName}, {user_data.email}, mobile: {user_data.mobile}, role={user_data.role}")
+
+        # Check duplicates before calling register_user so we can return specific errors
+        from users.service import UserService as US
+        if US.get_user_by_email(user_data.email):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="This email is already registered. Please log in instead.")
+        if US.get_user_by_mobile(user_data.mobile):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="This mobile number is already registered. Please use a different number.")
+
         user_id = AuthService.register_user(user_data.dict(), None)
         if not user_id:
             logger.error("[REGISTER] register_user returned None - likely email or mobile already exists")

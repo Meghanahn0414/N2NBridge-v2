@@ -4,31 +4,30 @@ Security Configuration and Authentication
 from datetime import datetime, timedelta
 from typing import Optional
 import jwt
-from passlib.context import CryptContext
+import bcrypt
 from config.settings import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 class SecurityManager:
     """Handle security operations"""
-    
+
     @staticmethod
     def hash_password(password: str) -> str:
         """Hash password"""
-        return pwd_context.hash(password)
-    
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verify password"""
         try:
-            return pwd_context.verify(plain_password, hashed_password)
+            return bcrypt.checkpw(
+                plain_password.encode("utf-8"),
+                hashed_password.encode("utf-8")
+            )
         except Exception:
-            # Hash is in an unrecognised format (e.g. plain-text or wrong scheme)
             return False
     
     @staticmethod

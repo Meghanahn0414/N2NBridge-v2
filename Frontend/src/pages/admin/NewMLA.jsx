@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../../shared/services/api";
 import { getCountries } from "../../shared/services/lookupService";
+import { normalizePhone as normalizePhoneUtil } from "../../utils/phoneUtils";
 import "./NewMLA.css";
 
 export default function NewMLA() {
@@ -75,15 +76,7 @@ export default function NewMLA() {
     opt.dialCode.includes(countrySearch)
   );
 
-  const normalizePhone = (value) => {
-    const raw = value.trim().replace(/\s+/g, "");
-    if (!raw) return "";
-    if (raw.startsWith("+")) {
-      return raw;
-    }
-    const digits = raw.replace(/^0+/, "");
-    return `${country.dialCode}${digits}`;
-  };
+  const normalizePhone = (value) => normalizePhoneUtil(value, country.dialCode);
 
   const validateForm = () => {
     if (

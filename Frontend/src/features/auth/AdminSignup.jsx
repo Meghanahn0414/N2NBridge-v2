@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerAdmin } from "./authService";
 import api from "../../shared/services/api";
+import { normalizePhone as normalizePhoneUtil } from "../../utils/phoneUtils";
 import "./AdminSignup.css";
 
 const COUNTRY_OPTIONS = [
@@ -25,6 +26,7 @@ export default function AdminSignup() {
   const [countrySearch, setCountrySearch] = useState("");
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [error, setError] = useState("");
+  const [mobileError, setMobileError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   
@@ -52,15 +54,7 @@ export default function AdminSignup() {
     opt.dialCode.includes(countrySearch)
   );
 
-  const normalizePhone = (value) => {
-    const raw = value.trim().replace(/\s+/g, "");
-    if (!raw) return "";
-    if (raw.startsWith("+")) {
-      return raw;
-    }
-    const digits = raw.replace(/^0+/, "");
-    return `${country.dialCode}${digits}`;
-  };
+  const normalizePhone = (value) => normalizePhoneUtil(value, country.dialCode);
 
   const validateForm = () => {
     if (!fullName.trim() || !email.trim() || !mobile.trim() || !password || !confirmPassword) {
@@ -69,9 +63,8 @@ export default function AdminSignup() {
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       return "Please enter a valid email address.";
     }
-    const normalized = normalizePhone(mobile);
-    if (!/^\+?\d{7,15}$/.test(normalized.replace(/\s+/g, ""))) {
-      return "Please enter a valid phone number.";
+    if (mobile.replace(/\D/g, "").length !== 10) {
+      return "Phone number must be exactly 10 digits.";
     }
     if (password.length < 6) {
       return "Password must be at least 6 characters.";
@@ -168,7 +161,12 @@ export default function AdminSignup() {
 
       setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
-      setError(err.message || "Failed to create account. Please try again.");
+      const msg = err.message || "";
+      if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("duplicate") || msg.toLowerCase().includes("registered")) {
+        setError("This email or phone number is already registered. Please log in instead.");
+      } else {
+        setError(msg || "Failed to create account. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -220,11 +218,27 @@ export default function AdminSignup() {
               <input
                 type="tel"
                 value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
-                placeholder="Enter your phone number"
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  setMobile(digits);
+                  if (digits.length > 0 && digits.length < 10) {
+                    setMobileError("Phone number must be 10 digits");
+                  } else if (digits.length === 10) {
+                    setMobileError("");
+                  } else {
+                    setMobileError("");
+                  }
+                }}
+                placeholder="Enter 10-digit number"
+                maxLength={10}
                 className="signup-card__input signup-card__input--phone"
               />
             </div>
+            {mobileError && (
+              <span style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block" }}>
+                {mobileError}
+              </span>
+            )}
             {showCountryDropdown && (
               <div className="signup-card__country-dropdown">
                 <div className="signup-card__country-search">

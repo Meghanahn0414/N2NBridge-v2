@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../shared/services/api";
 import { getUserRoles } from "../../shared/services/lookupService";
 import { ROUTES } from "../../app/routes/RouteConstants";
+import { normalizePhone } from "../../utils/phoneUtils";
 import "./NewMLA.css";
 import PageHeader from "../../components/PageHeader";
 
@@ -47,12 +48,6 @@ export default function RegistrationPage() {
     fetchRoles();
   }, []);
 
-  const normalizePhone = (value) => {
-    const raw = value.trim().replace(/\s+/g, "");
-    if (!raw) return "";
-    if (raw.startsWith("+")) return raw;
-    return raw.startsWith("0") ? `+${raw.replace(/^0+/, "")}` : `+91${raw}`;
-  };
 
   const fetchRoles = async () => {
     try {

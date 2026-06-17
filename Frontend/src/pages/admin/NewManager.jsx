@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../../shared/services/api';
+import { normalizePhone } from '../../utils/phoneUtils';
 import "./NewMLA.css";
 
 export default function NewManager() {
@@ -16,7 +17,7 @@ export default function NewManager() {
       await api.post('/api/auth/register', {
         fullName: name,
         email,
-        mobile,
+        mobile: normalizePhone(mobile),
         role: 'CONSTITUENCY_MANAGER',
         password: 'ChangeMe123',
       });

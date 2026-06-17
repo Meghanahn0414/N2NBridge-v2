@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../shared/services/api';
 import PageHeader from "../../components/PageHeader";
+import { formatPhoneDisplay } from "../../utils/phoneUtils";
 
 const styles = {
   page: { background: '#f1f5f9', minHeight: '100vh', display: 'flex', flexDirection: 'column' },
@@ -115,7 +116,7 @@ export default function CitizenList() {
                           </div>
                         </td>
                         <td style={styles.td}>{u.email || '—'}</td>
-                        <td style={styles.td}>{u.mobile || '—'}</td>
+                        <td style={styles.td}>{formatPhoneDisplay(u.mobile)}</td>
                         <td style={styles.td}>
                           <span style={styles.roleBadge}>{u.role || 'CITIZEN'}</span>
                         </td>
