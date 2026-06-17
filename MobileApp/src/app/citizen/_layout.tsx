@@ -46,6 +46,16 @@ export default function CitizenLayout() {
         }}
       />
       <Tabs.Screen
+        name="emergency"
+        options={{
+          title: "Emergency",
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>🚨</Text>
+          ),
+          tabBarActiveTintColor: "#DC2626",
+        }}
+      />
+      <Tabs.Screen
         name="feedback"
         options={{
           title: "Feedback",

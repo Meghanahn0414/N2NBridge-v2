@@ -26,7 +26,7 @@ export default function Alerts() {
       setLoading(true);
       setError(null);
       
-      const data = await fetchAlerts(1, 1000, filters);
+      const data = await fetchAlerts(1, 100, filters);
       setAlerts(data);
       calculateStats(data);
     } catch (err) {

@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import PageHeader from "../../../components/PageHeader";
 import { fetchEvents, createEvent, updateEvent, deleteEvent, publishEvent } from '../../../features/events/eventService';
+import Pagination from '../../../components/Pagination';
 
+const PAGE_SIZE = 100;
 const EMPTY_FORM = { name: '', description: '', dateTime: '', location: '', capacity: '', eventType: '', wardId: '' };
 
 const toDatetimeLocal = (iso) => {
@@ -17,6 +19,8 @@ export default function EventManagement() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [stats, setStats] = useState({ total: 0, upcoming: 0, registrations: 0, attendance: 0 });
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
   // Create / Edit modal
   const [showModal, setShowModal] = useState(false);
@@ -28,7 +32,7 @@ export default function EventManagement() {
   const [deletingEvent, setDeletingEvent] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => { loadEvents(); }, []);
+  useEffect(() => { loadEvents(page); }, [page]);
 
   // Client-side filter applied on every render
   const events = allEvents.filter(e => {
@@ -41,12 +45,13 @@ export default function EventManagement() {
     return matchesStatus && matchesSearch;
   });
 
-  const loadEvents = async () => {
+  const loadEvents = async (targetPage = page) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchEvents(1, 1000, {});
+      const data = await fetchEvents(targetPage, PAGE_SIZE, {});
       setAllEvents(data);
+      setHasMore(data.length >= PAGE_SIZE);
       calculateStats(data);
     } catch (err) {
       setError(err.message || 'Failed to load events');
@@ -249,6 +254,14 @@ export default function EventManagement() {
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          hasMore={hasMore}
+          onPrev={() => setPage(p => p - 1)}
+          onNext={() => setPage(p => p + 1)}
+          loading={loading}
+          pageSize={PAGE_SIZE}
+        />
       </div>
 
       {/* Create / Edit Modal */}

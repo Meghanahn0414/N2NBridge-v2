@@ -35,7 +35,7 @@ async def create_grievance(
 @router.get("/", response_model=list[GrievanceResponse])
 async def list_grievances(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=1000),
+    per_page: int = Query(10, ge=1, le=100),
     status: Optional[str] = None,
     priority: Optional[str] = None,
     assigned_officer_id: Optional[str] = None,
@@ -224,16 +224,16 @@ async def upload_grievance_attachment(
 ):
     """Upload attachment to grievance"""
     try:
-        from utils.file_handler import upload_profile_image
+        from utils.storage import upload_file
 
         # Validate grievance exists
         grievance = GrievanceService.get_grievance_by_id(grievance_id)
         if not grievance:
             raise HTTPException(status_code=404, detail="Grievance not found")
-        
-        # Upload file
-        file_url = await upload_profile_image(file)
-        
+
+        # Upload file (S3 or local depending on config)
+        file_url = await upload_file(file, folder="grievances")
+
         # Add to grievance
         success = GrievanceService.add_attachment(
             grievance_id,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import NotificationProvider from "../providers/NotificationProvider";
 import Sidebar from "../../Sidebar";
 import Header from "../../Header";
 import MobileLayout from "../layouts/MobileLayout";
@@ -215,7 +216,9 @@ function AppRoutesContent() {
 export default function AppRoutes() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AppRoutesContent />
+      <NotificationProvider>
+        <AppRoutesContent />
+      </NotificationProvider>
     </BrowserRouter>
   );
 }

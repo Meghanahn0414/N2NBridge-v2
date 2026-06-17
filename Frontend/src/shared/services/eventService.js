@@ -3,11 +3,11 @@ import api from "./api";
 /**
  * Fetch events with pagination and filtering
  * @param {number} page - Page number (default: 1)
- * @param {number} perPage - Items per page (default: 1000)
+ * @param {number} perPage - Items per page (default: 100)
  * @param {object} filters - Filter parameters
  * @returns {Promise<Array>} Array of events
  */
-export async function fetchEvents(page = 1, perPage = 1000, filters = {}) {
+export async function fetchEvents(page = 1, perPage = 100, filters = {}) {
   try {
     const response = await api.get("/api/events/", {
       params: {

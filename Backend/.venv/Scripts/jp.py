@@ -1,4 +1,4 @@
-#!D:\CRM-01\Backend\.venv\Scripts\python.exe
+#!D:\CRM\CRM-01\Backend\.venv\Scripts\python.exe
 
 import sys
 import json

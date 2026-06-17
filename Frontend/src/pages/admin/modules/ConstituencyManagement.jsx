@@ -73,7 +73,7 @@ export default function ConstituencyManagement() {
 
   const loadRepresentatives = async () => {
     try {
-      const reps = await fetchUsers(1, 1000, 'REPRESENTATIVE');
+      const reps = await fetchUsers(1, 100, 'REPRESENTATIVE');
       setRepresentatives(reps);
     } catch { /* silent */ }
   };

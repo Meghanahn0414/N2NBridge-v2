@@ -31,7 +31,7 @@ export default function FieldOfficerGrievances() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchGrievances(1, 1000, { assignedOfficerId: officerId });
+      const data = await fetchGrievances(1, 100, { assignedOfficerId: officerId });
       setGrievances(data || []);
     } catch (err) {
       setError('Failed to load grievances.');

@@ -93,7 +93,7 @@ export default function ExecutiveDashboard() {
     fetchGrievances(1, 100)
       .then(data => setRecentGrievances(Array.isArray(data) ? data : []))
       .catch(() => setRecentGrievances([]));
-    fetchCampaigns(1, 1000, { status: 'ACTIVE' })
+    fetchCampaigns(1, 100, { status: 'ACTIVE' })
       .then(data => setActiveCampaigns(Array.isArray(data) ? data : []))
       .catch(() => setActiveCampaigns([]));
   }, []);

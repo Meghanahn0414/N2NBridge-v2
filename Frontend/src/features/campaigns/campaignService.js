@@ -2,7 +2,7 @@ import api from "../../shared/services/api";
 
 const CAMPAIGN_ENDPOINT = "/api/campaigns";
 
-export async function fetchCampaigns(page = 1, perPage = 1000, filters = {}) {
+export async function fetchCampaigns(page = 1, perPage = 100, filters = {}) {
   try {
     const params = { page, per_page: perPage };
     if (filters.status && filters.status !== "ALL") {

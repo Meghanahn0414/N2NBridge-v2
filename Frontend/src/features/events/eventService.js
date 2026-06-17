@@ -7,7 +7,7 @@ const extractError = (error) => {
   return new Error(detail || error?.message || "Request failed");
 };
 
-export async function fetchEvents(page = 1, perPage = 1000, filters = {}) {
+export async function fetchEvents(page = 1, perPage = 100, filters = {}) {
   try {
     const params = { page, per_page: perPage };
     if (filters.status && filters.status !== "ALL") {

@@ -37,7 +37,13 @@
         }
       ],
       "expo-image",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Emergency Alerts to use your location to attach GPS coordinates to your alert report."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

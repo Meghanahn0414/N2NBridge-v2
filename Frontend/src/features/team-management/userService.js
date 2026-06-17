@@ -7,7 +7,7 @@ const extractError = (error) => {
   return new Error(detail || error?.message || "Request failed");
 };
 
-export async function fetchUsers(page = 1, perPage = 1000, role = null) {
+export async function fetchUsers(page = 1, perPage = 100, role = null) {
   try {
     const params = { page, per_page: perPage };
     if (role && role !== "ALL") {

@@ -9,6 +9,7 @@ from events.model import (EventCreate, EventRegistrationCreate,
                           EventUpdate)
 from events.service import EventRegistrationService, EventService
 from fastapi import APIRouter, HTTPException, Query
+from tasks.background import notify_all_citizens, notify_ward_citizens
 from utils.helper import Helper
 from utils.response import success_response
 
@@ -20,10 +21,26 @@ logger = logging.getLogger(__name__)
 async def create_event(
     event_data: EventCreate
 ):
-    """Create event"""
+    """Create event — notifies ward citizens (or all citizens) on creation."""
     event_id = EventService.create_event(event_data.model_dump(), None)
     event = EventService.get_event_by_id(event_id)
-    
+
+    title = f"📅 New Event: {event.get('eventName', 'Upcoming Event')}"
+    body = (
+        f"{event.get('description', '')} — "
+        f"{event.get('venue', '')} on "
+        f"{event.get('eventDate', '').strftime('%d %b %Y') if event.get('eventDate') else 'TBD'}"
+    )
+    ward_id = event.get("wardId")
+    extra = {"eventId": event_id, "wardId": ward_id}
+    try:
+        if ward_id:
+            notify_ward_citizens.delay(ward_id, title, body, "EVENT", extra)
+        else:
+            notify_all_citizens.delay(title, body, "EVENT", extra)
+    except Exception as exc:
+        logger.warning(f"Event notification dispatch failed (non-fatal): {exc}")
+
     return EventResponse(**Helper.convert_mongo_doc(event))
 
 
@@ -43,7 +60,7 @@ async def get_event(
 @router.get("/", response_model=list[EventResponse])
 async def list_events(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=1000)
+    per_page: int = Query(10, ge=1, le=100)
 ):
     """List events"""
     skip, limit = Helper.paginate(page, per_page)
@@ -88,12 +105,30 @@ async def delete_event(
 async def publish_event(
     event_id: str
 ):
-    """Publish event"""
+    """Publish event — re-notifies ward citizens (or all) that the event is now live."""
     success = EventService.publish_event(event_id, "system")
-    
+
     if not success:
         raise HTTPException(status_code=400, detail="Failed to publish event")
-    
+
+    event = EventService.get_event_by_id(event_id)
+    if event:
+        title = f"🎉 Event Published: {event.get('eventName', 'Event')}"
+        body = (
+            f"Register now for {event.get('eventName', 'this event')} "
+            f"at {event.get('venue', '')} on "
+            f"{event.get('eventDate', '').strftime('%d %b %Y') if event.get('eventDate') else 'TBD'}."
+        )
+        ward_id = event.get("wardId")
+        extra = {"eventId": event_id, "wardId": ward_id}
+        try:
+            if ward_id:
+                notify_ward_citizens.delay(ward_id, title, body, "EVENT", extra)
+            else:
+                notify_all_citizens.delay(title, body, "EVENT", extra)
+        except Exception as exc:
+            logger.warning(f"Publish notification dispatch failed (non-fatal): {exc}")
+
     return success_response(None, "Event published successfully")
 
 

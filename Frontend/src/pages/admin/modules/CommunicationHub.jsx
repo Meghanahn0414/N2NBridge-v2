@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import PageHeader from "../../../components/PageHeader";
 import { fetchNotifications } from '../../../features/communications/communicationService';
+import Pagination from '../../../components/Pagination';
+
+const PAGE_SIZE = 100;
 
 export default function CommunicationHub() {
   const [messages, setMessages] = useState([]);
@@ -10,20 +13,22 @@ export default function CommunicationHub() {
   const [activeChannel, setActiveChannel] = useState('SMS');
   const [showComposer, setShowComposer] = useState(false);
   const [stats, setStats] = useState({ sent: 0, delivered: 0, read: 0, clicked: 0 });
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
   const channels = ['SMS', 'WhatsApp', 'Email', 'Push Notifications'];
 
-  useEffect(() => {
-    loadMessages();
-  }, [activeChannel]);
+  useEffect(() => { setPage(1); }, [activeChannel]);
+  useEffect(() => { loadMessages(page); }, [page, activeChannel]);
 
-  const loadMessages = async () => {
+  const loadMessages = async (targetPage = page) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchNotifications(1, 1000);
+      const data = await fetchNotifications(targetPage, PAGE_SIZE);
       const filtered = data.filter(m => m.channel === activeChannel || !m.channel);
       setMessages(filtered);
+      setHasMore(data.length >= PAGE_SIZE);
       updateStats(data);
     } catch (err) {
       setError(err.message || 'Failed to load messages');
@@ -118,6 +123,14 @@ export default function CommunicationHub() {
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          hasMore={hasMore}
+          onPrev={() => setPage(p => p - 1)}
+          onNext={() => setPage(p => p + 1)}
+          loading={loading}
+          pageSize={PAGE_SIZE}
+        />
       </div>
 
       {showComposer && (

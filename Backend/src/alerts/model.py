@@ -73,7 +73,7 @@ class AlertBase(BaseModel):
 
 class AlertCreate(AlertBase):
     """Alert creation"""
-    citizenId: str
+    citizenId: Optional[str] = None
     mediaAttachments: Optional[List[str]] = Field(default_factory=list)
 
 

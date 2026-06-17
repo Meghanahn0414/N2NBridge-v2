@@ -2,17 +2,30 @@ import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/AlertManagement.css';
 import PageHeader from "../../../components/PageHeader";
-import { fetchAlerts, broadcastAlert } from '../../../features/alerts/alertService';
+import { fetchAlerts, broadcastAlert, updateAlert } from '../../../features/alerts/alertService';
+import Pagination from '../../../components/Pagination';
+
+const PAGE_SIZE = 100;
 
 export default function AlertManagement() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ priority: 'ALL', status: 'ALL' });
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [showBroadcast, setShowBroadcast] = useState(false);
+  const [broadcastForm, setBroadcastForm] = useState({
+    alertType: '',
+    priority: '',
+    description: '',
+    location: null,
+  });
+  const [broadcastLoading, setBroadcastLoading] = useState(false);
+  const [broadcastError, setBroadcastError] = useState(null);
 
   const priorities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
-  const statuses = ['ACTIVE', 'RESOLVED', 'DISMISSED'];
+  const statuses = ['OPEN', 'ACKNOWLEDGED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 
   // Real-Time Alert Board Data
   const [alertBoard, setAlertBoard] = useState({
@@ -22,16 +35,16 @@ export default function AlertManagement() {
     low: 0,
   });
 
-  useEffect(() => {
-    loadAlerts();
-  }, [filters]);
+  useEffect(() => { setPage(1); }, [filters]);
+  useEffect(() => { loadAlerts(page); }, [page, filters]);
 
-  const loadAlerts = async () => {
+  const loadAlerts = async (targetPage = page) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchAlerts(1, 1000, filters);
+      const data = await fetchAlerts(targetPage, PAGE_SIZE, filters);
       setAlerts(data);
+      setHasMore(data.length >= PAGE_SIZE);
       updateAlertBoard(data);
     } catch (err) {
       setError(err.message || 'Failed to load alerts');
@@ -55,17 +68,40 @@ export default function AlertManagement() {
 
   const handleBroadcast = async (e) => {
     e.preventDefault();
-    // TODO: Implement broadcast functionality
-    console.log('Broadcasting alert...');
-    setShowBroadcast(false);
+    setBroadcastLoading(true);
+    setBroadcastError(null);
+    try {
+      await broadcastAlert(broadcastForm);
+      setShowBroadcast(false);
+      setBroadcastForm({ alertType: '', priority: '', description: '', location: null });
+      await loadAlerts();
+    } catch (err) {
+      setBroadcastError(err.message || 'Failed to broadcast alert');
+    } finally {
+      setBroadcastLoading(false);
+    }
   };
 
-  const handleAssignTeam = (alertId) => {
-    console.log('Assigning team to alert:', alertId);
+  const handleAssignTeam = async (alertId) => {
+    const officerId = prompt('Enter officer ID to assign:');
+    if (!officerId) return;
+    try {
+      await import('../../../features/alerts/alertService').then(({ default: svc, ...rest }) =>
+        fetch(`/api/alerts/${alertId}/assign/${officerId}`, { method: 'POST' })
+      );
+      await loadAlerts();
+    } catch (err) {
+      console.error('Error assigning team:', err);
+    }
   };
 
-  const handleMarkResolved = (alertId) => {
-    console.log('Marking alert as resolved:', alertId);
+  const handleMarkResolved = async (alertId) => {
+    try {
+      await updateAlert(alertId, { status: 'RESOLVED' });
+      await loadAlerts();
+    } catch (err) {
+      console.error('Error resolving alert:', err);
+    }
   };
 
   const formatLocation = (location) => {
@@ -171,6 +207,14 @@ export default function AlertManagement() {
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          hasMore={hasMore}
+          onPrev={() => setPage(p => p - 1)}
+          onNext={() => setPage(p => p + 1)}
+          loading={loading}
+          pageSize={PAGE_SIZE}
+        />
       </div>
 
       {/* Broadcast Modal */}
@@ -182,27 +226,30 @@ export default function AlertManagement() {
               <button className="modal-close" onClick={() => setShowBroadcast(false)}>×</button>
             </div>
             <form onSubmit={handleBroadcast}>
-              <div className="form-group">
-                <label>Alert Title *</label>
-                <input type="text" placeholder="Brief title for the alert" required />
-              </div>
-              <div className="form-group">
-                <label>Alert Message *</label>
-                <textarea placeholder="Detailed alert message for citizens" required></textarea>
-              </div>
+              {broadcastError && <div className="error-state" style={{ marginBottom: 12 }}>{broadcastError}</div>}
               <div className="form-group">
                 <label>Alert Type *</label>
-                <select required>
+                <select
+                  value={broadcastForm.alertType}
+                  onChange={e => setBroadcastForm({ ...broadcastForm, alertType: e.target.value })}
+                  required
+                >
                   <option value="">Select Type</option>
                   <option value="EMERGENCY">Emergency</option>
-                  <option value="WARNING">Warning</option>
-                  <option value="INFORMATION">Information</option>
-                  <option value="EVACUATION">Evacuation</option>
+                  <option value="SECURITY">Security</option>
+                  <option value="HEALTH">Health</option>
+                  <option value="INFRASTRUCTURE">Infrastructure</option>
+                  <option value="POLLUTION">Pollution</option>
+                  <option value="OTHER">Other</option>
                 </select>
               </div>
               <div className="form-group">
                 <label>Priority Level *</label>
-                <select required>
+                <select
+                  value={broadcastForm.priority}
+                  onChange={e => setBroadcastForm({ ...broadcastForm, priority: e.target.value })}
+                  required
+                >
                   <option value="">Select Priority</option>
                   <option value="CRITICAL">🔴 Critical</option>
                   <option value="HIGH">🟠 High</option>
@@ -211,21 +258,19 @@ export default function AlertManagement() {
                 </select>
               </div>
               <div className="form-group">
-                <label>Location *</label>
-                <input type="text" placeholder="Affected area/location" required />
-              </div>
-              <div className="form-group">
-                <label>Broadcast Channels</label>
-                <div className="checkbox-group">
-                  <label><input type="checkbox" defaultChecked /> SMS</label>
-                  <label><input type="checkbox" defaultChecked /> WhatsApp</label>
-                  <label><input type="checkbox" defaultChecked /> Email</label>
-                  <label><input type="checkbox" defaultChecked /> Push Notification</label>
-                </div>
+                <label>Alert Message *</label>
+                <textarea
+                  placeholder="Detailed alert message for citizens"
+                  value={broadcastForm.description}
+                  onChange={e => setBroadcastForm({ ...broadcastForm, description: e.target.value })}
+                  required
+                />
               </div>
               <div className="form-actions">
                 <button type="button" className="btn-secondary" onClick={() => setShowBroadcast(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Broadcast Alert</button>
+                <button type="submit" className="btn-primary" disabled={broadcastLoading}>
+                  {broadcastLoading ? 'Broadcasting...' : 'Broadcast Alert'}
+                </button>
               </div>
             </form>
           </div>

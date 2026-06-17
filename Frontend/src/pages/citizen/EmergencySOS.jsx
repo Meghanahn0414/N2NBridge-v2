@@ -2,6 +2,26 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./emergency-sos.css";
 
+// Map UI labels → backend AlertType enum values
+const EMERGENCY_TYPE_MAP = {
+  Medical:  "HEALTH",
+  Fire:     "EMERGENCY",
+  Flood:    "EMERGENCY",
+  Accident: "EMERGENCY",
+  Security: "SECURITY",
+  Other:    "OTHER",
+};
+
+// Default priority per type
+const PRIORITY_MAP = {
+  Medical:  "HIGH",
+  Fire:     "CRITICAL",
+  Flood:    "CRITICAL",
+  Accident: "HIGH",
+  Security: "CRITICAL",
+  Other:    "MEDIUM",
+};
+
 export default function EmergencySOS() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -11,7 +31,7 @@ export default function EmergencySOS() {
   const [loading, setLoading]                     = useState(false);
   const [locationWarning, setLocationWarning]     = useState("");
 
-  const emergencyTypes = ["Medical", "Fire", "Flood", "Accident", "Other"];
+  const emergencyTypes = ["Medical", "Fire", "Flood", "Accident", "Security", "Other"];
 
   const isActive = (path) => location.pathname.startsWith(path);
 
@@ -59,41 +79,46 @@ export default function EmergencySOS() {
         }
       }
 
-      // Prepare alert data for backend
-      const alertPayload = {
-        citizenId: user.citizenId,
-        type: selectedEmergency,
-        details: details || "No additional details provided",
-        latitude: latitude,
-        longitude: longitude,
-        shareLocation: shareLocation,
-      };
-
       const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000";
 
-      // Submit to backend
-      const response = await fetch(`${baseUrl}/api/emergency/send-alert`, {
+      // Build payload matching backend AlertCreate schema
+      const payload = {
+        alertType: EMERGENCY_TYPE_MAP[selectedEmergency] || "EMERGENCY",
+        priority:  PRIORITY_MAP[selectedEmergency] || "HIGH",
+        description: details.trim() || `${selectedEmergency} emergency reported`,
+        citizenId: user._id || user.citizenId || user.id || null,
+      };
+
+      // Attach GeoJSON location only when coordinates were captured
+      if (shareLocation && latitude !== null && longitude !== null) {
+        payload.location = {
+          type: "Point",
+          coordinates: [longitude, latitude], // GeoJSON order: [lng, lat]
+        };
+      }
+
+      const response = await fetch(`${baseUrl}/api/alerts/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          citizenId: user._id || user.citizenId || user.id,
-          type: selectedEmergency,
-          details: details || "No additional details provided",
-          latitude, longitude, shareLocation,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || "Failed to send emergency alert");
+        const err = await response.json().catch(() => ({}));
+        const detail = err.detail;
+        throw new Error(
+          typeof detail === "string" ? detail
+          : Array.isArray(detail) ? detail.map((d) => d.msg).join(", ")
+          : "Failed to send emergency alert"
+        );
       }
 
-      const data       = await response.json();
-      const sosTicketId = data.data?.sosTicketId || "SOS-" + Date.now();
-      alert(`Emergency alert sent successfully!\nTicket ID: ${sosTicketId}\n\nWard officers have been notified.`);
+      const data = await response.json();
+      const ticketId = data.alertNumber || data.data?.alertNumber || "SOS-" + Date.now();
+      alert(`Emergency alert sent!\nAlert #: ${ticketId}\n\nWard officers have been notified.`);
       navigate("/citizen");
     } catch (error) {
       console.error("Error sending emergency alert:", error);

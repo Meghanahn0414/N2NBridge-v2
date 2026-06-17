@@ -3,6 +3,9 @@ import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/UserManagement.css';
 import PageHeader from "../../../components/PageHeader";
 import { fetchUsers, updateUser, deleteUser, resetUserPassword } from '../../../features/team-management/userService';
+import Pagination from '../../../components/Pagination';
+
+const PAGE_SIZE = 100;
 import PhoneInput from '../../../components/PhoneInput';
 import { formatPhoneDisplay, sanitizePhoneInput } from '../../../utils/phoneUtils';
 import api from '../../../shared/services/api';
@@ -33,15 +36,18 @@ export default function UserManagement() {
 
   // Block in-progress tracker
   const [blockingId, setBlockingId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
-  useEffect(() => { loadUsers(); }, []);
+  useEffect(() => { loadUsers(page); }, [page]);
 
-  const loadUsers = async () => {
+  const loadUsers = async (targetPage = page) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchUsers(1, 1000);
+      const data = await fetchUsers(targetPage, PAGE_SIZE);
       setAllUsers(data);
+      setHasMore(data.length >= PAGE_SIZE);
     } catch (err) {
       setError(extractError(err));
     } finally {
@@ -254,6 +260,15 @@ export default function UserManagement() {
           </table>
         </div>
       )}
+
+      <Pagination
+        page={page}
+        hasMore={hasMore}
+        onPrev={() => setPage(p => p - 1)}
+        onNext={() => setPage(p => p + 1)}
+        loading={loading}
+        pageSize={PAGE_SIZE}
+      />
 
       {/* Edit Modal */}
       {editingUser && (

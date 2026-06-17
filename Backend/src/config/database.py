@@ -16,9 +16,23 @@ class MongoDatabase:
 
     @classmethod
     def connect(cls, connection_string: str, db_name: str):
-        """Initialize MongoDB connection"""
+        """Initialize MongoDB connection with production-grade pool settings."""
         try:
-            cls._client = MongoClient(connection_string, serverSelectionTimeoutMS=5000)
+            cls._client = MongoClient(
+                connection_string,
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=10000,
+                socketTimeoutMS=30000,
+                # Pool: enough headroom for 100K concurrent users across Gunicorn workers.
+                # Each worker gets its own pool; set per-worker pool size in gunicorn.conf.py.
+                maxPoolSize=200,
+                minPoolSize=10,
+                maxIdleTimeMS=60000,
+                waitQueueTimeoutMS=5000,
+                # Retry transient failures automatically
+                retryWrites=True,
+                retryReads=True,
+            )
             cls._client.admin.command('ping')
             cls._db = cls._client[db_name]
             logger.info(f"Connected to MongoDB database: {db_name}")
@@ -31,7 +45,7 @@ class MongoDatabase:
 
     @classmethod
     def get_db(cls):
-        """Get database instance"""
+        """Get database instance."""
         if cls._db is None:
             logger.warning("Database not initialized. Attempting automatic connection.")
             from config.settings import settings
@@ -40,14 +54,14 @@ class MongoDatabase:
 
     @classmethod
     def close(cls):
-        """Close database connection"""
+        """Close database connection."""
         if cls._client:
             cls._client.close()
             logger.info("MongoDB connection closed")
 
     @classmethod
     def _create_collections(cls):
-        """Create collections if they don't exist"""
+        """Create collections if they don't exist."""
         collections = [
             'users',
             'constituencies',
@@ -64,36 +78,41 @@ class MongoDatabase:
             'surveys',
             'survey_responses',
             'notifications',
-            'audit_logs'
+            'audit_logs',
         ]
-        
-        for collection_name in collections:
-            if collection_name not in cls._db.list_collection_names():
-                cls._db.create_collection(collection_name)
-                logger.info(f"Created collection: {collection_name}")
+
+        existing = set(cls._db.list_collection_names())
+        for name in collections:
+            if name not in existing:
+                cls._db.create_collection(name)
+                logger.info(f"Created collection: {name}")
 
     @classmethod
     def _create_indexes(cls):
-        """Create all required indexes"""
-        
-        # Users indexes
+        """Create all indexes — single-field, compound, geospatial, and TTL."""
+
+        # ── Users ──────────────────────────────────────────────────────────────
         cls._db.users.create_index([("mobile", ASCENDING)], unique=True, sparse=True)
         cls._db.users.create_index([("email", ASCENDING)], unique=True, sparse=True)
         cls._db.users.create_index([("role", ASCENDING)])
         cls._db.users.create_index([("constituencyId", ASCENDING)])
         cls._db.users.create_index([("wardId", ASCENDING)])
         cls._db.users.create_index([("isDeleted", ASCENDING)])
-        
-        # Constituencies indexes
+        # Compound: list citizens per ward (used by notify_ward_citizens)
+        cls._db.users.create_index([
+            ("wardId", ASCENDING), ("role", ASCENDING), ("isDeleted", ASCENDING)
+        ])
+
+        # ── Constituencies ─────────────────────────────────────────────────────
         cls._db.constituencies.create_index([("constituencyCode", ASCENDING)], unique=True)
         cls._db.constituencies.create_index([("name", ASCENDING)])
         cls._db.constituencies.create_index([("district", ASCENDING)])
-        
-        # Wards indexes
+
+        # ── Wards ──────────────────────────────────────────────────────────────
         cls._db.wards.create_index([("constituencyId", ASCENDING)])
         cls._db.wards.create_index([("wardNumber", ASCENDING)])
-        
-        # Grievances indexes
+
+        # ── Grievances ─────────────────────────────────────────────────────────
         cls._db.grievances.create_index([("complaintNumber", ASCENDING)], unique=True)
         cls._db.grievances.create_index([("citizenId", ASCENDING)])
         cls._db.grievances.create_index([("status", ASCENDING)])
@@ -102,51 +121,108 @@ class MongoDatabase:
         cls._db.grievances.create_index([("constituencyId", ASCENDING)])
         cls._db.grievances.create_index([("gpsLocation", GEOSPHERE)])
         cls._db.grievances.create_index([("isDeleted", ASCENDING)])
-        
-        # Alerts indexes
+        # Compound: admin list view (filter by status + constituency, newest first)
+        cls._db.grievances.create_index([
+            ("isDeleted", ASCENDING), ("status", ASCENDING),
+            ("constituencyId", ASCENDING), ("createdAt", DESCENDING)
+        ])
+        # Compound: officer workload view
+        cls._db.grievances.create_index([
+            ("assignedOfficerId", ASCENDING), ("status", ASCENDING), ("createdAt", DESCENDING)
+        ])
+        # Compound: citizen's own complaints
+        cls._db.grievances.create_index([
+            ("citizenId", ASCENDING), ("isDeleted", ASCENDING), ("createdAt", DESCENDING)
+        ])
+        # Compound: priority queue for escalation
+        cls._db.grievances.create_index([
+            ("isDeleted", ASCENDING), ("priority", ASCENDING), ("status", ASCENDING)
+        ])
+
+        # ── Alerts ─────────────────────────────────────────────────────────────
         cls._db.alerts.create_index([("alertNumber", ASCENDING)], unique=True)
         cls._db.alerts.create_index([("priority", ASCENDING)])
         cls._db.alerts.create_index([("citizenId", ASCENDING)])
         cls._db.alerts.create_index([("location", GEOSPHERE)])
-        
-        # Events indexes
+        cls._db.alerts.create_index([
+            ("priority", ASCENDING), ("createdAt", DESCENDING)
+        ])
+
+        # ── Events ─────────────────────────────────────────────────────────────
         cls._db.events.create_index([("eventDate", ASCENDING)])
         cls._db.events.create_index([("organizerId", ASCENDING)])
-        
-        # Event registrations indexes
-        cls._db.event_registrations.create_index([("eventId", ASCENDING), ("citizenId", ASCENDING)], unique=True)
+        cls._db.events.create_index([
+            ("eventDate", ASCENDING), ("wardId", ASCENDING)
+        ])
+
+        # ── Event Registrations ────────────────────────────────────────────────
+        cls._db.event_registrations.create_index(
+            [("eventId", ASCENDING), ("citizenId", ASCENDING)], unique=True
+        )
         cls._db.event_registrations.create_index([("eventId", ASCENDING)])
         cls._db.event_registrations.create_index([("citizenId", ASCENDING)])
-        
-        # Tasks indexes
+
+        # ── Campaigns ──────────────────────────────────────────────────────────
+        cls._db.campaigns.create_index([("status", ASCENDING)])
+        cls._db.campaigns.create_index([
+            ("status", ASCENDING), ("createdAt", DESCENDING)
+        ])
+        cls._db.campaigns.create_index([
+            ("wardId", ASCENDING), ("status", ASCENDING)
+        ])
+
+        # ── Tasks ──────────────────────────────────────────────────────────────
         cls._db.tasks.create_index([("grievanceId", ASCENDING)])
         cls._db.tasks.create_index([("assignedTo", ASCENDING)])
         cls._db.tasks.create_index([("status", ASCENDING)])
         cls._db.tasks.create_index([("dueDate", ASCENDING)])
-        
-        # Field reports indexes
+        cls._db.tasks.create_index([
+            ("assignedTo", ASCENDING), ("status", ASCENDING), ("dueDate", ASCENDING)
+        ])
+
+        # ── Field Reports ──────────────────────────────────────────────────────
         cls._db.field_reports.create_index([("taskId", ASCENDING)])
         cls._db.field_reports.create_index([("officerId", ASCENDING)])
         cls._db.field_reports.create_index([("gpsLocation", GEOSPHERE)])
-        
-        # Survey responses indexes
-        cls._db.survey_responses.create_index([("surveyId", ASCENDING), ("citizenId", ASCENDING)], unique=True)
-        
-        # Notifications indexes
-        cls._db.notifications.create_index([("userId", ASCENDING)])
-        cls._db.notifications.create_index([("createdAt", DESCENDING)])
-        
-        # Audit logs indexes
+
+        # ── Survey Responses ───────────────────────────────────────────────────
+        cls._db.survey_responses.create_index(
+            [("surveyId", ASCENDING), ("citizenId", ASCENDING)], unique=True
+        )
+
+        # ── Notifications ──────────────────────────────────────────────────────
+        # Compound: user inbox sorted by newest (most common query)
+        cls._db.notifications.create_index([
+            ("userId", ASCENDING), ("createdAt", DESCENDING)
+        ])
+        # Compound: unread badge count
+        cls._db.notifications.create_index([
+            ("userId", ASCENDING), ("isRead", ASCENDING)
+        ])
+        # TTL: auto-delete notifications older than 90 days
+        cls._db.notifications.create_index(
+            [("createdAt", ASCENDING)], expireAfterSeconds=7_776_000
+        )
+
+        # ── Audit Logs ─────────────────────────────────────────────────────────
         cls._db.audit_logs.create_index([("userId", ASCENDING)])
         cls._db.audit_logs.create_index([("createdAt", DESCENDING)])
         cls._db.audit_logs.create_index([("module", ASCENDING)])
-        
+        # Compound: per-module audit trail
+        cls._db.audit_logs.create_index([
+            ("module", ASCENDING), ("createdAt", DESCENDING)
+        ])
+        # TTL: auto-delete audit logs older than 1 year
+        cls._db.audit_logs.create_index(
+            [("createdAt", ASCENDING)], expireAfterSeconds=31_536_000
+        )
+
         logger.info("All indexes created successfully")
 
 
 @contextmanager
 def get_database():
-    """Context manager for database operations"""
+    """Context manager for database operations."""
     db = MongoDatabase.get_db()
     try:
         yield db

@@ -1,0 +1,23 @@
+[Unit]
+Description=CRM Backend (FastAPI + Gunicorn + Uvicorn workers)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/CRM-01/Backend
+EnvironmentFile=/home/ubuntu/CRM-01/Backend/.env
+ExecStart=/home/ubuntu/CRM-01/.venv/bin/gunicorn -c gunicorn.conf.py main:app
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=crm-backend
+
+[Install]
+WantedBy=multi-user.target

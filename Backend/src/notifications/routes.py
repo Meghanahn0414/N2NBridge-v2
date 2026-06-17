@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from notifications.model import NotificationResponse
 from notifications.service import NotificationService
 from pydantic import BaseModel, EmailStr
+from tasks.background import (notify_all_citizens as _notify_all_task,
+                               notify_ward_citizens as _notify_ward_task)
 from utils.email_service import send_otp_via_email
 from utils.helper import Helper
 from utils.jwt import TokenManager
@@ -42,7 +44,7 @@ def get_current_user_optional(authorization: Optional[str] = Header(None, alias=
 @router.get("/", response_model=list[NotificationResponse])
 async def list_notifications(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=1000),
+    per_page: int = Query(10, ge=1, le=100),
     current_user: dict = Depends(get_current_user_optional)
 ):
     """List user notifications"""
@@ -151,6 +153,41 @@ async def delete_notification(
         raise HTTPException(status_code=400, detail="Failed to delete notification")
 
     return success_response(None, "Notification deleted successfully")
+
+
+# ======================== Admin Broadcast Endpoints ========================
+
+class BroadcastRequest(BaseModel):
+    title: str
+    body: str
+    type: str = "INFO"
+
+
+@router.post("/notify-ward/{ward_id}")
+async def notify_ward(
+    ward_id: str,
+    payload: BroadcastRequest,
+):
+    """Queue in-app notifications for every citizen in a ward (runs in background)."""
+    _notify_ward_task.delay(
+        ward_id, payload.title, payload.body, payload.type, {"wardId": ward_id}
+    )
+    return success_response(
+        {"ward_id": ward_id, "queued": True},
+        f"Notification queued for ward {ward_id}"
+    )
+
+
+@router.post("/broadcast-all")
+async def broadcast_all(
+    payload: BroadcastRequest,
+):
+    """Queue in-app notifications for ALL citizens (runs in background)."""
+    _notify_all_task.delay(payload.title, payload.body, payload.type)
+    return success_response(
+        {"queued": True},
+        "Broadcast queued for all citizens"
+    )
 
 
 # ======================== SMS & Email Service Testing ========================

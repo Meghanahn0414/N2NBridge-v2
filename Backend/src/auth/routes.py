@@ -7,6 +7,7 @@ from typing import Optional
 from auth.otp_service import OTP_STORAGE, OTPService
 from auth.service import AuthService
 from config.database import MongoDatabase
+from config.rate_limit import limiter
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from users.model import (
     OtpResponse,
@@ -78,7 +79,8 @@ def get_current_user_optional(authorization: Optional[str] = Header(None, alias=
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(login_data: UserLoginRequest):
+@limiter.limit("10/minute")
+async def login(request: Request, login_data: UserLoginRequest):
     """User login"""
     result = AuthService.login(login_data)
     
@@ -92,6 +94,7 @@ async def login(login_data: UserLoginRequest):
 
 
 @router.post("/login-admin", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login_admin(request: Request):
     """Admin/Staff login using email/password (ADMIN, REPRESENTATIVE, CONSTITUENCY_MANAGER, FIELD_OFFICER)"""
     try:
@@ -212,24 +215,25 @@ async def verify_token(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/send-otp")
-async def send_otp(request: SendOtpRequest):
+@limiter.limit("5/minute")
+async def send_otp(request: Request, otp_request: SendOtpRequest):
     """Send OTP to phone or email"""
     try:
-        if request.type not in ["phone", "email"]:
+        if otp_request.type not in ["phone", "email"]:
             raise HTTPException(status_code=400, detail="Type must be 'phone' or 'email'")
-        
-        if not request.value:
+
+        if not otp_request.value:
             raise HTTPException(status_code=400, detail="Phone number or email required")
-        
+
         # Send OTP
-        success = OTPService.send_otp(request.type, request.value)
+        success = OTPService.send_otp(otp_request.type, otp_request.value)
 
         if success:
-            normalized_value = OTPService.normalize_contact(request.type, request.value)
+            normalized_value = OTPService.normalize_contact(otp_request.type, otp_request.value)
             otp_data = OTP_STORAGE.get(normalized_value, {})
             return {
                 "success": True,
-                "message": f"OTP sent to {request.type}",
+                "message": f"OTP sent to {otp_request.type}",
                 "statusCode": 200,
                 "debug_otp": otp_data.get("otp", "")  # Development only - remove in production
             }

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import { fetchCampaigns, createCampaign, deleteCampaign, launchCampaign, sendCampaignNotifications } from '../../../features/campaigns/campaignService';
 import PageHeader from "../../../components/PageHeader";
+import Pagination from '../../../components/Pagination';
+
+const PAGE_SIZE = 100;
 
 const AUDIENCE_OPTIONS = ['All Citizens', 'Specific Ward', 'Specific Constituency', 'Custom Segment'];
 const CHANNEL_OPTIONS = ['SMS', 'WhatsApp', 'Email', 'Push Notification'];
@@ -36,15 +39,18 @@ export default function CampaignManagement() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
-  useEffect(() => { loadCampaigns(); }, []);
+  useEffect(() => { loadCampaigns(page); }, [page]);
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = async (targetPage = page) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchCampaigns(1, 1000);
+      const data = await fetchCampaigns(targetPage, PAGE_SIZE);
       setCampaigns(data);
+      setHasMore(data.length >= PAGE_SIZE);
     } catch (err) {
       setError('Failed to load campaigns');
     } finally {
@@ -240,6 +246,14 @@ export default function CampaignManagement() {
               </tbody>
             </table>
           )}
+          <Pagination
+            page={page}
+            hasMore={hasMore}
+            onPrev={() => setPage(p => p - 1)}
+            onNext={() => setPage(p => p + 1)}
+            loading={loading}
+            pageSize={PAGE_SIZE}
+          />
         </div>
 
         {/* Campaign Builder Modal */}

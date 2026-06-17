@@ -2,7 +2,7 @@ import api from "../../shared/services/api";
 
 const TASK_ENDPOINT = "/api/tasks";
 
-export async function fetchTasks(page = 1, perPage = 1000, filters = {}) {
+export async function fetchTasks(page = 1, perPage = 100, filters = {}) {
   try {
     const params = { page, per_page: perPage };
     if (filters.status && filters.status !== "ALL") {
