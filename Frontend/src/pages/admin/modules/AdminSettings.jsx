@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import PageHeader from "../../../components/PageHeader";
+import PhoneInput from "../../../components/PhoneInput";
+import { sanitizePhoneInput } from "../../../utils/phoneUtils";
 
 export default function AdminSettings() {
+  const [mobile, setMobile] = useState('');
+
   const [userPreferences, setUserPreferences] = useState({
     theme: 'light',
     emailNotifications: true,
@@ -40,7 +44,14 @@ export default function AdminSettings() {
             </div>
             <div className="form-group">
               <label>Mobile</label>
-              <input type="tel" placeholder="Your mobile number" />
+              <PhoneInput
+                value={mobile}
+                onChange={(name, value) => setMobile(sanitizePhoneInput(value))}
+                name="mobile"
+                placeholder="Your mobile number"
+                className="admin-settings-phone-input"
+                maxLength={10}
+              />
             </div>
             <div className="form-group">
               <label>Profile Picture</label>

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { FaClock } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { getCitizenNotifications } from '../../shared/services/citizenService';
 
 export default function CitizenEmergency() {
-  const [showConfirm, setShowConfirm] = useState(false);
+  const navigate = useNavigate();
   const [alertHistory, setAlertHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,13 +38,7 @@ export default function CitizenEmergency() {
   }, []);
 
   const handleSOS = () => {
-    setShowConfirm(true);
-  };
-
-  const confirmSOS = () => {
-    console.log('SOS Emergency activated');
-    alert('Emergency alert sent to authorities!');
-    setShowConfirm(false);
+    navigate('/citizen/sos');
   };
 
   return (
@@ -100,30 +94,6 @@ export default function CitizenEmergency() {
           )}
         </div>
 
-        {showConfirm && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="rounded-lg bg-white p-8">
-              <h3 className="mb-4 text-xl font-bold text-slate-900">Confirm Emergency Alert?</h3>
-              <p className="mb-6 text-slate-600">
-                This will alert emergency services and authorities immediately.
-              </p>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  className="flex-1 rounded-lg border border-slate-300 px-4 py-2 transition hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmSOS}
-                  className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
-                >
-                  Confirm Alert
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

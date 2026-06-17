@@ -8,9 +8,15 @@ from auth.otp_service import OTP_STORAGE, OTPService
 from auth.service import AuthService
 from config.database import MongoDatabase
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from users.model import (OtpResponse, SendOtpRequest, TokenResponse,
-                         UserCreate, UserLoginRequest, UserResponse,
-                         VerifyOtpRequest)
+from users.model import (
+    OtpResponse,
+    SendOtpRequest,
+    TokenResponse,
+    UserCreate,
+    UserLoginRequest,
+    UserResponse,
+    VerifyOtpRequest,
+)
 from users.service import UserService
 from utils.jwt import TokenManager
 from utils.response import success_response
@@ -217,10 +223,10 @@ async def send_otp(request: SendOtpRequest):
         
         # Send OTP
         success = OTPService.send_otp(request.type, request.value)
-        
+
         if success:
-            # Get the OTP from storage for debugging
-            otp_data = OTP_STORAGE.get(request.value, {})
+            normalized_value = OTPService.normalize_contact(request.type, request.value)
+            otp_data = OTP_STORAGE.get(normalized_value, {})
             return {
                 "success": True,
                 "message": f"OTP sent to {request.type}",
@@ -262,7 +268,7 @@ async def verify_otp(request: VerifyOtpRequest):
             db = MongoDatabase.get_db()
             import uuid
             from datetime import datetime
-            
+
             # Generate unique mobile/email if not provided or when login is via email/phone only
             user_data = {
                 "fullName": request.value.strip(),
@@ -315,14 +321,14 @@ async def verify_otp(request: VerifyOtpRequest):
 async def debug_otp_storage():
     """DEBUG ENDPOINT - Returns current OTP storage (remove in production)"""
     from auth.otp_service import OTP_STORAGE
-    return {
-        "otp_storage": {
-            key: {
-                "otp": data["otp"],
-                "attempts": data["attempts"],
-                "type": data["type"],
-                # Don't expose timestamp for security
-            }
-            for key, data in OTP_STORAGE.items()
+
+    normalized_storage = {}
+    for key, data in OTP_STORAGE.items():
+        normalized_storage[key] = {
+            "otp": data["otp"],
+            "attempts": data["attempts"],
+            "type": data["type"],
+            # Don't expose timestamp for security
         }
-    }
+
+    return {"otp_storage": normalized_storage}

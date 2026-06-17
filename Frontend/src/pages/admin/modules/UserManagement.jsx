@@ -3,6 +3,8 @@ import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/UserManagement.css';
 import PageHeader from "../../../components/PageHeader";
 import { fetchUsers, updateUser, deleteUser, resetUserPassword } from '../../../features/team-management/userService';
+import PhoneInput from '../../../components/PhoneInput';
+import { formatPhoneDisplay, sanitizePhoneInput } from '../../../utils/phoneUtils';
 import api from '../../../shared/services/api';
 
 const EMPTY_EDIT = { fullName: '', mobile: '', email: '', role: '', address: '', constituencyId: '' };
@@ -204,7 +206,7 @@ export default function UserManagement() {
                   <tr key={user._id || user.id} className={user.status === 'BLOCKED' ? 'row-blocked' : ''}>
                     <td className="row-num">{idx + 1}</td>
                     <td className="user-name-cell">{user.fullName || '-'}</td>
-                    <td>{user.mobile || '-'}</td>
+                    <td>{formatPhoneDisplay(user.mobile) || '-'}</td>
                     <td>{user.email || '-'}</td>
                     <td>
                       <span className={`role-badge role-${(user.role || '').toLowerCase()}`}>
@@ -266,8 +268,14 @@ export default function UserManagement() {
               </div>
               <div className="form-group">
                 <label>Mobile</label>
-                <input type="tel" value={editForm.mobile}
-                  onChange={(e) => setEditForm(p => ({ ...p, mobile: e.target.value }))} />
+                <PhoneInput
+                  value={editForm.mobile}
+                  onChange={(name, value) => setEditForm(p => ({ ...p, [name]: sanitizePhoneInput(value) }))}
+                  name="mobile"
+                  placeholder="Enter mobile number"
+                  className="user-management-phone-input"
+                  maxLength={10}
+                />
               </div>
               <div className="form-group">
                 <label>Email</label>

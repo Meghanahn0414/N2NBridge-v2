@@ -9,6 +9,8 @@ export default function CreateComplaint() {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [selectedCategoryName, setSelectedCategoryName] = useState("Roads");
+  const [validationErrors, setValidationErrors] = useState({});
+  const [locationStatus, setLocationStatus] = useState("");
 
   // Form data - match backend schema
   const [formData, setFormData] = useState({
@@ -51,13 +53,18 @@ export default function CreateComplaint() {
             <button
               key={cat}
               type="button"
-              className={`category-btn ${formData.category === cat ? "active" : ""}`}
-              onClick={() => setFormData({ ...formData, category: cat })}
+              className={`category-btn ${formData.category === cat ? "active" : ""} ${validationErrors.category ? "field-error" : ""}`}
+              onClick={() => {
+                setFormData({ ...formData, category: cat });
+                setSelectedCategoryName(cat);
+                setValidationErrors((prev) => ({ ...prev, category: "" }));
+              }}
             >
               {cat}
             </button>
           ))}
         </div>
+        {validationErrors.category && <p className="field-error-message">{validationErrors.category}</p>}
       </div>
 
       
@@ -94,16 +101,21 @@ export default function CreateComplaint() {
       <div className="form-section">
         <label className="form-label">DESCRIBE THE ISSUE *</label>
         <textarea
-          className="complaint-textarea"
+          className={`complaint-textarea ${validationErrors.description ? "field-error" : ""}`}
+          aria-label="description"
           placeholder="Describe the issue in detail. Include what, where, and when..."
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) => {
+            setFormData({ ...formData, description: e.target.value });
+            setValidationErrors((prev) => ({ ...prev, description: "" }));
+          }}
           rows="4"
           required
         />
         <div className="char-count">
           {formData.description.length}/500 characters
         </div>
+        {validationErrors.description && <p className="field-error-message">{validationErrors.description}</p>}
       </div>
 
       <div className="form-section">
@@ -165,20 +177,29 @@ export default function CreateComplaint() {
         <label className="form-label">LOCATION DETAILS *</label>
         <input
           type="text"
-          className="form-input"
+          className={`form-input ${validationErrors.address ? "field-error" : ""}`}
+          aria-label="location"
           placeholder="Enter street, area, or landmark"
           value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          onChange={(e) => {
+            setFormData({ ...formData, address: e.target.value });
+            setValidationErrors((prev) => ({ ...prev, address: "" }));
+          }}
           required
         />
+        {validationErrors.address && <p className="field-error-message">{validationErrors.address}</p>}
       </div>
 
       <div className="form-section">
         <label className="form-label">WARD *</label>
         <select
-          className="form-select"
+          className={`form-select ${validationErrors.wardId ? "field-error" : ""}`}
+          aria-label="ward"
           value={formData.wardId}
-          onChange={(e) => setFormData({ ...formData, wardId: e.target.value })}
+          onChange={(e) => {
+            setFormData({ ...formData, wardId: e.target.value });
+            setValidationErrors((prev) => ({ ...prev, wardId: "" }));
+          }}
           required
         >
           <option value="">Select Ward</option>
@@ -188,6 +209,7 @@ export default function CreateComplaint() {
             </option>
           ))}
         </select>
+        {validationErrors.wardId && <p className="field-error-message">{validationErrors.wardId}</p>}
       </div>
 
       <div className="form-section">
@@ -204,6 +226,7 @@ export default function CreateComplaint() {
             ✓ Location: {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
           </p>
         )}
+        {locationStatus && <p className="field-error-message">{locationStatus}</p>}
       </div>
     </div>
   );
@@ -249,12 +272,25 @@ export default function CreateComplaint() {
         <label className="checkbox-label">
           <input 
             type="checkbox" 
+            className={validationErrors.confirmAccuracy ? "field-error" : ""}
             checked={formData.confirmAccuracy}
-            onChange={(e) => setFormData({ ...formData, confirmAccuracy: e.target.checked })}
+            onChange={(e) => {
+              const isChecked = e.target.checked;
+              setFormData((prev) => ({ ...prev, confirmAccuracy: isChecked }));
+              setValidationErrors((prev) => ({ ...prev, confirmAccuracy: "" }));
+
+              if (isChecked) {
+                getCurrentLocation();
+              } else {
+                setLocationStatus("");
+              }
+            }}
             required 
           />
           <span>I confirm that the information is accurate and factual</span>
         </label>
+        {locationStatus && <p className="field-error-message">{locationStatus}</p>}
+        {validationErrors.confirmAccuracy && <p className="field-error-message">{validationErrors.confirmAccuracy}</p>}
       </div>
     </div>
   );
@@ -288,49 +324,94 @@ export default function CreateComplaint() {
 
   // Get GPS location
   const getCurrentLocation = () => {
+    setLocationStatus("Fetching live GPS location...");
+
     if (!navigator.geolocation) {
+      setLocationStatus("Geolocation is not supported by this browser.");
       alert("Geolocation is not supported by your browser");
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setFormData({
-          ...formData,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        setFormData((prev) => ({
+          ...prev,
+          latitude,
+          longitude,
+        }));
+        setLocationStatus(`Live GPS location captured successfully: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
       },
       (error) => {
+        setLocationStatus("Unable to fetch live GPS location. Please allow location access.");
         alert("Unable to get location: " + error.message);
       }
     );
   };
 
-  // Validate current step
-  const validateStep = () => {
-    switch (currentStep) {
-      case 1:
-        return formData.category;
-      case 2:
-        return formData.description.trim().length > 0;
-      case 3:
-        return formData.address.trim().length > 0 && formData.wardId;
-      case 4:
-        return formData.confirmAccuracy; // Must check the checkbox
-      default:
-        return false;
+  const getValidationErrors = () => {
+    const errors = {};
+
+    if (currentStep === 1 && !formData.category) {
+      errors.category = "Please select a category.";
     }
+    if (currentStep === 2 && !formData.description.trim()) {
+      errors.description = "Please describe the issue.";
+    }
+    if (currentStep === 3) {
+      if (!formData.address.trim()) errors.address = "Please enter a location.";
+      if (!formData.wardId) errors.wardId = "Please select a ward.";
+    }
+    if (currentStep === 4 && !formData.confirmAccuracy) {
+      errors.confirmAccuracy = "Please confirm the details are accurate.";
+    }
+
+    return errors;
+  };
+
+  const focusFirstError = (errors) => {
+    const selectorMap = {
+      category: ".category-btn",
+      description: "textarea[aria-label='description']",
+      address: "input[aria-label='location']",
+      wardId: "select[aria-label='ward']",
+      confirmAccuracy: "input[type='checkbox']",
+    };
+
+    const firstErrorKey = Object.keys(errors)[0];
+    const selector = selectorMap[firstErrorKey];
+
+    if (selector) {
+      const element = document.querySelector(selector);
+      if (element) {
+        element.focus({ preventScroll: true });
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  };
+
+  const validateStep = () => {
+    const errors = getValidationErrors();
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      focusFirstError(errors);
+      return false;
+    }
+
+    return true;
   };
 
   // Handle next/previous
   const handleNext = () => {
     if (!validateStep()) {
-      alert("Please fill in all required fields");
       return;
     }
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
+      setValidationErrors({});
     }
   };
 
@@ -343,7 +424,6 @@ export default function CreateComplaint() {
   // Handle submit
   const handleSubmit = async () => {
     if (!validateStep()) {
-      alert("Please fill in all required fields");
       return;
     }
 

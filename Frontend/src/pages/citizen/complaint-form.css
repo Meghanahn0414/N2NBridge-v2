@@ -197,6 +197,23 @@
   box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
 }
 
+.field-error {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+
+.field-error-message {
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.field-error:focus {
+  border-color: #b91c1c !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18) !important;
+}
+
 .complaint-textarea::placeholder {
   color: #999;
 }
