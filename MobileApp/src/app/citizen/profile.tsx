@@ -23,7 +23,7 @@ interface Profile {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, token, logout, setAuth } = useAuthStore();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [form, setForm] = useState({ fullName: "", email: "", mobile: "", address: "", wardId: "" });
   const [isEditing, setIsEditing] = useState(false);
@@ -69,6 +69,7 @@ export default function ProfileScreen() {
       setProfile(data);
       setIsEditing(false);
       setSuccess("Profile updated successfully.");
+      setAuth(token!, { ...user!, name: form.fullName });
     } catch (err: any) {
       setError(err?.response?.data?.detail || err?.message || "Failed to save profile.");
     } finally {
@@ -216,6 +217,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={[styles.saveBtn, saving && { opacity: 0.5 }]}
               onPress={handleSave}
+              
               disabled={saving}
             >
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}

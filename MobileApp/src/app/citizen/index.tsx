@@ -39,12 +39,14 @@ export default function CitizenDashboard() {
   const [recent, setRecent] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
-      const [sRes, cRes] = await Promise.all([
+      const [sRes, cRes, nRes] = await Promise.all([
         api.get(`/api/grievances/stats/citizen/${user?.id}`),
         api.get(`/api/grievances/citizen/${user?.id}?page=1`),
+        api.get(`/api/notifications?page=1&per_page=20`).catch(() => ({ data: [] })),
       ]);
 
       const s = sRes.data?.data ?? sRes.data;
@@ -65,6 +67,9 @@ export default function CitizenDashboard() {
         priority: g.priority || 'MEDIUM',
         createdAt: g.createdAt || g.created_at,
       })));
+
+      const nList = Array.isArray(nRes.data) ? nRes.data : (nRes.data?.items ?? nRes.data?.data ?? []);
+      setUnreadCount(nList.filter((n: any) => !n.isRead && !n.read).length);
     } catch (_) {
       // silent — show empty states
     } finally {
@@ -76,8 +81,8 @@ export default function CitizenDashboard() {
   useEffect(() => { fetchData(); }, [fetchData]);
   const onRefresh = () => { setRefreshing(true); fetchData(); };
 
-  const statusColor = (s: string) => {
-    switch (s?.toUpperCase()) {
+  const statusColor = (st: string) => {
+    switch (st?.toUpperCase()) {
       case 'OPEN': case 'NEW': return C.open;
       case 'IN_PROGRESS': case 'ASSIGNED': case 'ON_HOLD': return C.inProgress;
       case 'RESOLVED': case 'CLOSED': return C.resolved;
@@ -114,14 +119,28 @@ export default function CitizenDashboard() {
     <View style={s.container}>
       <StatusBar backgroundColor={C.primaryDark} barStyle="light-content" />
 
+      {/* Header */}
       <View style={s.header}>
         <View>
-          <Text style={s.greeting}>Namaste,</Text>
+          <Text style={s.greeting}>Welcome back,</Text>
           <Text style={s.userName}>{user?.name || 'Citizen'}</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push('/citizen/profile' as any)} style={s.avatar}>
-          <Text style={s.avatarText}>{(user?.name || 'C').charAt(0).toUpperCase()}</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity
+            onPress={() => router.push('/citizen/notifications' as any)}
+            style={s.bellBtn}
+          >
+            <Text style={{ fontSize: 24 }}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={s.badge}>
+                <Text style={s.badgeText}>{unreadCount > 9 ? '9+' : String(unreadCount)}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/citizen/profile' as any)} style={s.avatar}>
+            <Text style={s.avatarText}>{(user?.name || 'C').charAt(0).toUpperCase()}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -217,6 +236,12 @@ const s = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#93C5FD',
   },
   avatarText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  bellBtn: { position: 'relative', padding: 4 },
+  badge: {
+    position: 'absolute', top: 0, right: 0, backgroundColor: '#EF4444',
+    borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+  },
+  badgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
   scroll: { flex: 1 },
   scrollContent: { padding: 16 },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 22 },

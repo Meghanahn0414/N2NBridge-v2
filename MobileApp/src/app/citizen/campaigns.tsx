@@ -114,7 +114,7 @@ export default function Campaigns() {
       <StatusBar backgroundColor={C.primaryDark} barStyle="light-content" />
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={s.backBtn}>← Back</Text>
+          <Text style={s.backBtn}>←</Text>
         </TouchableOpacity>
         <View>
           <Text style={s.headerTitle}>Programs & Campaigns</Text>

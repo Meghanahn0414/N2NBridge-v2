@@ -6,7 +6,6 @@ import MobileLayout from "../layouts/MobileLayout";
 import OtpVerify from "../../features/auth/OtpVerify";
 import AdminSignup from "../../features/auth/AdminSignup";
 import AdminLogin from "../../features/auth/AdminLogin";
-import CitizenSplash from "../../features/auth/CitizenSplash";
 import CitizenLogin from "../../features/auth/CitizenLogin";
 import ProfileCreation from "../../pages/citizen/ProfileCreation";
 import CitizenDashboardNew from "../../pages/citizen/CitizenDashboardNew";
@@ -79,7 +78,7 @@ function AppRoutesContent() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, ROUTES.otp, "/citizen-splash", "/citizen-login", "/admin-login", "/otp", "/profile-creation"].includes(location.pathname);
+  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, ROUTES.otp, "/citizen-login", "/admin-login", "/otp", "/profile-creation"].includes(location.pathname);
   const isCitizenRoute = location.pathname.startsWith("/citizen");
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isRepDashboard = location.pathname === ROUTES.rep || location.pathname === ROUTES.mlaExecutiveDashboard;
@@ -132,8 +131,7 @@ function AppRoutesContent() {
       >
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/citizen-splash" replace /></PublicRoute>} />
-          <Route path="/citizen-splash" element={<PublicRoute><MobileLayout><CitizenSplash /></MobileLayout></PublicRoute>} />
+          <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/citizen-login" replace /></PublicRoute>} />
           <Route path="/citizen-login" element={<PublicRoute><MobileLayout><CitizenLogin /></MobileLayout></PublicRoute>} />
           <Route path="/admin-login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
           <Route path={ROUTES.otp} element={<PublicRoute><OtpVerify /></PublicRoute>} />

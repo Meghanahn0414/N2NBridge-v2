@@ -124,7 +124,7 @@ export default function MyComplaints() {
   };
 
   const renderItem = ({ item }: { item: Complaint }) => (
-    <View style={s.card}>
+    <TouchableOpacity style={s.card} onPress={() => router.push(`/citizen/complaint-detail?id=${item.id}` as any)}>
       <View style={s.cardHeader}>
         <Text style={s.cardId} numberOfLines={1}>#{item.id?.slice(-10).toUpperCase()}</Text>
         <View style={[s.statusBadge, { backgroundColor: `${statusColor(item.status)}18` }]}>
@@ -147,7 +147,7 @@ export default function MyComplaints() {
           {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN') : 'Recently'}
         </Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -156,7 +156,7 @@ export default function MyComplaints() {
 
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={s.backBtn}>← Back</Text>
+          <Text style={s.backBtn}>←</Text>
         </TouchableOpacity>
         <View>
           <Text style={s.headerTitle}>My Complaints</Text>

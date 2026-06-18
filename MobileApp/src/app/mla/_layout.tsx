@@ -1,11 +1,12 @@
 import { Tabs } from "expo-router";
 import { Text } from "react-native";
-export default function CitizenLayout() {
+
+export default function MlaLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#1D4ED8",
+        tabBarActiveTintColor: "#059669",
         tabBarInactiveTintColor: "#9CA3AF",
         tabBarStyle: {
           backgroundColor: "#fff",
@@ -18,17 +19,15 @@ export default function CitizenLayout() {
         tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
       }}
     >
-      {/* 1 — Dashboard */}
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Dashboard",
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.45 }}>🏠</Text>
+            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.45 }}>📊</Text>
           ),
         }}
       />
-      {/* 2 — Complaints */}
       <Tabs.Screen
         name="complaints"
         options={{
@@ -38,17 +37,15 @@ export default function CitizenLayout() {
           ),
         }}
       />
-      {/* 3 — Services hub */}
       <Tabs.Screen
-        name="services"
+        name="events"
         options={{
-          title: "Services",
+          title: "Events",
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.45 }}>🛎️</Text>
+            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.45 }}>📅</Text>
           ),
         }}
       />
-      {/* 4 — Profile */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -58,14 +55,6 @@ export default function CitizenLayout() {
           ),
         }}
       />
-      {/* Hidden — navigable but not in tab bar */}
-      <Tabs.Screen name="new-complaint"     options={{ href: null }} />
-      <Tabs.Screen name="campaigns"         options={{ href: null }} />
-      <Tabs.Screen name="events"            options={{ href: null }} />
-      <Tabs.Screen name="feedback"          options={{ href: null }} />
-      <Tabs.Screen name="complaint-detail"  options={{ href: null }} />
-      <Tabs.Screen name="sos"               options={{ href: null }} />
-      <Tabs.Screen name="notifications"     options={{ href: null }} />
     </Tabs>
   );
 }

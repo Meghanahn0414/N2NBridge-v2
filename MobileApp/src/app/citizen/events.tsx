@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, RefreshControl, StatusBar,
+import { View, Text, StyleSheet, FlatList, TouchableOpacity,
+  ActivityIndicator, RefreshControl, StatusBar, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import api from '../../services/api';
@@ -81,6 +80,16 @@ export default function Events() {
     const upcoming = isUpcoming(dateStr);
     const displayTitle = item.eventName || item.title || 'Untitled Event';
 
+    const handleRegister = async (eventId: string) => {
+  try {
+    await api.post(`/api/events/${eventId}/register`, {});
+    Alert.alert("Registered!", "You have successfully registered for this event.");
+  } catch (err: any) {
+    const msg = err?.response?.data?.detail || "Failed to register. Try again.";
+    Alert.alert("Error", String(msg));
+  }
+};
+
     return (
       <View style={[s.card, !upcoming && s.cardPast]}>
         <View style={[s.iconBox, { backgroundColor: upcoming ? '#EFF6FF' : '#F1F5F9' }]}>
@@ -104,6 +113,12 @@ export default function Events() {
               <Text style={s.statusText}>{item.status}</Text>
             </View>
           )}
+          <TouchableOpacity
+            style={s.registerBtn}
+            onPress={() => handleRegister(item.id)}
+          >
+            <Text style={s.registerBtnText}>Register free</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -114,7 +129,7 @@ export default function Events() {
       <StatusBar backgroundColor={C.primaryDark} barStyle="light-content" />
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={s.backBtn}>← Back</Text>
+          <Text style={s.backBtn}>←</Text>
         </TouchableOpacity>
         <View>
           <Text style={s.headerTitle}>Events & Programs</Text>
@@ -184,4 +199,9 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 52, marginBottom: 16 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: C.text, marginBottom: 8 },
   emptyText: { fontSize: 14, color: C.textMuted, textAlign: 'center' },
+  registerBtn: {
+    backgroundColor: "#1D4ED8", borderRadius: 8,
+    paddingVertical: 10, alignItems: "center", marginTop: 10,
+  },
+  registerBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });

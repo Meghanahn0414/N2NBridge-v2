@@ -6,9 +6,8 @@
   background: #f3f4f6;
   padding: 0;
   position: relative;
-  z-index: auto; /* avoid creating a hard stacking context so modals can overlay header */
-  overflow-x: hidden;
-  overflow-y: auto;
+  z-index: auto;
+  overflow: hidden;
 }
 
 .app-main {
@@ -32,7 +31,8 @@
   margin-top: 0;
   padding: 0;
   background: transparent;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
   width: 100%;
 }
 
@@ -57,7 +57,9 @@
   margin-top: 0;
   padding: 0;
   background: transparent;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   transition: margin-left 0.25s ease;
 }
 
@@ -80,12 +82,6 @@ main {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
-}
-
-main > * {
-  width: 100%;
-  height: 100%;
 }
 
 /* Ensure Routes component fills available space */
@@ -135,7 +131,3 @@ body.sidebar-collapsed .app-main {
 }
 
 
-main > * {
-  margin-left: 0;
-  padding-left: 0;
-}

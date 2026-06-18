@@ -1,20 +1,13 @@
 import { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import axios from "axios";
-import { API_BASE } from "../config";
 import { useAuthStore } from "../store/authStore";
+
+const API_BASE = "https://testing-repository-grevienace-1.onrender.com";
 
 type LoginMethod = "phone" | "email";
 type Step = "input" | "otp";
@@ -96,7 +89,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Citizen Login</Text>
+        <Text style={styles.title}>Jan Seva CRM</Text>
         <Text style={styles.subtitle}>Enter OTP to Access</Text>
 
         <View style={styles.card}>
@@ -124,7 +117,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Input Field */}
+          {/* Input Step */}
           {step === "input" && (
             <>
               <Text style={styles.label}>
@@ -145,21 +138,19 @@ export default function LoginScreen() {
                 onPress={handleSendOtp}
                 disabled={loading}
               >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>SEND OTP</Text>
-                )}
+                {loading
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.buttonText}>SEND OTP</Text>
+                }
               </TouchableOpacity>
             </>
           )}
 
-          {/* OTP Input */}
+          {/* OTP Step */}
           {step === "otp" && (
             <>
               <Text style={styles.sentMsg}>
-                OTP sent to{" "}
-                <Text style={{ fontWeight: "700" }}>{value}</Text>
+                OTP sent to <Text style={{ fontWeight: "700" }}>{value}</Text>
               </Text>
               <Text style={styles.label}>
                 ENTER OTP <Text style={styles.required}>*</Text>
@@ -178,14 +169,18 @@ export default function LoginScreen() {
                 onPress={handleVerifyOtp}
                 disabled={loading}
               >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>VERIFY OTP</Text>
-                )}
+                {loading
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.buttonText}>VERIFY OTP</Text>
+                }
               </TouchableOpacity>
-              <TouchableOpacity style={styles.resendBtn} onPress={() => { setStep("input"); setOtp(""); }}>
-                <Text style={styles.resendText}>← Change {method === "phone" ? "number" : "email"}</Text>
+              <TouchableOpacity
+                style={styles.resendBtn}
+                onPress={() => { setStep("input"); setOtp(""); }}
+              >
+                <Text style={styles.resendText}>
+                  ← Change {method === "phone" ? "number" : "email"}
+                </Text>
               </TouchableOpacity>
             </>
           )}
@@ -209,26 +204,26 @@ const styles = StyleSheet.create({
   radioOption: { flexDirection: "row", alignItems: "center", gap: 8 },
   radioOuter: {
     width: 20, height: 20, borderRadius: 10,
-    borderWidth: 2, borderColor: "#06B6D4",
+    borderWidth: 2, borderColor: "#1D4ED8",
     alignItems: "center", justifyContent: "center",
   },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#06B6D4" },
-  radioLabel: { fontSize: 15, color: "#0F172A", fontWeight: "500" },
-  label: { fontSize: 11, fontWeight: "700", color: "#64748B", letterSpacing: 1, marginBottom: 8 },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#1D4ED8" },
+  radioLabel: { fontSize: 15, color: "#1E293B", fontWeight: "500" },
+  label: { fontSize: 11, fontWeight: "700", color: "#64748B", letterSpacing: 0.8, marginBottom: 8 },
   required: { color: "#EF4444" },
   input: {
-    borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 13, fontSize: 15,
+    borderWidth: 1.5, borderColor: "#E2E8F0", borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 13, fontSize: 16,
     color: "#0F172A", marginBottom: 16, backgroundColor: "#F8FAFC",
   },
-  otpInput: { textAlign: "center", fontSize: 22, letterSpacing: 8, fontWeight: "700" },
+  otpInput: { letterSpacing: 8, textAlign: "center", fontSize: 22, fontWeight: "700" },
   button: {
-    backgroundColor: "#06B6D4", borderRadius: 10,
-    paddingVertical: 15, alignItems: "center",
+    backgroundColor: "#1D4ED8", borderRadius: 10,
+    paddingVertical: 14, alignItems: "center",
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 1 },
-  sentMsg: { fontSize: 13, color: "#475569", textAlign: "center", marginBottom: 16 },
+  buttonText: { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.5 },
+  sentMsg: { fontSize: 14, color: "#64748B", marginBottom: 16, lineHeight: 20 },
   resendBtn: { marginTop: 14, alignItems: "center" },
-  resendText: { color: "#06B6D4", fontSize: 14, fontWeight: "600" },
+  resendText: { color: "#1D4ED8", fontSize: 14, fontWeight: "600" },
 });

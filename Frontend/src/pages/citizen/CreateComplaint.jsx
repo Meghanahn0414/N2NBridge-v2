@@ -212,22 +212,24 @@ export default function CreateComplaint() {
         {validationErrors.wardId && <p className="field-error-message">{validationErrors.wardId}</p>}
       </div>
 
-      <div className="form-section">
-        <label className="form-label">USE CURRENT LOCATION</label>
-        <button
-          type="button"
-          className="location-btn"
-          onClick={getCurrentLocation}
-        >
-          📍 Get GPS Location
-        </button>
-        {formData.latitude && (
-          <p className="location-info">
-            ✓ Location: {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
-          </p>
-        )}
-        {locationStatus && <p className="field-error-message">{locationStatus}</p>}
-      </div>
+      {(navigator.geolocation && window.isSecureContext) && (
+        <div className="form-section">
+          <label className="form-label">USE CURRENT LOCATION</label>
+          <button
+            type="button"
+            className="location-btn"
+            onClick={getCurrentLocation}
+          >
+            📍 Get GPS Location
+          </button>
+          {formData.latitude && (
+            <p className="location-info">
+              ✓ Location: {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
+            </p>
+          )}
+          {locationStatus && <p className="field-error-message">{locationStatus}</p>}
+        </div>
+      )}
     </div>
   );
 
@@ -328,7 +330,6 @@ export default function CreateComplaint() {
 
     if (!navigator.geolocation) {
       setLocationStatus("Geolocation is not supported by this browser.");
-      alert("Geolocation is not supported by your browser");
       return;
     }
 
@@ -342,12 +343,18 @@ export default function CreateComplaint() {
           latitude,
           longitude,
         }));
-        setLocationStatus(`Live GPS location captured successfully: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        setLocationStatus(`Live GPS location captured: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
       },
       (error) => {
-        setLocationStatus("Unable to fetch live GPS location. Please allow location access.");
-        alert("Unable to get location: " + error.message);
-      }
+        if (error.code === 1) {
+          setLocationStatus("Location access denied. Please enter location manually.");
+        } else if (error.message?.toLowerCase().includes("secure") || error.message?.toLowerCase().includes("origin")) {
+          setLocationStatus("GPS requires a secure connection (HTTPS). Please enter location manually.");
+        } else {
+          setLocationStatus("Unable to fetch GPS location. Please enter location manually.");
+        }
+      },
+      { timeout: 10000 }
     );
   };
 

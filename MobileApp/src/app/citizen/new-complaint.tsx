@@ -304,12 +304,11 @@ export default function NewComplaintScreen() {
       {/* Navigation */}
       <View style={styles.navRow}>
         <TouchableOpacity
-          style={[styles.navBtn, styles.navBack, step === 1 && styles.navDisabled]}
-          onPress={() => step > 1 && setStep(step - 1)}
-          disabled={step === 1}
-        >
-          <Text style={styles.navBackText}>← Back</Text>
-        </TouchableOpacity>
+  style={[styles.navBtn, styles.navBack]}
+  onPress={() => step > 1 ? setStep(step - 1) : router.back()}
+>
+  <Text style={styles.navBackText}>←</Text>
+</TouchableOpacity>
 
         {step < 4 ? (
           <TouchableOpacity style={[styles.navBtn, styles.navNext]} onPress={() => validate() && setStep(step + 1)}>
