@@ -1,154 +1,390 @@
 import { useState } from "react";
 import {
-  View, Text, TextInput, StyleSheet, TouchableOpacity,
-  ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ActivityIndicator, Alert, ScrollView, Image, Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
 
-const CATEGORIES = ["Infrastructure", "Health", "Education", "Water Supply", "Electricity", "Sanitation", "Other"];
+const CATEGORIES = ["Roads", "Water", "Noise", "Electricity", "Waste", "Other"];
+const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+const CATEGORY_MAP: Record<string, string> = {
+  Roads: "ROAD_ISSUE", Water: "WATER_SUPPLY", Waste: "GARBAGE",
+  Electricity: "ELECTRICITY", Noise: "NOISE_POLLUTION", Other: "OTHER",
+};
 
-export default function NewComplaint() {
+export default function NewComplaintScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("Infrastructure");
-  const [location, setLocation] = useState("");
+  const user = useAuthStore((s) => s.user);
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [form, setForm] = useState({
+    category: "Roads",
+    priority: "MEDIUM",
+    description: "",
+    photos: [] as { uri: string }[],
+    address: "",
+    wardId: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
+    confirmed: false,
+  });
 
-  async function handleSubmit() {
-    if (!title.trim() || !description.trim()) {
-      Alert.alert("Error", "Please fill in title and description");
-      return;
+  const setField = (key: string, value: any) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((e) => ({ ...e, [key]: "" }));
+  };
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (step === 1 && !form.category) e.category = "Please select a category.";
+    if (step === 2 && !form.description.trim()) e.description = "Please describe the issue.";
+    if (step === 3) {
+      if (!form.address.trim()) e.address = "Please enter a location.";
+      if (!form.wardId) e.wardId = "Please select a ward.";
     }
+    if (step === 4 && !form.confirmed) e.confirmed = "Please confirm the details are accurate.";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const pickPhoto = async () => {
+    if (form.photos.length >= 5) { Alert.alert("Max 5 photos allowed"); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"], allowsMultipleSelection: false, quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setField("photos", [...form.photos, { uri: result.assets[0].uri }]);
+    }
+  };
+
+  const getGPS = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") { Alert.alert("Permission denied", "Enable location in settings."); return; }
+    try {
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      setField("latitude", loc.coords.latitude);
+      setField("longitude", loc.coords.longitude);
+      Alert.alert("Location captured", `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
+    } catch { Alert.alert("Error", "Could not get location. Enter manually."); }
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    if (!user?.id) { Alert.alert("Error", "Session expired. Please login again."); return; }
     setLoading(true);
     try {
-      await api.post("/api/grievances/", {
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        location: location.trim() || undefined,
-        citizenId: user?.id,
-        citizenName: user?.name,
-      });
-      Alert.alert("Success", "Your complaint has been submitted!", [
-        { text: "OK", onPress: () => router.back() },
+      const payload = {
+        citizenId: user.id,
+        categoryId: CATEGORY_MAP[form.category] || form.category,
+        description: form.description.trim(),
+        address: form.address.trim(),
+        wardId: form.wardId,
+        priority: form.priority,
+        gpsLocation: form.latitude && form.longitude
+          ? { type: "Point", coordinates: [form.longitude, form.latitude] }
+          : null,
+      };
+      const { data } = await api.post("/api/grievances", payload);
+      const complaintId = data.id || data._id || data.complaintNumber;
+
+      // Upload photos
+      for (const photo of form.photos) {
+        try {
+          const fd = new FormData();
+          fd.append("file", { uri: photo.uri, name: "photo.jpg", type: "image/jpeg" } as any);
+          await api.post(`/api/grievances/${complaintId}/upload`, fd, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        } catch { /* continue if photo fails */ }
+      }
+
+      Alert.alert("Success", `Complaint filed!\nID: ${complaintId}`, [
+        { text: "OK", onPress: () => router.replace("/citizen/complaints" as any) },
       ]);
-    } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? "Failed to submit complaint";
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.message || "Failed to submit complaint.";
       Alert.alert("Error", String(msg));
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.wrapper}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Complaint</Text>
-        <View style={{ width: 60 }} />
+  // ── Step 1: Category + Priority ──
+  const renderStep1 = () => (
+    <View>
+      <View style={styles.stepHeader}>
+        <Text style={styles.stepTitle}>File a complaint</Text>
+        <Text style={styles.stepSubtitle}>Step 1 of 4 — category</Text>
       </View>
+      <Text style={styles.label}>SELECT CATEGORY *</Text>
+      <View style={styles.chipRow}>
+        {CATEGORIES.map((cat) => (
+          <TouchableOpacity
+            key={cat}
+            style={[styles.chip, form.category === cat && styles.chipActive]}
+            onPress={() => setField("category", cat)}
+          >
+            <Text style={[styles.chipText, form.category === cat && styles.chipTextActive]}>{cat}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {errors.category ? <Text style={styles.errorText}>{errors.category}</Text> : null}
 
-      <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
-        <Text style={styles.label}>Title *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Brief title of the issue"
-          placeholderTextColor="#9CA3AF"
-          value={title}
-          onChangeText={setTitle}
-          maxLength={120}
-        />
+      <Text style={[styles.label, { marginTop: 20 }]}>PRIORITY LEVEL</Text>
+      {PRIORITIES.map((p) => (
+        <TouchableOpacity key={p} style={styles.radioRow} onPress={() => setField("priority", p)}>
+          <View style={styles.radioOuter}>
+            {form.priority === p && <View style={styles.radioInner} />}
+          </View>
+          <Text style={styles.radioLabel}>{p}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
 
-        <Text style={styles.label}>Description *</Text>
-        <TextInput
-          style={[styles.input, styles.textarea]}
-          placeholder="Describe the issue in detail..."
-          placeholderTextColor="#9CA3AF"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={5}
-          textAlignVertical="top"
-        />
+  // ── Step 2: Description + Photos ──
+  const renderStep2 = () => (
+    <View>
+      <View style={styles.stepHeader}>
+        <Text style={styles.stepTitle}>File a complaint</Text>
+        <Text style={styles.stepSubtitle}>Step 2 of 4 — details</Text>
+      </View>
+      <Text style={styles.label}>DESCRIBE THE ISSUE *</Text>
+      <TextInput
+        style={[styles.textarea, errors.description && styles.inputError]}
+        placeholder="Describe the issue in detail. Include what, where, and when..."
+        placeholderTextColor="#9CA3AF"
+        multiline
+        numberOfLines={5}
+        maxLength={500}
+        value={form.description}
+        onChangeText={(v) => setField("description", v)}
+      />
+      <Text style={styles.charCount}>{form.description.length}/500 characters</Text>
+      {errors.description ? <Text style={styles.errorText}>{errors.description}</Text> : null}
 
-        <Text style={styles.label}>Category</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryRow}>
-          {CATEGORIES.map((cat) => (
+      <Text style={[styles.label, { marginTop: 20 }]}>ATTACH PHOTOS (OPTIONAL)</Text>
+      <TouchableOpacity style={styles.photoUploadBox} onPress={pickPhoto}>
+        <Text style={styles.photoIcon}>📷</Text>
+        <Text style={styles.photoUploadText}>Tap to add photo</Text>
+        <Text style={styles.photoUploadHint}>Max 5 photos</Text>
+      </TouchableOpacity>
+      {form.photos.length > 0 && (
+        <View style={styles.photoGrid}>
+          {form.photos.map((p, i) => (
+            <View key={i} style={styles.photoThumb}>
+              <Image source={{ uri: p.uri }} style={styles.photoImg} />
+              <TouchableOpacity
+                style={styles.removePhoto}
+                onPress={() => setField("photos", form.photos.filter((_, j) => j !== i))}
+              >
+                <Text style={{ color: "#fff", fontSize: 10 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+      {form.photos.length > 0 && (
+        <Text style={styles.charCount}>{form.photos.length} photo(s) added</Text>
+      )}
+    </View>
+  );
+
+  // ── Step 3: Location ──
+  const renderStep3 = () => (
+    <View>
+      <View style={styles.stepHeader}>
+        <Text style={styles.stepTitle}>File a complaint</Text>
+        <Text style={styles.stepSubtitle}>Step 3 of 4 — location</Text>
+      </View>
+      <Text style={styles.label}>LOCATION DETAILS *</Text>
+      <TextInput
+        style={[styles.input, errors.address && styles.inputError]}
+        placeholder="Enter street, area, or landmark"
+        placeholderTextColor="#9CA3AF"
+        value={form.address}
+        onChangeText={(v) => setField("address", v)}
+      />
+      {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
+
+      <Text style={[styles.label, { marginTop: 16 }]}>WARD *</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+        <View style={styles.wardRow}>
+          {Array.from({ length: 50 }, (_, i) => String(i + 1)).map((w) => (
             <TouchableOpacity
-              key={cat}
-              style={[styles.catChip, category === cat && styles.catChipActive]}
-              onPress={() => setCategory(cat)}
+              key={w}
+              style={[styles.wardChip, form.wardId === w && styles.chipActive]}
+              onPress={() => setField("wardId", w)}
             >
-              <Text style={[styles.catText, category === cat && styles.catTextActive]}>{cat}</Text>
+              <Text style={[styles.chipText, form.wardId === w && styles.chipTextActive]}>
+                Ward {w}
+              </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
+      </ScrollView>
+      {errors.wardId ? <Text style={styles.errorText}>{errors.wardId}</Text> : null}
 
-        <Text style={styles.label}>Location (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Area / street / landmark"
-          placeholderTextColor="#9CA3AF"
-          value={location}
-          onChangeText={setLocation}
-        />
+      <TouchableOpacity style={styles.gpsBtn} onPress={getGPS}>
+        <Text style={styles.gpsBtnText}>📍 Get GPS Location</Text>
+      </TouchableOpacity>
+      {form.latitude && (
+        <Text style={styles.gpsInfo}>
+          ✓ {form.latitude.toFixed(4)}, {form.longitude?.toFixed(4)}
+        </Text>
+      )}
+    </View>
+  );
 
+  // ── Step 4: Review ──
+  const renderStep4 = () => (
+    <View>
+      <View style={styles.stepHeader}>
+        <Text style={styles.stepTitle}>File a complaint</Text>
+        <Text style={styles.stepSubtitle}>Step 4 of 4 — review</Text>
+      </View>
+      {[
+        ["Category", form.category],
+        ["Priority", form.priority],
+        ["Description", form.description],
+        ["Location", form.address],
+        ["Ward", `Ward ${form.wardId}`],
+        form.photos.length > 0 ? ["Photos", `${form.photos.length} attached`] : null,
+      ].filter((row): row is string[] => row !== null).map(([label, value]) => (
+        <View key={label} style={styles.reviewRow}>
+          <Text style={styles.reviewLabel}>{label}:</Text>
+          <Text style={styles.reviewValue} numberOfLines={3}>{value}</Text>
+        </View>
+      ))}
+
+      <TouchableOpacity
+        style={styles.checkRow}
+        onPress={() => setField("confirmed", !form.confirmed)}
+      >
+        <View style={[styles.checkbox, form.confirmed && styles.checkboxChecked]}>
+          {form.confirmed && <Text style={{ color: "#fff", fontSize: 12 }}>✓</Text>}
+        </View>
+        <Text style={styles.checkLabel}>I confirm that the information is accurate and factual</Text>
+      </TouchableOpacity>
+      {errors.confirmed ? <Text style={styles.errorText}>{errors.confirmed}</Text> : null}
+    </View>
+  );
+
+  return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      {/* Progress Bar */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${(step / 4) * 100}%` }]} />
+        </View>
+        <View style={styles.stepDots}>
+          {[1, 2, 3, 4].map((s) => (
+            <View key={s} style={[styles.dot, step === s && styles.dotActive, s < step && styles.dotDone]}>
+              <Text style={[styles.dotText, (step === s || s < step) && { color: "#fff" }]}>
+                {s < step ? "✓" : s}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        {step === 1 && renderStep1()}
+        {step === 2 && renderStep2()}
+        {step === 3 && renderStep3()}
+        {step === 4 && renderStep4()}
+      </ScrollView>
+
+      {/* Navigation */}
+      <View style={styles.navRow}>
         <TouchableOpacity
-          style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
+          style={[styles.navBtn, styles.navBack, step === 1 && styles.navDisabled]}
+          onPress={() => step > 1 && setStep(step - 1)}
+          disabled={step === 1}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitText}>Submit Complaint</Text>
-          )}
+          <Text style={styles.navBackText}>← Back</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+        {step < 4 ? (
+          <TouchableOpacity style={[styles.navBtn, styles.navNext]} onPress={() => validate() && setStep(step + 1)}>
+            <Text style={styles.navNextText}>Next →</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.navBtn, styles.navSubmit, loading && styles.navDisabled]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.navNextText}>Submit Complaint</Text>}
+          </TouchableOpacity>
+        )}
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
+const PRIMARY = "#1D3A8A";
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: "#F8FAFC" },
-  header: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 16, backgroundColor: "#1D4ED8",
-  },
-  backBtn: { width: 60 },
-  backText: { color: "#BFDBFE", fontSize: 15 },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#fff" },
-  form: { flex: 1, padding: 20 },
-  label: { fontSize: 13, fontWeight: "600", color: "#374151", marginBottom: 6, marginTop: 16 },
-  input: {
-    borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15,
-    color: "#111827", backgroundColor: "#fff",
-  },
-  textarea: { height: 120, textAlignVertical: "top" },
-  categoryRow: { marginBottom: 4 },
-  catChip: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: "#F3F4F6", marginRight: 8, borderWidth: 1, borderColor: "#E5E7EB",
-  },
-  catChipActive: { backgroundColor: "#1D4ED8", borderColor: "#1D4ED8" },
-  catText: { fontSize: 13, color: "#6B7280", fontWeight: "500" },
-  catTextActive: { color: "#fff" },
-  submitBtn: {
-    backgroundColor: "#1D4ED8", borderRadius: 12,
-    paddingVertical: 15, alignItems: "center", marginTop: 28,
-  },
-  submitBtnDisabled: { opacity: 0.6 },
-  submitText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  progressContainer: { backgroundColor: "#fff", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  progressTrack: { height: 6, backgroundColor: "#E2E8F0", borderRadius: 3, overflow: "hidden" },
+  progressFill: { height: "100%", backgroundColor: PRIMARY, borderRadius: 3 },
+  stepDots: { flexDirection: "row", justifyContent: "space-between", marginTop: 10, paddingHorizontal: 4 },
+  dot: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: "#CBD5E1", alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
+  dotActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  dotDone: { backgroundColor: "#22C55E", borderColor: "#22C55E" },
+  dotText: { fontSize: 12, fontWeight: "700", color: "#94A3B8" },
+  scroll: { flex: 1, backgroundColor: "#F8FAFC" },
+  scrollContent: { padding: 16, paddingBottom: 8 },
+  stepHeader: { backgroundColor: PRIMARY, borderRadius: 10, padding: 16, marginBottom: 20 },
+  stepTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  stepSubtitle: { color: "#CBD5E1", fontSize: 13, marginTop: 2 },
+  label: { fontSize: 11, fontWeight: "700", color: "#64748B", letterSpacing: 1, marginBottom: 10 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: { borderWidth: 1.5, borderColor: "#CBD5E1", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: "#fff" },
+  chipActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  chipText: { fontSize: 14, color: "#374151", fontWeight: "500" },
+  chipTextActive: { color: "#fff" },
+  radioRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
+  radioOuter: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: "#1D3A8A", alignItems: "center", justifyContent: "center" },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: PRIMARY },
+  radioLabel: { fontSize: 15, color: "#0F172A" },
+  textarea: { borderWidth: 1.5, borderColor: "#CBD5E1", borderRadius: 10, padding: 12, fontSize: 14, color: "#0F172A", backgroundColor: "#fff", minHeight: 120, textAlignVertical: "top" },
+  charCount: { fontSize: 12, color: "#94A3B8", textAlign: "right", marginTop: 4, marginBottom: 4 },
+  photoUploadBox: { borderWidth: 1.5, borderColor: "#CBD5E1", borderStyle: "dashed", borderRadius: 10, padding: 24, alignItems: "center", backgroundColor: "#fff" },
+  photoIcon: { fontSize: 28, marginBottom: 4 },
+  photoUploadText: { fontSize: 14, color: "#374151", fontWeight: "600" },
+  photoUploadHint: { fontSize: 12, color: "#94A3B8", marginTop: 2 },
+  photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  photoThumb: { width: 72, height: 72, borderRadius: 8, overflow: "hidden", position: "relative" },
+  photoImg: { width: "100%", height: "100%" },
+  removePhoto: { position: "absolute", top: 2, right: 2, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 8, width: 16, height: 16, alignItems: "center", justifyContent: "center" },
+  input: { borderWidth: 1.5, borderColor: "#CBD5E1", borderRadius: 10, padding: 12, fontSize: 14, color: "#0F172A", backgroundColor: "#fff", marginBottom: 4 },
+  inputError: { borderColor: "#EF4444" },
+  errorText: { fontSize: 12, color: "#EF4444", marginTop: 2, marginBottom: 8 },
+  wardRow: { flexDirection: "row", gap: 8, paddingVertical: 4 },
+  wardChip: { borderWidth: 1.5, borderColor: "#CBD5E1", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#fff" },
+  gpsBtn: { borderWidth: 1.5, borderColor: PRIMARY, borderRadius: 10, padding: 12, alignItems: "center", marginTop: 12 },
+  gpsBtnText: { color: PRIMARY, fontWeight: "600", fontSize: 14 },
+  gpsInfo: { fontSize: 13, color: "#22C55E", marginTop: 6, fontWeight: "600" },
+  reviewRow: { flexDirection: "row", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
+  reviewLabel: { width: 90, fontSize: 13, fontWeight: "700", color: "#64748B" },
+  reviewValue: { flex: 1, fontSize: 13, color: "#0F172A" },
+  checkRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 20, padding: 14, backgroundColor: "#F0F9FF", borderRadius: 10 },
+  checkbox: { width: 22, height: 22, borderWidth: 2, borderColor: "#CBD5E1", borderRadius: 4, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
+  checkboxChecked: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  checkLabel: { flex: 1, fontSize: 13, color: "#0F172A", lineHeight: 18 },
+  navRow: { flexDirection: "row", gap: 12, padding: 16, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#E2E8F0" },
+  navBtn: { flex: 1, borderRadius: 10, paddingVertical: 14, alignItems: "center" },
+  navBack: { borderWidth: 1.5, borderColor: "#CBD5E1" },
+  navNext: { backgroundColor: PRIMARY },
+  navSubmit: { backgroundColor: "#22C55E" },
+  navDisabled: { opacity: 0.4 },
+  navBackText: { color: "#374151", fontWeight: "600", fontSize: 15 },
+  navNextText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });
