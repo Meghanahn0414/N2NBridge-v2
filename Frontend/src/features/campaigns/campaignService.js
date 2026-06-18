@@ -56,6 +56,16 @@ export async function deleteCampaign(campaignId) {
   }
 }
 
+export async function cancelCampaign(campaignId) {
+  try {
+    const response = await api.post(`${CAMPAIGN_ENDPOINT}/${campaignId}/cancel`);
+    return response.data;
+  } catch (error) {
+    console.error("Error cancelling campaign:", error);
+    throw error;
+  }
+}
+
 export async function launchCampaign(campaignId) {
   try {
     const response = await api.post(`${CAMPAIGN_ENDPOINT}/${campaignId}/launch`);

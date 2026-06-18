@@ -7,7 +7,7 @@ const TYPE_COLOR = {
   SUCCESS: '#2e7d32',
 };
 
-export default function ToastNotification({ toast, onDismiss }) {
+export default function ToastNotification({ toast, onDismiss, onClick }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -17,6 +17,7 @@ export default function ToastNotification({ toast, onDismiss }) {
 
   const accentColor = TYPE_COLOR[toast.type] || TYPE_COLOR.INFO;
   const body = toast.body || toast.message || '';
+  const isClickable = typeof onClick === 'function';
 
   return (
     <div
@@ -31,9 +32,10 @@ export default function ToastNotification({ toast, onDismiss }) {
         transform: visible ? 'translateX(0)' : 'translateX(120%)',
         opacity: visible ? 1 : 0,
         transition: 'transform 0.3s ease, opacity 0.3s ease',
+        cursor: isClickable ? 'pointer' : 'default',
       }}
     >
-      {/* Header — app name row like WhatsApp */}
+      {/* Header row */}
       <div
         style={{
           background: '#f5f5f5',
@@ -64,7 +66,7 @@ export default function ToastNotification({ toast, onDismiss }) {
           </span>
         </div>
         <button
-          onClick={() => onDismiss(toast.toastId)}
+          onClick={(e) => { e.stopPropagation(); onDismiss(toast.toastId); }}
           aria-label="Close notification"
           style={{
             background: 'none',
@@ -82,8 +84,11 @@ export default function ToastNotification({ toast, onDismiss }) {
         </button>
       </div>
 
-      {/* Body */}
-      <div style={{ padding: '10px 14px 12px' }}>
+      {/* Body — clickable */}
+      <div
+        onClick={isClickable ? onClick : undefined}
+        style={{ padding: '10px 14px 8px' }}
+      >
         {toast.title && (
           <div style={{ fontWeight: 700, fontSize: 13.5, color: '#111', marginBottom: 3 }}>
             {toast.title}
@@ -92,6 +97,11 @@ export default function ToastNotification({ toast, onDismiss }) {
         {body && (
           <div style={{ fontSize: 13, color: '#555', lineHeight: 1.45 }}>
             {body.length > 90 ? body.slice(0, 90) + '…' : body}
+          </div>
+        )}
+        {isClickable && (
+          <div style={{ marginTop: 6, fontSize: 11, color: accentColor, fontWeight: 600 }}>
+            Tap to open →
           </div>
         )}
       </div>

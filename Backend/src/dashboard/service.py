@@ -313,7 +313,7 @@ class DashboardService:
         )
         resolved_complaints = status_counts.get("RESOLVED", 0)
         critical_alerts = alert_priorities.get("CRITICAL", 0)
-        registered_citizens = metrics.get("users", {}).get("total", 0)
+        registered_citizens = user_roles.get("CITIZEN", 0)
         active_officers = user_roles.get("FIELD_OFFICER", 0) + user_roles.get("OFFICER", 0)
         health_score = DashboardService.get_system_health()
         avg_satisfaction = 0

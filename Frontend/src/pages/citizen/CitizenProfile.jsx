@@ -5,6 +5,14 @@ import { getCitizenProfile, updateCitizenProfile, uploadCitizenProfilePhoto } fr
 import { getWards } from '../../features/constituencies/constituencyService';
 import PhoneInput from '../../components/PhoneInput';
 import { formatPhoneDisplay, sanitizePhoneInput } from '../../utils/phoneUtils';
+import { updateAuthUser } from '../../services/authStorage';
+
+function extractErrorMsg(err, fallback) {
+  const detail = err?.response?.data?.detail;
+  if (Array.isArray(detail)) return detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+  if (typeof detail === 'string') return detail;
+  return err?.response?.data?.message || err?.message || fallback;
+}
 
 export default function CitizenProfile() {
   const navigate = useNavigate();
@@ -59,7 +67,7 @@ export default function CitizenProfile() {
         }
       } catch (err) {
         if (!active) return;
-        setError(err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to load profile');
+        setError(extractErrorMsg(err, 'Failed to load profile'));
       } finally {
         if (active) setLoading(false);
       }
@@ -97,7 +105,7 @@ export default function CitizenProfile() {
       setIsEditing(false);
       setSuccessMessage('Profile updated successfully.');
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to save profile.');
+      setError(extractErrorMsg(err, 'Failed to save profile.'));
     }
   };
 
@@ -138,20 +146,15 @@ export default function CitizenProfile() {
 
     try {
       const result = await uploadCitizenProfilePhoto(photoFile);
-      const updatedProfile = { ...profile, profileImage: result.profileImage || result.data?.profileImage };
+      const newPhotoUrl = result.data?.profileImage || result.profileImage;
+      const updatedProfile = { ...profile, profileImage: newPhotoUrl };
       setProfile(updatedProfile);
       setPhotoFile(null);
       setSuccessMessage('Profile photo uploaded successfully.');
-      localStorage.setItem(
-        'user',
-        JSON.stringify({
-          ...JSON.parse(localStorage.getItem('user') || '{}'),
-          profileImage: updatedProfile.profileImage,
-        })
-      );
+      updateAuthUser({ profileImage: newPhotoUrl });
       window.dispatchEvent(new Event('auth-user-updated'));
     } catch (err) {
-      setPhotoError(err?.response?.data?.detail || err?.message || 'Failed to upload photo.');
+      setPhotoError(extractErrorMsg(err, 'Failed to upload photo.'));
     } finally {
       setUploadingPhoto(false);
     }

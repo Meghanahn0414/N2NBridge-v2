@@ -135,6 +135,51 @@ def notify_all_citizens(title: str, body: str, notification_type: str, extra: di
         raise
 
 
+@celery_app.task(name="tasks.notify_staff_users")
+def notify_staff_users(title: str, body: str, notification_type: str, extra: dict = None):
+    """
+    Insert in-app notifications for all staff roles:
+    ADMIN, MANAGER, REPRESENTATIVE, FIELD_OFFICER.
+    Called whenever a campaign is launched or event is published/created
+    so that staff see toasts and can click through to the relevant page.
+    """
+    try:
+        from config.database import MongoDatabase
+        db = MongoDatabase.get_db()
+
+        staff_roles = ["ADMIN", "MANAGER", "REPRESENTATIVE", "FIELD_OFFICER"]
+        staff = list(db.users.find(
+            {"role": {"$in": staff_roles}, "isDeleted": {"$ne": True}},
+            {"_id": 1}
+        ))
+        if not staff:
+            return {"sent": 0}
+
+        now = datetime.utcnow()
+        records = [
+            {
+                "userId": str(s["_id"]),
+                "title": title,
+                "body": body,
+                "type": notification_type,
+                "isRead": False,
+                "createdAt": now,
+                **(extra or {}),
+            }
+            for s in staff
+        ]
+
+        batch_size = 500
+        for i in range(0, len(records), batch_size):
+            db.notifications.insert_many(records[i:i + batch_size], ordered=False)
+
+        logger.info(f"notify_staff_users: sent {len(records)} notifications to staff")
+        return {"sent": len(records)}
+    except Exception as exc:
+        logger.error(f"notify_staff_users task error: {exc}")
+        raise
+
+
 @celery_app.task(name="tasks.send_campaign_notifications")
 def send_campaign_notifications(campaign_id: str):
     """

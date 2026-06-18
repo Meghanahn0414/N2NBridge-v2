@@ -2,9 +2,12 @@
 Authentication Routes
 """
 import logging
+import uuid
+from datetime import datetime
 from typing import Optional
 
 from auth.otp_service import OTP_STORAGE, OTPService
+from pymongo import ReturnDocument
 from auth.service import AuthService
 from config.database import MongoDatabase
 from config.rate_limit import limiter
@@ -260,45 +263,41 @@ async def verify_otp(request: VerifyOtpRequest):
         if not OTPService.verify_otp(normalized_value, request.otp):
             raise HTTPException(status_code=401, detail="Invalid or expired OTP")
         
-        # Get or create user
-        user = None
-        if normalized_email:
-            user = UserService.get_user_by_email(normalized_email)
-        if not user and normalized_mobile:
-            user = UserService.get_user_by_mobile(normalized_mobile)
-        
-        if not user:
-            # Auto-create user on first OTP verification (OTP users don't have password)
-            db = MongoDatabase.get_db()
-            import uuid
-            from datetime import datetime
+        # Get or create user — atomic upsert prevents race-condition duplicates
+        db = MongoDatabase.get_db()
 
-            # Generate unique mobile/email if not provided or when login is via email/phone only
-            user_data = {
-                "fullName": request.value.strip(),
-                "mobile": normalized_mobile if is_mobile else f"otp-{uuid.uuid4().hex[:8]}",
-                "email": normalized_email if is_email else f"otp-{uuid.uuid4().hex[:8]}@otp.local",
-                "passwordHash": "",  # OTP login users have no password
-                "role": "CITIZEN",  # Default role
-                "status": "ACTIVE",
-                "isDeleted": False,
-                "lastLoginAt": None,
-                "createdAt": datetime.utcnow(),
-                "updatedAt": datetime.utcnow(),
-                "createdBy": "system",
-                "updatedBy": "system"
-            }
-            try:
-                result = db.users.insert_one(user_data)
-                user = db.users.find_one({"_id": result.inserted_id})
-                logger.info(f"OTP user auto-created: {result.inserted_id}")
-            except Exception as e:
-                # If duplicate key error, try to find existing user by mobile/email
-                logger.warning(f"Insert failed (likely duplicate): {e}. Trying to fetch existing user...")
-                user = UserService.get_user_by_mobile(normalized_mobile) if is_mobile else UserService.get_user_by_email(normalized_email)
-                if not user:
-                    # If still no user found, re-raise the error
-                    raise HTTPException(status_code=500, detail="Failed to create or find user")
+        # Look up by whichever identifier was used to request the OTP
+        if is_mobile:
+            lookup_filter = {"mobile": normalized_mobile, "isDeleted": False}
+        else:
+            lookup_filter = {"email": normalized_email, "isDeleted": False}
+
+        now = datetime.utcnow()
+        user = db.users.find_one_and_update(
+            lookup_filter,
+            {
+                "$setOnInsert": {
+                    # Leave fullName blank so OtpVerify.jsx redirects new citizens to profile creation
+                    "fullName": "",
+                    "mobile": normalized_mobile if is_mobile else f"otp-{uuid.uuid4().hex[:8]}",
+                    "email": normalized_email if is_email else f"otp-{uuid.uuid4().hex[:8]}@otp.local",
+                    "passwordHash": "",
+                    "role": "CITIZEN",
+                    "status": "ACTIVE",
+                    "isDeleted": False,
+                    "lastLoginAt": None,
+                    "createdAt": now,
+                    "updatedAt": now,
+                    "createdBy": "system",
+                    "updatedBy": "system",
+                }
+            },
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
+        if user is None:
+            raise HTTPException(status_code=500, detail="Failed to create or find user")
+        logger.info(f"OTP user found/created: {user['_id']}")
         
         # Create JWT token
         token = TokenManager.create_token(str(user["_id"]), user["role"])

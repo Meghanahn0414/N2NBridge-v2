@@ -1,7 +1,7 @@
 import React from 'react';
 import ToastNotification from './ToastNotification';
 
-export default function ToastContainer({ toasts, onDismiss }) {
+export default function ToastContainer({ toasts, onDismiss, onToastClick }) {
   if (!toasts.length) return null;
 
   return (
@@ -20,7 +20,11 @@ export default function ToastContainer({ toasts, onDismiss }) {
     >
       {toasts.map((toast) => (
         <div key={toast.toastId} style={{ pointerEvents: 'auto' }}>
-          <ToastNotification toast={toast} onDismiss={onDismiss} />
+          <ToastNotification
+            toast={toast}
+            onDismiss={onDismiss}
+            onClick={onToastClick ? () => onToastClick(toast) : undefined}
+          />
         </div>
       ))}
     </div>

@@ -1,13 +1,28 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthUser, clearAuth, getAuthRole } from "../services/authStorage";
+import { notificationService } from "../shared/services/notification";
+import { getNotificationRoute } from "../utils/notificationRoute";
 
-const SAMPLE_NOTIFICATIONS = [
-  { id: 1, icon: "📋", text: "New complaint submitted by Suman", time: "2 min ago", unread: true },
-  { id: 2, icon: "✅", text: "Complaint G-002 resolved by field officer", time: "1 hr ago", unread: true },
-  { id: 3, icon: "📢", text: "Campaign 'Clean Drive' starts tomorrow", time: "3 hr ago", unread: false },
-  { id: 4, icon: "⚠️", text: "High-priority complaint assigned to Ward 8", time: "Yesterday", unread: false },
-];
+const TYPE_ICON = {
+  GRIEVANCE: "📋", COMPLAINT: "📋",
+  EVENT: "📅",
+  CAMPAIGN: "📢",
+  ALERT: "⚠️", EMERGENCY: "⚠️",
+  TASK: "✅",
+};
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}
 
 export default function PageHeader({ title, subtitle }) {
   const user = getAuthUser();
@@ -21,12 +36,29 @@ export default function PageHeader({ title, subtitle }) {
 
   const [showLogout, setShowLogout] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState(SAMPLE_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
   const notifRef = useRef(null);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const role = getAuthRole();
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const data = await notificationService.getUnread();
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    const handler = () => fetchNotifications();
+    window.addEventListener('app-notification-updated', handler);
+    return () => window.removeEventListener('app-notification-updated', handler);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -41,7 +73,27 @@ export default function PageHeader({ title, subtitle }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+  const markAllRead = async () => {
+    try {
+      await notificationService.markAllRead();
+      setNotifications([]);
+      window.dispatchEvent(new Event('app-notification-updated'));
+    } catch {
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    }
+  };
+
+  const handleNotificationClick = async (n) => {
+    const id = n._id || n.id;
+    if (id) {
+      try { await notificationService.markRead(id); } catch {}
+    }
+    setNotifications(prev => prev.filter(x => (x._id || x.id) !== id));
+    const route = getNotificationRoute(n, role);
+    if (route) navigate(route);
+    setShowNotifications(false);
+    window.dispatchEvent(new Event('app-notification-updated'));
+  };
 
   const handleLogout = () => {
     clearAuth();
@@ -113,7 +165,7 @@ export default function PageHeader({ title, subtitle }) {
               display: "flex", alignItems: "center", justifyContent: "center",
               border: "2px solid #1a5290",
             }}>
-              {unreadCount}
+              {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </button>
@@ -142,29 +194,48 @@ export default function PageHeader({ title, subtitle }) {
 
             {/* List */}
             <div style={{ maxHeight: 300, overflowY: "auto" }}>
-              {notifications.map((n, i) => (
-                <div
-                  key={n.id}
-                  onClick={() => setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, unread: false } : x))}
-                  style={{
-                    display: "flex", gap: 12, padding: "12px 18px",
-                    borderBottom: i < notifications.length - 1 ? "1px solid #f1f5f9" : "none",
-                    background: n.unread ? "#eff6ff" : "#fff",
-                    cursor: "pointer", transition: "background 0.1s",
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#f0f9ff"}
-                  onMouseLeave={e => e.currentTarget.style.background = n.unread ? "#eff6ff" : "#fff"}
-                >
-                  <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{n.icon}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: "12px", color: "#0f172a", fontWeight: n.unread ? 600 : 400, lineHeight: 1.4 }}>{n.text}</p>
-                    <p style={{ margin: "3px 0 0", fontSize: "10px", color: "#94a3b8" }}>{n.time}</p>
-                  </div>
-                  {n.unread && (
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, marginTop: 6 }} />
-                  )}
+              {notifications.length === 0 ? (
+                <div style={{ padding: "24px 18px", textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>
+                  No new notifications
                 </div>
-              ))}
+              ) : (
+                notifications.map((n, i) => {
+                  const icon = TYPE_ICON[(n.type || '').toUpperCase()] || "🔔";
+                  const isUnread = !n.isRead;
+                  return (
+                    <div
+                      key={n._id || n.id || i}
+                      onClick={() => handleNotificationClick(n)}
+                      style={{
+                        display: "flex", gap: 12, padding: "12px 18px",
+                        borderBottom: i < notifications.length - 1 ? "1px solid #f1f5f9" : "none",
+                        background: isUnread ? "#eff6ff" : "#fff",
+                        cursor: "pointer", transition: "background 0.1s",
+                        borderLeft: isUnread ? "3px solid #3b82f6" : "3px solid transparent",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = "#f0f9ff"}
+                      onMouseLeave={e => e.currentTarget.style.background = isUnread ? "#eff6ff" : "#fff"}
+                    >
+                      <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{icon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: "12px", color: "#0f172a", fontWeight: isUnread ? 600 : 400, lineHeight: 1.4 }}>
+                          {n.title || n.body || 'Notification'}
+                        </p>
+                        {n.body && n.title && (
+                          <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#475569", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {n.body}
+                          </p>
+                        )}
+                        <p style={{ margin: "3px 0 0", fontSize: "10px", color: "#94a3b8" }}>{timeAgo(n.createdAt)}</p>
+                        {isUnread && <p style={{ margin: "3px 0 0", fontSize: "10px", color: "#3b82f6", fontWeight: 600 }}>Tap to open →</p>}
+                      </div>
+                      {isUnread && (
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#3b82f6", flexShrink: 0, marginTop: 6 }} />
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             {/* Footer */}

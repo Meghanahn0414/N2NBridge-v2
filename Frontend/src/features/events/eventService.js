@@ -73,3 +73,12 @@ export async function publishEvent(eventId) {
     throw extractError(error);
   }
 }
+
+export async function cancelEvent(eventId) {
+  try {
+    const response = await api.post(`${EVENT_ENDPOINT}/${eventId}/cancel`);
+    return response.data;
+  } catch (error) {
+    throw extractError(error);
+  }
+}

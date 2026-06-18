@@ -59,7 +59,25 @@ class CampaignService:
                 "updatedBy": deleted_by or "system"
             }}
         )
+        if result.modified_count > 0:
+            deleted = db.notifications.delete_many({"campaignId": campaign_id})
+            logger.info(f"Campaign {campaign_id} deleted; removed {deleted.deleted_count} notifications")
         return result.modified_count > 0
+
+    @staticmethod
+    def cancel_campaign(campaign_id: str, cancelled_by: str) -> bool:
+        """Cancel campaign — sets status to CANCELLED, keeps record in DB"""
+        db = MongoDatabase.get_db()
+        result = db.campaigns.update_one(
+            {"_id": ObjectId(campaign_id), "isDeleted": {"$ne": True}},
+            {"$set": {
+                "status": "CANCELLED",
+                "cancelledAt": datetime.utcnow(),
+                "updatedAt": datetime.utcnow(),
+                "updatedBy": cancelled_by or "system",
+            }}
+        )
+        return result.matched_count > 0
 
     @staticmethod
     def launch_campaign(campaign_id: str, updated_by: str) -> bool:
@@ -82,18 +100,61 @@ class CampaignService:
         )
 
         if result.modified_count > 0:
-            from tasks.background import send_campaign_notifications
+            # Send notifications synchronously first so they are guaranteed to fire,
+            # then also queue via Celery if available for push delivery.
+            sent = _send_notifications_sync(db, campaign, campaign_id)
+            logger.info(f"Campaign {campaign_id} launched; {sent} notifications created")
             try:
+                from tasks.background import send_campaign_notifications
                 send_campaign_notifications.delay(campaign_id)
-                logger.info(f"Campaign {campaign_id} launched; notifications queued via Celery")
-            except Exception as exc:
-                logger.warning(
-                    f"Celery unavailable ({exc}); running campaign notifications synchronously"
-                )
-                try:
-                    send_campaign_notifications(campaign_id)
-                except Exception as inner:
-                    logger.error(f"Synchronous campaign notifications failed: {inner}")
+            except Exception:
+                pass  # Celery push is best-effort; in-app notifications already created above
             return True
 
         return False
+
+
+def _send_notifications_sync(db, campaign: dict, campaign_id: str) -> int:
+    """Create in-app notifications for all target citizens synchronously."""
+    try:
+        ward_id = campaign.get("wardId")
+        query = {"role": "CITIZEN", "isDeleted": {"$ne": True}}
+        if ward_id:
+            query["wardId"] = ward_id
+
+        citizens = list(db.users.find(query, {"_id": 1}))
+        if not citizens:
+            logger.warning(f"Campaign {campaign_id}: no matching citizens found")
+            return 0
+
+        title = f"New Campaign: {campaign.get('name', 'New Campaign')}"
+        body = (
+            campaign.get("message")
+            or f"A new {campaign.get('type', 'awareness')} campaign has been launched."
+        )
+        if ward_id:
+            body = f"[Ward update] {body}"
+
+        now = datetime.utcnow()
+        records = [
+            {
+                "userId": str(c["_id"]),
+                "title": title,
+                "body": body,
+                "type": "CAMPAIGN",
+                "campaignId": campaign_id,
+                "wardId": ward_id,
+                "isRead": False,
+                "createdAt": now,
+            }
+            for c in citizens
+        ]
+
+        batch_size = 500
+        for i in range(0, len(records), batch_size):
+            db.notifications.insert_many(records[i : i + batch_size], ordered=False)
+
+        return len(records)
+    except Exception as exc:
+        logger.error(f"_send_notifications_sync error for campaign {campaign_id}: {exc}")
+        return 0

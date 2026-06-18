@@ -36,10 +36,14 @@ class EventService:
         return db.events.find_one({"_id": ObjectId(event_id)})
     
     @staticmethod
-    def list_events(skip: int = 0, limit: int = 10) -> List[dict]:
+    def list_events(skip: int = 0, limit: int = 10, filters: dict = None) -> List[dict]:
         """List events"""
         db = MongoDatabase.get_db()
-        return list(db.events.find().skip(skip).limit(limit))
+        query = {}
+        if filters:
+            if filters.get("status"):
+                query["status"] = filters["status"]
+        return list(db.events.find(query).sort("createdAt", -1).skip(skip).limit(limit))
     
     @staticmethod
     def update_event(event_id: str, update_data: dict, updated_by: str) -> bool:
@@ -59,6 +63,21 @@ class EventService:
         db = MongoDatabase.get_db()
         result = db.events.delete_one({"_id": ObjectId(event_id)})
         return result.deleted_count > 0
+
+    @staticmethod
+    def cancel_event(event_id: str, user_id: str) -> bool:
+        """Cancel event — sets status to CANCELLED, keeps record in DB"""
+        db = MongoDatabase.get_db()
+        result = db.events.update_one(
+            {"_id": ObjectId(event_id)},
+            {"$set": {
+                "status": "CANCELLED",
+                "cancelledAt": datetime.utcnow(),
+                "updatedBy": user_id,
+                "updatedAt": datetime.utcnow(),
+            }}
+        )
+        return result.matched_count > 0
 
     @staticmethod
     def publish_event(event_id: str, user_id: str) -> bool:

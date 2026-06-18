@@ -3,9 +3,22 @@ import '../../../styles/modules/ModulePageTemplate.css';
 import PageHeader from "../../../components/PageHeader";
 import PhoneInput from "../../../components/PhoneInput";
 import { sanitizePhoneInput } from "../../../utils/phoneUtils";
+import api from "../../../shared/services/api";
+import { getAuthUser, updateAuthUser } from "../../../services/authStorage";
 
 export default function AdminSettings() {
   const [mobile, setMobile] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(() => {
+    const img = getAuthUser()?.profileImage;
+    if (!img) return '';
+    if (img.startsWith('data:image/') || img.startsWith('http://') || img.startsWith('https://')) return img;
+    const base = import.meta.env.VITE_API_BASE_URL || '';
+    const path = img.startsWith('/') ? img : `/${img}`;
+    return base ? `${base}${path}` : path;
+  });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoMsg, setPhotoMsg] = useState('');
 
   const [userPreferences, setUserPreferences] = useState({
     theme: 'light',
@@ -24,6 +37,41 @@ export default function AdminSettings() {
 
   const handlePreferenceChange = (key, value) => {
     setUserPreferences({ ...userPreferences, [key]: value });
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setPhotoMsg('');
+  };
+
+  const handlePhotoUpload = async () => {
+    if (!photoFile) { setPhotoMsg('Please select a photo first.'); return; }
+    const user = getAuthUser();
+    if (!user?.id && !user?._id) { setPhotoMsg('Could not determine user ID. Please re-login.'); return; }
+    const userId = user.id || user._id;
+    setUploadingPhoto(true);
+    setPhotoMsg('');
+    try {
+      const formData = new FormData();
+      formData.append('file', photoFile);
+      const res = await api.post(`/api/users/${userId}/upload-profile-photo`, formData);
+      const newUrl = res.data?.data?.profileImage || res.data?.profileImage;
+      if (newUrl) {
+        updateAuthUser({ profileImage: newUrl });
+        window.dispatchEvent(new Event('auth-user-updated'));
+        setPhotoMsg('✅ Photo updated successfully.');
+        setPhotoFile(null);
+      } else {
+        setPhotoMsg('Upload succeeded but no URL returned.');
+      }
+    } catch (err) {
+      setPhotoMsg('❌ ' + (err?.response?.data?.detail || err?.message || 'Upload failed.'));
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   return (
@@ -54,8 +102,23 @@ export default function AdminSettings() {
               />
             </div>
             <div className="form-group">
-              <label>Profile Picture</label>
-              <input type="file" accept="image/*" />
+              <label>Profile Photo</label>
+              {photoPreview && (
+                <img
+                  src={photoPreview}
+                  alt="Preview"
+                  style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', display: 'block', marginBottom: 8 }}
+                />
+              )}
+              <input type="file" accept="image/*" onChange={handlePhotoChange} style={{ marginBottom: 8 }} />
+              <button type="button" className="btn-secondary" onClick={handlePhotoUpload} disabled={uploadingPhoto || !photoFile}>
+                {uploadingPhoto ? 'Uploading...' : 'Upload Photo'}
+              </button>
+              {photoMsg && (
+                <div style={{ marginTop: 6, fontSize: 13, color: photoMsg.startsWith('✅') ? '#15803d' : '#b91c1c' }}>
+                  {photoMsg}
+                </div>
+              )}
             </div>
             <button type="submit" className="btn-primary">Update Profile</button>
           </form>

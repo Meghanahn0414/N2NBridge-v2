@@ -64,24 +64,51 @@ async def delete_campaign(campaign_id: str):
     return {"success": True, "message": "Campaign deleted"}
 
 
-@router.post("/{campaign_id}/launch", response_model=CampaignResponse)
-async def launch_campaign(campaign_id: str):
-    success = CampaignService.launch_campaign(campaign_id, None)
+@router.post("/{campaign_id}/cancel", response_model=CampaignResponse)
+async def cancel_campaign(campaign_id: str):
+    """Cancel campaign — keeps it in DB with status CANCELLED"""
+    success = CampaignService.cancel_campaign(campaign_id, None)
     if not success:
         raise HTTPException(status_code=404, detail="Campaign not found")
     campaign = CampaignService.get_campaign_by_id(campaign_id)
     return CampaignResponse(**Helper.convert_mongo_doc(campaign))
 
 
+@router.post("/{campaign_id}/launch", response_model=CampaignResponse)
+async def launch_campaign(campaign_id: str):
+    success = CampaignService.launch_campaign(campaign_id, None)
+    if not success:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    campaign = CampaignService.get_campaign_by_id(campaign_id)
+    if campaign:
+        from tasks.background import notify_staff_users
+        title = f"📢 Campaign Launched: {campaign.get('name', 'New Campaign')}"
+        body = campaign.get("message") or f"A new {campaign.get('type','awareness')} campaign has been activated."
+        extra = {"campaignId": campaign_id}
+        try:
+            notify_staff_users.delay(title, body, "CAMPAIGN", extra)
+        except Exception as exc:
+            logger.warning(f"Staff campaign notification dispatch failed (non-fatal): {exc}")
+    return CampaignResponse(**Helper.convert_mongo_doc(campaign))
+
+
 @router.post("/{campaign_id}/notify")
-async def send_campaign_notifications(campaign_id: str):
-    """Re-send / send push notifications for an existing campaign."""
-    from campaigns.service import _send_push_notifications
+async def resend_campaign_notifications(campaign_id: str):
+    """Re-send notifications for an existing campaign."""
+    from tasks.background import send_campaign_notifications
     from config.database import MongoDatabase
     from bson import ObjectId
     db = MongoDatabase.get_db()
     campaign = db.campaigns.find_one({"_id": ObjectId(campaign_id), "isDeleted": {"$ne": True}})
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    sent = _send_push_notifications(db, campaign)
-    return {"success": True, "notified": sent, "message": f"Notifications sent to {sent} users"}
+    try:
+        send_campaign_notifications.delay(campaign_id)
+        return {"success": True, "notified": 0, "message": "Notifications queued for delivery"}
+    except Exception:
+        try:
+            result = send_campaign_notifications(campaign_id)
+            sent = result.get("sent", 0) if isinstance(result, dict) else 0
+            return {"success": True, "notified": sent, "message": f"Notifications sent to {sent} citizens"}
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Failed to send notifications: {exc}")
