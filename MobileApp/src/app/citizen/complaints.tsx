@@ -1,159 +1,267 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, ActivityIndicator,
-} from "react-native";
-import { useRouter } from "expo-router";
-import api from "../../services/api";
-import { useAuthStore } from "../../store/authStore";
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  ActivityIndicator, RefreshControl, StatusBar,
+} from 'react-native';
+import { router } from 'expo-router';
+import api from '../../services/api';
+import { useAuthStore } from '../../store/authStore';
 
-const TABS = ["All", "Open", "In Progress", "Resolved"] as const;
-type Tab = typeof TABS[number];
+const C = {
+  primary: '#1D4ED8',
+  primaryDark: '#1E3A8A',
+  bg: '#F8F9FF',
+  card: '#FFFFFF',
+  text: '#1E293B',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  open: '#3B82F6',
+  inProgress: '#F59E0B',
+  resolved: '#10B981',
+  error: '#DC2626',
+  warning: '#D97706',
+  success: '#059669',
+};
 
-const STATUS_MAP: Record<Tab, string[]> = {
+type Complaint = {
+  id: string;
+  title?: string;
+  description: string;
+  status: string;
+  priority: string;
+  category?: string;
+  categoryId?: string;
+  address?: string;
+  createdAt?: string;
+  created_at?: string;
+};
+
+const FILTERS = ['All', 'Open', 'In Progress', 'Resolved'];
+const STATUS_MAP: Record<string, string[]> = {
   All: [],
-  Open: ["NEW"],
-  "In Progress": ["ASSIGNED", "IN_PROGRESS", "ON_HOLD"],
-  Resolved: ["RESOLVED", "CLOSED"],
+  Open: ['OPEN', 'NEW'],
+  'In Progress': ['IN_PROGRESS', 'ASSIGNED', 'ON_HOLD'],
+  Resolved: ['RESOLVED', 'CLOSED'],
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  NEW: "#DBEAFE", ASSIGNED: "#FEF3C7", IN_PROGRESS: "#FEF3C7",
-  RESOLVED: "#D1FAE5", CLOSED: "#D1FAE5", ON_HOLD: "#F3F4F6",
-};
-
-interface Complaint {
-  id: string; title: string; description: string;
-  status: string; category: string; createdAt: string;
-}
-
-export default function Complaints() {
-  const router = useRouter();
+export default function MyComplaints() {
   const { user } = useAuthStore();
-  const [tab, setTab] = useState<Tab>("All");
-  const [all, setAll] = useState<Complaint[]>([]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [filtered, setFiltered] = useState<Complaint[]>([]);
+  const [activeFilter, setActiveFilter] = useState('All');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!user) return;
+  const fetchComplaints = useCallback(async (pageNum = 1, refresh = false) => {
     try {
-      const { data } = await api.get(`/api/grievances/?citizen_id=${user.id}&per_page=100`);
-      const items = data.items ?? data;
-      setAll(items.map((c: any) => ({
-        id: c._id || c.id,
-        title: c.title,
-        description: c.description,
-        status: c.status,
-        category: c.category || "General",
-        createdAt: c.created_at || c.createdAt || "",
-      })));
-    } catch (e) {
-      console.error(e);
+      const { data } = await api.get(`/api/grievances/citizen/${user?.id}?page=${pageNum}`);
+      const list: Complaint[] = Array.isArray(data) ? data : (data.items ?? data.results ?? data.data ?? []);
+      const mapped = list.map((g: any) => ({
+        id: g._id || g.id,
+        title: g.title,
+        description: g.description || g.title || '',
+        status: g.status || 'NEW',
+        priority: g.priority || 'MEDIUM',
+        category: g.category,
+        categoryId: g.categoryId,
+        address: g.address,
+        createdAt: g.createdAt || g.created_at,
+      }));
+      if (refresh || pageNum === 1) {
+        setComplaints(mapped);
+      } else {
+        setComplaints((prev) => [...prev, ...mapped]);
+      }
+      setHasMore(mapped.length === 10);
+      setPage(pageNum);
+    } catch (_) {
+      // silent
     } finally {
       setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { fetchComplaints(1); }, [fetchComplaints]);
 
-  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+  useEffect(() => {
+    const statuses = STATUS_MAP[activeFilter];
+    setFiltered(
+      statuses.length === 0
+        ? complaints
+        : complaints.filter((c) => statuses.includes(c.status?.toUpperCase())),
+    );
+  }, [complaints, activeFilter]);
 
-  const filtered = tab === "All"
-    ? all
-    : all.filter((c) => STATUS_MAP[tab].includes(c.status));
+  const onRefresh = () => { setRefreshing(true); fetchComplaints(1, true); };
+  const loadMore = () => {
+    if (!hasMore || loadingMore) return;
+    setLoadingMore(true);
+    fetchComplaints(page + 1);
+  };
 
-  if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#1D4ED8" /></View>;
-  }
+  const statusColor = (s: string) => {
+    switch (s?.toUpperCase()) {
+      case 'OPEN': case 'NEW': return C.open;
+      case 'IN_PROGRESS': case 'ASSIGNED': case 'ON_HOLD': return C.inProgress;
+      case 'RESOLVED': case 'CLOSED': return C.resolved;
+      default: return C.textMuted;
+    }
+  };
+
+  const priorityColor = (p: string) => {
+    switch (p?.toUpperCase()) {
+      case 'LOW': return C.success;
+      case 'MEDIUM': return C.warning;
+      case 'HIGH': return C.error;
+      case 'CRITICAL': return '#7C3AED';
+      default: return C.textMuted;
+    }
+  };
+
+  const renderItem = ({ item }: { item: Complaint }) => (
+    <View style={s.card}>
+      <View style={s.cardHeader}>
+        <Text style={s.cardId} numberOfLines={1}>#{item.id?.slice(-10).toUpperCase()}</Text>
+        <View style={[s.statusBadge, { backgroundColor: `${statusColor(item.status)}18` }]}>
+          <Text style={[s.statusText, { color: statusColor(item.status) }]}>
+            {item.status?.replace(/_/g, ' ')}
+          </Text>
+        </View>
+      </View>
+      <Text style={s.cardDesc} numberOfLines={2}>{item.title || item.description}</Text>
+      {(item.category || item.address) && (
+        <Text style={s.cardMeta}>
+          {[item.category, item.address].filter(Boolean).join(' · ')}
+        </Text>
+      )}
+      <View style={s.cardFooter}>
+        <View style={[s.priorityBadge, { backgroundColor: priorityColor(item.priority) }]}>
+          <Text style={s.priorityText}>{item.priority} Priority</Text>
+        </View>
+        <Text style={s.cardDate}>
+          {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN') : 'Recently'}
+        </Text>
+      </View>
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Complaints</Text>
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => router.push("/citizen/new-complaint" as any)}
-        >
-          <Text style={styles.addBtnText}>+ New</Text>
+    <View style={s.container}>
+      <StatusBar backgroundColor={C.primaryDark} barStyle="light-content" />
+
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={s.backBtn}>← Back</Text>
+        </TouchableOpacity>
+        <View>
+          <Text style={s.headerTitle}>My Complaints</Text>
+          <Text style={s.headerSub}>Track and manage your complaints</Text>
+        </View>
+        <TouchableOpacity style={s.newBtn} onPress={() => router.push('/citizen/new-complaint' as any)}>
+          <Text style={s.newBtnText}>+ New</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
-        {TABS.map((t) => (
-          <TouchableOpacity
-            key={t}
-            style={[styles.tab, tab === t && styles.tabActive]}
-            onPress={() => setTab(t)}
-          >
-            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={s.filterBar}>
+        {FILTERS.map((f) => {
+          const count = f === 'All'
+            ? complaints.length
+            : complaints.filter((c) => STATUS_MAP[f].includes(c.status?.toUpperCase())).length;
+          return (
+            <TouchableOpacity
+              key={f}
+              style={[s.filterTab, activeFilter === f && s.filterTabActive]}
+              onPress={() => setActiveFilter(f)}
+            >
+              <Text style={[s.filterText, activeFilter === f && s.filterTextActive]}>
+                {f}{count > 0 ? ` (${count})` : ''}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
-      <ScrollView
-        style={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1D4ED8" />}
-      >
-        {filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyText}>No complaints here</Text>
-          </View>
-        ) : (
-          filtered.map((c) => <ComplaintCard key={c.id} complaint={c} />)
-        )}
-        <View style={{ height: 20 }} />
-      </ScrollView>
+      {loading ? (
+        <View style={s.centered}><ActivityIndicator size="large" color={C.primary} /></View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={s.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator color={C.primary} style={{ marginVertical: 16 }} /> : null
+          }
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <Text style={s.emptyIcon}>📭</Text>
+              <Text style={s.emptyTitle}>No complaints</Text>
+              <Text style={s.emptyText}>
+                {activeFilter === 'All'
+                  ? "You haven't filed any complaints yet."
+                  : `No ${activeFilter.toLowerCase()} complaints.`}
+              </Text>
+              {activeFilter === 'All' && (
+                <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/citizen/new-complaint' as any)}>
+                  <Text style={s.emptyBtnText}>File a complaint</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }
 
-function ComplaintCard({ complaint: c }: { complaint: Complaint }) {
-  const date = c.createdAt ? new Date(c.createdAt).toLocaleDateString() : "";
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardTop}>
-        <Text style={styles.cardTitle} numberOfLines={2}>{c.title}</Text>
-        <View style={[styles.badge, { backgroundColor: STATUS_COLOR[c.status] || "#F3F4F6" }]}>
-          <Text style={styles.badgeText}>{c.status.replace("_", " ")}</Text>
-        </View>
-      </View>
-      <Text style={styles.cardDesc} numberOfLines={2}>{c.description}</Text>
-      <View style={styles.cardMeta}>
-        <Text style={styles.metaText}>📁 {c.category}</Text>
-        {date ? <Text style={styles.metaText}>🗓 {date}</Text> : null}
-      </View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: C.bg },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 16, backgroundColor: "#1D4ED8",
+    backgroundColor: C.primary, paddingTop: 52, paddingBottom: 16, paddingHorizontal: 20,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  headerTitle: { fontSize: 20, fontWeight: "700", color: "#fff" },
-  addBtn: { backgroundColor: "#fff", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
-  addBtnText: { color: "#1D4ED8", fontWeight: "700", fontSize: 13 },
-  tabBar: { backgroundColor: "#fff", paddingVertical: 10, paddingHorizontal: 12, maxHeight: 52 },
-  tab: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginRight: 8, backgroundColor: "#F3F4F6" },
-  tabActive: { backgroundColor: "#1D4ED8" },
-  tabText: { fontSize: 13, color: "#6B7280", fontWeight: "600" },
-  tabTextActive: { color: "#fff" },
-  list: { flex: 1, padding: 16 },
-  card: { backgroundColor: "#fff", borderRadius: 12, padding: 16, marginBottom: 10, elevation: 2 },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 },
-  cardTitle: { fontSize: 14, fontWeight: "600", color: "#111827", flex: 1, marginRight: 8 },
-  badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { fontSize: 10, fontWeight: "600", color: "#374151" },
-  cardDesc: { fontSize: 13, color: "#6B7280", marginBottom: 10 },
-  cardMeta: { flexDirection: "row", gap: 16 },
-  metaText: { fontSize: 12, color: "#9CA3AF" },
-  empty: { alignItems: "center", paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 15, color: "#9CA3AF" },
+  backBtn: { color: '#BFDBFE', fontSize: 15, fontWeight: '600' },
+  headerTitle: { color: '#FFF', fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  headerSub: { color: '#BFDBFE', fontSize: 12, textAlign: 'center' },
+  newBtn: { backgroundColor: '#2563EB', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
+  newBtnText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
+  filterBar: {
+    flexDirection: 'row', backgroundColor: C.card, paddingHorizontal: 12,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border, gap: 6,
+  },
+  filterTab: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: '#F1F5F9' },
+  filterTabActive: { backgroundColor: C.primary },
+  filterText: { fontSize: 12, fontWeight: '600', color: C.textMuted },
+  filterTextActive: { color: '#FFF' },
+  listContent: { padding: 16, paddingBottom: 32 },
+  card: {
+    backgroundColor: C.card, borderRadius: 14, padding: 16, marginBottom: 12,
+    elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
+  },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  cardId: { fontSize: 12, color: C.textMuted, fontWeight: '600', flex: 1 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
+  statusText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
+  cardDesc: { fontSize: 15, fontWeight: '600', color: C.text, marginBottom: 6 },
+  cardMeta: { fontSize: 12, color: C.textMuted, marginBottom: 10 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5 },
+  priorityText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+  cardDate: { fontSize: 12, color: C.textMuted },
+  empty: { flex: 1, alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
+  emptyIcon: { fontSize: 52, marginBottom: 16 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: C.text, marginBottom: 8 },
+  emptyText: { fontSize: 14, color: C.textMuted, textAlign: 'center', marginBottom: 24 },
+  emptyBtn: { backgroundColor: C.primary, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 12 },
+  emptyBtnText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
 });

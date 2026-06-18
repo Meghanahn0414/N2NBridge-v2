@@ -1,209 +1,257 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, RefreshControl, ActivityIndicator,
-} from "react-native";
-import { useRouter } from "expo-router";
-import api from "../../services/api";
-import { useAuthStore } from "../../store/authStore";
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  RefreshControl, ActivityIndicator, StatusBar,
+} from 'react-native';
+import { router } from 'expo-router';
+import api from '../../services/api';
+import { useAuthStore } from '../../store/authStore';
 
-interface Stats { open: number; inProgress: number; resolved: number }
-interface Campaign { id: string; name: string; type: string; message?: string }
-interface Complaint { id: string; title: string; status: string }
+const C = {
+  primary: '#1D4ED8',
+  primaryDark: '#1E3A8A',
+  bg: '#F8F9FF',
+  card: '#FFFFFF',
+  text: '#1E293B',
+  textMuted: '#64748B',
+  open: '#3B82F6',
+  inProgress: '#F59E0B',
+  resolved: '#10B981',
+  error: '#DC2626',
+  warning: '#D97706',
+  success: '#059669',
+};
+
+type Stats = { open: number; in_progress: number; resolved: number };
+type Complaint = {
+  id: string;
+  title?: string;
+  description: string;
+  status: string;
+  priority: string;
+  createdAt?: string;
+  created_at?: string;
+};
 
 export default function CitizenDashboard() {
-  const router = useRouter();
-  const { user, logout } = useAuthStore();
-  const [stats, setStats] = useState<Stats>({ open: 0, inProgress: 0, resolved: 0 });
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const { user } = useAuthStore();
+  const [stats, setStats] = useState<Stats>({ open: 0, in_progress: 0, resolved: 0 });
   const [recent, setRecent] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!user) return;
+  const fetchData = useCallback(async () => {
     try {
-      const [sRes, cRes, rRes] = await Promise.all([
-        api.get(`/api/grievances/stats/citizen/${user.id}`),
-        api.get("/api/campaigns/?status=ACTIVE&per_page=3"),
-        api.get(`/api/grievances/?citizen_id=${user.id}&per_page=5`),
+      const [sRes, cRes] = await Promise.all([
+        api.get(`/api/grievances/stats/citizen/${user?.id}`),
+        api.get(`/api/grievances/citizen/${user?.id}?page=1`),
       ]);
-      const s = sRes.data;
-      const by: Record<string, number> = s.byStatus || {};
+
+      const s = sRes.data?.data ?? sRes.data;
+      const byStatus: Record<string, number> = s.byStatus ?? {};
       setStats({
-        open: by.NEW ?? s.open ?? 0,
-        inProgress: (by.IN_PROGRESS ?? 0) + (by.ASSIGNED ?? 0) + (by.ON_HOLD ?? 0),
-        resolved: (by.RESOLVED ?? 0) + (by.CLOSED ?? 0),
+        open: byStatus.NEW ?? s.open ?? 0,
+        in_progress: (byStatus.IN_PROGRESS ?? 0) + (byStatus.ASSIGNED ?? 0) + (byStatus.ON_HOLD ?? 0),
+        resolved: (byStatus.RESOLVED ?? 0) + (byStatus.CLOSED ?? 0),
       });
-      const cData = cRes.data;
-      setCampaigns((cData.items ?? cData).map((c: any) => ({
-        id: c._id || c.id, name: c.name, type: c.type, message: c.message,
+
+      const c = cRes.data;
+      const list = Array.isArray(c) ? c : (c.items ?? c.results ?? c.data ?? []);
+      setRecent(list.slice(0, 3).map((g: any) => ({
+        id: g._id || g.id,
+        title: g.title,
+        description: g.description || '',
+        status: g.status || 'NEW',
+        priority: g.priority || 'MEDIUM',
+        createdAt: g.createdAt || g.created_at,
       })));
-      const rData = rRes.data;
-      setRecent((rData.items ?? rData).map((c: any) => ({
-        id: c._id || c.id, title: c.title, status: c.status,
-      })));
-    } catch (e) {
-      console.error(e);
+    } catch (_) {
+      // silent — show empty states
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { fetchData(); }, [fetchData]);
+  const onRefresh = () => { setRefreshing(true); fetchData(); };
 
-  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+  const statusColor = (s: string) => {
+    switch (s?.toUpperCase()) {
+      case 'OPEN': case 'NEW': return C.open;
+      case 'IN_PROGRESS': case 'ASSIGNED': case 'ON_HOLD': return C.inProgress;
+      case 'RESOLVED': case 'CLOSED': return C.resolved;
+      default: return C.textMuted;
+    }
+  };
 
-  function handleLogout() {
-    logout();
-    router.replace("/" as any);
-  }
+  const priorityColor = (p: string) => {
+    switch (p?.toUpperCase()) {
+      case 'LOW': return C.success;
+      case 'MEDIUM': return C.warning;
+      case 'HIGH': return C.error;
+      case 'CRITICAL': return '#7C3AED';
+      default: return C.textMuted;
+    }
+  };
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1D4ED8" />
+      <View style={s.centered}>
+        <ActivityIndicator size="large" color={C.primary} />
       </View>
     );
   }
 
+  const ACTIONS = [
+    { label: 'File\nComplaint', icon: '📋', route: '/citizen/new-complaint', bg: '#EEF2FF' },
+    { label: 'My\nComplaints', icon: '📁', route: '/citizen/complaints', bg: '#F0FDF4' },
+    { label: 'Events', icon: '📅', route: '/citizen/events', bg: '#FFF7ED' },
+    { label: 'Campaigns', icon: '📢', route: '/citizen/campaigns', bg: '#FDF4FF' },
+  ];
+
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1D4ED8" />}
-    >
-      <View style={styles.header}>
+    <View style={s.container}>
+      <StatusBar backgroundColor={C.primaryDark} barStyle="light-content" />
+
+      <View style={s.header}>
         <View>
-          <Text style={styles.greeting}>Hello, {user?.name?.split(" ")[0]} 👋</Text>
-          <Text style={styles.subGreeting}>Your overview</Text>
+          <Text style={s.greeting}>Namaste,</Text>
+          <Text style={s.userName}>{user?.name || 'Citizen'}</Text>
         </View>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
+        <TouchableOpacity onPress={() => router.push('/citizen/profile' as any)} style={s.avatar}>
+          <Text style={s.avatarText}>{(user?.name || 'C').charAt(0).toUpperCase()}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* KPI Cards */}
-      <View style={styles.kpiRow}>
-        <KPICard label="Open" value={stats.open} color="#EF4444" />
-        <KPICard label="In Progress" value={stats.inProgress} color="#F59E0B" />
-        <KPICard label="Resolved" value={stats.resolved} color="#10B981" />
-      </View>
-
-      {/* New Complaint Button */}
-      <TouchableOpacity
-        style={styles.newBtn}
-        onPress={() => router.push("/citizen/new-complaint" as any)}
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.newBtnText}>+ File New Complaint</Text>
-      </TouchableOpacity>
-
-      {/* Active Campaigns */}
-      {campaigns.length > 0 && (
-        <Section title="Active Campaigns">
-          {campaigns.map((c) => (
-            <View key={c.id} style={styles.campaignCard}>
-              <View style={styles.campaignType}>
-                <Text style={styles.campaignTypeText}>{c.type}</Text>
-              </View>
-              <Text style={styles.campaignName}>{c.name}</Text>
-              {c.message ? <Text style={styles.campaignMsg} numberOfLines={2}>{c.message}</Text> : null}
+        {/* Stats */}
+        <View style={s.statsRow}>
+          {[
+            { label: 'Open', val: stats.open, color: C.open },
+            { label: 'In Progress', val: stats.in_progress, color: C.inProgress },
+            { label: 'Resolved', val: stats.resolved, color: C.resolved },
+          ].map((item) => (
+            <View key={item.label} style={[s.statCard, { borderTopColor: item.color }]}>
+              <Text style={[s.statNum, { color: item.color }]}>{item.val}</Text>
+              <Text style={s.statLabel}>{item.label}</Text>
             </View>
           ))}
-        </Section>
-      )}
+        </View>
 
-      {/* Recent Complaints */}
-      {recent.length > 0 && (
-        <Section title="Recent Complaints">
-          {recent.map((c) => (
-            <View key={c.id} style={styles.complaintRow}>
-              <Text style={styles.complaintTitle} numberOfLines={1}>{c.title}</Text>
-              <StatusBadge status={c.status} />
-            </View>
+        {/* Quick Actions */}
+        <Text style={s.sectionTitle}>Quick Actions</Text>
+        <View style={s.actionsGrid}>
+          {ACTIONS.map((a) => (
+            <TouchableOpacity
+              key={a.label}
+              style={[s.actionCard, { backgroundColor: a.bg }]}
+              onPress={() => router.push(a.route as any)}
+            >
+              <Text style={s.actionIcon}>{a.icon}</Text>
+              <Text style={s.actionLabel}>{a.label}</Text>
+            </TouchableOpacity>
           ))}
-          <TouchableOpacity onPress={() => router.push("/citizen/complaints" as any)}>
-            <Text style={styles.seeAll}>See all complaints →</Text>
+        </View>
+
+        {/* Recent Complaints */}
+        <View style={s.sectionHeader}>
+          <Text style={s.sectionTitle}>Recent Complaints</Text>
+          <TouchableOpacity onPress={() => router.push('/citizen/complaints' as any)}>
+            <Text style={s.seeAll}>See all →</Text>
           </TouchableOpacity>
-        </Section>
-      )}
+        </View>
 
-      <View style={{ height: 20 }} />
-    </ScrollView>
-  );
-}
-
-function KPICard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <View style={[styles.kpiCard, { borderTopColor: color }]}>
-      <Text style={[styles.kpiValue, { color }]}>{value}</Text>
-      <Text style={styles.kpiLabel}>{label}</Text>
+        {recent.length === 0 ? (
+          <View style={s.emptyCard}>
+            <Text style={s.emptyIcon}>📭</Text>
+            <Text style={s.emptyText}>No complaints yet</Text>
+            <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/citizen/new-complaint' as any)}>
+              <Text style={s.emptyBtnText}>File your first complaint</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          recent.map((c) => (
+            <View key={c.id} style={s.complaintCard}>
+              <View style={s.cardTop}>
+                <Text style={s.cardDesc} numberOfLines={2}>{c.title || c.description}</Text>
+                <View style={[s.statusBadge, { backgroundColor: `${statusColor(c.status)}18` }]}>
+                  <Text style={[s.statusText, { color: statusColor(c.status) }]}>
+                    {c.status?.replace(/_/g, ' ')}
+                  </Text>
+                </View>
+              </View>
+              <View style={s.cardBottom}>
+                <View style={[s.priorityBadge, { backgroundColor: priorityColor(c.priority) }]}>
+                  <Text style={s.priorityText}>{c.priority}</Text>
+                </View>
+                <Text style={s.cardDate}>
+                  {c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN') : 'Recently'}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
+        <View style={{ height: 24 }} />
+      </ScrollView>
     </View>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    NEW: "#DBEAFE", ASSIGNED: "#FEF3C7", IN_PROGRESS: "#FEF3C7",
-    RESOLVED: "#D1FAE5", CLOSED: "#D1FAE5", ON_HOLD: "#F3F4F6",
-  };
-  return (
-    <View style={[styles.badge, { backgroundColor: colors[status] || "#F3F4F6" }]}>
-      <Text style={styles.badgeText}>{status.replace("_", " ")}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: C.bg },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.bg },
   header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 20, backgroundColor: "#1D4ED8",
+    backgroundColor: C.primary, paddingTop: 52, paddingBottom: 22,
+    paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  greeting: { fontSize: 20, fontWeight: "700", color: "#fff" },
-  subGreeting: { fontSize: 13, color: "#BFDBFE", marginTop: 2 },
-  logoutText: { color: "#BFDBFE", fontSize: 13 },
-  kpiRow: { flexDirection: "row", gap: 10, padding: 16 },
-  kpiCard: {
-    flex: 1, backgroundColor: "#fff", borderRadius: 12, padding: 14,
-    borderTopWidth: 3, alignItems: "center", elevation: 2,
+  greeting: { color: '#BFDBFE', fontSize: 13 },
+  userName: { color: '#FFF', fontSize: 22, fontWeight: '700', marginTop: 2 },
+  avatar: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#2563EB',
+    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#93C5FD',
   },
-  kpiValue: { fontSize: 30, fontWeight: "700" },
-  kpiLabel: { fontSize: 11, color: "#6B7280", marginTop: 3 },
-  newBtn: {
-    marginHorizontal: 16, backgroundColor: "#1D4ED8",
-    borderRadius: 12, paddingVertical: 15, alignItems: "center",
+  avatarText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 16 },
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 22 },
+  statCard: {
+    flex: 1, backgroundColor: C.card, borderRadius: 14, padding: 14,
+    alignItems: 'center', borderTopWidth: 3, elevation: 3,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
   },
-  newBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  section: { marginHorizontal: 16, marginTop: 20 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#111827", marginBottom: 10 },
-  campaignCard: {
-    backgroundColor: "#EFF6FF", borderRadius: 12,
-    padding: 14, marginBottom: 8,
+  statNum: { fontSize: 28, fontWeight: '800' },
+  statLabel: { fontSize: 10, color: C.textMuted, marginTop: 3, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 12 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  seeAll: { fontSize: 13, color: C.primary, fontWeight: '600' },
+  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 22 },
+  actionCard: {
+    width: '47%', borderRadius: 16, padding: 20, alignItems: 'center',
+    elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
   },
-  campaignType: {
-    alignSelf: "flex-start", backgroundColor: "#BFDBFE",
-    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 6,
+  actionIcon: { fontSize: 30, marginBottom: 8 },
+  actionLabel: { fontSize: 13, fontWeight: '600', color: C.text, textAlign: 'center' },
+  complaintCard: {
+    backgroundColor: C.card, borderRadius: 14, padding: 14, marginBottom: 10,
+    elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
   },
-  campaignTypeText: { fontSize: 11, color: "#1D4ED8", fontWeight: "600" },
-  campaignName: { fontSize: 14, fontWeight: "600", color: "#1E3A8A" },
-  campaignMsg: { fontSize: 13, color: "#6B7280", marginTop: 4 },
-  complaintRow: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: "#fff", borderRadius: 10, padding: 12,
-    marginBottom: 8, elevation: 1,
-  },
-  complaintTitle: { fontSize: 14, color: "#111827", flex: 1, marginRight: 8 },
-  badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { fontSize: 10, color: "#374151", fontWeight: "600" },
-  seeAll: { color: "#1D4ED8", fontSize: 13, fontWeight: "600", marginTop: 4 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
+  cardDesc: { flex: 1, fontSize: 14, fontWeight: '600', color: C.text, marginRight: 8 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
+  statusText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  priorityBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5 },
+  priorityText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+  cardDate: { fontSize: 12, color: C.textMuted },
+  emptyCard: { backgroundColor: C.card, borderRadius: 14, padding: 32, alignItems: 'center', elevation: 1 },
+  emptyIcon: { fontSize: 44, marginBottom: 12 },
+  emptyText: { fontSize: 15, color: C.textMuted, marginBottom: 18 },
+  emptyBtn: { backgroundColor: C.primary, paddingHorizontal: 22, paddingVertical: 12, borderRadius: 10 },
+  emptyBtnText: { color: '#FFF', fontWeight: '700', fontSize: 14 },
 });
