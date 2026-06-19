@@ -2,6 +2,61 @@
 
 This checklist is for the current CRM project using MongoDB Atlas as the main database, Redis for cache/background jobs, and local/S3 file storage.
 
+## How the database works (simple picture)
+
+User / Admin / Officer -> API Backend -> MongoDB Collections -> Redis Cache / Celery Jobs -> File Storage (local or S3)
+
+### Easy flow explanation
+1. The frontend or mobile app sends data requests to the backend.
+2. The backend reads or writes records in MongoDB collections such as users, grievances, alerts, tasks, and notifications.
+3. Redis helps with faster reads, cache refresh, and background task processing.
+4. Uploaded files such as photos, PDFs, and attachments are stored in local uploads or in S3.
+5. The database stores only the reference path or URL to those files.
+
+### What is stored where
+- MongoDB: main business data, complaint records, users, tasks, notifications, audit logs.
+- Redis: temporary cache, task queue, performance optimization.
+- Local uploads / S3: actual uploaded files like images and documents.
+
+### Simple diagram
+```text
+Frontend / Mobile App
+        |
+        v
+   Backend API
+        |
+   +----+-------------------+-------------------+
+   |    |                   |                   |
+   v    v                   v                   v
+MongoDB   Redis / Celery    Upload Storage
+(users,   (cache, jobs)     (local folder or S3)
+grievances,
+alerts,
+notifications)
+```
+
+### Detailed architecture view
+- Frontend and Mobile App send requests to the backend.
+- Backend services read/write MongoDB documents.
+- Redis stores temporary data and supports task queues.
+- File storage keeps uploaded images, PDFs, and other media.
+- MongoDB stores metadata and links to those files.
+
+### Maintenance flow
+1. Check MongoDB Atlas health and backups.
+2. Review collection growth and old records.
+3. Verify Redis queue status and cache freshness.
+4. Check file upload folder or S3 bucket size.
+5. Remove stale data, unused files, and failed jobs.
+6. Confirm security settings and credentials are valid.
+
+### What to monitor every week
+- MongoDB connection errors
+- Redis memory usage
+- Celery failed tasks
+- large upload folders
+- duplicate or stale records
+
 ## 1. Database Health
 - Verify MongoDB Atlas connection is working every day.
 - Check server status, latency, and error logs in Atlas.
