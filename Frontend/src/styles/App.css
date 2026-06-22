@@ -91,6 +91,19 @@ main > div {
   flex: 1;
 }
 
+/* MLA/Representative pages — no generic sidebar, MLALayout owns the full shell */
+.app-main--rep {
+  flex: 1;
+  margin-left: 0;
+  margin-top: 0;
+  padding: 0;
+  background: transparent;
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .app-main--landing {
   margin-left: 0 !important;
   margin-top: 0 !important;

@@ -4,7 +4,7 @@ User Model and Schemas
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 # from bson import ObjectId
 
@@ -37,6 +37,16 @@ class UserUpdate(BaseModel):
     constituencyId: Optional[str] = None
     wardId: Optional[str] = None
     status: Optional[str] = None
+    # MLA / Representative profile fields
+    title: Optional[str] = None
+    bio: Optional[str] = None
+    officePhone: Optional[str] = None
+    officeAddress: Optional[str] = None
+    showApprovalRating: Optional[bool] = None
+    showResolvedCount: Optional[bool] = None
+    notifPreferences: Optional[dict] = None
+    broadcastSignature: Optional[str] = None
+    defaultBroadcastType: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -52,13 +62,23 @@ class UserResponse(BaseModel):
     boothNumber: Optional[str] = None
     address: Optional[str] = None
     profileImage: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    title: Optional[str] = None
+    bio: Optional[str] = None
+    officePhone: Optional[str] = None
+    officeAddress: Optional[str] = None
+    showApprovalRating: Optional[bool] = None
+    showResolvedCount: Optional[bool] = None
+    notifPreferences: Optional[dict] = None
+    broadcastSignature: Optional[str] = None
+    defaultBroadcastType: Optional[str] = None
     status: Optional[str] = 'ACTIVE'
     lastLoginAt: Optional[datetime] = None
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class UserLoginRequest(BaseModel):
@@ -131,8 +151,7 @@ class ConstituencyResponse(BaseModel):
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class WardCreate(BaseModel):
@@ -151,5 +170,4 @@ class WardResponse(BaseModel):
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)

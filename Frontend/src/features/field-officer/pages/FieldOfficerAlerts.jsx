@@ -22,8 +22,8 @@ export default function FieldOfficerAlerts() {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get('/api/emergency/', { params: { page: 1, per_page: 100 } });
-      const data = res.data?.data?.alerts || res.data?.alerts || [];
+      const res = await api.get('/api/alerts/', { params: { page: 1, per_page: 100 } });
+      const data = Array.isArray(res.data) ? res.data : res.data?.data?.alerts || res.data?.alerts || [];
       setAlerts(data);
     } catch (err) {
       setError('Failed to load alerts.');
@@ -35,7 +35,7 @@ export default function FieldOfficerAlerts() {
   const handleAcknowledge = async (alertId) => {
     try {
       setAcknowledging(alertId);
-      await api.post(`/api/emergency/${alertId}/acknowledge`);
+      await api.put(`/api/alerts/${alertId}`, { status: 'ACKNOWLEDGED' });
       setAlerts(prev => prev.map(a => (a._id === alertId || a.id === alertId) ? { ...a, status: 'ACKNOWLEDGED' } : a));
     } catch {
       alert('Failed to acknowledge alert.');
@@ -48,7 +48,7 @@ export default function FieldOfficerAlerts() {
     if (!window.confirm('Mark this alert as resolved?')) return;
     try {
       setAcknowledging(alertId);
-      await api.post(`/api/emergency/${alertId}/resolve`);
+      await api.put(`/api/alerts/${alertId}`, { status: 'RESOLVED' });
       setAlerts(prev => prev.map(a => (a._id === alertId || a.id === alertId) ? { ...a, status: 'RESOLVED' } : a));
     } catch {
       alert('Failed to resolve alert.');

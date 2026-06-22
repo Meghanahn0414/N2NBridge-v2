@@ -15,8 +15,7 @@ export function getCitizenProfile() {
 }
 
 export function updateCitizenProfile(profileData) {
-  const citizenId = requireCitizenId();
-  return api.put(`/api/users/${citizenId}`, profileData).then((res) => res.data);
+  return api.put(`/api/citizen/profile`, profileData).then((res) => res.data);
 }
 
 export function uploadCitizenProfilePhoto(file) {

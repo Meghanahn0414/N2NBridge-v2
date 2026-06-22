@@ -59,14 +59,17 @@ class DashboardService:
                 "icon": "FaCalendarAlt"
             })
         
-        # Sort by time and return
-        activities.sort(key=lambda x: x.get("time", datetime.utcnow()), reverse=True)
-        
-        # Format time
+        # Sort by time and return — use epoch as fallback so None doesn't crash
+        activities.sort(
+            key=lambda x: x.get("time") or datetime(1970, 1, 1),
+            reverse=True
+        )
+
+        # Format time safely
         for activity in activities:
-            if activity.get("time"):
-                activity["time"] = activity["time"].strftime("%I:%M %p")
-        
+            t = activity.get("time")
+            activity["time"] = t.strftime("%I:%M %p") if isinstance(t, datetime) else "—"
+
         return activities[:limit]
     
     @staticmethod
@@ -180,10 +183,11 @@ class DashboardService:
         db = MongoDatabase.get_db()
         trends = {}
         
+        from datetime import time as _time
         for i in range(days):
             date = (datetime.utcnow() - timedelta(days=i)).date()
-            start = datetime.combine(date, datetime.min.time())
-            end = datetime.combine(date, datetime.max.time())
+            start = datetime.combine(date, _time.min)
+            end = datetime.combine(date, _time.max)
             
             count = db.grievances.count_documents({
                 "createdAt": {"$gte": start, "$lte": end},
@@ -296,10 +300,21 @@ class DashboardService:
         }
     
     @staticmethod
+    def _safe_call(fn, *args, default=None, label=""):
+        """Call fn safely, returning default on any exception."""
+        try:
+            return fn(*args)
+        except Exception as exc:
+            logger.error(f"DashboardService sub-call failed [{label}]: {exc}", exc_info=True)
+            return default
+
+    @staticmethod
     def get_mla_dashboard() -> dict:
         """Get MLA dashboard data"""
         db = MongoDatabase.get_db()
-        metrics = AnalyticsService.get_performance_metrics()
+        metrics = DashboardService._safe_call(
+            AnalyticsService.get_performance_metrics, default={}, label="performance_metrics"
+        )
 
         status_counts = metrics.get("grievances", {}).get("byStatus", {})
         alert_priorities = metrics.get("alerts", {}).get("byPriority", {})
@@ -313,17 +328,22 @@ class DashboardService:
         )
         resolved_complaints = status_counts.get("RESOLVED", 0)
         critical_alerts = alert_priorities.get("CRITICAL", 0)
-        registered_citizens = metrics.get("users", {}).get("total", 0)
+        registered_citizens = user_roles.get("CITIZEN", 0)
         active_officers = user_roles.get("FIELD_OFFICER", 0) + user_roles.get("OFFICER", 0)
-        health_score = DashboardService.get_system_health()
+        health_score = DashboardService._safe_call(
+            DashboardService.get_system_health, default="N/A", label="system_health"
+        )
         avg_satisfaction = 0
 
-        satisfaction_agg = list(db.grievances.aggregate([
-            {"$match": {"satisfactionRating": {"$exists": True, "$ne": None}}},
-            {"$group": {"_id": None, "avgRating": {"$avg": "$satisfactionRating"}}}
-        ]))
-        if satisfaction_agg:
-            avg_satisfaction = round(satisfaction_agg[0].get("avgRating", 0), 1)
+        try:
+            satisfaction_agg = list(db.grievances.aggregate([
+                {"$match": {"feedback.rating": {"$exists": True, "$ne": None}}},
+                {"$group": {"_id": None, "avgRating": {"$avg": "$feedback.rating"}}}
+            ]))
+            if satisfaction_agg:
+                avg_satisfaction = round(satisfaction_agg[0].get("avgRating", 0), 1)
+        except Exception as exc:
+            logger.error(f"avg_satisfaction agg failed: {exc}", exc_info=True)
 
         # Aggregate all complaints by ward with priority breakdown
         def _highest_priority(priorities):
@@ -367,7 +387,9 @@ class DashboardService:
                 complaint["categoryName"] = str(complaint["category"]).replace("_", " ").title()
             recent_complaints.append(Helper.convert_mongo_doc(complaint))
 
-        recent_activity = DashboardService.get_recent_activity(10)
+        recent_activity = DashboardService._safe_call(
+            DashboardService.get_recent_activity, 10, default=[], label="recent_activity"
+        )
 
         return {
             "summary": {
@@ -383,19 +405,19 @@ class DashboardService:
             },
             "metrics": metrics,
             "overview": {
-                "grievances": AnalyticsService.get_grievance_stats(),
-                "alerts": AnalyticsService.get_alert_stats(),
-                "users": AnalyticsService.get_user_stats(),
-                "events": AnalyticsService.get_event_stats()
+                "grievances": DashboardService._safe_call(AnalyticsService.get_grievance_stats, default={}, label="overview_grievances"),
+                "alerts":     DashboardService._safe_call(AnalyticsService.get_alert_stats,    default={}, label="overview_alerts"),
+                "users":      DashboardService._safe_call(AnalyticsService.get_user_stats,     default={}, label="overview_users"),
+                "events":     DashboardService._safe_call(AnalyticsService.get_event_stats,    default={}, label="overview_events"),
             },
             "wardStats": ward_stats,
             "recentAlerts": recent_alerts,
             "recentComplaints": recent_complaints,
-            "teamPerformance": DashboardService.get_team_performance(),
-            "grievanceTrends": DashboardService.get_grievance_trends(7),
+            "teamPerformance": DashboardService._safe_call(DashboardService.get_team_performance, default=[], label="team_performance"),
+            "grievanceTrends": DashboardService._safe_call(DashboardService.get_grievance_trends, 7, default={}, label="grievance_trends"),
             "recentActivity": recent_activity,
             "systemHealth": health_score,
-            "categoryComplaints": DashboardService.get_category_complaints()
+            "categoryComplaints": DashboardService._safe_call(DashboardService.get_category_complaints, default={}, label="category_complaints"),
         }
     
     @staticmethod

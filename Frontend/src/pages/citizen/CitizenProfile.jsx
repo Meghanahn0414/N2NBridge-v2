@@ -5,6 +5,14 @@ import { getCitizenProfile, updateCitizenProfile, uploadCitizenProfilePhoto } fr
 import { getWards } from '../../features/constituencies/constituencyService';
 import PhoneInput from '../../components/PhoneInput';
 import { formatPhoneDisplay, sanitizePhoneInput } from '../../utils/phoneUtils';
+import { updateAuthUser } from '../../services/authStorage';
+
+function extractErrorMsg(err, fallback) {
+  const detail = err?.response?.data?.detail;
+  if (Array.isArray(detail)) return detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+  if (typeof detail === 'string') return detail;
+  return err?.response?.data?.message || err?.message || fallback;
+}
 
 export default function CitizenProfile() {
   const navigate = useNavigate();
@@ -14,6 +22,7 @@ export default function CitizenProfile() {
     email: '',
     mobile: '',
     address: '',
+    age: '',
     constituencyId: '',
     wardId: '',
     createdAt: '',
@@ -46,6 +55,7 @@ export default function CitizenProfile() {
           email: result.email || '',
           mobile: result.mobile || '',
           address: result.address || '',
+          age: result.age != null ? String(result.age) : '',
           constituencyId: result.constituencyId || '',
           wardId: result.wardId || '',
           createdAt: result.createdAt || '',
@@ -59,7 +69,7 @@ export default function CitizenProfile() {
         }
       } catch (err) {
         if (!active) return;
-        setError(err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to load profile');
+        setError(extractErrorMsg(err, 'Failed to load profile'));
       } finally {
         if (active) setLoading(false);
       }
@@ -77,19 +87,23 @@ export default function CitizenProfile() {
     setSuccessMessage('');
     try {
       const payload = {
-        fullName: formData.fullName,
+        name: formData.fullName,
         email: formData.email,
-        mobile: formData.mobile,
+        phone: formData.mobile,
         address: formData.address,
+        age: formData.age ? parseInt(formData.age, 10) : undefined,
         wardId: formData.wardId || null,
+        constituencyId: formData.constituencyId || null,
       };
-      const updated = await updateCitizenProfile(payload);
+      const res = await updateCitizenProfile(payload);
+      const updated = res?.data?.profile || res?.profile || res;
       setProfile(updated);
       setFormData({
         fullName: updated.fullName || '',
         email: updated.email || '',
         mobile: updated.mobile || '',
         address: updated.address || '',
+        age: updated.age != null ? String(updated.age) : '',
         constituencyId: updated.constituencyId || '',
         wardId: updated.wardId || '',
         createdAt: updated.createdAt || '',
@@ -97,7 +111,7 @@ export default function CitizenProfile() {
       setIsEditing(false);
       setSuccessMessage('Profile updated successfully.');
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to save profile.');
+      setError(extractErrorMsg(err, 'Failed to save profile.'));
     }
   };
 
@@ -108,6 +122,7 @@ export default function CitizenProfile() {
         email: profile.email || '',
         mobile: profile.mobile || '',
         address: profile.address || '',
+        age: profile.age != null ? String(profile.age) : '',
         constituencyId: profile.constituencyId || '',
         wardId: profile.wardId || '',
         createdAt: profile.createdAt || '',
@@ -138,20 +153,15 @@ export default function CitizenProfile() {
 
     try {
       const result = await uploadCitizenProfilePhoto(photoFile);
-      const updatedProfile = { ...profile, profileImage: result.profileImage || result.data?.profileImage };
+      const newPhotoUrl = result.data?.profileImage || result.profileImage;
+      const updatedProfile = { ...profile, profileImage: newPhotoUrl };
       setProfile(updatedProfile);
       setPhotoFile(null);
       setSuccessMessage('Profile photo uploaded successfully.');
-      localStorage.setItem(
-        'user',
-        JSON.stringify({
-          ...JSON.parse(localStorage.getItem('user') || '{}'),
-          profileImage: updatedProfile.profileImage,
-        })
-      );
+      updateAuthUser({ profileImage: newPhotoUrl });
       window.dispatchEvent(new Event('auth-user-updated'));
     } catch (err) {
-      setPhotoError(err?.response?.data?.detail || err?.message || 'Failed to upload photo.');
+      setPhotoError(extractErrorMsg(err, 'Failed to upload photo.'));
     } finally {
       setUploadingPhoto(false);
     }
@@ -321,6 +331,30 @@ export default function CitizenProfile() {
                     />
                   ) : (
                     <p className="text-slate-600">{profile?.address || 'Not provided'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span style={{ fontSize: 16, color: '#2563eb' }}>🎂</span>
+                      Age
+                    </div>
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      value={formData.age}
+                      onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                      placeholder="Enter your age"
+                      min="1"
+                      max="120"
+                      className="w-full rounded-lg border border-slate-200 px-4 py-2 focus:border-blue-600 focus:outline-none"
+                    />
+                  ) : (
+                    <p className="text-slate-600">
+                      {profile?.age != null ? `${profile.age} years` : 'Not provided'}
+                    </p>
                   )}
                 </div>
 

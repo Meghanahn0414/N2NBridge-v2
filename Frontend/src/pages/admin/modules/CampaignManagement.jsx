@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
-import { fetchCampaigns, createCampaign, deleteCampaign, launchCampaign, sendCampaignNotifications } from '../../../features/campaigns/campaignService';
+import { fetchCampaigns, createCampaign, deleteCampaign, cancelCampaign, launchCampaign, sendCampaignNotifications } from '../../../features/campaigns/campaignService';
 import PageHeader from "../../../components/PageHeader";
+import Pagination from '../../../components/Pagination';
+
+const PAGE_SIZE = 100;
 
 const AUDIENCE_OPTIONS = ['All Citizens', 'Specific Ward', 'Specific Constituency', 'Custom Segment'];
 const CHANNEL_OPTIONS = ['SMS', 'WhatsApp', 'Email', 'Push Notification'];
@@ -36,15 +39,19 @@ export default function CampaignManagement() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [launchMsg, setLaunchMsg] = useState('');
 
-  useEffect(() => { loadCampaigns(); }, []);
+  useEffect(() => { loadCampaigns(page); }, [page]);
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = async (targetPage = page) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchCampaigns(1, 1000);
+      const data = await fetchCampaigns(targetPage, PAGE_SIZE);
       setCampaigns(data);
+      setHasMore(data.length >= PAGE_SIZE);
     } catch (err) {
       setError('Failed to load campaigns');
     } finally {
@@ -94,10 +101,16 @@ export default function CampaignManagement() {
   };
 
   const handleLaunch = async (id) => {
+    setLaunchMsg('');
     try {
       await launchCampaign(id);
       await loadCampaigns();
-    } catch { /* ignore */ }
+      setLaunchMsg('✅ Campaign launched! Notifications sent to citizens.');
+      setTimeout(() => setLaunchMsg(''), 4000);
+    } catch (err) {
+      setLaunchMsg('❌ ' + (err?.response?.data?.detail || 'Failed to launch campaign.'));
+      setTimeout(() => setLaunchMsg(''), 5000);
+    }
   };
 
   const handleNotify = async (id, name) => {
@@ -109,8 +122,21 @@ export default function CampaignManagement() {
     }
   };
 
+  const handleCancel = async (id, name) => {
+    if (!window.confirm(`Cancel campaign "${name}"? It will be saved as CANCELLED in the database.`)) return;
+    try {
+      await cancelCampaign(id);
+      await loadCampaigns();
+      setLaunchMsg('✅ Campaign cancelled and saved in database.');
+      setTimeout(() => setLaunchMsg(''), 4000);
+    } catch (err) {
+      setLaunchMsg('❌ ' + (err?.response?.data?.detail || 'Failed to cancel campaign.'));
+      setTimeout(() => setLaunchMsg(''), 5000);
+    }
+  };
+
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this campaign?')) return;
+    if (!window.confirm('Permanently delete this campaign? This cannot be undone.')) return;
     try {
       await deleteCampaign(id);
       await loadCampaigns();
@@ -121,6 +147,15 @@ export default function CampaignManagement() {
     <div>
       <PageHeader subtitle="Design and launch targeted awareness campaigns" />
       <div className="module-container">
+
+        {/* Launch feedback */}
+        {launchMsg && (
+          <div style={{ margin: '0 0 12px', padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+            background: launchMsg.startsWith('✅') ? '#dcfce7' : '#fee2e2',
+            color: launchMsg.startsWith('✅') ? '#15803d' : '#b91c1c' }}>
+            {launchMsg}
+          </div>
+        )}
 
         {/* Controls */}
         <div className="module-controls">
@@ -224,13 +259,18 @@ export default function CampaignManagement() {
                               Launch
                             </button>
                           )}
-                          {c.status === 'ACTIVE' && (c.channels || []).includes('Push Notification') && (
+                          {c.status === 'ACTIVE' && (
                             <button onClick={() => handleNotify(id, c.name)} style={{ padding: '5px 12px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
                               🔔 Notify
                             </button>
                           )}
+                          {c.status !== 'CANCELLED' && c.status !== 'COMPLETED' && (
+                            <button onClick={() => handleCancel(id, c.name)} style={{ padding: '5px 12px', background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                              🚫 Cancel
+                            </button>
+                          )}
                           <button onClick={() => handleDelete(id)} style={{ padding: '5px 12px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                            Delete
+                            🗑️ Delete
                           </button>
                         </div>
                       </td>
@@ -240,6 +280,14 @@ export default function CampaignManagement() {
               </tbody>
             </table>
           )}
+          <Pagination
+            page={page}
+            hasMore={hasMore}
+            onPrev={() => setPage(p => p - 1)}
+            onNext={() => setPage(p => p + 1)}
+            loading={loading}
+            pageSize={PAGE_SIZE}
+          />
         </div>
 
         {/* Campaign Builder Modal */}

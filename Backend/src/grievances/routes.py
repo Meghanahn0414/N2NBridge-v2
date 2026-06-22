@@ -35,7 +35,7 @@ async def create_grievance(
 @router.get("/", response_model=list[GrievanceResponse])
 async def list_grievances(
     page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=1000),
+    per_page: int = Query(10, ge=1, le=100),
     status: Optional[str] = None,
     priority: Optional[str] = None,
     assigned_officer_id: Optional[str] = None,
@@ -81,8 +81,128 @@ async def create_category(
 async def list_categories():
     """List grievance categories"""
     categories = GrievanceCategoryService.get_all_categories()
-    
+
     return [GrievanceCategoryResponse(**Helper.convert_mongo_doc(c)) for c in categories]
+
+
+@router.get("/reports/stats")
+async def get_reports_stats():
+    """KPI stats + top-priority unassigned grievances for the MLA Reports page."""
+    from config.database import MongoDatabase
+    from datetime import datetime, timedelta
+    db = MongoDatabase.get_db()
+
+    now = datetime.utcnow()
+    thirty_days_ago = now - timedelta(days=30)
+    sixty_days_ago  = now - timedelta(days=60)
+    base = {"isDeleted": {"$ne": True}}
+
+    # KPIs
+    needs_attention = db.grievances.count_documents({
+        **base, "status": "NEW",
+        "$or": [
+            {"assignedOfficerId": None},
+            {"assignedOfficerId": {"$exists": False}},
+            {"assignedOfficerId": ""},
+        ]
+    })
+    in_progress = db.grievances.count_documents({**base, "status": {"$in": ["ASSIGNED", "IN_PROGRESS"]}})
+    in_review   = db.grievances.count_documents({**base, "status": "ON_HOLD"})
+    total       = db.grievances.count_documents(base)
+
+    resolved_30d     = db.grievances.count_documents({
+        **base, "status": {"$in": ["RESOLVED", "CLOSED"]},
+        "updatedAt": {"$gte": thirty_days_ago}
+    })
+    resolved_prev30d = db.grievances.count_documents({
+        **base, "status": {"$in": ["RESOLVED", "CLOSED"]},
+        "updatedAt": {"$gte": sixty_days_ago, "$lt": thirty_days_ago}
+    })
+
+    # Avg resolution time (days) — createdAt → updatedAt for resolved grievances
+    resolved_sample = list(db.grievances.find(
+        {**base, "status": {"$in": ["RESOLVED", "CLOSED"]},
+         "createdAt": {"$exists": True}, "updatedAt": {"$exists": True}},
+        {"createdAt": 1, "updatedAt": 1}
+    ).limit(50))
+    diffs = [
+        (d["updatedAt"] - d["createdAt"]).total_seconds() / 86400
+        for d in resolved_sample
+        if d.get("createdAt") and d.get("updatedAt") and d["updatedAt"] > d["createdAt"]
+    ]
+    avg_days = round(sum(diffs) / len(diffs), 1) if diffs else 0.0
+
+    # Top unassigned NEW grievances, sorted by priority severity
+    priority_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+    new_docs = list(db.grievances.find(
+        {**base, "status": "NEW"},
+        {"description": 1, "category": 1, "categoryId": 1,
+         "wardId": 1, "priority": 1, "createdAt": 1,
+         "address": 1, "complaintNumber": 1}
+    ).limit(20))
+    new_docs.sort(key=lambda g: priority_order.get(g.get("priority", "MEDIUM"), 2))
+
+    # Priority base scores — relative urgency multiplier (not hardcoded impact, used in formula)
+    priority_weights = {"CRITICAL": 4.0, "HIGH": 2.5, "MEDIUM": 1.5, "LOW": 0.8}
+
+    # Total NEW grievances — used to normalise category volume
+    total_new = max(db.grievances.count_documents({**base, "status": "NEW"}), 1)
+
+    top_unassigned = []
+    for g in new_docs[:3]:
+        cat = g.get("category") or g.get("categoryId") or "OTHER"
+
+        # 1. Volume score: what fraction of all NEW complaints belong to this category?
+        #    More complaints in a category = more community concern = higher impact.
+        category_new_count = db.grievances.count_documents(
+            {**base, "status": "NEW", "$or": [{"category": cat}, {"categoryId": cat}]}
+        )
+        related = max(0, category_new_count - 1)
+        volume_score = min(category_new_count / total_new, 1.0)  # 0→1
+
+        # 2. Age score: how long has this been sitting unresolved?
+        #    Capped at 30 days — a 30-day-old complaint scores the same as a 60-day-old one.
+        age_days = 0
+        if g.get("createdAt"):
+            age_days = max(0, (now - g["createdAt"]).days)
+        age_score = min(age_days / 30.0, 1.0)  # 0→1
+
+        # 3. Priority weight
+        p_weight = priority_weights.get(g.get("priority", "MEDIUM"), 1.5)
+
+        # Final formula:
+        #   impact = priority_weight × (0.5 base + 0.3 × age + 0.2 × volume)
+        #   Range: LOW brand-new zero-volume = 0.8×0.5 = 0.4
+        #          CRITICAL 30d+ high-volume = 4.0×1.0 = 4.0
+        impact = round(p_weight * (0.5 + 0.3 * age_score + 0.2 * volume_score), 1)
+
+        top_unassigned.append({
+            "id":              str(g["_id"]),
+            "complaintNumber": g.get("complaintNumber") or "",
+            "description":     g.get("description") or "",
+            "category":        cat,
+            "address":         g.get("address") or "",
+            "wardId":          g.get("wardId") or "",
+            "priority":        g.get("priority") or "MEDIUM",
+            "createdAt":       g["createdAt"].isoformat() if g.get("createdAt") else None,
+            "relatedCount":    related,
+            "impact":          impact,
+            "ageDays":         age_days,
+            "volumePct":       round(volume_score * 100, 1),
+        })
+
+    return {
+        "kpi": {
+            "total":             total,
+            "needsAttention":    needs_attention,
+            "inProgress":        in_progress,
+            "inReview":          in_review,
+            "resolved30d":       resolved_30d,
+            "resolvedDelta":     resolved_30d - resolved_prev30d,
+            "avgResolutionDays": avg_days,
+        },
+        "topUnassigned": top_unassigned,
+    }
 
 
 @router.get("/citizen/{citizen_id}", response_model=list[GrievanceResponse])
@@ -224,16 +344,16 @@ async def upload_grievance_attachment(
 ):
     """Upload attachment to grievance"""
     try:
-        from utils.file_handler import upload_profile_image
+        from utils.storage import upload_file
 
         # Validate grievance exists
         grievance = GrievanceService.get_grievance_by_id(grievance_id)
         if not grievance:
             raise HTTPException(status_code=404, detail="Grievance not found")
-        
-        # Upload file
-        file_url = await upload_profile_image(file)
-        
+
+        # Upload file (S3 or local depending on config)
+        file_url = await upload_file(file, folder="grievances")
+
         # Add to grievance
         success = GrievanceService.add_attachment(
             grievance_id,

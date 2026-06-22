@@ -9,6 +9,7 @@ import {
   clearAuth,
 } from './services/authStorage';
 import NotificationModal from "./common/NotificationModal";
+import { getNotificationRoute } from './utils/notificationRoute';
 
 export default function Header({ onMobileMenuClick }) {
   const [notificationCount, setNotificationCount] = useState(0);
@@ -37,17 +38,12 @@ export default function Header({ onMobileMenuClick }) {
     const img = user.profileImage;
     // Base64 data URL — use as-is
     if (img.startsWith('data:image/')) return img;
-    // Full URL with /uploads/ path — strip the host so Vite proxy handles it
-    if (img.startsWith('http://') || img.startsWith('https://')) {
-      try {
-        const { pathname } = new URL(img);
-        return pathname; // e.g. /uploads/filename.jpeg — proxied by Vite
-      } catch {
-        return img;
-      }
-    }
-    // Relative path — use as-is (Vite proxy handles /uploads/...)
-    return img.startsWith('/') ? img : `/${img}`;
+    // Already a full URL — use as-is
+    if (img.startsWith('http://') || img.startsWith('https://')) return img;
+    // Relative path like "uploads/filename.jpg" — prepend backend base if set, else use Vite proxy
+    const base = import.meta.env.VITE_API_BASE_URL || '';
+    const path = img.startsWith('/') ? img : `/${img}`;
+    return base ? `${base}${path}` : path;
   };
 
   const profileImageUrl = getProfileImageUrl();
@@ -320,11 +316,19 @@ export default function Header({ onMobileMenuClick }) {
     } catch (e) {
       // ignore
     } finally {
-      // refresh count and list
       fetchNotificationCount();
       fetchNotificationsList();
       window.dispatchEvent(new Event('app-notification-updated'));
     }
+  };
+
+  const handleNotificationClick = async (n) => {
+    const id = n._id || n.id;
+    if (id) await markNotificationRead(id);
+    setShowNotificationsList(false);
+    const role = user?.role || getAuthRole();
+    const route = getNotificationRoute(n, role);
+    if (route) navigate(route);
   };
 
   return (
@@ -410,26 +414,44 @@ export default function Header({ onMobileMenuClick }) {
                   ) : notificationsList.length === 0 ? (
                     <div style={{ padding: 12, color: '#666' }}>No new notifications</div>
                   ) : (
-                    notificationsList.map((n) => (
-                      <div key={n._id} className="notification-item">
-                        <div className="notification-content">
-                          <div className="notification-title">{n.title}</div>
-                          <div className="notification-message">{n.message}</div>
-                        </div>
-                        {(() => {
-                          const ts = n.created_at || n.createdAt || null;
-                          const t = formatNotificationTime(ts);
-                          return (
-                            <div
-                              title={t.full}
-                              style={{ fontSize: 11, color: '#999', marginTop: 6 }}
-                            >
-                              {t.full}
+                    notificationsList.map((n) => {
+                      const id = n._id || n.id;
+                      const isUnread = !n.isRead;
+                      const role = user?.role || getAuthRole();
+                      const hasRoute = !!getNotificationRoute(n, role);
+                      const ts = n.created_at || n.createdAt || null;
+                      const t = formatNotificationTime(ts);
+                      return (
+                        <div
+                          key={id}
+                          className="notification-item"
+                          onClick={() => handleNotificationClick(n)}
+                          style={{
+                            cursor: hasRoute ? 'pointer' : 'default',
+                            background: isUnread ? '#f0f7ff' : '#fff',
+                            borderLeft: isUnread ? '3px solid #3b82f6' : '3px solid transparent',
+                          }}
+                        >
+                          <div className="notification-content" style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                            {isUnread && (
+                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0, marginTop: 4 }} />
+                            )}
+                            <div style={{ flex: 1 }}>
+                              <div className="notification-title">{n.title}</div>
+                              <div className="notification-message">{n.body || n.message}</div>
+                              {hasRoute && (
+                                <div style={{ fontSize: 11, color: '#3b82f6', fontWeight: 600, marginTop: 3 }}>
+                                  Tap to open →
+                                </div>
+                              )}
+                              <div title={t.full} style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+                                {t.full}
+                              </div>
                             </div>
-                          );
-                        })()}
-                      </div>
-                    ))
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               )}
@@ -449,13 +471,14 @@ export default function Header({ onMobileMenuClick }) {
                     src={profileImageUrl}
                     alt="Profile"
                     onError={(e) => {
-                      console.warn('[Header] Failed to load profile image:', profileImageUrl);
                       e.target.style.display = 'none';
                       if (e.target.nextSibling) e.target.nextSibling.style.display = 'inline-flex';
                     }}
                   />
                 ) : null}
-                {!profileImageUrl && <span className="profile-fallback">👤</span>}
+                <span className="profile-fallback" style={{ display: profileImageUrl ? 'none' : 'inline-flex' }}>
+                  {(user?.fullName || user?.name || '?').charAt(0).toUpperCase()}
+                </span>
               </div>
               <span className="user-profile-name-text">{user?.fullName || user?.name || 'User'}</span>
             </button>
@@ -469,13 +492,14 @@ export default function Header({ onMobileMenuClick }) {
                         src={profileImageUrl}
                         alt="Profile"
                         onError={(e) => {
-                          console.warn('[Header] Failed to load profile image in dropdown:', profileImageUrl);
                           e.target.style.display = 'none';
                           if (e.target.nextSibling) e.target.nextSibling.style.display = 'inline-flex';
                         }}
                       />
                     ) : null}
-                    {!profileImageUrl && <span className="profile-fallback-large">👤</span>}
+                    <span className="profile-fallback-large" style={{ display: profileImageUrl ? 'none' : 'inline-flex' }}>
+                      {(user?.fullName || user?.name || '?').charAt(0).toUpperCase()}
+                    </span>
                   </div>
                   <div className="user-profile-info">
                     <div className="user-profile-name">{user?.fullName || user?.name || 'Admin User'}</div>

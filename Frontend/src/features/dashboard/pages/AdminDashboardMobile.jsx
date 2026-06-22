@@ -48,10 +48,21 @@ export default function AdminDashboardMobile({ dashboard, loading }) {
 
   const [unread, setUnread] = useState(0);
   const [activeTab, setActiveTab] = useState('home');
+  const [avatarImgErr, setAvatarImgErr] = useState(false);
+
+  const avatarUrl = (() => {
+    const img = user?.profileImage;
+    if (!img) return null;
+    if (img.startsWith('data:image/')) return img;
+    if (img.startsWith('http://') || img.startsWith('https://')) return img;
+    const base = import.meta.env.VITE_API_BASE_URL || '';
+    const path = img.startsWith('/') ? img : `/${img}`;
+    return base ? `${base}${path}` : path;
+  })();
 
   useEffect(() => {
     api.get('/api/notifications/unread')
-      .then(r => setUnread(r.data?.count || r.data?.unread_count || 0))
+      .then(r => setUnread(Array.isArray(r.data?.data) ? r.data.data.length : 0))
       .catch(() => {});
   }, []);
 
@@ -60,7 +71,7 @@ export default function AdminDashboardMobile({ dashboard, loading }) {
 
   /* Metrics */
   const m = dashboard?.metrics || {};
-  const totalCitizens  = m?.users?.total || 0;
+  const totalCitizens  = m?.users?.byRole?.CITIZEN || 0;
   const totalComplaints = m?.grievances?.total || 0;
   const criticalAlerts = m?.alerts?.byPriority?.CRITICAL || 0;
   const resolved       = m?.grievances?.byStatus?.RESOLVED || 0;
@@ -128,7 +139,16 @@ export default function AdminDashboardMobile({ dashboard, loading }) {
             <FaBell />
             {unread > 0 && <span className="adm-bell-badge">{unread > 9 ? '9+' : unread}</span>}
           </button>
-          <div className="adm-avatar">{initial}</div>
+          <div className="adm-avatar">
+            {avatarUrl && !avatarImgErr ? (
+              <img
+                src={avatarUrl}
+                alt={initial}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                onError={() => setAvatarImgErr(true)}
+              />
+            ) : initial}
+          </div>
         </div>
       </header>
 

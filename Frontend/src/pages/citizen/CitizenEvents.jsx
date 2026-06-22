@@ -26,7 +26,7 @@ export default function CitizenEvents() {
         citizenAreaId = profile?.wardId || profile?.constituencyId || null;
       } catch { /* if profile fails, show no events so citizen sets up profile */ }
 
-      const data = await fetchEvents(1, 1000);
+      const data = await fetchEvents(1, 100);
       const visible = (data || []).filter(e => {
         if (e.status === 'CANCELLED') return false;
         if (!citizenAreaId) return false; // no area set → show nothing until profile is complete

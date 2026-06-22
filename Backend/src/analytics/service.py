@@ -44,16 +44,6 @@ class AnalyticsService:
         
         trend = AnalyticsService.calculate_trend(last_30_count)
         
-        by_status = db.grievances.aggregate([
-            {"$match": {"isDeleted": False}},
-            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
-        ])
-        
-        by_priority = db.grievances.aggregate([
-            {"$match": {"isDeleted": False}},
-            {"$group": {"_id": "$priority", "count": {"$sum": 1}}}
-        ])
-        
         # Get grievances by category — use `category` enum field first, fall back to categoryId
         from bson import ObjectId as _ObjId
         by_category_raw = list(db.grievances.aggregate([
@@ -93,17 +83,21 @@ class AnalyticsService:
             category_name = _NORMALIZE.get(category_name, category_name)
             by_category[category_name] = by_category.get(category_name, 0) + count
         
+        def _agg_dict(cursor):
+            """Convert aggregation result to dict, skipping None keys (JSON can't serialize them)."""
+            return {str(item["_id"]): item["count"] for item in cursor if item["_id"] is not None}
+
         return {
             "total": total,
             "trend": trend,
-            "byStatus": {item["_id"]: item["count"] for item in db.grievances.aggregate([
+            "byStatus": _agg_dict(db.grievances.aggregate([
                 {"$match": {"isDeleted": False}},
                 {"$group": {"_id": "$status", "count": {"$sum": 1}}}
-            ])},
-            "byPriority": {item["_id"]: item["count"] for item in db.grievances.aggregate([
+            ])),
+            "byPriority": _agg_dict(db.grievances.aggregate([
                 {"$match": {"isDeleted": False}},
                 {"$group": {"_id": "$priority", "count": {"$sum": 1}}}
-            ])},
+            ])),
             "byCategory": by_category
         }
     
@@ -125,12 +119,12 @@ class AnalyticsService:
         return {
             "total": total,
             "trend": trend,
-            "byStatus": {item["_id"]: item["count"] for item in db.alerts.aggregate([
+            "byStatus": {str(item["_id"]): item["count"] for item in db.alerts.aggregate([
                 {"$group": {"_id": "$status", "count": {"$sum": 1}}}
-            ])},
-            "byPriority": {item["_id"]: item["count"] for item in db.alerts.aggregate([
+            ]) if item["_id"] is not None},
+            "byPriority": {str(item["_id"]): item["count"] for item in db.alerts.aggregate([
                 {"$group": {"_id": "$priority", "count": {"$sum": 1}}}
-            ])}
+            ]) if item["_id"] is not None},
         }
     
     @staticmethod
@@ -149,10 +143,10 @@ class AnalyticsService:
         
         trend = AnalyticsService.calculate_trend(last_30_count)
         
-        by_role = {item["_id"]: item["count"] for item in db.users.aggregate([
+        by_role = {str(item["_id"]): item["count"] for item in db.users.aggregate([
             {"$match": {"isDeleted": False}},
             {"$group": {"_id": "$role", "count": {"$sum": 1}}}
-        ])}
+        ]) if item["_id"] is not None}
         
         return {
             "total": total,
@@ -249,10 +243,33 @@ class AnalyticsService:
         return sentiment_counts
 
     @staticmethod
-    def get_performance_metrics() -> dict:
-        """Get performance metrics"""
+    def get_performance_metrics(days: int = 365) -> dict:
+        """Get performance metrics filtered by time window"""
+        db = MongoDatabase.get_db()
+        since = datetime.utcnow() - timedelta(days=days)
+
+        # Filtered grievance counts for the selected period
+        resolved_in_period = db.grievances.count_documents({
+            "isDeleted": False,
+            "status": {"$in": ["RESOLVED", "CLOSED"]},
+            "updatedAt": {"$gte": since},
+        })
+
+        # Previous equal-length period for trend calculation
+        prev_since = since - timedelta(days=days)
+        resolved_prev = db.grievances.count_documents({
+            "isDeleted": False,
+            "status": {"$in": ["RESOLVED", "CLOSED"]},
+            "updatedAt": {"$gte": prev_since, "$lt": since},
+        })
+        trend = round(((resolved_in_period - resolved_prev) / max(resolved_prev, 1)) * 100, 1) if resolved_prev else 0
+
+        base_stats = AnalyticsService.get_grievance_stats()
+        base_stats["byStatus"]["RESOLVED"] = resolved_in_period
+        base_stats["trend"] = trend
+
         stats = {
-            "grievances": AnalyticsService.get_grievance_stats(),
+            "grievances": base_stats,
             "alerts": AnalyticsService.get_alert_stats(),
             "users": AnalyticsService.get_user_stats(),
             "events": AnalyticsService.get_event_stats(),
@@ -266,9 +283,10 @@ class AnalyticsService:
     @staticmethod
     def get_active_users() -> dict:
         """Get count of active users today"""
+        from datetime import time as _time
         db = MongoDatabase.get_db()
-        today_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
-        today_end = datetime.combine(datetime.utcnow().date(), datetime.max.time())
+        today_start = datetime.combine(datetime.utcnow().date(), _time.min)
+        today_end = datetime.combine(datetime.utcnow().date(), _time.max)
 
         # Count users who have logged in today or have recent activity
         active_today = db.users.count_documents({
@@ -280,8 +298,10 @@ class AnalyticsService:
         })
 
         # Get active users count for yesterday to calculate trend
-        yesterday_start = today_start - timedelta(days=1)
-        yesterday_end = today_end - timedelta(days=1)
+        from datetime import time as _time
+        yesterday = (datetime.utcnow() - timedelta(days=1)).date()
+        yesterday_start = datetime.combine(yesterday, _time.min)
+        yesterday_end = datetime.combine(yesterday, _time.max)
 
         active_yesterday = db.users.count_documents({
             "$or": [

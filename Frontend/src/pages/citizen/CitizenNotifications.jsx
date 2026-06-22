@@ -113,9 +113,9 @@ export default function CitizenNotifications() {
             {notifications.length === 0 ? (
               <div className="rounded-lg bg-white p-8 text-slate-600 shadow-sm">No notifications available.</div>
             ) : (
-              notifications.map((notif) => (
+              notifications.map((notif, index) => (
                 <div
-                  key={notif.id}
+                  key={notif.id || notif._id || index}
                   className={`rounded-lg p-4 ${notif.isRead ? 'bg-slate-50' : 'border-l-4 border-blue-600 bg-white'}`}
                 >
                   <div className="flex items-start justify-between">

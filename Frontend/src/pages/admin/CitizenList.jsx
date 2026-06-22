@@ -90,6 +90,7 @@ export default function CitizenList() {
                 <tr>
                   <th style={styles.th}>#</th>
                   <th style={styles.th}>Name</th>
+                  <th style={styles.th}>Citizen ID</th>
                   <th style={styles.th}>Email</th>
                   <th style={styles.th}>Mobile</th>
                   <th style={styles.th}>Role</th>
@@ -99,7 +100,7 @@ export default function CitizenList() {
               <tbody>
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={styles.empty}>No citizens found</td>
+                    <td colSpan={7} style={styles.empty}>No citizens found</td>
                   </tr>
                 ) : (
                   users.map((u, i) => {
@@ -114,6 +115,9 @@ export default function CitizenList() {
                               <div style={styles.name}>{fullName}</div>
                             </div>
                           </div>
+                        </td>
+                        <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#64748b' }}>
+                          {u.citizenId || u._id || u.id || '—'}
                         </td>
                         <td style={styles.td}>{u.email || '—'}</td>
                         <td style={styles.td}>{formatPhoneDisplay(u.mobile)}</td>

@@ -1,4 +1,10 @@
 /* Profile Creation Container */
+.step-hint {
+  font-size: 13px;
+  color: #6b7280;
+  margin: -8px 0 14px;
+}
+
 .profile-creation-container {
   display: flex;
   justify-content: center;

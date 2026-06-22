@@ -4,6 +4,9 @@ import '../../../styles/modules/ComplaintManagement.css';
 import PageHeader from "../../../components/PageHeader";
 import { fetchGrievances, updateGrievance, assignGrievance } from '../../../features/grievances/grievanceService';
 import { fetchUsers } from '../../../features/team-management/userService';
+import Pagination from '../../../components/Pagination';
+
+const PAGE_SIZE = 100;
 
 export default function ComplaintManagement() {
   const [complaints, setComplaints] = useState([]);
@@ -12,6 +15,8 @@ export default function ComplaintManagement() {
   const [filters, setFilters] = useState({ status: 'ALL', priority: 'ALL' });
   const [searchTerm, setSearchTerm] = useState('');
   const [officers, setOfficers] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
   // Reassign modal
   const [reassignModal, setReassignModal] = useState(null); // complaint object
@@ -28,12 +33,13 @@ export default function ComplaintManagement() {
 
   const [stats, setStats] = useState({ total: 0, open: 0, assigned: 0, inProgress: 0, resolved: 0 });
 
-  const loadComplaints = async () => {
+  const loadComplaints = async (targetPage = page) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchGrievances(1, 1000, filters);
+      const data = await fetchGrievances(targetPage, PAGE_SIZE, filters);
       setComplaints(data);
+      setHasMore(data.length >= PAGE_SIZE);
       calculateStats(data);
     } catch (err) {
       setError(err.message || 'Failed to load complaints');
@@ -59,10 +65,15 @@ export default function ComplaintManagement() {
     });
   };
 
-  useEffect(() => {
-    loadComplaints();
-    loadOfficers();
-  }, []);
+  useEffect(() => { loadOfficers(); }, []);
+
+  useEffect(() => { loadComplaints(page); }, [page]);
+
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+    setPage(1);
+    loadComplaints(1);
+  };
 
   // ── Reassign ──────────────────────────────────────────────
   const openReassign = (complaint) => {
@@ -174,15 +185,15 @@ export default function ComplaintManagement() {
       <div className="module-controls">
         <input type="text" placeholder="Search by ID, description, address..."
           value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-        <select value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })}>
+        <select value={filters.status} onChange={e => handleFilterChange({ ...filters, status: e.target.value })}>
           <option value="ALL">All Status</option>
           {statuses.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={filters.priority} onChange={e => setFilters({ ...filters, priority: e.target.value })}>
+        <select value={filters.priority} onChange={e => handleFilterChange({ ...filters, priority: e.target.value })}>
           <option value="ALL">All Priority</option>
           {priorities.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
-        <button className="btn-primary" onClick={loadComplaints} disabled={loading}>
+        <button className="btn-primary" onClick={() => loadComplaints(page)} disabled={loading}>
           {loading ? '🔄 Refreshing...' : '🔄 Refresh'}
         </button>
       </div>
@@ -255,6 +266,15 @@ export default function ComplaintManagement() {
           </table>
         </div>
       )}
+
+      <Pagination
+        page={page}
+        hasMore={hasMore}
+        onPrev={() => setPage(p => p - 1)}
+        onNext={() => setPage(p => p + 1)}
+        loading={loading}
+        pageSize={PAGE_SIZE}
+      />
 
       {/* Reassign Modal */}
       {reassignModal && (

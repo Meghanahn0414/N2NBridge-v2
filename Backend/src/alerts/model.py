@@ -73,7 +73,7 @@ class AlertBase(BaseModel):
 
 class AlertCreate(AlertBase):
     """Alert creation"""
-    citizenId: str
+    citizenId: Optional[str] = None
     mediaAttachments: Optional[List[str]] = Field(default_factory=list)
 
 
@@ -87,17 +87,17 @@ class AlertUpdate(BaseModel):
 class AlertResponse(BaseModel):
     """Alert response"""
     id: str = Field(alias="_id")
-    alertNumber: str
-    citizenId: str
-    alertType: str
-    priority: str
-    description: str
+    alertNumber: Optional[str] = None
+    citizenId: Optional[str] = None
+    alertType: Optional[str] = None
+    priority: Optional[str] = None
+    description: Optional[str] = None
     location: Optional[dict] = None
     mediaAttachments: List[str] = []
     assignedTo: Optional[str] = None
-    status: str
-    createdAt: datetime
-    updatedAt: datetime
-    
+    status: Optional[str] = None
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
+
     class Config:
         populate_by_name = True

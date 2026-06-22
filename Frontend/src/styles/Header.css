@@ -443,8 +443,14 @@ body.sidebar-collapsed .app-header {
 }
 
 .profile-fallback {
-  font-size: 18px;
+  font-size: 14px;
+  font-weight: 700;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #fff;
 }
 
 .user-profile-name-text {
@@ -496,8 +502,14 @@ body.sidebar-collapsed .app-header {
 }
 
 .profile-fallback-large {
-  font-size: 28px;
+  font-size: 22px;
+  font-weight: 700;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #475569;
 }
 
 .user-profile-info {

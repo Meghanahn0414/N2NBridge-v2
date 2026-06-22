@@ -13,8 +13,10 @@ class CitizenProfileUpdate(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     profileImage: Optional[str] = None
-    age: Optional[int] = None
+    age: Optional[int] = Field(None, ge=1, le=120)
     gender: Optional[str] = None
+    wardId: Optional[str] = None
+    constituencyId: Optional[str] = None
 
 
 class CitizenProfileResponse(BaseModel):

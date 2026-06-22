@@ -140,7 +140,7 @@ class UserService:
             {"_id": ObjectId(user_id), "isDeleted": False},
             {"$set": update_data}
         )
-        return result.modified_count > 0
+        return result.matched_count > 0
     
     @staticmethod
     def delete_user(user_id: str, deleted_by: str) -> bool:

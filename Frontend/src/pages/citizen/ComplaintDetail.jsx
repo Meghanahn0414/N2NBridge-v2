@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import complaintService from "../../services/complaintService";
+import api from "../../shared/services/api";
 import "./complaint-detail.css";
 
 const STATUS_COLORS = {
@@ -30,6 +31,7 @@ export default function ComplaintDetail() {
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
+  const [ratingSaved, setRatingSaved] = useState(false);
 
   useEffect(() => {
     const fetchComplaint = async () => {
@@ -42,7 +44,9 @@ export default function ComplaintDetail() {
         const data = await complaintService.getComplaintDetail(id);
         if (data) {
           setComplaint(data);
-          setRating(data.feedback?.rating || 0);
+          const existingRating = data.feedback?.rating || 0;
+          setRating(existingRating);
+          setRatingSaved(existingRating > 0);
         }
       } catch (error) {
         console.error("Error fetching complaint:", error);
@@ -56,9 +60,15 @@ export default function ComplaintDetail() {
   }, [id]);
 
   const handleRating = async (value) => {
+    if (ratingSaved) return; // already submitted
     setRating(value);
     try {
-      await complaintService.updateComplaint(id, { rating: value });
+      await api.post(`/api/grievances/${id}/feedback`, {
+        rating: value,
+        comments: "",
+        submittedAt: new Date().toISOString(),
+      });
+      setRatingSaved(true);
     } catch (error) {
       console.error("Error submitting rating:", error);
     }
@@ -163,16 +173,23 @@ export default function ComplaintDetail() {
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
-                  className={`rating-star ${star <= (hoveredRating || rating) ? "filled" : "empty"}`}
-                  onMouseEnter={() => setHoveredRating(star)}
+                  className={`rating-star ${star <= ((!ratingSaved && hoveredRating) || rating) ? "filled" : "empty"}`}
+                  onMouseEnter={() => { if (!ratingSaved) setHoveredRating(star); }}
                   onMouseLeave={() => setHoveredRating(0)}
                   onClick={() => handleRating(star)}
+                  disabled={ratingSaved}
+                  style={{ cursor: ratingSaved ? "default" : "pointer" }}
                 >
                   ★
                 </button>
               ))}
             </div>
-            {rating > 0 && <p className="rating-label">{getRatingLabel(rating)}</p>}
+            {rating > 0 && (
+              <p className="rating-label">
+                {getRatingLabel(rating)}
+                {ratingSaved && <span style={{ marginLeft: 8, fontSize: 12, color: "#15803d", fontWeight: 600 }}>✓ Saved</span>}
+              </p>
+            )}
           </div>
         </div>
 

@@ -36,15 +36,18 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to fetch profile")
 
 
-@router.put("/profile", response_model=dict)
+@router.put("/profile")
 async def update_profile(
     update_data: CitizenProfileUpdate,
     current_user: dict = Depends(get_current_user)
 ):
     """Update citizen profile"""
+    from utils.helper import Helper
+    from fastapi.responses import JSONResponse
+    from fastapi.encoders import jsonable_encoder
     try:
         user_id = current_user.get("user_id")
-        
+
         # Verify user is a citizen
         user = UserService.get_user_by_id(user_id)
         if not user or user.get("role") != "CITIZEN":
@@ -52,26 +55,31 @@ async def update_profile(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only citizens can update citizen profiles"
             )
-        
+
+        # Build update payload (only fields sent by the client)
+        update_fields = update_data.model_dump(exclude_unset=True)
+
         # Update profile
-        success = CitizenService.update_citizen_profile(user_id, update_data.dict(exclude_unset=True))
-        
-        if not success:
+        ok = CitizenService.update_citizen_profile(user_id, update_fields)
+        if not ok:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to update profile"
+                detail="Failed to update profile — user record may be missing isDeleted:false"
             )
-        
-        # Return updated profile
-        profile = CitizenService.get_citizen_profile(user_id)
-        profile["_id"] = str(profile["_id"])
-        
-        return success_response({
+
+        # Fetch refreshed profile and make it JSON-safe
+        profile = CitizenService.get_citizen_profile(user_id) or {}
+        profile = Helper.convert_mongo_doc(profile)
+
+        # jsonable_encoder converts datetime → ISO string, ObjectId strings stay as-is
+        return JSONResponse(content=jsonable_encoder({
+            "success": True,
             "message": "Profile updated successfully",
-            "profile": profile
-        }).model_dump()
+            "data": {"profile": profile},
+            "statusCode": 200,
+        }))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating citizen profile: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update profile")
+        logger.error(f"Error updating citizen profile: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update profile: {e}")

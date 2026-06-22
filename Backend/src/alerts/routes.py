@@ -23,9 +23,35 @@ async def create_alert(
         alert_data.dict(),
         None
     )
-    
+
     alert = AlertService.get_alert_by_id(alert_id)
     return AlertResponse(**Helper.convert_mongo_doc(alert))
+
+
+@router.get("/", response_model=list[AlertResponse])
+async def list_alerts(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    status: Optional[str] = None,
+    priority: Optional[str] = None
+):
+    """List alerts"""
+    skip, limit = Helper.paginate(page, per_page)
+    filters = {}
+
+    if status:
+        filters["status"] = status
+    if priority:
+        filters["priority"] = priority
+
+    alerts = AlertService.list_alerts(skip, limit, filters)
+    result = []
+    for a in alerts:
+        try:
+            result.append(AlertResponse(**Helper.convert_mongo_doc(a)))
+        except Exception as e:
+            logger.warning(f"Skipping malformed alert {a.get('_id')}: {e}")
+    return result
 
 
 @router.get("/{alert_id}", response_model=AlertResponse)
@@ -34,31 +60,11 @@ async def get_alert(
 ):
     """Get alert by ID"""
     alert = AlertService.get_alert_by_id(alert_id)
-    
+
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
-    
+
     return AlertResponse(**Helper.convert_mongo_doc(alert))
-
-
-@router.get("/", response_model=list[AlertResponse])
-async def list_alerts(
-    page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=1000),
-    status: Optional[str] = None,
-    priority: Optional[str] = None
-):
-    """List alerts"""
-    skip, limit = Helper.paginate(page, per_page)
-    filters = {}
-    
-    if status:
-        filters["status"] = status
-    if priority:
-        filters["priority"] = priority
-    
-    alerts = AlertService.list_alerts(skip, limit, filters)
-    return [AlertResponse(**Helper.convert_mongo_doc(a)) for a in alerts]
 
 
 @router.put("/{alert_id}", response_model=AlertResponse)
@@ -102,15 +108,15 @@ async def upload_alert_media(
 ):
     """Upload media attachment to alert"""
     try:
-        from utils.file_handler import upload_profile_image
+        from utils.storage import upload_file
 
         # Validate alert exists
         alert = AlertService.get_alert_by_id(alert_id)
         if not alert:
             raise HTTPException(status_code=404, detail="Alert not found")
-        
-        # Upload file
-        file_url = await upload_profile_image(file)
+
+        # Upload file (S3 or local depending on config)
+        file_url = await upload_file(file, folder="alerts")
         
         # Add to alert media attachments
         success = AlertService.add_media_attachment(alert_id, file_url)

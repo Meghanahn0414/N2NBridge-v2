@@ -35,7 +35,10 @@ class CampaignCreate(BaseModel):
     name: str
     type: Optional[str] = "Awareness"
     message: Optional[str] = None
+    status: Optional[str] = "DRAFT"      # DRAFT | ACTIVE — caller sets ACTIVE to publish immediately
     targetAudience: Optional[List[str]] = []
+    coverImage: Optional[str] = None
+    wardId: Optional[str] = None          # target a specific ward; None = all citizens
     channels: Optional[List[str]] = []
     startDate: Optional[datetime] = None
     repeat: Optional[str] = "One-time"
@@ -48,8 +51,10 @@ class CampaignUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
     message: Optional[str] = None
+    coverImage: Optional[str] = None
     status: Optional[CampaignStatus] = None
     targetAudience: Optional[List[str]] = None
+    wardId: Optional[str] = None
     channels: Optional[List[str]] = None
     startDate: Optional[datetime] = None
     repeat: Optional[str] = None
@@ -65,6 +70,8 @@ class CampaignResponse(BaseModel):
     status: str = "DRAFT"
     message: Optional[str] = None
     targetAudience: List[str] = []
+    coverImage: Optional[str] = None
+    wardId: Optional[str] = None
     channels: List[str] = []
     startDate: Optional[datetime] = None
     repeat: str = "One-time"

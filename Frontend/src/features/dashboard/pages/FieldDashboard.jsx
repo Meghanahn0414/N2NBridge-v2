@@ -67,20 +67,26 @@ export default function FieldDashboard() {
   ];
 
   return (
-    /* Full viewport, no page scroll */
-    <div style={{ height: "100vh", overflow: "hidden", display: "flex", flexDirection: "column", background: "#f1f5f9", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
+    <div style={{ height: "100%", overflow: "hidden", display: "flex", flexDirection: "column", background: "#F3F5FA", fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
 
-      {/* ── Hero (compact) ── */}
-      <div style={{ background: "#1a5290", padding: "14px 32px 16px", flexShrink: 0, position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.05)", pointerEvents: "none" }} />
-        <p style={{ margin: 0, fontSize: "10px", fontWeight: 600, color: "#93c5fd", letterSpacing: "0.08em", textTransform: "uppercase" }}>{today}</p>
-        <div style={{ marginTop: "4px" }}>
-          <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>{greeting}, {firstName} 👋</h1>
-          <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#93c5fd" }}>
-            {open > 0 ? `${open} open grievance${open > 1 ? "s" : ""} awaiting action` : "All grievances are up to date"}
-          </p>
+      {/* ── Topbar ── */}
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 34px", background: "#F3F5FA", position: "sticky", top: 0, zIndex: 10, borderBottom: "1px solid #E5E9F1", flexShrink: 0 }}>
+        <div>
+          <div style={{ font: "500 13px 'Hanken Grotesk', system-ui, sans-serif", color: "#8590A6", marginBottom: 3 }}>
+            {today}
+          </div>
+          <h1 style={{ font: "400 28px 'Newsreader', Georgia, serif", color: "#16233C", margin: 0, letterSpacing: "-.01em" }}>
+            {greeting}, {firstName}
+          </h1>
         </div>
-      </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ height: 44, background: "#fff", border: "1px solid #E1E6F0", borderRadius: 13, display: "flex", alignItems: "center", gap: 9, padding: "0 16px" }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: open > 0 ? "#C8453A" : "#1E8A5B", fontFamily: "'Hanken Grotesk', system-ui" }}>
+              {loading ? "Loading…" : open > 0 ? `${open} open grievance${open > 1 ? "s" : ""} awaiting action` : "All grievances up to date"}
+            </span>
+          </div>
+        </div>
+      </header>
 
       {/* ── Stat Cards (compact row) ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", padding: "12px 32px 0", flexShrink: 0 }}>

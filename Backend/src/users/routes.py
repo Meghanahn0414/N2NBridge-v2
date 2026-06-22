@@ -71,6 +71,39 @@ async def create_user(user_data: UserCreate):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# Citizen search — used by Constituents page
+@router.get("/citizens/search")
+async def search_citizens(
+    q: str = Query("", min_length=0),
+    limit: int = Query(8, ge=1, le=20),
+):
+    """Search citizens by name, mobile or wardId for the Constituents page."""
+    db = MongoDatabase.get_db()
+    base = {"role": "CITIZEN", "isDeleted": {"$ne": True}}
+    if q.strip():
+        pattern = {"$regex": q.strip(), "$options": "i"}
+        base["$or"] = [
+            {"fullName": pattern},
+            {"mobile": pattern},
+            {"wardId": pattern},
+        ]
+    docs = list(db.users.find(base, {
+        "_id": 1, "fullName": 1, "mobile": 1, "wardId": 1, "gender": 1, "age": 1
+    }).limit(limit))
+    results = []
+    for d in docs:
+        results.append({
+            "id":       str(d["_id"]),
+            "name":     d.get("fullName") or "—",
+            "mobile":   d.get("mobile") or "",
+            "ward":     d.get("wardId") or "",
+            "gender":   d.get("gender") or "",
+            "age":      d.get("age"),
+            "initials": "".join(w[0] for w in (d.get("fullName") or "R").split()[:2]).upper(),
+        })
+    return {"results": results, "total": len(results)}
+
+
 # USER ENDPOINTS - List
 @router.get("/", response_model=list[UserResponse])
 async def list_users(
@@ -95,12 +128,49 @@ async def list_users(
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
     """Get the profile of the currently authenticated user"""
-    user = UserService.get_user_by_id(current_user["user_id"])
+    try:
+        user_id = current_user["user_id"]
+        db = MongoDatabase.get_db()
+        # Use $in to match both True-absent and False for isDeleted
+        user = db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        doc = Helper.convert_mongo_doc(user)
+        return UserResponse.model_validate(doc)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"GET /me error for user {current_user.get('user_id')}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to load profile: {str(e)}")
 
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
 
-    return UserResponse(**Helper.convert_mongo_doc(user))
+@router.put("/me", response_model=UserResponse)
+async def update_current_user_profile(
+    update_data: UserUpdate,
+    current_user: dict = Depends(get_current_user),
+):
+    """Update the profile of the currently authenticated user"""
+    try:
+        user_id = current_user["user_id"]
+        changes = update_data.model_dump(exclude_unset=True)
+        if changes:  # only hit DB if there's something to save
+            try:
+                UserService.update_user(user_id, changes, user_id)
+            except DuplicateKeyError as e:
+                field = "email" if "email" in str(e) else "mobile" if "mobile" in str(e) else "field"
+                raise HTTPException(status_code=422, detail=f"A user with that {field} already exists")
+
+        db = MongoDatabase.get_db()
+        user = db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        doc = Helper.convert_mongo_doc(user)
+        return UserResponse.model_validate(doc)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"PUT /me error for user {current_user.get('user_id')}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to save profile: {str(e)}")
 
 
 # CONSTITUENCY ENDPOINTS - Must come before /{user_id}

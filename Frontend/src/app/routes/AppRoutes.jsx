@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import NotificationProvider from "../providers/NotificationProvider";
 import Sidebar from "../../Sidebar";
 import Header from "../../Header";
 import MobileLayout from "../layouts/MobileLayout";
@@ -20,6 +21,8 @@ import CitizenCampaigns from "../../pages/citizen/CitizenCampaigns";
 import CitizenNotifications from "../../pages/citizen/CitizenNotifications";
 import CitizenFeedback from "../../pages/citizen/CitizenFeedback";
 import CitizenProfile from "../../pages/citizen/CitizenProfile";
+import CitizenSurveys from "../../pages/citizen/CitizenSurveys";
+import SurveyManagement from "../../pages/admin/modules/SurveyManagement";
 import FieldDashboard from "../../features/dashboard/pages/FieldDashboard";
 import ManagerDashboard from "../../features/dashboard/pages/ManagerDashboard";
 import RepresentativeDashboard from "../../features/dashboard/pages/RepresentativeDashboard";
@@ -67,10 +70,17 @@ import CitizenSentimentDashboard from "../../features/mla-dashboard/pages/Citize
 import GovernmentSchemeDashboard from "../../features/mla-dashboard/pages/GovernmentSchemeDashboard";
 import AIInsights from "../../features/mla-dashboard/pages/AIInsights";
 import DailyBriefing from "../../features/mla-dashboard/pages/DailyBriefing";
+import MLASettings from "../../features/mla-dashboard/pages/MLASettings";
+import ConstituentsDashboard from "../../features/mla-dashboard/pages/ConstituentsDashboard";
+import ReportsDashboard from "../../features/mla-dashboard/pages/ReportsDashboard";
 import FieldOfficerGrievances from "../../features/field-officer/pages/FieldOfficerGrievances";
 import FieldOfficerAlerts from "../../features/field-officer/pages/FieldOfficerAlerts";
 import FieldOfficerProfile from "../../features/field-officer/pages/FieldOfficerProfile";
 import FieldOfficerEvents from "../../features/field-officer/pages/FieldOfficerEvents";
+import MLALayout from "../../features/mla-dashboard/layouts/MLALayout";
+import AdminLayout from "../layouts/AdminLayout";
+import FieldLayout from "../layouts/FieldLayout";
+import ManagerLayout from "../layouts/ManagerLayout";
 
 function AppRoutesContent() {
   const location = useLocation();
@@ -83,10 +93,11 @@ function AppRoutesContent() {
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isRepDashboard = location.pathname === ROUTES.rep || location.pathname === ROUTES.mlaExecutiveDashboard;
   const isRepSubRoute = location.pathname.startsWith("/rep/");
+  const isRepRoute = isRepDashboard || isRepSubRoute;
   const isFieldRoute = location.pathname.startsWith("/field");
   const isManagerRoute = location.pathname === ROUTES.manager;
   const hideHeader = true;
-  const hideSidebar = isLanding || isCitizenRoute || isRepDashboard;
+  const hideSidebar = isLanding || isCitizenRoute || isRepRoute || isAdminRoute || isFieldRoute || isManagerRoute;
 
   // Close mobile menu on route change
   useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
@@ -122,12 +133,7 @@ function AppRoutesContent() {
       )}
 
       <main
-        className={`${isLanding ? 'app-main--landing' : isFieldRoute || isManagerRoute || isRepSubRoute || isAdminRoute ? 'app-main--no-header' : (isCitizenRoute || isRepDashboard) ? 'app-main--citizen' : 'app-main'}`}
-        style={
-          (isFieldRoute || isManagerRoute || isRepSubRoute || isAdminRoute) && !hideSidebar
-            ? { marginLeft: sidebarOpen ? '220px' : '60px', transition: 'margin-left 0.25s ease', width: 'auto', minHeight: '100vh' }
-            : undefined
-        }
+        className={`${isLanding ? 'app-main--landing' : isRepRoute || isFieldRoute || isManagerRoute || isAdminRoute ? 'app-main--rep' : isCitizenRoute ? 'app-main--citizen' : 'app-main'}`}
       >
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -149,59 +155,73 @@ function AppRoutesContent() {
           <Route path={ROUTES.citizenCampaigns} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenCampaigns /></MobileLayout></RoleRoute>} />
           <Route path={ROUTES.citizenNotifications} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenNotifications /></MobileLayout></RoleRoute>} />
           <Route path={ROUTES.citizenFeedback} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenFeedback /></MobileLayout></RoleRoute>} />
+          <Route path={ROUTES.citizenSurveys} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenSurveys /></MobileLayout></RoleRoute>} />
           <Route path={ROUTES.citizenProfile} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenProfile /></MobileLayout></RoleRoute>} />
           
-          {/* Dashboard Routes */}
-          <Route path={ROUTES.field} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldDashboard /></RoleRoute>} />
-          <Route path={ROUTES.fieldGrievances} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldOfficerGrievances /></RoleRoute>} />
-          <Route path={ROUTES.fieldAlerts} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldOfficerAlerts /></RoleRoute>} />
-          <Route path={ROUTES.fieldProfile} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldOfficerProfile /></RoleRoute>} />
-          <Route path={ROUTES.fieldEvents} element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldOfficerEvents /></RoleRoute>} />
-          <Route path={ROUTES.manager} element={<RoleRoute allowedRoles={["CONSTITUENCY_MANAGER", "MANAGER"]}><ManagerDashboard /></RoleRoute>} />
-          <Route path={ROUTES.rep} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><ExecutiveDashboard /></RoleRoute>} />
-          <Route path={ROUTES.admin} element={<RoleRoute allowedRoles={["ADMIN"]}><AdminDashboard /></RoleRoute>} />
+          {/* Field Officer Routes — new unified layout */}
+          <Route element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldLayout /></RoleRoute>}>
+            <Route path={ROUTES.field}           element={<FieldDashboard />} />
+            <Route path={ROUTES.fieldGrievances} element={<FieldOfficerGrievances />} />
+            <Route path={ROUTES.fieldAlerts}     element={<FieldOfficerAlerts />} />
+            <Route path={ROUTES.fieldProfile}    element={<FieldOfficerProfile />} />
+            <Route path={ROUTES.fieldEvents}     element={<FieldOfficerEvents />} />
+          </Route>
+
+          {/* Manager Routes — new unified layout */}
+          <Route element={<RoleRoute allowedRoles={["CONSTITUENCY_MANAGER", "MANAGER"]}><ManagerLayout /></RoleRoute>}>
+            <Route path={ROUTES.manager} element={<ManagerDashboard />} />
+          </Route>
+
+          <Route path={ROUTES.rep} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><Navigate to={ROUTES.mlaExecutiveDashboard} replace /></RoleRoute>} />
+
+          {/* Admin Routes — new unified layout */}
+          <Route element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "MANAGER"]}><AdminLayout /></RoleRoute>}>
+            <Route path={ROUTES.admin}                  element={<AdminDashboard />} />
+            <Route path={ROUTES.adminUsers}             element={<CitizenListPage />} />
+            <Route path={ROUTES.events}                 element={<EventListPage />} />
+            <Route path={ROUTES.alerts}                 element={<AlertsPage />} />
+            <Route path={ROUTES.register}               element={<RegistrationPage />} />
+            <Route path={ROUTES.mlaList}                element={<MLAListPage />} />
+            <Route path={ROUTES.managerList}            element={<ManagerListPage />} />
+            <Route path={ROUTES.fieldOfficerList}       element={<FieldOfficerListPage />} />
+            <Route path={ROUTES.adminsList}             element={<AdminsListPage />} />
+            <Route path={ROUTES.userManagement}         element={<UserManagement />} />
+            <Route path={ROUTES.rolePermissions}        element={<RolePermissions />} />
+            <Route path={ROUTES.constituencyManagement} element={<ConstituencyManagement />} />
+            <Route path={ROUTES.complaintManagement}    element={<ComplaintManagement />} />
+            <Route path={ROUTES.alertManagement}        element={<AlertManagement />} />
+            <Route path={ROUTES.eventManagement}        element={<EventManagement />} />
+            <Route path={ROUTES.communicationHub}       element={<CommunicationHub />} />
+            <Route path={ROUTES.campaignManagement}     element={<CampaignManagement />} />
+            <Route path={ROUTES.teamManagement}         element={<TeamManagement />} />
+            <Route path={ROUTES.analyticsReports}       element={<AnalyticsReports />} />
+            <Route path={ROUTES.surveyManagement}       element={<SurveyManagement />} />
+            <Route path={ROUTES.aiServices}             element={<AIServices />} />
+            <Route path={ROUTES.integrations}           element={<Integrations />} />
+            <Route path={ROUTES.systemConfiguration}    element={<SystemConfiguration />} />
+            <Route path={ROUTES.auditLogs}              element={<AuditLogs />} />
+            <Route path={ROUTES.securityCenter}         element={<SecurityCenter />} />
+            <Route path={ROUTES.adminSettings}          element={<AdminSettings />} />
+          </Route>
           
-          {/* Admin Pages Routes */}
-          <Route path={ROUTES.adminUsers} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><CitizenListPage /></RoleRoute>} />
-          <Route path={ROUTES.events} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><EventListPage /></RoleRoute>} />
-          <Route path={ROUTES.alerts} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><AlertsPage /></RoleRoute>} />
-          <Route path={ROUTES.register} element={<RoleRoute allowedRoles={["ADMIN"]}><RegistrationPage /></RoleRoute>} />
-          <Route path={ROUTES.mlaList} element={<RoleRoute allowedRoles={["ADMIN"]}><MLAListPage /></RoleRoute>} />
-          <Route path={ROUTES.managerList} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><ManagerListPage /></RoleRoute>} />
-          <Route path={ROUTES.fieldOfficerList} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER"]}><FieldOfficerListPage /></RoleRoute>} />
-          <Route path={ROUTES.adminsList} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><AdminsListPage /></RoleRoute>} />
-          
-          {/* Admin Module Routes (SRS Implementation) */}
-          <Route path={ROUTES.userManagement} element={<RoleRoute allowedRoles={["ADMIN"]}><UserManagement /></RoleRoute>} />
-          <Route path={ROUTES.rolePermissions} element={<RoleRoute allowedRoles={["ADMIN"]}><RolePermissions /></RoleRoute>} />
-          <Route path={ROUTES.constituencyManagement} element={<RoleRoute allowedRoles={["ADMIN"]}><ConstituencyManagement /></RoleRoute>} />
-          <Route path={ROUTES.complaintManagement} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><ComplaintManagement /></RoleRoute>} />
-          <Route path={ROUTES.alertManagement} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><AlertManagement /></RoleRoute>} />
-          <Route path={ROUTES.eventManagement} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><EventManagement /></RoleRoute>} />
-          <Route path={ROUTES.communicationHub} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><CommunicationHub /></RoleRoute>} />
-          <Route path={ROUTES.campaignManagement} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><CampaignManagement /></RoleRoute>} />
-          <Route path={ROUTES.teamManagement} element={<RoleRoute allowedRoles={["ADMIN", "CONSTITUENCY_MANAGER", "MANAGER"]}><TeamManagement /></RoleRoute>} />
-          <Route path={ROUTES.analyticsReports} element={<RoleRoute allowedRoles={["ADMIN", "REPRESENTATIVE"]}><AnalyticsReports /></RoleRoute>} />
-          <Route path={ROUTES.aiServices} element={<RoleRoute allowedRoles={["ADMIN"]}><AIServices /></RoleRoute>} />
-          <Route path={ROUTES.integrations} element={<RoleRoute allowedRoles={["ADMIN"]}><Integrations /></RoleRoute>} />
-          <Route path={ROUTES.systemConfiguration} element={<RoleRoute allowedRoles={["ADMIN"]}><SystemConfiguration /></RoleRoute>} />
-          <Route path={ROUTES.auditLogs} element={<RoleRoute allowedRoles={["ADMIN"]}><AuditLogs /></RoleRoute>} />
-          <Route path={ROUTES.securityCenter} element={<RoleRoute allowedRoles={["ADMIN"]}><SecurityCenter /></RoleRoute>} />
-          <Route path={ROUTES.adminSettings} element={<RoleRoute allowedRoles={["ADMIN"]}><AdminSettings /></RoleRoute>} />
-          
-          {/* MLA/Representative Dashboard Routes */}
-          <Route path={ROUTES.mlaExecutiveDashboard} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><ExecutiveDashboard /></RoleRoute>} />
-          <Route path={ROUTES.mlaConstituencyStatus} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><LiveConstituencyStatus /></RoleRoute>} />
-          <Route path={ROUTES.mlaHeatMap} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><GeographicHeatMap /></RoleRoute>} />
-          <Route path={ROUTES.mlaComplaintsDashboard} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><ComplaintsDashboard /></RoleRoute>} />
-          <Route path={ROUTES.mlaEmergencyCenter} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><EmergencyCommandCenter /></RoleRoute>} />
-          <Route path={ROUTES.mlaEvents} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><EventsPublicPrograms /></RoleRoute>} />
-          <Route path={ROUTES.mlaCommunications} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><CommunicationCenter /></RoleRoute>} />
-          <Route path={ROUTES.mlaTeamPerformance} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><TeamPerformanceDashboard /></RoleRoute>} />
-          <Route path={ROUTES.mlaCitizenSentiment} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><CitizenSentimentDashboard /></RoleRoute>} />
-          <Route path={ROUTES.mlaGovernmentSchemes} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><GovernmentSchemeDashboard /></RoleRoute>} />
-          <Route path={ROUTES.mlaAIInsights} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><AIInsights /></RoleRoute>} />
-          <Route path={ROUTES.mlaDailyBriefing} element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><DailyBriefing /></RoleRoute>} />
+          {/* MLA/Representative Dashboard Routes — all kept, sidebar only shows Civica 4 */}
+          <Route element={<RoleRoute allowedRoles={["REPRESENTATIVE"]}><MLALayout /></RoleRoute>}>
+            <Route path={ROUTES.mlaExecutiveDashboard}  element={<ExecutiveDashboard />} />
+            <Route path={ROUTES.mlaCitizenSentiment}    element={<CitizenSentimentDashboard />} />
+            <Route path={ROUTES.mlaCommunications}      element={<CommunicationCenter />} />
+            <Route path={ROUTES.mlaSettings}            element={<MLASettings />} />
+            <Route path={ROUTES.mlaConstituencyStatus}  element={<LiveConstituencyStatus />} />
+            <Route path={ROUTES.mlaHeatMap}             element={<GeographicHeatMap />} />
+            <Route path={ROUTES.mlaComplaintsDashboard} element={<ComplaintsDashboard />} />
+            <Route path={ROUTES.mlaEmergencyCenter}     element={<EmergencyCommandCenter />} />
+            <Route path={ROUTES.mlaEvents}              element={<EventsPublicPrograms />} />
+            <Route path={ROUTES.mlaTeamPerformance}     element={<TeamPerformanceDashboard />} />
+            <Route path={ROUTES.mlaGovernmentSchemes}   element={<GovernmentSchemeDashboard />} />
+            <Route path={ROUTES.mlaAIInsights}          element={<AIInsights />} />
+            <Route path={ROUTES.mlaDailyBriefing}       element={<DailyBriefing />} />
+            <Route path={ROUTES.mlaConstituents}        element={<ConstituentsDashboard />} />
+            <Route path={ROUTES.mlaReports}            element={<ReportsDashboard />} />
+          </Route>
           
           <Route path="*" element={<Navigate to={ROUTES.login} replace />} />
         </Routes>
@@ -213,7 +233,9 @@ function AppRoutesContent() {
 export default function AppRoutes() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AppRoutesContent />
+      <NotificationProvider>
+        <AppRoutesContent />
+      </NotificationProvider>
     </BrowserRouter>
   );
 }

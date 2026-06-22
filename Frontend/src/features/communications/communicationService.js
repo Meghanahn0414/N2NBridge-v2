@@ -2,7 +2,7 @@ import api from "../../shared/services/api";
 
 const NOTIFICATION_ENDPOINT = "/api/notifications";
 
-export async function fetchNotifications(page = 1, perPage = 1000, filters = {}) {
+export async function fetchNotifications(page = 1, perPage = 100, filters = {}) {
   try {
     const params = { page, per_page: perPage };
     const response = await api.get(NOTIFICATION_ENDPOINT, { params });

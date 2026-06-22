@@ -30,7 +30,6 @@ import {
 } from "react-icons/fa";
 import "../../../styles/AdminDashboard.css";
 import { getAuthUser } from '../../../services/authStorage';
-import api from '../../../shared/services/api';
 
 const StatCard = ({ label, value, trend, icon: Icon, color }) => {
   // Format number with commas
@@ -90,15 +89,6 @@ export default function AdminDashboard() {
   const role = getAuthRole();
   const user = getAuthUser();
   const userName = user?.fullName || user?.name || 'Admin';
-  const initial = userName.charAt(0).toUpperCase();
-  const [unread, setUnread] = useState(0);
-
-  useEffect(() => {
-    api.get('/api/notifications/unread')
-      .then(r => setUnread(r.data?.count || r.data?.unread_count || 0))
-      .catch(() => {});
-  }, []);
-
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
     setIsMobile(mq.matches);

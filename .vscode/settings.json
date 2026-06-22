@@ -1,9 +1,10 @@
 {
   "python.analysis.extraPaths": [
     "${workspaceFolder}/Backend/src",
-    "${workspaceFolder}/Backend/.venv/Lib/site-packages"
+    "C:/Users/VS-E01/AppData/Roaming/Python/Python313/site-packages",
+    "C:/Python313/Lib/site-packages"
   ],
-  "python.defaultInterpreterPath": "${workspaceFolder}/Backend/.venv/Scripts/python.exe",
+  "python.defaultInterpreterPath": "C:/Python313/python.exe",
   "[python]": {
     "editor.defaultFormatter": "ms-python.python",
     "editor.formatOnSave": true,

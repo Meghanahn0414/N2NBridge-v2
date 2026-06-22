@@ -2,11 +2,15 @@
 Authentication Routes
 """
 import logging
+import uuid
+from datetime import datetime
 from typing import Optional
 
 from auth.otp_service import OTP_STORAGE, OTPService
+from pymongo import ReturnDocument
 from auth.service import AuthService
 from config.database import MongoDatabase
+from config.rate_limit import limiter
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from users.model import (
     OtpResponse,
@@ -14,6 +18,7 @@ from users.model import (
     TokenResponse,
     UserCreate,
     UserLoginRequest,
+    UserPasswordChange,
     UserResponse,
     VerifyOtpRequest,
 )
@@ -78,7 +83,8 @@ def get_current_user_optional(authorization: Optional[str] = Header(None, alias=
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(login_data: UserLoginRequest):
+@limiter.limit("10/minute")
+async def login(request: Request, login_data: UserLoginRequest):
     """User login"""
     result = AuthService.login(login_data)
     
@@ -92,6 +98,7 @@ async def login(login_data: UserLoginRequest):
 
 
 @router.post("/login-admin", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login_admin(request: Request):
     """Admin/Staff login using email/password (ADMIN, REPRESENTATIVE, CONSTITUENCY_MANAGER, FIELD_OFFICER)"""
     try:
@@ -212,24 +219,25 @@ async def verify_token(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/send-otp")
-async def send_otp(request: SendOtpRequest):
+@limiter.limit("5/minute")
+async def send_otp(request: Request, otp_request: SendOtpRequest):
     """Send OTP to phone or email"""
     try:
-        if request.type not in ["phone", "email"]:
+        if otp_request.type not in ["phone", "email"]:
             raise HTTPException(status_code=400, detail="Type must be 'phone' or 'email'")
-        
-        if not request.value:
+
+        if not otp_request.value:
             raise HTTPException(status_code=400, detail="Phone number or email required")
-        
+
         # Send OTP
-        success = OTPService.send_otp(request.type, request.value)
+        success = OTPService.send_otp(otp_request.type, otp_request.value)
 
         if success:
-            normalized_value = OTPService.normalize_contact(request.type, request.value)
+            normalized_value = OTPService.normalize_contact(otp_request.type, otp_request.value)
             otp_data = OTP_STORAGE.get(normalized_value, {})
             return {
                 "success": True,
-                "message": f"OTP sent to {request.type}",
+                "message": f"OTP sent to {otp_request.type}",
                 "statusCode": 200,
                 "debug_otp": otp_data.get("otp", "")  # Development only - remove in production
             }
@@ -256,45 +264,41 @@ async def verify_otp(request: VerifyOtpRequest):
         if not OTPService.verify_otp(normalized_value, request.otp):
             raise HTTPException(status_code=401, detail="Invalid or expired OTP")
         
-        # Get or create user
-        user = None
-        if normalized_email:
-            user = UserService.get_user_by_email(normalized_email)
-        if not user and normalized_mobile:
-            user = UserService.get_user_by_mobile(normalized_mobile)
-        
-        if not user:
-            # Auto-create user on first OTP verification (OTP users don't have password)
-            db = MongoDatabase.get_db()
-            import uuid
-            from datetime import datetime
+        # Get or create user — atomic upsert prevents race-condition duplicates
+        db = MongoDatabase.get_db()
 
-            # Generate unique mobile/email if not provided or when login is via email/phone only
-            user_data = {
-                "fullName": request.value.strip(),
-                "mobile": normalized_mobile if is_mobile else f"otp-{uuid.uuid4().hex[:8]}",
-                "email": normalized_email if is_email else f"otp-{uuid.uuid4().hex[:8]}@otp.local",
-                "passwordHash": "",  # OTP login users have no password
-                "role": "CITIZEN",  # Default role
-                "status": "ACTIVE",
-                "isDeleted": False,
-                "lastLoginAt": None,
-                "createdAt": datetime.utcnow(),
-                "updatedAt": datetime.utcnow(),
-                "createdBy": "system",
-                "updatedBy": "system"
-            }
-            try:
-                result = db.users.insert_one(user_data)
-                user = db.users.find_one({"_id": result.inserted_id})
-                logger.info(f"OTP user auto-created: {result.inserted_id}")
-            except Exception as e:
-                # If duplicate key error, try to find existing user by mobile/email
-                logger.warning(f"Insert failed (likely duplicate): {e}. Trying to fetch existing user...")
-                user = UserService.get_user_by_mobile(normalized_mobile) if is_mobile else UserService.get_user_by_email(normalized_email)
-                if not user:
-                    # If still no user found, re-raise the error
-                    raise HTTPException(status_code=500, detail="Failed to create or find user")
+        # Look up by whichever identifier was used to request the OTP
+        if is_mobile:
+            lookup_filter = {"mobile": normalized_mobile, "isDeleted": False}
+        else:
+            lookup_filter = {"email": normalized_email, "isDeleted": False}
+
+        now = datetime.utcnow()
+        user = db.users.find_one_and_update(
+            lookup_filter,
+            {
+                "$setOnInsert": {
+                    # Leave fullName blank so OtpVerify.jsx redirects new citizens to profile creation
+                    "fullName": "",
+                    "mobile": normalized_mobile if is_mobile else f"otp-{uuid.uuid4().hex[:8]}",
+                    "email": normalized_email if is_email else f"otp-{uuid.uuid4().hex[:8]}@otp.local",
+                    "passwordHash": "",
+                    "role": "CITIZEN",
+                    "status": "ACTIVE",
+                    "isDeleted": False,
+                    "lastLoginAt": None,
+                    "createdAt": now,
+                    "updatedAt": now,
+                    "createdBy": "system",
+                    "updatedBy": "system",
+                }
+            },
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
+        if user is None:
+            raise HTTPException(status_code=500, detail="Failed to create or find user")
+        logger.info(f"OTP user found/created: {user['_id']}")
         
         # Create JWT token
         token = TokenManager.create_token(str(user["_id"]), user["role"])
@@ -315,6 +319,31 @@ async def verify_otp(request: VerifyOtpRequest):
     except Exception as e:
         logger.error(f"OTP verification error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="OTP verification failed")
+
+
+@router.post("/change-password")
+async def change_password(
+    data: UserPasswordChange,
+    current_user: dict = Depends(get_current_user),
+):
+    """Change the authenticated user's password"""
+    from bson import ObjectId
+    from config.security import SecurityManager
+
+    db = MongoDatabase.get_db()
+    user = db.users.find_one({"_id": ObjectId(current_user["user_id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not SecurityManager.verify_password(data.oldPassword, user.get("passwordHash", "")):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    new_hash = SecurityManager.hash_password(data.newPassword)
+    db.users.update_one(
+        {"_id": ObjectId(current_user["user_id"])},
+        {"$set": {"passwordHash": new_hash, "updatedAt": datetime.utcnow()}},
+    )
+    return {"success": True, "message": "Password updated successfully"}
 
 
 @router.get("/debug/otp-storage")

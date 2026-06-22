@@ -38,9 +38,9 @@ export default function Dashboard() {
 
       // Fetch analytics data
       const [grievanceRes, alertRes, eventRes] = await Promise.all([
-        api.get("/analytics/grievances"),
-        api.get("/analytics/alerts"),
-        api.get("/analytics/events"),
+        api.get("/api/analytics/grievances"),
+        api.get("/api/analytics/alerts"),
+        api.get("/api/analytics/events"),
       ]);
 
       // Update stats

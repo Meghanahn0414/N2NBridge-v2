@@ -4,6 +4,25 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Citizen Complaint Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,16..72,400;0,16..72,500;1,16..72,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+      @media print {
+        /* Hide sidebar, topbar nav, and bottom buttons — print only the main content */
+        nav, aside, .sidebar, [class*="sidebar"], [class*="Sidebar"],
+        [class*="bottom-nav"], [class*="bottomNav"] { display: none !important; }
+        /* Remove sticky header so it prints inline */
+        header { position: static !important; }
+        body { background: #fff !important; }
+        /* Ensure cards don't break across pages */
+        [style*="border-radius:22px"], [style*="border-radius: 22px"] { break-inside: avoid; }
+        @page { margin: 1.5cm; size: A4 landscape; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

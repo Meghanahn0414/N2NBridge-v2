@@ -24,6 +24,16 @@ function normalizeWardLabel(value) {
   return String(value).trim();
 }
 
+function formatWardName(name) {
+  if (!name || name === 'Unnamed Ward') return name;
+  const trimmed = name.trim();
+  // Already has "Ward" prefix — return as-is
+  if (/^ward\s+/i.test(trimmed)) return trimmed;
+  // Pure number like "9", "4" — prefix with "Ward"
+  if (/^\d+$/.test(trimmed)) return `Ward ${trimmed}`;
+  return trimmed;
+}
+
 export default function GeographicHeatMap() {
   const navigate = useNavigate();
   const [selectedWard, setSelectedWard] = useState('all');
@@ -100,7 +110,7 @@ export default function GeographicHeatMap() {
               <option value="all">All Wards</option>
               {availableWards.map((wardName) => (
                 <option key={wardName} value={wardName}>
-                  {wardName}
+                  {formatWardName(wardName)}
                 </option>
               ))}
             </select>
@@ -143,7 +153,7 @@ export default function GeographicHeatMap() {
           {wards.length > 0 ? (
             wards.map((ward) => (
               <div key={ward.id} className={`ward-card ${ward.status}`}>
-                <div className="ward-name">{ward.name}</div>
+                <div className="ward-name">{formatWardName(ward.name)}</div>
                 <div className="ward-status">
                   {ward.status === 'critical' && '🔴 Critical'}
                   {ward.status === 'high' && '🟠 High'}

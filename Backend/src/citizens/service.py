@@ -40,6 +40,8 @@ class CitizenService:
                 "profileImage": "profileImage",
                 "age": "age",
                 "gender": "gender",
+                "wardId": "wardId",
+                "constituencyId": "constituencyId",
             }
             
             # Create update dict with backend field names

@@ -29,7 +29,7 @@ export default function FieldOfficerTasks() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchTasks(1, 1000, { assignedTo: officerId });
+      const data = await fetchTasks(1, 100, { assignedTo: officerId });
       setTasks(data || []);
     } catch {
       setError('Failed to load tasks.');

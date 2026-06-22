@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import complaintService from "../../services/complaintService";
-import { fetchEvents } from "../../features/events/eventService";
 import api from "../../shared/services/api";
 import "./citizen-feedback.css";
 
@@ -35,6 +34,40 @@ export default function CitizenFeedback() {
   const [tempRating, setTempRating]                 = useState(null);
   const [loading, setLoading]                       = useState(true);
   const [saving, setSaving]                         = useState(null);
+  const [activeSurvey, setActiveSurvey]             = useState(null);  // survey being answered
+  const [surveyAnswers, setSurveyAnswers]           = useState({});
+  const [surveySubmitted, setSurveySubmitted]       = useState(new Set());
+  const [surveyError, setSurveyError]               = useState("");
+  const [surveySuccess, setSurveySuccess]           = useState("");
+  const [surveySubmitting, setSurveySubmitting]     = useState(false);
+
+  const sid = (s) => s?._id || s?.id;
+
+  const openSurvey = (s) => { setActiveSurvey(s); setSurveyAnswers({}); setSurveyError(""); setSurveySuccess(""); };
+  const closeSurvey = () => { setActiveSurvey(null); setSurveyAnswers({}); setSurveyError(""); setSurveySuccess(""); };
+
+  const setSurveyAnswer = (qid, val) =>
+    setSurveyAnswers(prev => ({ ...prev, [qid]: val }));
+
+  const handleSurveySubmit = async () => {
+    if (!activeSurvey) return;
+    const missing = activeSurvey.questions.filter(
+      q => q.required && (surveyAnswers[q.id] === undefined || surveyAnswers[q.id] === "")
+    );
+    if (missing.length > 0) { setSurveyError(`Please answer: ${missing.map(q => q.text).join(", ")}`); return; }
+    setSurveySubmitting(true); setSurveyError("");
+    try {
+      const payload = { answers: Object.entries(surveyAnswers).map(([questionId, value]) => ({ questionId, value })) };
+      await api.post(`/api/surveys/${sid(activeSurvey)}/respond`, payload);
+      setSurveySubmitted(prev => new Set([...prev, sid(activeSurvey)]));
+      setSurveySuccess("Thank you! Your response has been recorded.");
+      setTimeout(() => closeSurvey(), 2000);
+    } catch (err) {
+      setSurveyError(err?.response?.data?.detail || "Failed to submit. Please try again.");
+    } finally {
+      setSurveySubmitting(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -67,14 +100,8 @@ export default function CitizenFeedback() {
     }
 
     try {
-      // Use events as surveys (type SURVEY or title containing survey)
-      const evData = await fetchEvents(1, 100);
-      const surveyItems = (evData || []).filter(
-        e => e.type?.toLowerCase() === "survey" ||
-             e.title?.toLowerCase().includes("survey") ||
-             e.title?.toLowerCase().includes("poll")
-      );
-      setSurveys(surveyItems);
+      const r = await api.get("/api/surveys", { params: { status: "ACTIVE" } });
+      setSurveys(r.data?.data || []);
     } catch {
       setSurveys([]);
     }
@@ -217,29 +244,81 @@ export default function CitizenFeedback() {
 
           {loading ? (
             <div style={{ padding: "16px", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Loading…</div>
+          ) : activeSurvey ? (
+            /* ── Inline survey form ── */
+            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e8edf3", overflow: "hidden" }}>
+              <div style={{ background: "#1a5290", padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+                <button onClick={closeSurvey} style={{ background: "none", border: "none", color: "#fff", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>←</button>
+                <div>
+                  <div style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>{activeSurvey.title}</div>
+                  {activeSurvey.description && <div style={{ color: "#bfdbfe", fontSize: 12, marginTop: 2 }}>{activeSurvey.description}</div>}
+                </div>
+              </div>
+              <div style={{ padding: "16px" }}>
+                {activeSurvey.questions.map((q, idx) => (
+                  <div key={q.id} style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 8 }}>
+                      {idx + 1}. {q.text}{q.required && <span style={{ color: "#ef4444" }}> *</span>}
+                    </div>
+                    {q.type === "RATING" && (
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        {[1,2,3,4,5].map(star => (
+                          <button key={star} onClick={() => setSurveyAnswer(q.id, star)}
+                            style={{ fontSize: 28, background: "none", border: "none", cursor: "pointer", color: surveyAnswers[q.id] >= star ? "#f59e0b" : "#d1d5db" }}>
+                            ★
+                          </button>
+                        ))}
+                        {surveyAnswers[q.id] && (
+                          <span style={{ fontSize: 12, color: "#64748b", marginLeft: 4 }}>
+                            {["","Very poor","Poor","Okay","Good","Excellent"][surveyAnswers[q.id]]}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {q.type === "MCQ" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {q.options?.map(opt => (
+                          <label key={opt} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${surveyAnswers[q.id] === opt ? "#1a5290" : "#e2e8f0"}`, background: surveyAnswers[q.id] === opt ? "#eff6ff" : "#fff", cursor: "pointer", fontSize: 13 }}>
+                            <input type="radio" name={q.id} value={opt} checked={surveyAnswers[q.id] === opt} onChange={() => setSurveyAnswer(q.id, opt)} style={{ accentColor: "#1a5290" }} />
+                            {opt}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {q.type === "TEXT" && (
+                      <textarea rows={3} value={surveyAnswers[q.id] || ""} onChange={e => setSurveyAnswer(q.id, e.target.value)}
+                        placeholder="Type your answer…"
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
+                    )}
+                  </div>
+                ))}
+                {surveyError   && <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 10 }}>{surveyError}</div>}
+                {surveySuccess && <div style={{ color: "#15803d", fontSize: 13, marginBottom: 10 }}>{surveySuccess}</div>}
+                <button onClick={handleSurveySubmit} disabled={surveySubmitting}
+                  style={{ width: "100%", padding: "12px", background: "#1a5290", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: surveySubmitting ? "not-allowed" : "pointer", opacity: surveySubmitting ? 0.7 : 1 }}>
+                  {surveySubmitting ? "Submitting…" : "Submit Response"}
+                </button>
+              </div>
+            </div>
           ) : surveys.length === 0 ? (
-            <div style={{
-              background: "#fff", borderRadius: 12, padding: "20px 16px",
-              textAlign: "center", color: "#94a3b8", fontSize: 13,
-              border: "1px solid #e8edf3",
-            }}>
+            <div style={{ background: "#fff", borderRadius: 12, padding: "20px 16px", textAlign: "center", color: "#94a3b8", fontSize: 13, border: "1px solid #e8edf3" }}>
               No active surveys at the moment.
             </div>
           ) : (
             surveys.map(s => (
-              <div key={s._id || s.id} className="survey-card">
+              <div key={sid(s)} className="survey-card">
                 <div className="survey-header">
                   <div className="survey-icon">📋</div>
                   <div className="survey-info">
                     <h3 className="survey-title">{s.title}</h3>
-                    <p className="survey-duration">
-                      {s.description || `${s.type || "Survey"} • ${s.date ? formatDate(s.date) : ""}`}
-                    </p>
+                    <p className="survey-duration">{s.description || `${s.questions?.length || 0} questions`}</p>
                   </div>
                 </div>
-                <button className="survey-btn" onClick={() => alert("Survey launching soon!")}>
-                  Start survey
-                </button>
+                {surveySubmitted.has(sid(s)) ? (
+                  <div style={{ textAlign: "center", color: "#15803d", fontWeight: 600, fontSize: 13, padding: "8px 0" }}>✓ Submitted</div>
+                ) : (
+                  <button className="survey-btn" onClick={() => openSurvey(s)}>Start survey</button>
+                )}
               </div>
             ))
           )}

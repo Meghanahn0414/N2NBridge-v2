@@ -90,3 +90,64 @@ class NotificationService:
             "body": body,
             "type": notification_type
         })
+
+    @staticmethod
+    def notify_ward_citizens(
+        ward_id: str, title: str, body: str,
+        notification_type: str, extra: dict = None
+    ) -> int:
+        """Create in-app notifications for every CITIZEN in a specific ward."""
+        db = MongoDatabase.get_db()
+        citizens = list(db.users.find(
+            {"wardId": ward_id, "role": "CITIZEN", "isDeleted": {"$ne": True}},
+            {"_id": 1}
+        ))
+        if not citizens:
+            logger.info(f"notify_ward_citizens: no citizens found for ward {ward_id}")
+            return 0
+        now = datetime.utcnow()
+        records = [
+            {
+                "userId": str(c["_id"]),
+                "title": title,
+                "body": body,
+                "type": notification_type,
+                "isRead": False,
+                "createdAt": now,
+                **(extra or {}),
+            }
+            for c in citizens
+        ]
+        db.notifications.insert_many(records)
+        logger.info(f"notify_ward_citizens: sent {len(records)} notifications to ward {ward_id}")
+        return len(records)
+
+    @staticmethod
+    def notify_all_citizens(
+        title: str, body: str,
+        notification_type: str, extra: dict = None
+    ) -> int:
+        """Create in-app notifications for ALL citizens."""
+        db = MongoDatabase.get_db()
+        citizens = list(db.users.find(
+            {"role": "CITIZEN", "isDeleted": {"$ne": True}},
+            {"_id": 1}
+        ))
+        if not citizens:
+            return 0
+        now = datetime.utcnow()
+        records = [
+            {
+                "userId": str(c["_id"]),
+                "title": title,
+                "body": body,
+                "type": notification_type,
+                "isRead": False,
+                "createdAt": now,
+                **(extra or {}),
+            }
+            for c in citizens
+        ]
+        db.notifications.insert_many(records)
+        logger.info(f"notify_all_citizens: sent {len(records)} notifications")
+        return len(records)

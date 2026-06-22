@@ -162,6 +162,11 @@ export default function CitizenDashboardNew() {
               <span className="action-icon">💬</span>
               <span className="action-title">Feedback</span>
             </button>
+            <button type="button" className="action-card action-events"
+              onClick={() => navigate("/citizen/surveys")}>
+              <span className="action-icon">📋</span>
+              <span className="action-title">Surveys</span>
+            </button>
           </div>
         </section>
 

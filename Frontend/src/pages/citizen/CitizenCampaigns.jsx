@@ -17,7 +17,7 @@ export default function CitizenCampaigns() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCampaigns(1, 1000, { status: "ACTIVE" })
+    fetchCampaigns(1, 100, { status: "ACTIVE" })
       .then(data => setCampaigns(Array.isArray(data) ? data : []))
       .catch(() => setCampaigns([]))
       .finally(() => setLoading(false));

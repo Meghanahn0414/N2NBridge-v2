@@ -2,7 +2,7 @@ import api from "../../shared/services/api";
 
 const CAMPAIGN_ENDPOINT = "/api/campaigns";
 
-export async function fetchCampaigns(page = 1, perPage = 1000, filters = {}) {
+export async function fetchCampaigns(page = 1, perPage = 100, filters = {}) {
   try {
     const params = { page, per_page: perPage };
     if (filters.status && filters.status !== "ALL") {
@@ -36,6 +36,18 @@ export async function createCampaign(campaignData) {
   }
 }
 
+export async function uploadCampaignImage(file) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post(`${CAMPAIGN_ENDPOINT}/upload-image`, formData);
+    return response.data;
+  } catch (error) {
+    console.error("Error uploading campaign image:", error);
+    throw error;
+  }
+}
+
 export async function updateCampaign(campaignId, campaignData) {
   try {
     const response = await api.put(`${CAMPAIGN_ENDPOINT}/${campaignId}`, campaignData);
@@ -52,6 +64,16 @@ export async function deleteCampaign(campaignId) {
     return response.data;
   } catch (error) {
     console.error("Error deleting campaign:", error);
+    throw error;
+  }
+}
+
+export async function cancelCampaign(campaignId) {
+  try {
+    const response = await api.post(`${CAMPAIGN_ENDPOINT}/${campaignId}/cancel`);
+    return response.data;
+  } catch (error) {
+    console.error("Error cancelling campaign:", error);
     throw error;
   }
 }

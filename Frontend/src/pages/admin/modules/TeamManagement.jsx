@@ -4,6 +4,9 @@ import '../../../styles/modules/TeamManagement.css';
 import PageHeader from "../../../components/PageHeader";
 import { fetchUsers } from '../../../features/team-management/userService';
 import { fetchGrievances } from '../../../features/grievances/grievanceService';
+import Pagination from '../../../components/Pagination';
+
+const PAGE_SIZE = 100;
 
 const ACTIVE_STATUSES = ['OPEN', 'IN_PROGRESS'];
 const DONE_STATUSES = ['RESOLVED', 'CLOSED'];
@@ -16,21 +19,22 @@ export default function TeamManagement() {
   const [viewType, setViewType] = useState('kpi');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
-  useEffect(() => {
-    loadTeamData();
-  }, []);
+  useEffect(() => { loadTeamData(page); }, [page]);
 
-  const loadTeamData = async () => {
+  const loadTeamData = async (targetPage = page) => {
     try {
       setLoading(true);
       setError(null);
       const [members, grievanceList] = await Promise.all([
-        fetchUsers(1, 1000),
-        fetchGrievances(1, 1000)
+        fetchUsers(targetPage, PAGE_SIZE),
+        fetchGrievances(targetPage, PAGE_SIZE)
       ]);
       setTeamMembers(members);
       setGrievances(grievanceList);
+      setHasMore(members.length >= PAGE_SIZE || grievanceList.length >= PAGE_SIZE);
     } catch (err) {
       setError(err.message || 'Failed to load team data');
       console.error('Error loading team data:', err);
@@ -296,6 +300,15 @@ export default function TeamManagement() {
           </div>
         </>
       )}
+
+      <Pagination
+        page={page}
+        hasMore={hasMore}
+        onPrev={() => setPage(p => p - 1)}
+        onNext={() => setPage(p => p + 1)}
+        loading={loading}
+        pageSize={PAGE_SIZE}
+      />
       </div>
     </div>
   );

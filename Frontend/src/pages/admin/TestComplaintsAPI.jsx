@@ -10,7 +10,7 @@ export default function TestComplaintsAPI() {
     const test = async () => {
       try {
         console.log('[TEST] Starting API call to /api/grievances/');
-        const response = await api.get('/api/grievances/', { params: { per_page: 1000 } });
+        const response = await api.get('/api/grievances/', { params: { per_page: 100 } });
         
         console.log('[TEST] Raw response:', response);
         console.log('[TEST] response.data:', response.data);

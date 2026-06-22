@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import PageHeader from "../../../components/PageHeader";
-import { fetchEvents, createEvent, updateEvent, deleteEvent, publishEvent } from '../../../features/events/eventService';
+import { fetchEvents, createEvent, updateEvent, deleteEvent, publishEvent, cancelEvent } from '../../../features/events/eventService';
+import Pagination from '../../../components/Pagination';
 
+const PAGE_SIZE = 100;
 const EMPTY_FORM = { name: '', description: '', dateTime: '', location: '', capacity: '', eventType: '', wardId: '' };
 
 const toDatetimeLocal = (iso) => {
@@ -17,6 +19,8 @@ export default function EventManagement() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [stats, setStats] = useState({ total: 0, upcoming: 0, registrations: 0, attendance: 0 });
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
 
   // Create / Edit modal
   const [showModal, setShowModal] = useState(false);
@@ -28,7 +32,11 @@ export default function EventManagement() {
   const [deletingEvent, setDeletingEvent] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => { loadEvents(); }, []);
+  // Cancel confirmation modal
+  const [cancellingEvent, setCancellingEvent] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  useEffect(() => { loadEvents(page); }, [page]);
 
   // Client-side filter applied on every render
   const events = allEvents.filter(e => {
@@ -41,12 +49,13 @@ export default function EventManagement() {
     return matchesStatus && matchesSearch;
   });
 
-  const loadEvents = async () => {
+  const loadEvents = async (targetPage = page) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchEvents(1, 1000, {});
+      const data = await fetchEvents(targetPage, PAGE_SIZE, {});
       setAllEvents(data);
+      setHasMore(data.length >= PAGE_SIZE);
       calculateStats(data);
     } catch (err) {
       setError(err.message || 'Failed to load events');
@@ -120,6 +129,20 @@ export default function EventManagement() {
       alert(err.message || `Failed to ${editingEvent ? 'update' : 'create'} event`);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // ── Cancel helper ─────────────────────────────────────────
+  const handleCancelConfirm = async () => {
+    try {
+      setCancelling(true);
+      await cancelEvent(cancellingEvent._id || cancellingEvent.id);
+      setCancellingEvent(null);
+      await loadEvents();
+    } catch (err) {
+      alert(err.message || 'Failed to cancel event');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -237,8 +260,14 @@ export default function EventManagement() {
                   <td className="center">{event.capacity || 0}</td>
                   <td>
                     <div className="action-btns">
-                      {(event.status === 'DRAFT') && (
+                      {event.status === 'DRAFT' && (
                         <button className="action-btn publish" title="Publish event" onClick={() => handlePublish(event)}>🚀</button>
+                      )}
+                      {event.status !== 'CANCELLED' && event.status !== 'COMPLETED' && (
+                        <button className="action-btn" title="Cancel event" onClick={() => setCancellingEvent(event)}
+                          style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 14 }}>
+                          🚫
+                        </button>
                       )}
                       <button className="action-btn edit" title="Edit event" onClick={() => openEdit(event)}>✏️</button>
                       <button className="action-btn delete" title="Delete event" onClick={() => setDeletingEvent(event)}>🗑️</button>
@@ -249,6 +278,14 @@ export default function EventManagement() {
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          hasMore={hasMore}
+          onPrev={() => setPage(p => p - 1)}
+          onNext={() => setPage(p => p + 1)}
+          loading={loading}
+          pageSize={PAGE_SIZE}
+        />
       </div>
 
       {/* Create / Edit Modal */}
@@ -305,6 +342,26 @@ export default function EventManagement() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {cancellingEvent && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setCancellingEvent(null)}>
+          <div className="modal-content delete-confirm-modal">
+            <div className="delete-icon">🚫</div>
+            <h2>Cancel Event?</h2>
+            <p className="delete-msg">
+              Are you sure you want to cancel <strong>{cancellingEvent.eventName}</strong>?
+              The event will be stored in the database as <strong>CANCELLED</strong> and citizens will be notified.
+            </p>
+            <div className="form-actions">
+              <button type="button" onClick={() => setCancellingEvent(null)} disabled={cancelling}>Back</button>
+              <button type="button" className="btn-danger" onClick={handleCancelConfirm} disabled={cancelling}>
+                {cancelling ? 'Cancelling...' : 'Yes, Cancel Event'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -2,7 +2,7 @@ import api from "../../shared/services/api";
 
 const ALERT_ENDPOINT = "/api/alerts";
 
-export async function fetchAlerts(page = 1, perPage = 1000, filters = {}) {
+export async function fetchAlerts(page = 1, perPage = 100, filters = {}) {
   try {
     const params = { page, per_page: perPage };
     if (filters.priority && filters.priority !== "ALL") {
