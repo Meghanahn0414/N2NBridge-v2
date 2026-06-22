@@ -2,7 +2,7 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuthStore } from "../../store/authStore";
+import { useAuthStore } from "../../../store/authStore";
 
 interface Service {
   icon: string;
@@ -70,13 +70,11 @@ export default function ServicesScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Services</Text>
         <Text style={styles.headerSub}>Everything you need in one place</Text>
       </View>
 
-      {/* Welcome strip */}
       <View style={styles.welcomeStrip}>
         <Text style={styles.welcomeText}>
           👋  Hello, {(user?.name || "Citizen").split(" ")[0]}
@@ -84,7 +82,6 @@ export default function ServicesScreen() {
         <Text style={styles.welcomeSub}>What can we help you with today?</Text>
       </View>
 
-      {/* Service grid */}
       <View style={styles.grid}>
         {SERVICES.map((s) => (
           <TouchableOpacity
@@ -102,7 +99,6 @@ export default function ServicesScreen() {
         ))}
       </View>
 
-      {/* Help section */}
       <View style={styles.helpCard}>
         <Text style={styles.helpTitle}>Need Help?</Text>
         <Text style={styles.helpText}>

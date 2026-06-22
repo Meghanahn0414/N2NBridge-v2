@@ -33,7 +33,8 @@ export default function LandingPage() {
                 className="login-option-card citizen"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleLogin("/citizen-splash");
+                  setShowLoginOptions(false);
+                  window.open("http://localhost:8081", "_blank");
                 }}
               >
                 <div className="login-option-icon">👤</div>

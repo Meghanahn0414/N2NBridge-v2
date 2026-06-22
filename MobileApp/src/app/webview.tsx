@@ -7,14 +7,8 @@ import { WebView } from "react-native-webview";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../store/authStore";
 
-// TODO: Replace WEB_APP_URL with your actual web admin portal URL
-const WEB_APP_URL = "https://your-web-app.com";
-const ROLE_WEB_ROUTES: Record<string, string> = {
-  ADMIN: "/admin",
-  REPRESENTATIVE: "/mla",
-  CONSTITUENCY_MANAGER: "/manager",
-  FIELD_OFFICER: "/field",
-};
+import { WEB_APP_URL, ROLE_WEB_ROUTES } from "../config";
+
 
 export default function WebAppScreen() {
   const router = useRouter();

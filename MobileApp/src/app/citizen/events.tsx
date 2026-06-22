@@ -113,12 +113,6 @@ export default function Events() {
               <Text style={s.statusText}>{item.status}</Text>
             </View>
           )}
-          <TouchableOpacity
-            style={s.registerBtn}
-            onPress={() => handleRegister(item.id)}
-          >
-            <Text style={s.registerBtnText}>Register free</Text>
-          </TouchableOpacity>
         </View>
       </View>
     );

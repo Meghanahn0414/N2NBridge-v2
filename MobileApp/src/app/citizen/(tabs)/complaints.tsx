@@ -4,8 +4,8 @@ import {
   ActivityIndicator, RefreshControl, StatusBar,
 } from 'react-native';
 import { router } from 'expo-router';
-import api from '../../services/api';
-import { useAuthStore } from '../../store/authStore';
+import api from '../../../services/api';
+import { useAuthStore } from '../../../store/authStore';
 
 const C = {
   primary: '#1D4ED8',
@@ -155,9 +155,6 @@ export default function MyComplaints() {
       <StatusBar backgroundColor={C.primaryDark} barStyle="light-content" />
 
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={s.backBtn}>←</Text>
-        </TouchableOpacity>
         <View>
           <Text style={s.headerTitle}>My Complaints</Text>
           <Text style={s.headerSub}>Track and manage your complaints</Text>
@@ -230,9 +227,8 @@ const s = StyleSheet.create({
     backgroundColor: C.primary, paddingTop: 52, paddingBottom: 16, paddingHorizontal: 20,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  backBtn: { color: '#BFDBFE', fontSize: 15, fontWeight: '600' },
-  headerTitle: { color: '#FFF', fontSize: 17, fontWeight: '700', textAlign: 'center' },
-  headerSub: { color: '#BFDBFE', fontSize: 12, textAlign: 'center' },
+  headerTitle: { color: '#FFF', fontSize: 17, fontWeight: '700' },
+  headerSub: { color: '#BFDBFE', fontSize: 12 },
   newBtn: { backgroundColor: '#2563EB', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   newBtnText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
   filterBar: {
