@@ -316,13 +316,16 @@ class DashboardService:
 
         # Aggregate all complaints by ward with priority breakdown
         def _highest_priority(priorities):
-            if "CRITICAL" in priorities: return "CRITICAL"
-            if "HIGH" in priorities: return "HIGH"
-            if "MEDIUM" in priorities: return "MEDIUM"
+            if "CRITICAL" in priorities:
+                return "CRITICAL"
+            if "HIGH" in priorities:
+                return "HIGH"
+            if "MEDIUM" in priorities:
+                return "MEDIUM"
             return "LOW"
 
         ward_stats_raw = list(db.grievances.aggregate([
-            {"$match": {"isDeleted": False, "wardId": {"$exists": True, "$ne": None, "$ne": ""}}},
+            {"$match": {"isDeleted": False, "wardId": {"$exists": True, "$nin": [None, ""]}}},
             {"$group": {
                 "_id": "$wardId",
                 "count": {"$sum": 1},

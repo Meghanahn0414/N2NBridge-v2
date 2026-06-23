@@ -1,0 +1,130 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Calibri;}}
+{\colortbl ;\red0\green0\blue0;}
+\viewkind4\uc1\pard\sa200\sl276\slmult1\lang9
+\f0\fs24\b CRM - Test Case Document\b0\par
+\pard\sa120\sl276\slmult1
+\fs22\b 1. Authentication\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. Login page allows manual entry for Email field for Admin, Representative, Manager, and Field Officer. \b Pass\b0\par
+2. Password field allows manual entry with masking. \b Pass\b0\par
+3. Submitting with empty Email displays an error message and highlights the field. \b Fail\b0\par
+4. Submitting with empty Password displays an error message and highlights the field. \b Fail\b0\par
+5. Entering an invalid email format such as user@ shows a format validation error. \b Fail\b0\par
+6. Entering incorrect credentials shows an invalid email or password error. \b Fail\b0\par
+7. Clicking Forgot Password navigates to the Forgot Password page. \b Fail\b0\par
+8. Successful login with valid credentials redirects the user to the role-based dashboard. \b Pass\b0\par
+9. Logout clears the session token and redirects the user to the Login page. \b Pass\b0\par
+\par
+\fs22\b 2. Profile Management\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. User can update First Name, Last Name, and Contact Number manually. \b Pass\b0\par
+2. Submitting the profile form with empty required fields shows error messages. \b Fail\b0\par
+3. Upload Photo allows the user to browse and select an image file in JPG or PNG format. \b Pass\b0\par
+4. The uploaded photo is previewed before saving and reflected in the header/sidebar after save. \b Fail\b0\par
+5. Clicking Change Password reveals Current Password, New Password, and Confirm Password fields. \b Pass\b0\par
+6. Submitting an incorrect current password shows a Current password is wrong error. \b Pass\b0\par
+7. Submitting mismatched new and confirm passwords shows a validation error. \b Fail\b0\par
+8. Successfully saving profile changes shows a success notification. \b Fail\b0\par
+9. Clicking Logout logs the user out and redirects to the Login page. \b Pass\b0\par
+\par
+\fs22\b 3. MLA Role - Dashboard\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. The MLA Dashboard loads successfully after a valid login. \b Pass\b0\par
+2. The dashboard displays the correct summary cards for grievances, resolved cases, pending cases, and sentiment status. \b Pass\b0\par
+3. The dashboard shows the latest alerts and notifications for the MLA user. \b Fail\b0\par
+4. The KPI cards for the poll are displayed and functioning correctly. \b Fail\b0\par
+5. Selecting a constituency updates all dashboard widgets and charts correctly. \b Pass\b0\par
+6. Applying a date range filter shows only the records within the selected period. \b Pass\b0\par
+7. Clicking a grievance from the dashboard opens its detailed information page. \b Fail\b0\par
+8. The sentiment analysis section displays the correct trend for public feedback. \b Pass\b0\par
+9. The complaint trend chart reflects the latest grievance submissions and resolutions. \b Pass\b0\par
+10. The dashboard updates automatically when new grievances are added. \b Pass\b0\par
+11. The ward-wise map or location view highlights areas with high complaint volume. \b Pass\b0\par
+12. Grievances are sorted and displayed correctly according to priority. \b Pass\b0\par
+13. Exporting the dashboard report generates a downloadable file with the correct data. \b Fail\b0\par
+14. Clicking a chart segment opens the related list of grievances. \b Fail\b0\par
+15. Changing the status filter updates the counts and listed grievances correctly. \b Pass\b0\par
+16. The system displays a user-friendly error message when the backend data load fails. \b Fail\b0\par
+17. Logging out from the MLA Dashboard redirects the user to the login page. \b Pass\b0\par
+\par
+\fs22\b 4. MLA Role - Popularity\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. The popularity section displays the most discussed grievance topics correctly. \b Pass\b0\par
+2. The most popular issue categories are ranked correctly based on complaint volume. \b Pass\b0\par
+3. The popularity widget shows the correct count for the selected time period. \b Pass\b0\par
+4. A newly added grievance appears in the popularity data after refresh. \b Pass\b0\par
+5. Repeated complaints for the same issue increase the popularity score as expected. \b Fail\b0\par
+6. The popularity view filters out irrelevant or archived grievances. \b Fail\b0\par
+7. Switching between 3M, 6M, 12M, and All views changes the popularity trend correctly. \b Fail\b0\par
+8. The popularity section reflects real-time updates when new complaints are submitted. \b Pass\b0\par
+\par
+\fs22\b 5. MLA Role - Constituents\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. The total number of registered citizens is displayed correctly. \b Pass\b0\par
+2. The number of members registered with complete and valid details is displayed correctly. \b Pass\b0\par
+3. The total number of members logged in to the application is displayed correctly. \b Pass\b0\par
+4. The total number of members registered this month is displayed correctly. \b Pass\b0\par
+5. The total registered complaints resolved and their percentage share by ward are calculated and displayed correctly. \b Pass\b0\par
+6. The registration count for each month is displayed correctly in the Registration Growth chart. \b Pass\b0\par
+7. The Most Engaged Residents list shows the citizens who have raised the highest number of complaints, ranked in descending order. \b Pass\b0\par
+8. Clicking the View Directory button navigates to the citizen table showing Most Engaged Residents. \b Fail\b0\par
+9. Message a Segment button is functioning correctly. \b Fail\b0\par
+\par
+\fs22\b 6. MLA Role - Reports\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. The total number of citizens who registered high-priority complaints is displayed correctly. \b Pass\b0\par
+2. The total number of complaints in progress is displayed. \b Pass\b0\par
+3. The total number of resolved complaints is displayed. \b Pass\b0\par
+4. The highest-priority complaints are listed with all relevant details. \b Pass\b0\par
+5. The Search button functions correctly. \b Fail\b0\par
+6. The Export button functions correctly. \b Pass\b0\par
+\par
+\fs22\b 7. MLA Role - Broadcasts\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. Broadcast creation allows manual entry of Title, Cover Image, Date and Time, Location, and Message. \b Pass\b0\par
+2. Clicking All Constituents displays all ward numbers that have registered members in the application. \b Pass\b0\par
+3. Clicking Push sends a notification to the selected ward. \b Pass\b0\par
+4. The In-app feed button functions correctly. \b Fail\b0\par
+5. The Email button functions correctly. \b Fail\b0\par
+\par
+\fs22\b 8. Mobile App - Citizen Login\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. Mobile number or email field allows manual entry. \b Pass\b0\par
+2. After OTP verification, the user is navigated to the Complete Profile details page and then to the Citizen Dashboard. \b Pass\b0\par
+3. Submitting with empty fields shows a validation error. \b Fail\b0\par
+4. Entering incorrect credentials shows an Invalid credentials error. \b Fail\b0\par
+5. Successful login navigates the citizen to the Home screen. \b Fail\b0\par
+6. Logout clears the session and returns to the Login screen. \b Pass\b0\par
+\par
+\fs22\b 9. Mobile App - File Complaint\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. Category dropdown lists all available complaint categories. \b Pass\b0\par
+2. Description text area allows free-text entry and submitting empty shows a validation error. \b Pass\b0\par
+3. Location field can be filled manually or auto-detected via GPS. \b Fail\b0\par
+4. Attachment field allows uploading a photo from camera or gallery. \b Pass\b0\par
+5. Submitting a valid complaint shows a success message with the generated Complaint ID. \b Pass\b0\par
+6. Submitted complaint appears in the My Complaints list with status New. \b Pass\b0\par
+\par
+\fs22\b 10. Mobile App - My Complaints\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. The list shows all complaints submitted by the logged-in citizen. \b Pass\b0\par
+2. Each card shows Complaint ID, Category, Status badge, and Created Date. \b Pass\b0\par
+3. Tapping a complaint card opens the Complaint Detail screen. \b Pass\b0\par
+4. The Complaint Detail screen shows full description, status timeline, and officer notes. \b Pass\b0\par
+5. Status changes made by admin or officer are reflected in real time on refresh. \b Pass\b0\par
+\par
+\fs22\b 11. Mobile App - Events and Campaigns\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. The citizen should receive a notification when an MLA organizes an event. \b Pass\b0\par
+2. The citizen should receive a notification when an MLA organizes a campaign. \b Pass\b0\par
+\par
+\fs22\b 12. Mobile App - Notifications\b0\par
+\pard\sa120\sl276\slmult1\fs20
+1. Push notifications are received when a complaint status changes. \b Fail\b0\par
+2. The in-app notification list shows all past notifications with read and unread state. \b Fail\b0\par
+3. Mark as Read updates the unread badge count on the notification icon. \b Fail\b0\par
+\par
+\pard\sa200\sl276\slmult1\lang9
+\fs20 End of Document.\par
+}

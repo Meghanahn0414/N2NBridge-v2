@@ -1,12 +1,16 @@
-import httpx
+import asyncio
 
+import httpx
 from main import app
 
 
 def test_health_endpoint():
-    transport = httpx.ASGITransport(app=app)
-    with httpx.Client(transport=transport, base_url="http://test") as client:
-        response = client.get("/api/health")
+    async def run_test():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get("/api/health")
+
+    response = asyncio.run(run_test())
 
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
