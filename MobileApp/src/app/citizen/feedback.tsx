@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Alert,
+  RefreshControl, ActivityIndicator, Alert, StatusBar,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
 
@@ -12,6 +14,7 @@ interface Complaint {
 }
 
 export default function Feedback() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [ratings, setRatings] = useState<Record<string, number>>({});
@@ -78,9 +81,15 @@ export default function Feedback() {
 
   return (
     <View style={styles.container}>
+      <StatusBar backgroundColor="#1E3A8A" barStyle="light-content" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Feedback</Text>
-        <Text style={styles.headerSub}>Rate your resolved complaints</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={22} color="#BFDBFE" />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Feedback</Text>
+          <Text style={styles.headerSub}>Rate your resolved complaints</Text>
+        </View>
       </View>
 
       <ScrollView
@@ -96,7 +105,9 @@ export default function Feedback() {
         ) : (
           complaints.map((c) => (
             <View key={c.id} style={styles.card}>
-              <Text style={styles.cardTitle} numberOfLines={2}>{c.title}</Text>
+              <Text style={styles.cardTitle} numberOfLines={2}>
+                {c.title || (c as any).description || "Untitled Complaint"}
+              </Text>
               <View style={styles.statusRow}>
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{c.status}</Text>
@@ -146,7 +157,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
-    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 20, backgroundColor: "#1D4ED8",
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 20, backgroundColor: "#1D4ED8",
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center", justifyContent: "center",
   },
   headerTitle: { fontSize: 20, fontWeight: "700", color: "#fff" },
   headerSub: { fontSize: 13, color: "#BFDBFE", marginTop: 2 },

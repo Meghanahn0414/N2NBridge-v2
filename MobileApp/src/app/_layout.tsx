@@ -1,7 +1,13 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({ ...Ionicons.font });
+
+  if (!fontsLoaded) return null;
+
   return (
     <>
       <StatusBar style="light" />

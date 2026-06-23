@@ -1,27 +1,88 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ScrollView, StatusBar,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useRootNavigationState } from "expo-router";
 import axios from "axios";
+import { storage } from "../utils/storage";
 import { useAuthStore } from "../store/authStore";
 
 const API_BASE = "https://testing-repository-grevienace-1.onrender.com";
 
-type LoginMethod = "phone" | "email";
-type Step = "input" | "otp";
+const ROLE_ROUTES: Record<string, string> = {
+  CITIZEN:               "/citizen/",
+  ADMIN:                 "/admin/",
+  REPRESENTATIVE:        "/mla/",
+  FIELD_OFFICER:         "/field/",
+  CONSTITUENCY_MANAGER:  "/manager/",
+};
+
+type Method = "phone" | "email";
+type Step   = "input" | "otp";
 
 export default function LoginScreen() {
-  const router = useRouter();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const router  = useRouter();
+  const rootNavState = useRootNavigationState();
+  const { setAuth } = useAuthStore();
 
-  const [method, setMethod] = useState<LoginMethod>("phone");
-  const [value, setValue] = useState("");
-  const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<Step>("input");
+  const [ready,   setReady]   = useState(false);
+  const [method,  setMethod]  = useState<Method>("phone");
+  const [value,   setValue]   = useState("");
+  const [otp,     setOtp]     = useState("");
+  const [step,    setStep]    = useState<Step>("input");
   const [loading, setLoading] = useState(false);
 
+  // ── On mount: redirect if already logged in, or show onboarding ──
+  useEffect(() => {
+    if (!rootNavState?.key) return; // Root layout not mounted yet — wait
+    (async () => {
+      // Fast path: in-memory store already has a session (handles back-button with no flicker)
+      const cached = useAuthStore.getState();
+      if (cached.token && cached.user?.role) {
+        const role = cached.user.role;
+        if (role === "CITIZEN" && !cached.profileComplete) {
+          router.replace("/citizen/edit-profile?required=1" as any);
+        } else {
+          router.replace((ROLE_ROUTES[role] ?? "/citizen/") as any);
+        }
+        return;
+      }
+
+      // Slow path: rehydrate from storage (first load or after page refresh)
+      await useAuthStore.persist.rehydrate();
+
+      const done = await storage.getItem("onboarding_done");
+      if (!done) {
+        router.replace("/onboarding");
+        return;
+      }
+
+      // Check persisted auth (written by Zustand persist middleware)
+      const fresh = useAuthStore.getState();
+      if (fresh.token && fresh.user?.role) {
+        const role            = fresh.user.role;
+        const profileComplete = fresh.profileComplete;
+        if (role === "CITIZEN" && !profileComplete) {
+          router.replace("/citizen/edit-profile?required=1" as any);
+        } else {
+          router.replace((ROLE_ROUTES[role] ?? "/citizen/") as any);
+        }
+        return;
+      }
+
+      setReady(true);
+    })();
+  }, [rootNavState?.key]);
+
+  if (!ready) return (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
+      <ActivityIndicator size="large" color="#1D4ED8" />
+    </View>
+  );
+
+  // ── Send OTP ──
   async function handleSendOtp() {
     if (!value.trim()) {
       Alert.alert("Error", method === "phone" ? "Enter your phone number" : "Enter your email");
@@ -35,97 +96,110 @@ export default function LoginScreen() {
       });
       setStep("otp");
     } catch (err: any) {
-      const msg = err?.response?.data?.detail ?? "Failed to send OTP. Try again.";
-      Alert.alert("Error", String(msg));
+      Alert.alert("Error", err?.response?.data?.detail ?? "Failed to send OTP. Try again.");
     } finally {
       setLoading(false);
     }
   }
 
+  // ── Verify OTP ──
   async function handleVerifyOtp() {
-    if (!otp.trim()) {
-      Alert.alert("Error", "Enter the OTP");
-      return;
-    }
+    if (!otp.trim()) { Alert.alert("Error", "Enter the OTP"); return; }
     setLoading(true);
     try {
       const { data } = await axios.post(`${API_BASE}/api/auth/verify-otp`, {
         value: value.trim(),
-        otp: otp.trim(),
+        otp:   otp.trim(),
       });
-
       const u = data.user;
-      setAuth(data.token, {
-        id: u._id || u.id,
-        name: u.fullName || u.name || u.full_name || u.email,
-        email: u.email,
-        role: u.role,
-      });
 
-      if (u.role === "CITIZEN") {
-        router.replace("/citizen/" as any);
-      } else if (u.role === "ADMIN") {
-        router.replace("/admin/" as any);
-      } else if (u.role === "REPRESENTATIVE") {
-        router.replace("/mla/" as any);
-      } else if (u.role === "FIELD_OFFICER") {
-        router.replace("/field/" as any);
-      } else if (u.role === "CONSTITUENCY_MANAGER") {
-        router.replace("/manager/" as any);
+      // Persist auth
+      const role = u.role as string;
+
+      // Determine profile completeness from the API response, not local storage.
+      // A citizen has no profile if fullName is missing or is a placeholder OTP value.
+      const hasProfile = !!(
+        u.fullName &&
+        u.fullName.trim() &&
+        !u.fullName.startsWith("otp-") &&
+        !u.email?.startsWith("otp-")
+      );
+
+      setAuth(data.token, {
+        id:    u._id || u.id,
+        name:  u.fullName || u.name || u.full_name || u.email,
+        email: u.email,
+        role,
+      });
+      // Sync the store so the rest of the app is also up to date
+      useAuthStore.getState().setProfileComplete(hasProfile);
+
+      if (role === "CITIZEN" && !hasProfile) {
+        router.replace("/citizen/edit-profile?required=1" as any);
       } else {
-        router.replace("/citizen/" as any);
+        router.replace((ROLE_ROUTES[role] ?? "/citizen/") as any);
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.detail ?? "Invalid or expired OTP.";
-      Alert.alert("Verification Failed", String(msg));
+      Alert.alert("Verification Failed", err?.response?.data?.detail ?? "Invalid or expired OTP.");
     } finally {
       setLoading(false);
     }
   }
 
+  // ─────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
-      style={styles.wrapper}
+      style={s.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Jan Seva CRM</Text>
-        <Text style={styles.subtitle}>Enter OTP to Access</Text>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
-        <View style={styles.card}>
-          {/* Login Method Toggle */}
-          <Text style={styles.sectionLabel}>LOGIN METHOD</Text>
-          <View style={styles.toggleRow}>
-            <TouchableOpacity
-              style={styles.radioOption}
-              onPress={() => { setMethod("phone"); setValue(""); setStep("input"); setOtp(""); }}
-            >
-              <View style={styles.radioOuter}>
-                {method === "phone" && <View style={styles.radioInner} />}
-              </View>
-              <Text style={styles.radioLabel}>Phone</Text>
-            </TouchableOpacity>
+        {/* Back arrow (OTP step) */}
+        {step === "otp" && (
+          <TouchableOpacity style={s.backBtn} onPress={() => { setStep("input"); setOtp(""); }}>
+            <Text style={s.backArrow}>←</Text>
+          </TouchableOpacity>
+        )}
 
-            <TouchableOpacity
-              style={styles.radioOption}
-              onPress={() => { setMethod("email"); setValue(""); setStep("input"); setOtp(""); }}
-            >
-              <View style={styles.radioOuter}>
-                {method === "email" && <View style={styles.radioInner} />}
-              </View>
-              <Text style={styles.radioLabel}>Email</Text>
-            </TouchableOpacity>
-          </View>
+        <Text style={s.welcome}>
+          {step === "input" ? "Welcome back" : "Enter your OTP"}
+        </Text>
+        <Text style={s.sub}>
+          {step === "input"
+            ? "Sign in to pick up where you left off."
+            : `OTP sent to ${value}. Enter it below.`}
+        </Text>
 
-          {/* Input Step */}
-          {step === "input" && (
-            <>
-              <Text style={styles.label}>
-                {method === "phone" ? "PHONE NUMBER" : "EMAIL ADDRESS"}
-                <Text style={styles.required}> *</Text>
-              </Text>
+        {/* ── Input step ── */}
+        {step === "input" && (
+          <>
+            <View style={s.toggleRow}>
+              <TouchableOpacity
+                style={[s.toggleBtn, method === "phone" && s.toggleActive]}
+                onPress={() => { setMethod("phone"); setValue(""); }}
+              >
+                <Text style={[s.toggleText, method === "phone" && s.toggleTextActive]}>
+                  📱 Phone
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.toggleBtn, method === "email" && s.toggleActive]}
+                onPress={() => { setMethod("email"); setValue(""); }}
+              >
+                <Text style={[s.toggleText, method === "email" && s.toggleTextActive]}>
+                  ✉️ Email
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={s.label}>
+              {method === "phone" ? "Phone Number" : "Email Address"}
+            </Text>
+            <View style={s.inputRow}>
+              <Text style={s.inputIcon}>{method === "phone" ? "📱" : "✉️"}</Text>
               <TextInput
-                style={styles.input}
+                style={s.input}
                 placeholder={method === "phone" ? "+91 98765 43210" : "you@example.com"}
                 placeholderTextColor="#9CA3AF"
                 keyboardType={method === "phone" ? "phone-pad" : "email-address"}
@@ -133,97 +207,105 @@ export default function LoginScreen() {
                 value={value}
                 onChangeText={setValue}
               />
-              <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleSendOtp}
-                disabled={loading}
-              >
-                {loading
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.buttonText}>SEND OTP</Text>
-                }
-              </TouchableOpacity>
-            </>
-          )}
+            </View>
 
-          {/* OTP Step */}
-          {step === "otp" && (
-            <>
-              <Text style={styles.sentMsg}>
-                OTP sent to <Text style={{ fontWeight: "700" }}>{value}</Text>
-              </Text>
-              <Text style={styles.label}>
-                ENTER OTP <Text style={styles.required}>*</Text>
-              </Text>
+            <TouchableOpacity
+              style={[s.btnPrimary, loading && s.btnDisabled]}
+              onPress={handleSendOtp}
+              disabled={loading}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.btnPrimaryText}>Send OTP</Text>}
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* ── OTP step ── */}
+        {step === "otp" && (
+          <>
+            <Text style={s.label}>One-Time Password</Text>
+            <View style={s.inputRow}>
+              <Text style={s.inputIcon}>🔒</Text>
               <TextInput
-                style={[styles.input, styles.otpInput]}
-                placeholder="------"
+                style={[s.input, s.otpInput]}
+                placeholder="· · · · · ·"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="number-pad"
                 maxLength={6}
                 value={otp}
                 onChangeText={setOtp}
               />
-              <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleVerifyOtp}
-                disabled={loading}
-              >
-                {loading
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.buttonText}>VERIFY OTP</Text>
-                }
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.resendBtn}
-                onPress={() => { setStep("input"); setOtp(""); }}
-              >
-                <Text style={styles.resendText}>
-                  ← Change {method === "phone" ? "number" : "email"}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
+            </View>
+
+            <TouchableOpacity
+              style={[s.btnPrimary, loading && s.btnDisabled]}
+              onPress={handleVerifyOtp}
+              disabled={loading}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.btnPrimaryText}>Sign in</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={s.resendBtn} onPress={handleSendOtp} disabled={loading}>
+              <Text style={s.resendText}>Resend OTP</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        <View style={s.footer}>
+          <Text style={s.footerText}>New to Jana Seva? </Text>
+          <TouchableOpacity onPress={() => router.replace("/onboarding" as any)}>
+            <Text style={s.footerLink}>Create account</Text>
+          </TouchableOpacity>
         </View>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: "#F0F9FF" },
-  scroll: { flexGrow: 1, justifyContent: "center", padding: 24 },
-  title: { fontSize: 26, fontWeight: "700", color: "#0F172A", textAlign: "center" },
-  subtitle: { fontSize: 14, color: "#64748B", textAlign: "center", marginBottom: 28, marginTop: 4 },
-  card: {
-    backgroundColor: "#fff", borderRadius: 16, padding: 24,
-    shadowColor: "#000", shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
+const s = StyleSheet.create({
+  root:   { flex: 1, backgroundColor: "#fff" },
+  scroll: { flexGrow: 1, padding: 28, paddingTop: 64 },
+
+  backBtn:   { marginBottom: 24 },
+  backArrow: { fontSize: 22, color: "#0F172A" },
+
+  welcome: { fontSize: 30, fontWeight: "800", color: "#0F172A", marginBottom: 8 },
+  sub:     { fontSize: 15, color: "#64748B", lineHeight: 22, marginBottom: 36 },
+
+  toggleRow: { flexDirection: "row", gap: 12, marginBottom: 28 },
+  toggleBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 12,
+    borderWidth: 1.5, borderColor: "#E2E8F0", alignItems: "center",
   },
-  sectionLabel: { fontSize: 11, fontWeight: "700", color: "#64748B", letterSpacing: 1, marginBottom: 10 },
-  toggleRow: { flexDirection: "row", gap: 24, marginBottom: 20 },
-  radioOption: { flexDirection: "row", alignItems: "center", gap: 8 },
-  radioOuter: {
-    width: 20, height: 20, borderRadius: 10,
-    borderWidth: 2, borderColor: "#1D4ED8",
-    alignItems: "center", justifyContent: "center",
+  toggleActive:     { borderColor: "#1D4ED8", backgroundColor: "#EEF2FF" },
+  toggleText:       { fontSize: 14, fontWeight: "600", color: "#64748B" },
+  toggleTextActive: { color: "#1D4ED8" },
+
+  label: { fontSize: 13, fontWeight: "700", color: "#374151", marginBottom: 8 },
+  inputRow: {
+    flexDirection: "row", alignItems: "center",
+    borderWidth: 1.5, borderColor: "#E2E8F0", borderRadius: 12,
+    paddingHorizontal: 14, marginBottom: 20, backgroundColor: "#F8FAFC",
   },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#1D4ED8" },
-  radioLabel: { fontSize: 15, color: "#1E293B", fontWeight: "500" },
-  label: { fontSize: 11, fontWeight: "700", color: "#64748B", letterSpacing: 0.8, marginBottom: 8 },
-  required: { color: "#EF4444" },
-  input: {
-    borderWidth: 1.5, borderColor: "#E2E8F0", borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 13, fontSize: 16,
-    color: "#0F172A", marginBottom: 16, backgroundColor: "#F8FAFC",
+  inputIcon: { fontSize: 16, marginRight: 10 },
+  input:     { flex: 1, paddingVertical: 14, fontSize: 15, color: "#0F172A" },
+  otpInput:  { letterSpacing: 10, textAlign: "center", fontSize: 20, fontWeight: "700" },
+
+  btnPrimary: {
+    backgroundColor: "#1D4ED8", borderRadius: 14,
+    paddingVertical: 16, alignItems: "center", marginBottom: 16,
   },
-  otpInput: { letterSpacing: 8, textAlign: "center", fontSize: 22, fontWeight: "700" },
-  button: {
-    backgroundColor: "#1D4ED8", borderRadius: 10,
-    paddingVertical: 14, alignItems: "center",
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.5 },
-  sentMsg: { fontSize: 14, color: "#64748B", marginBottom: 16, lineHeight: 20 },
-  resendBtn: { marginTop: 14, alignItems: "center" },
+  btnDisabled:     { opacity: 0.6 },
+  btnPrimaryText:  { color: "#fff", fontSize: 16, fontWeight: "700" },
+
+  resendBtn:  { alignItems: "center", paddingVertical: 8 },
   resendText: { color: "#1D4ED8", fontSize: 14, fontWeight: "600" },
+
+  footer:     { flexDirection: "row", justifyContent: "center", marginTop: "auto", paddingTop: 32 },
+  footerText: { color: "#64748B", fontSize: 14 },
+  footerLink: { color: "#1D4ED8", fontSize: 14, fontWeight: "700" },
 });

@@ -3,25 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import NotificationProvider from "../providers/NotificationProvider";
 import Sidebar from "../../Sidebar";
 import Header from "../../Header";
-import MobileLayout from "../layouts/MobileLayout";
 import OtpVerify from "../../features/auth/OtpVerify";
 import AdminSignup from "../../features/auth/AdminSignup";
 import AdminLogin from "../../features/auth/AdminLogin";
-import CitizenLogin from "../../features/auth/CitizenLogin";
-import ProfileCreation from "../../pages/citizen/ProfileCreation";
-import CitizenDashboardNew from "../../pages/citizen/CitizenDashboardNew";
-import CitizenDashboard from "../../features/dashboard/pages/CitizenDashboard";
-import CreateComplaint from "../../pages/citizen/CreateComplaint";
-import MyComplaints from "../../pages/citizen/MyComplaints";
-import ComplaintDetail from "../../pages/citizen/ComplaintDetail";
-import CitizenEmergency from "../../pages/citizen/CitizenEmergency";
-import EmergencySOS from "../../pages/citizen/EmergencySOS";
-import CitizenEvents from "../../pages/citizen/CitizenEvents";
-import CitizenCampaigns from "../../pages/citizen/CitizenCampaigns";
-import CitizenNotifications from "../../pages/citizen/CitizenNotifications";
-import CitizenFeedback from "../../pages/citizen/CitizenFeedback";
-import CitizenProfile from "../../pages/citizen/CitizenProfile";
-import CitizenSurveys from "../../pages/citizen/CitizenSurveys";
 import SurveyManagement from "../../pages/admin/modules/SurveyManagement";
 import FieldDashboard from "../../features/dashboard/pages/FieldDashboard";
 import ManagerDashboard from "../../features/dashboard/pages/ManagerDashboard";
@@ -88,8 +72,7 @@ function AppRoutesContent() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, ROUTES.otp, "/citizen-login", "/admin-login", "/otp", "/profile-creation"].includes(location.pathname);
-  const isCitizenRoute = location.pathname.startsWith("/citizen");
+  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, ROUTES.otp, "/admin-login", "/otp"].includes(location.pathname);
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isRepDashboard = location.pathname === ROUTES.rep || location.pathname === ROUTES.mlaExecutiveDashboard;
   const isRepSubRoute = location.pathname.startsWith("/rep/");
@@ -97,7 +80,7 @@ function AppRoutesContent() {
   const isFieldRoute = location.pathname.startsWith("/field");
   const isManagerRoute = location.pathname === ROUTES.manager;
   const hideHeader = true;
-  const hideSidebar = isLanding || isCitizenRoute || isRepRoute || isAdminRoute || isFieldRoute || isManagerRoute;
+  const hideSidebar = isLanding || isRepRoute || isAdminRoute || isFieldRoute || isManagerRoute;
 
   // Close mobile menu on route change
   useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
@@ -133,30 +116,14 @@ function AppRoutesContent() {
       )}
 
       <main
-        className={`${isLanding ? 'app-main--landing' : isRepRoute || isFieldRoute || isManagerRoute || isAdminRoute ? 'app-main--rep' : isCitizenRoute ? 'app-main--citizen' : 'app-main'}`}
+        className={`${isLanding ? 'app-main--landing' : isRepRoute || isFieldRoute || isManagerRoute || isAdminRoute ? 'app-main--rep' : 'app-main'}`}
       >
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/citizen-login" replace /></PublicRoute>} />
-          <Route path="/citizen-login" element={<PublicRoute><MobileLayout><CitizenLogin /></MobileLayout></PublicRoute>} />
+          <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/admin-login" replace /></PublicRoute>} />
           <Route path="/admin-login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
           <Route path={ROUTES.otp} element={<PublicRoute><OtpVerify /></PublicRoute>} />
           <Route path={ROUTES.adminSignup} element={<PublicRoute><AdminSignup /></PublicRoute>} />
-          <Route path="/profile-creation" element={<RoleRoute allowedRoles={["CITIZEN"]}><ProfileCreation /></RoleRoute>} />
-          
-          {/* Citizen Routes */}
-          <Route path={ROUTES.citizen} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenDashboardNew /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenCreateComplaint} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CreateComplaint /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenComplaintList} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><MyComplaints /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenComplaintDetails} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><ComplaintDetail /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenEmergency} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenEmergency /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenSOS} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><EmergencySOS /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenEvents} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenEvents /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenCampaigns} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenCampaigns /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenNotifications} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenNotifications /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenFeedback} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenFeedback /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenSurveys} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenSurveys /></MobileLayout></RoleRoute>} />
-          <Route path={ROUTES.citizenProfile} element={<RoleRoute allowedRoles={["CITIZEN"]}><MobileLayout><CitizenProfile /></MobileLayout></RoleRoute>} />
           
           {/* Field Officer Routes — new unified layout */}
           <Route element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldLayout /></RoleRoute>}>

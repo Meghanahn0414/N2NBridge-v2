@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, ScrollView, Image, Platform,
@@ -20,7 +20,15 @@ const CATEGORY_MAP: Record<string, string> = {
 export default function NewComplaintScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const profileComplete = useAuthStore((s) => s.profileComplete);
   const [step, setStep] = useState(1);
+
+  // Guard: profile must be complete before filing a complaint
+  useEffect(() => {
+    if (!profileComplete) {
+      router.replace("/citizen/edit-profile?required=1" as any);
+    }
+  }, [profileComplete]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -97,19 +105,32 @@ export default function NewComplaintScreen() {
       for (const photo of form.photos) {
         try {
           const fd = new FormData();
-          fd.append("file", { uri: photo.uri, name: "photo.jpg", type: "image/jpeg" } as any);
-          await api.post(`/api/grievances/${complaintId}/upload`, fd, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
+          if (Platform.OS === "web") {
+            const res = await fetch(photo.uri);
+            const blob = await res.blob();
+            fd.append("file", new File([blob], "photo.jpg", { type: "image/jpeg" }));
+          } else {
+            fd.append("file", { uri: photo.uri, name: "photo.jpg", type: "image/jpeg" } as any);
+          }
+          await api.post(`/api/grievances/${complaintId}/upload`, fd);
         } catch { /* continue if photo fails */ }
       }
 
-      Alert.alert("Success", `Complaint filed!\nID: ${complaintId}`, [
-        { text: "OK", onPress: () => router.replace("/citizen/complaints" as any) },
-      ]);
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined") window.alert("Complaint filed successfully!");
+        router.replace("/citizen/complaints" as any);
+      } else {
+        Alert.alert("Success", "Complaint filed successfully!", [
+          { text: "View My Reports", onPress: () => router.replace("/citizen/complaints" as any) },
+        ]);
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.detail || err?.message || "Failed to submit complaint.";
-      Alert.alert("Error", String(msg));
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined") window.alert(String(msg));
+      } else {
+        Alert.alert("Error", String(msg));
+      }
     } finally {
       setLoading(false);
     }
@@ -278,6 +299,18 @@ export default function NewComplaintScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      {/* Header */}
+      <View style={styles.topHeader}>
+        <TouchableOpacity style={styles.backArrowBtn} onPress={() => step > 1 ? setStep(step - 1) : router.back()}>
+          <Text style={styles.backArrowText}>←</Text>
+        </TouchableOpacity>
+        <View>
+          <Text style={styles.topHeaderTitle}>File a Complaint</Text>
+          <Text style={styles.topHeaderSub}>Step {step} of 4</Text>
+        </View>
+        <View style={{ width: 44 }} />
+      </View>
+
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressTrack}>
@@ -330,6 +363,19 @@ export default function NewComplaintScreen() {
 
 const PRIMARY = "#1D3A8A";
 const styles = StyleSheet.create({
+  topHeader: {
+    backgroundColor: PRIMARY, paddingTop: 52, paddingBottom: 16, paddingHorizontal: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  backArrowBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center", justifyContent: "center",
+  },
+  backArrowText: { color: "#BFDBFE", fontSize: 20, fontWeight: "600" },
+  topHeaderTitle: { color: "#fff", fontSize: 16, fontWeight: "700", textAlign: "center" },
+  topHeaderSub: { color: "#BFDBFE", fontSize: 12, textAlign: "center", marginTop: 2 },
+
   progressContainer: { backgroundColor: "#fff", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   progressTrack: { height: 6, backgroundColor: "#E2E8F0", borderRadius: 3, overflow: "hidden" },
   progressFill: { height: "100%", backgroundColor: PRIMARY, borderRadius: 3 },

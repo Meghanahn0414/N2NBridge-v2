@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, ScrollView, StyleSheet, Platform,
   TouchableOpacity, ActivityIndicator, Alert, RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -141,7 +141,8 @@ const styles = StyleSheet.create({
   roleText: { color: "#fff", fontSize: 12, fontWeight: "600" },
   card: {
     backgroundColor: "#fff", borderRadius: 16, marginHorizontal: 16, marginTop: 16,
-    padding: 20, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+    padding: 20, elevation: 2,
+    ...Platform.select({ web: { boxShadow: "0px 2px 8px rgba(0,0,0,0.06)" }, default: { shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } } }),
   },
   cardTitle: {
     fontSize: 13, fontWeight: "700", color: "#6B7280",

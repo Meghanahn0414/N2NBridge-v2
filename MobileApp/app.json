@@ -36,24 +36,17 @@
           }
         }
       ],
-      "expo-image",
-      "expo-font",
-      [
-        "expo-location",
-        {
-          "locationWhenInUsePermission": "Allow Emergency Alerts to use your location to attach GPS coordinates to your alert report."
-        }
-      ]
+      "expo-font"
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
+    },
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "NEVER"
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "92f306b0-44d7-468d-a34c-45bb2e4233eb"
-      }
+      "router": {}
     }
   }
 }

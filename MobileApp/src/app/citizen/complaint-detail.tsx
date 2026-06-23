@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, StatusBar,
+  ActivityIndicator, StatusBar, Image, FlatList, Dimensions,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import api from "../../services/api";
+import { API_BASE } from "../../config";
+
+const { width: SCREEN_W } = Dimensions.get("window");
 
 type TimelineItem = {
   status: string;
-  timestamp?: string;
+  timestamp?: string | null;
   note?: string;
-  updatedAt?: string;
+  label?: string;
 };
 
 type ComplaintDetail = {
@@ -26,7 +30,7 @@ type ComplaintDetail = {
   wardId?: string;
   createdAt?: string;
   timeline?: TimelineItem[];
-  statusHistory?: TimelineItem[];
+  photos?: string[];
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -35,9 +39,95 @@ const STATUS_COLOR: Record<string, string> = {
   RESOLVED: "#10B981", CLOSED: "#10B981",
 };
 
-const PRIORITY_COLOR: Record<string, string> = {
-  LOW: "#059669", MEDIUM: "#D97706", HIGH: "#DC2626", CRITICAL: "#7C3AED",
+const STATUS_LABEL: Record<string, string> = {
+  NEW: "Open", OPEN: "Open",
+  ASSIGNED: "Assigned", IN_PROGRESS: "In progress", ON_HOLD: "On hold",
+  RESOLVED: "Resolved", CLOSED: "Closed",
 };
+
+const TIMELINE_LABEL: Record<string, string> = {
+  NEW: "Complaint Submitted",
+  OPEN: "Complaint Opened",
+  ASSIGNED: "Assigned",
+  IN_PROGRESS: "In Progress",
+  ON_HOLD: "On Hold",
+  RESOLVED: "Resolved",
+  CLOSED: "Closed",
+};
+
+const toAbsoluteUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  if (url.startsWith("http") || url.startsWith("data:")) return url;
+  return `${API_BASE}/${url}`;
+};
+
+// Extract photo URLs — covers every common API shape
+function extractPhotos(g: any): string[] {
+  const toUrl = (p: any): string | null => {
+    const raw = typeof p === "string" ? p : p?.url || p?.fileUrl || p?.uri || p?.path || null;
+    return toAbsoluteUrl(raw);
+  };
+
+  // Arrays
+  for (const key of ["photos", "images", "photoUrls", "mediaUrls", "fileUrls", "files", "attachments", "uploads", "media"]) {
+    if (Array.isArray(g[key]) && g[key].length > 0) {
+      const urls = g[key].map(toUrl).filter(Boolean) as string[];
+      if (urls.length > 0) return urls;
+    }
+  }
+
+  // Single-photo scalar fields
+  for (const key of ["photo", "photoUrl", "image", "imageUrl", "mediaUrl", "fileUrl", "uploadUrl"]) {
+    if (typeof g[key] === "string" && g[key].trim()) return [toAbsoluteUrl(g[key])!];
+  }
+
+  return [];
+}
+
+// All standard steps in order — always shown, completed ones filled, future ones grayed
+const TRACKER_STEPS = [
+  { status: "NEW",         label: "Complaint Submitted", note: "Your complaint has been received." },
+  { status: "ASSIGNED",    label: "Assigned",            note: "Assigned to an officer." },
+  { status: "IN_PROGRESS", label: "In Progress",         note: "Being investigated." },
+  { status: "RESOLVED",    label: "Resolved",            note: "Issue has been resolved." },
+];
+
+const STATUS_ORDER = ["NEW", "OPEN", "ASSIGNED", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "CLOSED"];
+
+function statusRank(s: string) {
+  return STATUS_ORDER.indexOf((s || "NEW").toUpperCase());
+}
+
+// Build timeline: all tracker steps always shown; completed steps get real timestamps from history
+function buildTimeline(g: any): TimelineItem[] {
+  const currentRank = statusRank(g.status || "NEW");
+
+  // Map history entries by newStatus so we can attach real timestamps
+  const historyMap: Record<string, any> = {};
+  const rawHistory: any[] = Array.isArray(g.history)
+    ? g.history
+    : Array.isArray(g.statusHistory)
+    ? g.statusHistory
+    : [];
+  for (const h of rawHistory) {
+    const key = (h.newStatus || h.status || "").toUpperCase();
+    if (key) historyMap[key] = h;
+  }
+
+  return TRACKER_STEPS.map((step) => {
+    const rank = statusRank(step.status);
+    const isDone = rank <= currentRank;
+    const h = historyMap[step.status];
+    return {
+      status: isDone ? step.status : "PENDING",
+      timestamp: step.status === "NEW"
+        ? (g.createdAt || g.created_at)
+        : h?.createdAt || h?.updatedAt || null,
+      note: h?.remarks || h?.message || step.note,
+      label: step.label,
+    } as any;
+  });
+}
 
 export default function ComplaintDetailScreen() {
   const router = useRouter();
@@ -45,12 +135,15 @@ export default function ComplaintDetailScreen() {
   const [complaint, setComplaint] = useState<ComplaintDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(0);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   useEffect(() => {
     if (!id) return;
     api.get(`/api/grievances/${id}`)
       .then(({ data }) => {
         const g = data?.data ?? data;
+        if (__DEV__) console.log("[complaint-detail] full grievance:", JSON.stringify(g, null, 2));
         setComplaint({
           id: g._id || g.id,
           complaintNumber: g.complaintNumber || g.grievanceId,
@@ -62,186 +155,327 @@ export default function ComplaintDetailScreen() {
           address: g.address,
           wardId: g.wardId,
           createdAt: g.createdAt || g.created_at,
-          timeline: g.timeline || g.statusHistory || [],
+          timeline: buildTimeline(g),
+          photos: extractPhotos(g),
         });
+        if (g.feedback?.rating) setRating(g.feedback.rating);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
 
-  const formatDateTime = (dt?: string) => {
+  const formatDate = (dt?: string) => {
     if (!dt) return "";
-    return new Date(dt).toLocaleString("en-IN", {
-      day: "numeric", month: "numeric", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
+    return new Date(dt).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   };
 
-  const statusColor = complaint?.status
-    ? STATUS_COLOR[complaint.status.toUpperCase()] ?? "#64748B"
-    : "#64748B";
-
-  const priorityColor = complaint?.priority
-    ? PRIORITY_COLOR[complaint.priority.toUpperCase()] ?? "#64748B"
-    : "#64748B";
+  const handleRate = async (star: number) => {
+    if (ratingSubmitted) return;
+    setRating(star);
+    try {
+      await api.post(`/api/grievances/${id}/feedback`, {
+        rating: star, comments: "", submittedAt: new Date().toISOString(),
+      });
+      setRatingSubmitted(true);
+    } catch { /* silent */ }
+  };
 
   if (loading) {
-    return (
-      <View style={s.center}>
-        <ActivityIndicator size="large" color="#1D4ED8" />
-      </View>
-    );
+    return <View style={s.center}><ActivityIndicator size="large" color="#1D4ED8" /></View>;
   }
 
   if (!complaint) {
     return (
       <View style={s.center}>
-        <Text style={{ color: "#64748B" }}>Complaint not found.</Text>
+        <Ionicons name="alert-circle-outline" size={48} color="#CBD5E1" />
+        <Text style={s.notFound}>Complaint not found.</Text>
+        <TouchableOpacity style={s.goBack} onPress={() => router.back()}>
+          <Text style={s.goBackText}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
+  const statusKey  = (complaint.status || "NEW").toUpperCase();
+  const sc         = STATUS_COLOR[statusKey] ?? "#64748B";
+  const statusText = STATUS_LABEL[statusKey] ?? complaint.status?.replace(/_/g, " ") ?? "Unknown";
+
   const timeline: TimelineItem[] = complaint.timeline?.length
     ? complaint.timeline
-    : [{ status: complaint.status || "NEW", timestamp: complaint.createdAt, note: "Complaint Submitted" }];
+    : [{ status: complaint.status || "NEW", timestamp: complaint.createdAt }];
+
+  const metaParts = [
+    complaint.address,
+    complaint.wardId ? `Ward ${complaint.wardId}` : null,
+    complaint.categoryId,
+  ].filter(Boolean);
+
+  const refNum = complaint.complaintNumber || `RD-${(complaint.id || "").slice(-6).toUpperCase()}`;
+  const photos = complaint.photos ?? [];
 
   return (
-    <View style={s.container}>
-      <StatusBar backgroundColor="#1E3A8A" barStyle="light-content" />
+    <View style={s.root}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backText}>←</Text>
+      {/* ── Floating top bar (back + share) ── */}
+      <View style={s.topBar}>
+        <TouchableOpacity style={s.topBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={20} color="#1E293B" />
         </TouchableOpacity>
-        <View style={s.headerCenter}>
-          <Text style={s.headerRef} numberOfLines={1}>
-            {complaint.complaintNumber || `#${complaint.id?.slice(-10).toUpperCase()}`}
-          </Text>
-          <View style={[s.statusPill, { backgroundColor: statusColor }]}>
-            <Text style={s.statusPillText}>{complaint.status?.replace(/_/g, " ")}</Text>
-          </View>
-        </View>
-        <Text style={s.headerSub}>
-          Submitted {complaint.createdAt ? new Date(complaint.createdAt).toLocaleDateString("en-IN") : ""}
-        </Text>
+        <TouchableOpacity style={s.topBtn}>
+          <Ionicons name="share-outline" size={20} color="#1E293B" />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={s.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
-
-        {/* Title card */}
-        <View style={s.card}>
-          <Text style={s.complaintTitle}>{complaint.title || complaint.description}</Text>
-          <Text style={s.complaintMeta}>
-            {[complaint.categoryId, complaint.wardId ? `Ward ${complaint.wardId}` : null, complaint.address]
-              .filter(Boolean).join(" · ")}
-          </Text>
-        </View>
-
-        {/* Timeline */}
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>TIMELINE</Text>
-          {timeline.map((item, i) => (
-            <View key={i} style={s.timelineRow}>
-              <View style={s.timelineLeft}>
-                <View style={[s.timelineDot, { backgroundColor: STATUS_COLOR[item.status?.toUpperCase()] ?? "#94A3B8" }]} />
-                {i < timeline.length - 1 && <View style={s.timelineLine} />}
-              </View>
-              <View style={s.timelineContent}>
-                <Text style={s.timelineStatus}>
-                  {item.note || item.status?.replace(/_/g, " ")}
-                </Text>
-                <Text style={s.timelineDate}>{formatDateTime(item.timestamp || item.updatedAt)}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Rate Response */}
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>RATE THIS RESPONSE</Text>
-          <View style={s.starsRow}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                <Text style={[s.star, star <= rating && s.starFilled]}>★</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Details */}
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>DETAILS</Text>
-          <Text style={s.detailDesc}>{complaint.description}</Text>
-          <View style={s.detailGrid}>
-            <View style={s.detailItem}>
-              <Text style={s.detailLabel}>CATEGORY</Text>
-              <Text style={s.detailValue}>{complaint.categoryId || "—"}</Text>
-            </View>
-            <View style={s.detailItem}>
-              <Text style={s.detailLabel}>PRIORITY</Text>
-              <Text style={[s.detailValue, { color: priorityColor }]}>{complaint.priority}</Text>
-            </View>
-            <View style={s.detailItem}>
-              <Text style={s.detailLabel}>WARD</Text>
-              <Text style={s.detailValue}>{complaint.wardId || "—"}</Text>
-            </View>
-            <View style={s.detailItem}>
-              <Text style={s.detailLabel}>STATUS</Text>
-              <Text style={[s.detailValue, { color: statusColor }]}>
-                {complaint.status?.replace(/_/g, " ")}
-              </Text>
-            </View>
-          </View>
-          {complaint.address && (
-            <View style={s.addressRow}>
-              <Text style={s.detailLabel}>ADDRESS</Text>
-              <Text style={s.detailValue}>{complaint.address}</Text>
+      {/* ── Photo area ── */}
+      {photos.length > 0 ? (
+        <View style={s.photoCarousel}>
+          <FlatList
+            data={photos}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(_, i) => String(i)}
+            onMomentumScrollEnd={(e) =>
+              setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_W))
+            }
+            renderItem={({ item }) => (
+              <Image source={{ uri: item }} style={s.photoImg} resizeMode="cover" />
+            )}
+          />
+          {/* Dots indicator (only when multiple photos) */}
+          {photos.length > 1 && (
+            <View style={s.photoDots}>
+              {photos.map((_, i) => (
+                <View key={i} style={[s.photoDot, i === photoIndex && s.photoDotActive]} />
+              ))}
             </View>
           )}
         </View>
+      ) : (
+        <View style={s.photoPlaceholder}>
+          <Ionicons name="image-outline" size={32} color="#CBD5E1" />
+          <Text style={s.photoLabel}>No photo attached</Text>
+        </View>
+      )}
 
+      {/* ── Scrollable content ── */}
+      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+
+        {/* Status + Ref row */}
+        <View style={s.statusRefRow}>
+          <View style={[s.statusChip, { backgroundColor: `${sc}15`, borderColor: `${sc}40` }]}>
+            <View style={[s.statusDot, { backgroundColor: sc }]} />
+            <Text style={[s.statusChipText, { color: sc }]}>{statusText}</Text>
+          </View>
+          <Text style={s.refText}>Ref #{refNum}</Text>
+        </View>
+
+        {/* Title */}
+        <Text style={s.title}>{complaint.title || complaint.description || "Complaint"}</Text>
+
+        {/* Location row */}
+        {metaParts.length > 0 && (
+          <View style={s.locationRow}>
+            <Ionicons name="location-outline" size={14} color="#64748B" />
+            <Text style={s.locationText}>{metaParts.join(" · ")}</Text>
+          </View>
+        )}
+
+        {/* Description */}
+        {complaint.description && complaint.description !== complaint.title && (
+          <Text style={s.description}>{complaint.description}</Text>
+        )}
+
+        {/* ── Progress / Timeline ── */}
+        <Text style={s.sectionHeading}>Progress</Text>
+        <View style={s.timelineBlock}>
+          {timeline.map((item, i) => {
+            const isPending = item.status === "PENDING";
+            const tColor    = isPending ? "#CBD5E1" : (STATUS_COLOR[item.status] ?? "#3B82F6");
+            const isLast    = i === timeline.length - 1;
+            const date      = item.timestamp;
+            const title     = item.label || TIMELINE_LABEL[item.status] || item.status?.replace(/_/g, " ") || "Update";
+            const desc      = item.note;
+
+            return (
+              <View key={i} style={s.timelineRow}>
+                {/* Left: dot + vertical line */}
+                <View style={s.timelineLeft}>
+                  <View style={[s.dot, { backgroundColor: isPending ? "#fff" : tColor, borderColor: tColor, borderWidth: isPending ? 2 : 0 }]}>
+                    {!isPending && <View style={s.dotInner} />}
+                  </View>
+                  {!isLast && <View style={[s.line, { backgroundColor: isPending ? "#E2E8F0" : `${tColor}60` }]} />}
+                </View>
+
+                {/* Right: title · timestamp · note */}
+                <View style={s.timelineRight}>
+                  <Text style={[s.timelineTitle, isPending && { color: "#94A3B8" }]}>{title}</Text>
+                  {date ? (
+                    <Text style={s.timelineDate}>
+                      {new Date(date).toLocaleString("en-IN", {
+                        day: "numeric", month: "numeric", year: "numeric",
+                        hour: "2-digit", minute: "2-digit", second: "2-digit",
+                      })}
+                    </Text>
+                  ) : null}
+                  {desc ? (
+                    <Text style={s.timelineDesc}>{desc}</Text>
+                  ) : i === 0 ? (
+                    <Text style={s.timelineDesc}>Your complaint has been received.</Text>
+                  ) : null}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* ── Rate response (resolved only) ── */}
+        {["RESOLVED", "CLOSED"].includes(statusKey) && (
+          <View style={s.rateCard}>
+            <Text style={s.sectionHeading}>Rate this response</Text>
+            <View style={s.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => handleRate(star)} disabled={ratingSubmitted} activeOpacity={0.7}>
+                  <Ionicons
+                    name={star <= rating ? "star" : "star-outline"}
+                    size={32}
+                    color={star <= rating ? "#F59E0B" : "#D1D5DB"}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+            {ratingSubmitted && <Text style={s.ratedMsg}>Thank you for your feedback!</Text>}
+          </View>
+        )}
+
+        {/* ── Details grid ── */}
+        <Text style={s.sectionHeading}>Details</Text>
+        <View style={s.detailsGrid}>
+          <DetailItem label="Category"  value={complaint.categoryId || "—"} />
+          <DetailItem label="Priority"  value={complaint.priority || "—"} color={
+            complaint.priority === "HIGH" || complaint.priority === "CRITICAL" ? "#DC2626" :
+            complaint.priority === "MEDIUM" ? "#D97706" : "#059669"
+          } />
+          <DetailItem label="Ward"      value={complaint.wardId ? `Ward ${complaint.wardId}` : "—"} />
+          <DetailItem label="Submitted" value={formatDate(complaint.createdAt) || "—"} />
+        </View>
+        {complaint.address && (
+          <View style={s.addressRow}>
+            <Ionicons name="location-outline" size={14} color="#64748B" style={{ marginTop: 1 }} />
+            <Text style={s.addressText}>{complaint.address}</Text>
+          </View>
+        )}
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
+function DetailItem({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <View style={s.detailItem}>
+      <Text style={s.detailLabel}>{label}</Text>
+      <Text style={[s.detailValue, color ? { color } : {}]}>{value}</Text>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: {
-    backgroundColor: "#1D4ED8", paddingTop: 52, paddingBottom: 16,
-    paddingHorizontal: 20,
+  root:   { flex: 1, backgroundColor: "#F8FAFC" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
+  notFound: { fontSize: 15, color: "#64748B", marginTop: 8 },
+  goBack: { backgroundColor: "#1D4ED8", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, marginTop: 8 },
+  goBackText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+
+  /* Top bar */
+  topBar: {
+    position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+    flexDirection: "row", justifyContent: "space-between",
+    paddingTop: 52, paddingHorizontal: 16, paddingBottom: 10,
   },
-  backBtn: { marginBottom: 10 },
-  backText: { color: "#BFDBFE", fontSize: 15, fontWeight: "600" },
-  headerCenter: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
-  headerRef: { color: "#fff", fontSize: 14, fontWeight: "700", flex: 1 },
-  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  statusPillText: { color: "#fff", fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
-  headerSub: { color: "#BFDBFE", fontSize: 12 },
+  topBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    alignItems: "center", justifyContent: "center",
+    elevation: 2, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 4,
+  },
+
+  /* Photo */
+  photoCarousel: { height: 220 },
+  photoImg: { width: SCREEN_W, height: 220 },
+  photoPlaceholder: {
+    height: 220, backgroundColor: "#E8EDF2",
+    alignItems: "center", justifyContent: "center", gap: 8,
+  },
+  photoLabel: { fontSize: 13, color: "#94A3B8" },
+  photoDots: {
+    position: "absolute", bottom: 10, left: 0, right: 0,
+    flexDirection: "row", justifyContent: "center", gap: 6,
+  },
+  photoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.5)" },
+  photoDotActive: { backgroundColor: "#fff", width: 18, borderRadius: 3 },
+
+  /* Content */
   scroll: { flex: 1 },
-  card: {
-    backgroundColor: "#fff", borderRadius: 14, margin: 16, marginBottom: 0,
-    padding: 16, elevation: 2, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6,
+  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
+
+  statusRefRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  statusChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusChipText: { fontSize: 12, fontWeight: "700" },
+  refText: { fontSize: 12, color: "#94A3B8", fontWeight: "600" },
+
+  title: { fontSize: 22, fontWeight: "800", color: "#0F172A", lineHeight: 30, marginBottom: 10 },
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 14 },
+  locationText: { fontSize: 13, color: "#64748B", flex: 1 },
+  description: {
+    fontSize: 14, color: "#475569", lineHeight: 22,
+    marginBottom: 20, paddingBottom: 20,
+    borderBottomWidth: 1, borderBottomColor: "#F1F5F9",
   },
-  sectionTitle: { fontSize: 11, fontWeight: "700", color: "#64748B", letterSpacing: 1, marginBottom: 14 },
-  complaintTitle: { fontSize: 17, fontWeight: "700", color: "#0F172A", marginBottom: 6 },
-  complaintMeta: { fontSize: 13, color: "#64748B" },
-  timelineRow: { flexDirection: "row", marginBottom: 4 },
-  timelineLeft: { alignItems: "center", marginRight: 14, width: 16 },
-  timelineDot: { width: 16, height: 16, borderRadius: 8, marginTop: 2 },
-  timelineLine: { width: 2, flex: 1, backgroundColor: "#E2E8F0", marginVertical: 4 },
-  timelineContent: { flex: 1, paddingBottom: 16 },
-  timelineStatus: { fontSize: 14, fontWeight: "600", color: "#0F172A" },
-  timelineDate: { fontSize: 12, color: "#64748B", marginTop: 2 },
-  starsRow: { flexDirection: "row", gap: 8 },
-  star: { fontSize: 28, color: "#E2E8F0" },
-  starFilled: { color: "#F59E0B" },
-  detailDesc: { fontSize: 14, color: "#475569", marginBottom: 16 },
-  detailGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  detailItem: { width: "45%" },
-  detailLabel: { fontSize: 10, fontWeight: "700", color: "#94A3B8", letterSpacing: 1, marginBottom: 2 },
+
+  sectionHeading: { fontSize: 16, fontWeight: "700", color: "#0F172A", marginBottom: 16, marginTop: 4 },
+
+  /* Timeline */
+  timelineBlock: { marginBottom: 28 },
+  timelineRow: { flexDirection: "row" },
+  timelineLeft: { alignItems: "center", marginRight: 14, width: 22 },
+  dot: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 2,
+    alignItems: "center", justifyContent: "center",
+    marginTop: 2,
+  },
+  dotInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#fff" },
+  line: { width: 2, flex: 1, minHeight: 24, marginTop: 3 },
+  timelineRight: { flex: 1, paddingBottom: 20 },
+  timelineTitle: { fontSize: 14, fontWeight: "700", color: "#0F172A", lineHeight: 20 },
+  timelineDate:  { fontSize: 12, color: "#94A3B8", marginTop: 2, marginBottom: 3 },
+  timelineDesc:  { fontSize: 13, color: "#64748B", lineHeight: 18 },
+
+  /* Rating */
+  rateCard: {
+    backgroundColor: "#fff", borderRadius: 16, padding: 16,
+    marginBottom: 24, elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6,
+  },
+  starsRow: { flexDirection: "row", gap: 10, marginBottom: 8 },
+  ratedMsg: { fontSize: 13, color: "#10B981", fontWeight: "600", marginTop: 4 },
+
+  /* Details grid */
+  detailsGrid: {
+    flexDirection: "row", flexWrap: "wrap",
+    backgroundColor: "#fff", borderRadius: 16, padding: 16,
+    marginBottom: 12, elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6,
+  },
+  detailItem:  { width: "50%", paddingVertical: 10, paddingHorizontal: 4 },
+  detailLabel: { fontSize: 10, fontWeight: "700", color: "#94A3B8", letterSpacing: 0.8, marginBottom: 3 },
   detailValue: { fontSize: 14, fontWeight: "600", color: "#0F172A" },
-  addressRow: { marginTop: 12 },
+  addressRow: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    backgroundColor: "#fff", borderRadius: 12, padding: 14,
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6,
+  },
+  addressText: { flex: 1, fontSize: 13, color: "#475569", lineHeight: 20 },
 });
