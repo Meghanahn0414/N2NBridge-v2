@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "../../../styles/CommandCenter.css"
 import { getAuthRole } from "../../../services/authStorage";
 import { getDashboardForRole } from "../../../shared/services/dashboardService";
@@ -19,83 +20,81 @@ import {
 } from "react-icons/fa";
 import PageHeader from "../../../components/PageHeader";
 
-const adminQuickActions = [
-  { label: "Create Event", icon: FaCalendarAlt },
-  { label: "Send Message", icon: FaBell },
-  { label: "Launch Survey", icon: FaLightbulb },
-  { label: "Review Complaints", icon: FaClipboardList },
-  { label: "Generate Report", icon: FaChartLine },
+const getAdminQuickActions = (t) => [
+  { label: t("create_event"), icon: FaCalendarAlt },
+  { label: t("send_message"), icon: FaBell },
+  { label: t("launch_survey"), icon: FaLightbulb },
+  { label: t("review_complaints"), icon: FaClipboardList },
+  { label: t("generate_report"), icon: FaChartLine },
 ];
 
-const officerQuickActions = [
-  { label: "My Grievances", icon: FaClipboardList, route: ROUTES.fieldGrievances },
-  { label: "Alerts", icon: FaBell, route: ROUTES.fieldAlerts },
-  { label: "My Profile", icon: FaShieldAlt, route: ROUTES.fieldProfile },
-  { label: "Dashboard", icon: FaHome, route: ROUTES.field },
+const getOfficerQuickActions = (t) => [
+  { label: t("my_grievances"), icon: FaClipboardList, route: ROUTES.fieldGrievances },
+  { label: t("alerts"), icon: FaBell, route: ROUTES.fieldAlerts },
+  { label: t("my_profile"), icon: FaShieldAlt, route: ROUTES.fieldProfile },
+  { label: t("dashboard"), icon: FaHome, route: ROUTES.field },
 ];
 
-const navigationTabs = [
-  { label: "Home", icon: FaHome },
-  { label: "Complaints", icon: FaClipboardList },
-  { label: "Alerts", icon: FaBell },
-  { label: "Map", icon: FaMap },
-  { label: "More", icon: FaEllipsisH },
+const getNavigationTabs = (t) => [
+  { label: t("home"), icon: FaHome },
+  { label: t("complaints"), icon: FaClipboardList },
+  { label: t("alerts"), icon: FaBell },
+  { label: t("map"), icon: FaMap },
+  { label: t("more"), icon: FaEllipsisH },
 ];
 
 const formatNumber = (value) => (value == null ? "-" : value);
 
-const getSummaryCards = (dashboard, role) => {
-  const isAdmin = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER"].includes(role);
+const getSummaryCards = (dashboard, role, t) => {
   const isOfficer = role === "FIELD_OFFICER";
   const isCitizen = role === "CITIZEN";
 
   if (isOfficer) {
     return [
-      { label: "Pending Tasks", value: formatNumber(dashboard?.pendingTasks), accent: "bg-emerald-50", icon: FaClipboardList },
-      { label: "Pending Grievances", value: formatNumber(dashboard?.pendingGrievances), accent: "bg-rose-50", icon: FaExclamationTriangle },
-      { label: "Pending Alerts", value: formatNumber(dashboard?.pendingAlerts), accent: "bg-sky-50", icon: FaBell },
-      { label: "Assigned Items", value: formatNumber((dashboard?.tasks?.length || 0) + (dashboard?.grievances?.length || 0)), accent: "bg-indigo-50", icon: FaChartLine },
+      { label: t("pending_tasks"), value: formatNumber(dashboard?.pendingTasks), accent: "bg-emerald-50", icon: FaClipboardList },
+      { label: t("pending_grievances"), value: formatNumber(dashboard?.pendingGrievances), accent: "bg-rose-50", icon: FaExclamationTriangle },
+      { label: t("pending_alerts"), value: formatNumber(dashboard?.pendingAlerts), accent: "bg-sky-50", icon: FaBell },
+      { label: t("assigned_items"), value: formatNumber((dashboard?.tasks?.length || 0) + (dashboard?.grievances?.length || 0)), accent: "bg-indigo-50", icon: FaChartLine },
     ];
   }
 
   if (isCitizen) {
     return [
-      { label: "Total Grievances", value: formatNumber(dashboard?.grievanceSummary?.total), accent: "bg-emerald-50", icon: FaClipboardList },
-      { label: "Pending Grievances", value: formatNumber(dashboard?.grievanceSummary?.pending), accent: "bg-rose-50", icon: FaExclamationTriangle },
-      { label: "Registered Events", value: formatNumber(dashboard?.registeredEvents?.length), accent: "bg-sky-50", icon: FaCalendarAlt },
-      { label: "Recent Alerts", value: formatNumber(dashboard?.recentNotifications?.length), accent: "bg-indigo-50", icon: FaBell },
+      { label: t("total_grievances"), value: formatNumber(dashboard?.grievanceSummary?.total), accent: "bg-emerald-50", icon: FaClipboardList },
+      { label: t("pending_grievances"), value: formatNumber(dashboard?.grievanceSummary?.pending), accent: "bg-rose-50", icon: FaExclamationTriangle },
+      { label: t("registered_events"), value: formatNumber(dashboard?.registeredEvents?.length), accent: "bg-sky-50", icon: FaCalendarAlt },
+      { label: t("recent_alerts"), value: formatNumber(dashboard?.recentNotifications?.length), accent: "bg-indigo-50", icon: FaBell },
     ];
   }
 
   return [
-    { label: "Open Complaints", value: formatNumber(dashboard?.metrics?.grievances?.total), accent: "bg-emerald-50", icon: FaClipboardList },
-    { label: "Critical Alerts", value: formatNumber(dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total), accent: "bg-rose-50", icon: FaExclamationTriangle },
-    { label: "Total Users", value: formatNumber(dashboard?.metrics?.users?.total), accent: "bg-sky-50", icon: FaShieldAlt },
-    { label: "Total Events", value: formatNumber(dashboard?.metrics?.events?.totalEvents), accent: "bg-indigo-50", icon: FaChartLine },
+    { label: t("open_complaints"), value: formatNumber(dashboard?.metrics?.grievances?.total), accent: "bg-emerald-50", icon: FaClipboardList },
+    { label: t("critical_alerts"), value: formatNumber(dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total), accent: "bg-rose-50", icon: FaExclamationTriangle },
+    { label: t("total_users"), value: formatNumber(dashboard?.metrics?.users?.total), accent: "bg-sky-50", icon: FaShieldAlt },
+    { label: t("total_events"), value: formatNumber(dashboard?.metrics?.events?.totalEvents), accent: "bg-indigo-50", icon: FaChartLine },
   ];
 };
 
-const getActionItems = (dashboard, role) => {
-  const isAdmin = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER"].includes(role);
+const getActionItems = (dashboard, role, t) => {
   const isOfficer = role === "FIELD_OFFICER";
   const isCitizen = role === "CITIZEN";
 
   if (isOfficer) {
     return [
       {
-        title: "Assigned Grievances",
-        subtitle: `${formatNumber(dashboard?.pendingGrievances)} open cases`,
-        description: "Grievances assigned to you need updates.",
-        button: "Review",
+        title: t("assigned_grievances"),
+        subtitle: t("open_cases", { count: formatNumber(dashboard?.pendingGrievances) }),
+        description: t("grievances_assigned_desc"),
+        button: t("review"),
         icon: FaClipboardList,
         accent: "bg-amber-100",
         route: ROUTES.fieldGrievances,
       },
       {
-        title: "Assigned Alerts",
-        subtitle: `${formatNumber(dashboard?.pendingAlerts)} unresolved`,
-        description: "Alerts require immediate field response.",
-        button: "Manage",
+        title: t("assigned_alerts"),
+        subtitle: t("unresolved_count", { count: formatNumber(dashboard?.pendingAlerts) }),
+        description: t("alerts_field_response"),
+        button: t("manage"),
         icon: FaBell,
         accent: "bg-rose-100",
         route: ROUTES.fieldAlerts,
@@ -106,26 +105,26 @@ const getActionItems = (dashboard, role) => {
   if (isCitizen) {
     return [
       {
-        title: "Open Grievances",
-        subtitle: `${formatNumber(dashboard?.grievanceSummary?.pending)} pending`,
-        description: "Track unresolved grievances and updates.",
-        button: "View",
+        title: t("open_grievances"),
+        subtitle: t("pending_count", { count: formatNumber(dashboard?.grievanceSummary?.pending) }),
+        description: t("track_grievances_desc"),
+        button: t("view"),
         icon: FaClipboardList,
         accent: "bg-amber-100",
       },
       {
-        title: "Recent Notifications",
-        subtitle: `${formatNumber(dashboard?.recentNotifications?.length)} updates`,
-        description: "Check the latest messages and alerts.",
-        button: "Open",
+        title: t("recent_notifications"),
+        subtitle: t("updates_count", { count: formatNumber(dashboard?.recentNotifications?.length) }),
+        description: t("check_messages_desc"),
+        button: t("open"),
         icon: FaBell,
         accent: "bg-rose-100",
       },
       {
-        title: "Registered Events",
-        subtitle: `${formatNumber(dashboard?.registeredEvents?.length)} events`,
-        description: "See the events you are registered for.",
-        button: "Explore",
+        title: t("registered_events"),
+        subtitle: t("events_count", { count: formatNumber(dashboard?.registeredEvents?.length) }),
+        description: t("see_events_desc"),
+        button: t("explore"),
         icon: FaCalendarAlt,
         accent: "bg-sky-100",
       },
@@ -134,83 +133,79 @@ const getActionItems = (dashboard, role) => {
 
   return [
     {
-      title: "Critical Alerts",
-      subtitle: `${formatNumber(dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total)} active`,
-      description: "High-priority alerts need immediate action.",
-      button: "Review",
+      title: t("critical_alerts"),
+      subtitle: t("active_count", { count: formatNumber(dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total) }),
+      description: t("critical_alerts_desc"),
+      button: t("review"),
       icon: FaBell,
       accent: "bg-rose-100",
     },
     {
-      title: "Open Complaints",
-      subtitle: `${formatNumber(dashboard?.metrics?.grievances?.byStatus?.OPEN ?? dashboard?.metrics?.grievances?.total)} unresolved`,
-      description: "Monitor complaint backlog and response time.",
-      button: "Inspect",
+      title: t("open_complaints"),
+      subtitle: t("open_unresolved", { count: formatNumber(dashboard?.metrics?.grievances?.byStatus?.OPEN ?? dashboard?.metrics?.grievances?.total) }),
+      description: t("monitor_complaints_desc"),
+      button: t("inspect"),
       icon: FaClipboardList,
       accent: "bg-amber-100",
     },
     {
-      title: "Event Health",
-      subtitle: `${formatNumber(dashboard?.metrics?.events?.totalEvents)} planned`,
-      description: "Keep track of constituency events and turnout.",
-      button: "Review",
+      title: t("event_health"),
+      subtitle: t("planned_count", { count: formatNumber(dashboard?.metrics?.events?.totalEvents) }),
+      description: t("track_events_desc"),
+      button: t("review"),
       icon: FaCalendarAlt,
       accent: "bg-sky-100",
     },
   ];
 };
 
-const getMapInsight = (dashboard) => {
+const getMapInsight = (dashboard, t) => {
   const openComplaints = dashboard?.metrics?.grievances?.byStatus?.OPEN ?? dashboard?.metrics?.grievances?.total;
   const criticalAlerts = dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total;
 
   if (openComplaints == null && criticalAlerts == null) {
-    return "Map insights are unavailable until dashboard data loads.";
+    return t("map_insights_unavailable");
   }
-
   if (criticalAlerts > (openComplaints || 0) * 0.4) {
-    return `Critical alerts are concentrated in high-priority zones; review the map for urgent action.`;
+    return t("map_insights_critical");
   }
-
   if (openComplaints > 0 || criticalAlerts > 0) {
-    return `There are ${formatNumber(openComplaints)} open complaints and ${formatNumber(criticalAlerts)} critical alerts reported on the map.`;
+    return t("map_insights_active", { open: formatNumber(openComplaints), critical: formatNumber(criticalAlerts) });
   }
-
-  return "Map overview shows no active complaints or alerts at the moment.";
+  return t("map_insights_clear");
 };
 
-const getAiInsights = (dashboard, role) => {
+const getAiInsights = (dashboard, role, t) => {
   const insights = [];
   const isOfficer = role === "FIELD_OFFICER";
 
   if (isOfficer) {
     const pending = dashboard?.pendingGrievances ?? 0;
     const alerts = dashboard?.pendingAlerts ?? 0;
-    const total = (dashboard?.tasks?.length || 0) + (dashboard?.grievances?.length || 0);
 
     if (pending > 5) {
       insights.push({
-        title: `You have ${pending} unresolved grievances.`,
-        action: "Review and update grievance statuses to keep response times low.",
+        title: t("ai_officer_many_grievances_title", { count: pending }),
+        action: t("ai_officer_many_grievances_action"),
       });
     } else if (pending > 0) {
       insights.push({
-        title: `${pending} grievance${pending > 1 ? 's' : ''} need your attention.`,
-        action: "Update status on assigned grievances to reflect progress.",
+        title: t(pending > 1 ? "ai_officer_few_grievances_title_other" : "ai_officer_few_grievances_title_one", { count: pending }),
+        action: t("ai_officer_few_grievances_action"),
       });
     }
 
     if (alerts > 0) {
       insights.push({
-        title: `${alerts} emergency alert${alerts > 1 ? 's are' : ' is'} unresolved.`,
-        action: "Acknowledge and resolve active alerts immediately.",
+        title: t(alerts > 1 ? "ai_officer_alerts_title_other" : "ai_officer_alerts_title_one", { count: alerts }),
+        action: t("ai_officer_alerts_action"),
       });
     }
 
     if (!insights.length) {
       insights.push({
-        title: "All grievances and alerts are up to date.",
-        action: "Great work! Check for any new assignments regularly.",
+        title: t("ai_officer_clear_title"),
+        action: t("ai_officer_clear_action"),
       });
     }
     return insights.slice(0, 2);
@@ -221,16 +216,16 @@ const getAiInsights = (dashboard, role) => {
   const satisfaction = dashboard?.summary?.citizenSatisfaction;
 
   if (criticalAlerts > 0) {
-    insights.push({ title: `${formatNumber(criticalAlerts)} critical alerts require immediate response.`, action: "Review urgent alert clusters." });
+    insights.push({ title: t("ai_critical_alerts_title", { count: formatNumber(criticalAlerts) }), action: t("ai_critical_alerts_action") });
   }
   if (openComplaints > 0) {
-    insights.push({ title: `${formatNumber(openComplaints)} open complaints are still unresolved.`, action: "Prioritize grievance triage." });
+    insights.push({ title: t("ai_open_complaints_title", { count: formatNumber(openComplaints) }), action: t("ai_open_complaints_action") });
   }
   if (typeof satisfaction === "number") {
-    insights.push({ title: `Citizen satisfaction is at ${formatNumber(satisfaction)} / 5.`, action: "Plan outreach and grievance camps." });
+    insights.push({ title: t("ai_satisfaction_title", { score: formatNumber(satisfaction) }), action: t("ai_satisfaction_action") });
   }
   if (!insights.length) {
-    insights.push({ title: "No AI-driven insights are available yet.", action: "Dashboard data is still loading." });
+    insights.push({ title: t("ai_no_data_title"), action: t("ai_no_data_action") });
   }
   return insights.slice(0, 2);
 };
@@ -238,6 +233,7 @@ const getAiInsights = (dashboard, role) => {
 
 export default function CommandCenter({ title = "Dashboard", subtitle }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -263,20 +259,21 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
     loadDashboard();
   }, [role]);
 
-  const summaryCards = getSummaryCards(dashboard, role);
-  const actionItems = getActionItems(dashboard, role);
+  const summaryCards = getSummaryCards(dashboard, role, t);
+  const actionItems = getActionItems(dashboard, role, t);
   const isCitizen = role === "CITIZEN";
-  const quickActions = isOfficerRole ? officerQuickActions : adminQuickActions;
-  const mapInsightText = getMapInsight(dashboard);
-  const aiInsights = getAiInsights(dashboard, role);
+  const quickActions = isOfficerRole ? getOfficerQuickActions(t) : getAdminQuickActions(t);
+  const navigationTabs = getNavigationTabs(t);
+  const mapInsightText = getMapInsight(dashboard, t);
+  const aiInsights = getAiInsights(dashboard, role, t);
   const overviewItems = isOfficerRole ? [
-    { label: "Assigned Grievances", value: formatNumber(dashboard?.pendingGrievances), route: ROUTES.fieldGrievances },
-    { label: "Pending Alerts", value: formatNumber(dashboard?.pendingAlerts), route: ROUTES.fieldAlerts },
-    { label: "My Profile", value: "View →", route: ROUTES.fieldProfile },
+    { label: t("assigned_grievances"), value: formatNumber(dashboard?.pendingGrievances), route: ROUTES.fieldGrievances },
+    { label: t("pending_alerts"), value: formatNumber(dashboard?.pendingAlerts), route: ROUTES.fieldAlerts },
+    { label: t("my_profile"), value: t("view_arrow"), route: ROUTES.fieldProfile },
   ] : [
-    { label: "Open Complaints", value: formatNumber(dashboard?.metrics?.grievances?.byStatus?.OPEN ?? dashboard?.metrics?.grievances?.total) },
-    { label: "Critical Alerts", value: formatNumber(dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total) },
-    { label: "Total Users", value: formatNumber(dashboard?.metrics?.users?.total) },
+    { label: t("open_complaints"), value: formatNumber(dashboard?.metrics?.grievances?.byStatus?.OPEN ?? dashboard?.metrics?.grievances?.total) },
+    { label: t("critical_alerts"), value: formatNumber(dashboard?.metrics?.alerts?.byPriority?.CRITICAL ?? dashboard?.metrics?.alerts?.total) },
+    { label: t("total_users"), value: formatNumber(dashboard?.metrics?.users?.total) },
   ];
 
   return (
@@ -286,7 +283,7 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
 
         {loading && (
           <div className="mb-6 rounded-3xl border border-slate-200 bg-slate-50 p-6 text-slate-700 shadow-sm">
-            Loading dashboard data from backend...
+            {t("loading_dashboard")}
           </div>
         )}
 
@@ -320,11 +317,11 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Action Center</h2>
-                  <p className="mt-2 text-sm text-slate-500">Items requiring your immediate attention.</p>
+                  <h2 className="text-xl font-semibold text-slate-900">{t("action_center")}</h2>
+                  <p className="mt-2 text-sm text-slate-500">{t("action_center_subtitle")}</p>
                 </div>
                 <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-700">
-                  {actionItems.length} priorities
+                  {t("priorities", { count: actionItems.length })}
                 </span>
               </div>
               <div className="space-y-4">
@@ -359,8 +356,8 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Constituency Overview</h2>
-                  <p className="mt-2 text-sm text-slate-500">A quick briefing of the latest metrics and issue clusters.</p>
+                  <h2 className="text-xl font-semibold text-slate-900">{t("constituency_overview")}</h2>
+                  <p className="mt-2 text-sm text-slate-500">{t("constituency_overview_subtitle")}</p>
                 </div>
                 <FaMap className="h-5 w-5 text-slate-400" />
               </div>
@@ -385,35 +382,35 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">GIS Map</h2>
-                  <p className="mt-2 text-sm text-slate-500">Complaint heatmap, alert pins, event and team location layers.</p>
+                  <h2 className="text-xl font-semibold text-slate-900">{t("gis_map")}</h2>
+                  <p className="mt-2 text-sm text-slate-500">{t("gis_map_subtitle")}</p>
                 </div>
                 <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
-                  Live
+                  {t("live")}
                 </span>
               </div>
               <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-900/5 px-4 py-6 text-slate-700">
                 <div className="mb-4 flex items-center justify-between text-sm text-slate-500">
-                  <span>Ward boundaries</span>
-                  <span>Heatmap</span>
+                  <span>{t("ward_boundaries")}</span>
+                  <span>{t("heatmap")}</span>
                 </div>
                 <div className="h-72 rounded-3xl bg-[linear-gradient(135deg,#f8fafc_0%,#e2e8f0_100%)] p-4 shadow-inner">
                   <div className="pointer-events-none flex h-full items-end justify-between gap-4">
                     <div className="mt-auto w-1/2 rounded-3xl bg-white/70 p-4 text-sm text-slate-700 shadow-sm">
-                      <p className="font-semibold text-slate-900">Heatmap layer</p>
-                      <p className="mt-2 text-xs text-slate-500">Trending complaints by ward.</p>
+                      <p className="font-semibold text-slate-900">{t("heatmap_layer")}</p>
+                      <p className="mt-2 text-xs text-slate-500">{t("trending_complaints_by_ward")}</p>
                     </div>
                     <div className="grid gap-2 text-right text-xs text-slate-500">
-                      <span>Alert pins</span>
-                      <span>Event markers</span>
-                      <span>Officer locations</span>
+                      <span>{t("alert_pins")}</span>
+                      <span>{t("event_markers")}</span>
+                      <span>{t("officer_locations")}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                <p className="font-semibold text-slate-900">Map Insights</p>
+                <p className="font-semibold text-slate-900">{t("map_insights")}</p>
                 <p className="mt-2">{mapInsightText}</p>
               </div>
             </div>
@@ -422,17 +419,17 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
 
         <section className="mt-8 grid gap-4 xl:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-900">AI Insights</h2>
-            <p className="mt-2 text-sm text-slate-500">Actionable recommendations from constituent trends.</p>
+            <h2 className="text-xl font-semibold text-slate-900">{t("ai_insights")}</h2>
+            <p className="mt-2 text-sm text-slate-500">{t("ai_insights_subtitle")}</p>
             <div className="mt-6 space-y-4">
               {aiInsights.map((insight) => (
                 <div key={insight.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
                   <div className="flex items-center gap-3 text-slate-900">
                     <FaLightbulb className="h-5 w-5 text-amber-500" />
-                    <p className="font-semibold">AI Insight</p>
+                    <p className="font-semibold">{t("ai_insight")}</p>
                   </div>
                   <p className="mt-3 text-sm text-slate-700">{insight.title}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-900">Recommended Action: {insight.action}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">{t("recommended_action")} {insight.action}</p>
                 </div>
               ))}
             </div>
@@ -441,11 +438,11 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">Quick Actions</h2>
-                <p className="mt-2 text-sm text-slate-500">Fast paths for the most common tasks.</p>
+                <h2 className="text-xl font-semibold text-slate-900">{t("quick_actions")}</h2>
+                <p className="mt-2 text-sm text-slate-500">{t("quick_actions_subtitle")}</p>
               </div>
               <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-indigo-700">
-                Tap to act
+                {t("tap_to_act")}
               </span>
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -466,7 +463,7 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
               })}
             </div>
             <div className="mt-5 rounded-3xl bg-slate-50 p-4 text-sm text-slate-700">
-              <span className="font-semibold text-slate-900">Tip:</span> Tap the floating action button for additional tasks and quick launches.
+              {t("quick_actions_tip")}
             </div>
           </div>
         </section>

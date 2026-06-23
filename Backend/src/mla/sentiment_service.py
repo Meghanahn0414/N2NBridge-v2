@@ -1,7 +1,12 @@
 """
-MLA Sentiment Analysis Service  —  Rule-based (no API key required)
+MLA Sentiment Analysis Service  —  NLP-powered (VADER) + star ratings
 
-Analyses grievance descriptions using keyword matching + star ratings to derive:
+Analyses grievance descriptions using VADER (Valence Aware Dictionary and
+sEntiment Reasoner), a purpose-built NLP model for real-world short texts.
+VADER understands negation ("not good"), intensifiers ("very bad"), punctuation
+("great!!!"), and capitalization ("TERRIBLE") — far beyond keyword matching.
+
+Results derive:
   1. Public sentiment  (positive / neutral / negative breakdown)
   2. Approval by group (sentiment segmented by citizen age group)
   3. What's moving your numbers (top positive & negative category drivers)
@@ -12,7 +17,6 @@ so each record is only processed once.  Results are cached in Redis (10 min).
 
 import json
 import logging
-import re
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -52,90 +56,63 @@ def _cache_set(key: str, value: Any, ttl: int = 600) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Rule-based sentiment scorer
+# VADER NLP engine — loads once at module import
 # ---------------------------------------------------------------------------
 
-# Words that push the score positive (each +0.2, capped at +1.0)
-_POSITIVE_WORDS = {
-    # gratitude / satisfaction
-    "thank", "thanks", "thankful", "grateful", "appreciate", "appreciated",
-    "appreciation", "pleased", "happy", "satisfied", "satisfaction",
-    "excellent", "good", "great", "nice", "well", "wonderful", "perfect",
-    "awesome", "fantastic", "brilliant", "outstanding", "superb",
-    # resolution / progress
-    "resolved", "resolve", "fixed", "fix", "repaired", "repair", "done",
-    "completed", "complete", "finished", "addressed", "solved", "solution",
-    "improved", "improvement", "better", "best", "working", "works",
-    "quick", "fast", "prompt", "timely", "efficient", "helpful", "help",
-    "cooperative", "responsive", "response", "support", "supported",
-    "clean", "cleared", "functional", "reliable", "safe", "proper",
-}
+try:
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer as _SIA
+    _vader = _SIA()
 
-# Words that push the score negative (each -0.2, capped at -1.0)
-_NEGATIVE_WORDS = {
-    # frustration / anger
-    "bad", "terrible", "horrible", "awful", "worst", "poor", "useless",
-    "pathetic", "disgusting", "shameful", "disgrace", "ridiculous",
-    "frustrated", "frustrating", "angry", "upset", "disappointed",
-    "disappointment", "disgusted", "unhappy", "unhelpful",
-    # problems — expanded for Indian municipal complaints
-    "problem", "problems", "issue", "issues", "broken", "damage", "damaged",
-    "dangerous", "hazard", "hazardous", "leaking", "leak", "flood", "flooding",
-    "dirty", "filthy", "smell", "stench", "stinking", "noise", "noisy",
-    "blocked", "overflowing", "overflow", "polluted", "pollution",
-    "crack", "cracks", "pothole", "potholes", "accident", "accidents",
-    "urgent", "emergency", "immediate", "sewage", "garbage", "waste",
-    "drainage", "waterlogging", "waterlogged", "shortage", "supply",
-    "outage", "cut", "failure", "burst", "pipe", "road", "street",
-    "light", "dark", "construction", "dumping", "littering", "mosquito",
-    "mosquitoes", "rats", "stray", "dogs",
-    # no action / neglect
-    "ignored", "ignore", "neglected", "neglect", "pending",
-    "delayed", "delay", "weeks", "months", "years", "repeatedly",
-    "complained", "complaint", "again", "nobody", "nothing",
-    "unresolved", "unattended", "untreated",
-}
+    # Extend VADER's lexicon with Indian civic-complaint domain words
+    # Values: positive float = positive sentiment, negative = negative
+    _CIVIC_LEXICON = {
+        # civic infrastructure problems (strongly negative)
+        "pothole": -2.5, "potholes": -2.5, "waterlogging": -2.2,
+        "waterlogged": -2.2, "sewage": -2.0, "stench": -2.0,
+        "mosquitoes": -1.8, "mosquito": -1.8, "filthy": -2.0,
+        "garbage": -1.5, "dumping": -1.8, "littering": -1.5,
+        "flooding": -2.0, "flood": -1.8, "drainage": -1.0,
+        "outage": -1.8, "leaking": -1.8, "unresolved": -2.2,
+        "unattended": -2.0, "neglected": -2.2, "ignored": -2.0,
+        "repeatedly": -1.5, "hazardous": -2.2, "overflowing": -2.0,
+        # positive civic outcomes (strongly positive)
+        "resolved": 2.5, "repaired": 2.2, "cleaned": 2.0,
+        "addressed": 2.0, "fixed": 2.2, "cleared": 1.8,
+        "cooperative": 1.8, "responsive": 1.8, "prompt": 1.5,
+        "timely": 1.5, "efficient": 1.5,
+    }
+    _vader.lexicon.update(_CIVIC_LEXICON)
+    logger.info("VADER NLP sentiment engine loaded with civic lexicon extensions.")
 
-# Intensifiers — multiply the next word's impact
-_INTENSIFIERS = {"very", "extremely", "highly", "completely", "totally", "absolutely", "so"}
-
-# Negators — flip the sentiment of the following word
-_NEGATORS = {"not", "no", "never", "cannot", "can't", "isn't", "wasn't", "doesn't", "don't", "didn't"}
+except ImportError:
+    _vader = None
+    logger.warning(
+        "vaderSentiment not installed. Run: pip install vaderSentiment  "
+        "Falling back to basic scoring."
+    )
 
 
 def _score_text(text: str) -> float:
     """
-    Return a sentiment score in [-1.0, +1.0] from plain text.
-    Uses simple token-level keyword matching with negation and intensifiers.
+    Return a sentiment score in [-1.0, +1.0] using VADER NLP.
+
+    VADER automatically handles:
+    - Negation:     'not good' → negative,  'not bad' → positive
+    - Intensifiers: 'very bad' > 'bad'
+    - Punctuation:  'great!!!' > 'great'
+    - Caps:         'TERRIBLE' > 'terrible'
+    - Conjunctions: 'road is bad BUT team was helpful' → balanced
     """
     if not text:
         return 0.0
 
-    tokens = re.findall(r"[a-z']+", text.lower())
-    score = 0.0
-    i = 0
-    while i < len(tokens):
-        tok = tokens[i]
-        multiplier = 1.0
+    if _vader is not None:
+        scores = _vader.polarity_scores(text)
+        # compound score is already normalised to [-1, +1]
+        return round(scores["compound"], 3)
 
-        # Check for intensifier before this token
-        if i > 0 and tokens[i - 1] in _INTENSIFIERS:
-            multiplier = 1.5
-
-        # Negation window: any negator in the previous 3 tokens flips sentiment
-        negated = any(tokens[max(0, i - 3) : i].count(n) for n in _NEGATORS)
-
-        if tok in _POSITIVE_WORDS:
-            delta = 0.2 * multiplier
-            score += -delta if negated else delta
-        elif tok in _NEGATIVE_WORDS:
-            delta = 0.2 * multiplier
-            score += delta if negated else -delta
-
-        i += 1
-
-    # Clamp to [-1, 1]
-    return max(-1.0, min(1.0, round(score, 3)))
+    # Fallback: neutral score if library missing
+    return 0.0
 
 
 def _score_grievance(description: str, feedback: dict | None, rating: int | None) -> float:

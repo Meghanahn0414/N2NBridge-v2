@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { RiExpandUpDownLine } from "react-icons/ri";
-import { RiSettings4Line } from "react-icons/ri";
+import { RiExpandUpDownLine, RiSettings4Line } from "react-icons/ri";
 import "../features/mla-dashboard/styles/mla-layout.css";
 
-/* ── Single nav item ─────────────────── */
 function NavItem({ icon, label, to, badge, badgeCount }) {
   const disabled = !to;
 
@@ -32,15 +30,6 @@ function NavItem({ icon, label, to, badge, badgeCount }) {
   );
 }
 
-/**
- * SharedSidebar — same visual design as MLASidebar, configurable for any role.
- *
- * Props:
- *   user         — auth user object
- *   roleSub      — subtitle under "CRM Portal" e.g. "ADMINISTRATOR"
- *   roleLabel    — shown in user card e.g. "Admin"
- *   sections     — [{ label: string, items: [{ label, icon, to, badge?, badgeCount? }] }]
- */
 export default function SharedSidebar({ user, roleSub = "STAFF", roleLabel = "Staff", sections = [] }) {
   const [showLogout, setShowLogout] = useState(false);
   const navigate = useNavigate();
@@ -62,7 +51,6 @@ export default function SharedSidebar({ user, roleSub = "STAFF", roleLabel = "St
 
   return (
     <nav className="mla-sidebar">
-      {/* Brand */}
       <div className="mla-brand">
         <div className="mla-brand-icon">
           <RiSettings4Line style={{ fontSize: 20 }} />
@@ -73,7 +61,6 @@ export default function SharedSidebar({ user, roleSub = "STAFF", roleLabel = "St
         </div>
       </div>
 
-      {/* Nav sections */}
       {sections.map((section) => (
         <div key={section.label}>
           <div className="mla-nav-label">{section.label}</div>
@@ -85,7 +72,6 @@ export default function SharedSidebar({ user, roleSub = "STAFF", roleLabel = "St
         </div>
       ))}
 
-      {/* User card */}
       <div style={{ position: "relative", marginTop: "auto" }}>
         {showLogout && (
           <div className="mla-logout-popup">

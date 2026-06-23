@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { getAuthRole } from "../../../services/authStorage";
 import api from "../../../shared/services/api";
 
-const DATE_OPTIONS = [
-  { label: "Last 30 days",   days: 30  },
-  { label: "Last 90 days",   days: 90  },
-  { label: "Last 6 months",  days: 180 },
-  { label: "Last 12 months", days: 365 },
+const getDateOptions = (t) => [
+  { label: t("last_30_days"),  days: 30  },
+  { label: t("last_90_days"),  days: 90  },
+  { label: t("last_6_months"), days: 180 },
+  { label: t("last_12_months"),days: 365 },
 ];
 
 function useMLAInsights(days) {
@@ -67,16 +68,20 @@ function MS({ children, style }) {
   return <span className="material-symbols-rounded" style={{ fontSize: 21, ...style }}>{children}</span>;
 }
 
-const KPI = [
-  { icon: "task_alt",   iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "Reports resolved",     sparkColor: "#2B5BD7" },
-  { icon: "bolt",       iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Avg. response time",   sparkColor: "#1E8A5B" },
-  { icon: "groups",     iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: "Engaged constituents", sparkColor: "#6B4FD8" },
-  { icon: "how_to_vote",iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Poll participation",   sparkColor: "#C9871F" },
+const getKPI = (t) => [
+  { icon: "task_alt",   iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: t("reports_resolved"),     sparkColor: "#2B5BD7" },
+  { icon: "bolt",       iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: t("avg_response_time"),    sparkColor: "#1E8A5B" },
+  { icon: "groups",     iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: t("engaged_constituents"), sparkColor: "#6B4FD8" },
+  { icon: "how_to_vote",iconBg: "#FCF1E0", iconColor: "#C9871F", label: t("poll_participation"),   sparkColor: "#C9871F" },
 ];
 
 export default function ExecutiveDashboard() {
   const pg       = { background: "#F3F5FA", minHeight: "100vh", fontFamily: "'Hanken Grotesk', sans-serif" };
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const DATE_OPTIONS = getDateOptions(t);
+  const KPI = getKPI(t);
 
   // ── Date filter state ──
   const [selectedDays, setSelectedDays] = useState(365);
@@ -219,8 +224,8 @@ export default function ExecutiveDashboard() {
       {/* Topbar */}
       <header style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"24px 34px", background:"#F3F5FA", position:"sticky", top:0, zIndex:10, borderBottom:"1px solid #E5E9F1" }}>
         <div>
-          <div style={{ font:"500 13px 'Hanken Grotesk'", color:"#8590A6", marginBottom:3 }}>Welcome back, Representative</div>
-          <h1 style={{ font:"400 30px 'Newsreader'", color:"#16233C", margin:0, letterSpacing:"-.01em" }}>Overview &amp; standing</h1>
+          <div style={{ font:"500 13px 'Hanken Grotesk'", color:"#8590A6", marginBottom:3 }}>{t("welcome_back_representative")}</div>
+          <h1 style={{ font:"400 30px 'Newsreader'", color:"#16233C", margin:0, letterSpacing:"-.01em" }}>{t("overview_and_standing")}</h1>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
 
@@ -250,7 +255,7 @@ export default function ExecutiveDashboard() {
           <button onClick={handleExport} disabled={exporting}
             style={{ height:44, background: exporting ? "#F3F5FA" : "#fff", border:"1px solid #E1E6F0", borderRadius:13, display:"flex", alignItems:"center", gap:8, padding:"0 15px", cursor: exporting ? "not-allowed" : "pointer", outline:"none", opacity: exporting ? 0.7 : 1 }}>
             <MS style={{ fontSize:19, color:"#5A6678" }}>{exporting ? "hourglass_top" : "ios_share"}</MS>
-            <span style={{ font:"600 14px 'Hanken Grotesk'", color:"#16233C" }}>{exporting ? "Exporting…" : "Export"}</span>
+            <span style={{ font:"600 14px 'Hanken Grotesk'", color:"#16233C" }}>{exporting ? t("exporting") : t("export")}</span>
           </button>
 
           {/* Notifications button */}
@@ -309,8 +314,8 @@ export default function ExecutiveDashboard() {
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:"26px 28px", boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
               <div>
-                <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Career trajectory</div>
-                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>Standing projected to the next election</div>
+                <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>{t("career_trajectory")}</div>
+                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>{t("standing_projected")}</div>
               </div>
               <span style={{ display:"inline-flex", alignItems:"center", gap:5, background:"#E7EEFF", color:"#2B5BD7", font:"700 12px 'Hanken Grotesk'", padding:"6px 12px", borderRadius:20 }}>
                 {survey?.avgScore != null ? `⭐ ${survey.avgScore}/5 survey` : approvalPct != null ? `${approvalPct}% approval` : "—"}
@@ -324,7 +329,7 @@ export default function ExecutiveDashboard() {
               if (base == null) {
                 return (
                   <div style={{ height:180, display:"flex", alignItems:"center", justifyContent:"center", background:"#F9FAFC", borderRadius:14 }}>
-                    <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No projection data</span>
+                    <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>{t("no_projection_data")}</span>
                   </div>
                 );
               }
@@ -414,7 +419,7 @@ export default function ExecutiveDashboard() {
               );
             })()}
             <div style={{ display:"flex", justifyContent:"space-between", marginTop:8 }}>
-              {["Elected","","Today","","Election (proj.)"].map((l,i) => (
+              {[t("elected"),"",t("today"),"",t("election_proj")].map((l,i) => (
                 <span key={i} style={{ font:`${l==="Today"?"700":"600"} 11px 'Hanken Grotesk'`, color:l==="Today"?"#2B5BD7":"#9AA3B5" }}>{l}</span>
               ))}
             </div>
@@ -426,18 +431,18 @@ export default function ExecutiveDashboard() {
                 const electionDate = new Date(now); electionDate.setMonth(now.getMonth() + 24);
                 const fmt = d => d.toLocaleDateString("en-IN", { month:"short", year:"numeric" });
                 return [
-                  ["#2B5BD7","Mid-term review",
+                  ["#2B5BD7", t("mid_term_review"),
                     survey?.avgScore != null
                       ? `Now · ⭐ ${survey.avgScore}/5 (${survey.totalResponses} responses)`
                       : `Now · ${approvalPct != null ? approvalPct+"% approval" : "—"}`
                   ],
-                  ["#C2CADA","Campaign opens",  fmt(campaignDate)],
-                  ["#C2CADA","Election day",    fmt(electionDate)],
-                ].map(([c,t,s]) => (
-                  <div key={t} style={{ flex:1, display:"flex", gap:10 }}>
+                  ["#C2CADA", t("campaign_opens"), fmt(campaignDate)],
+                  ["#C2CADA", t("election_day"),   fmt(electionDate)],
+                ].map(([c,lbl,s]) => (
+                  <div key={lbl} style={{ flex:1, display:"flex", gap:10 }}>
                     <span style={{ width:9, height:9, borderRadius:"50%", background:c, marginTop:4, flexShrink:0, display:"block" }} />
                     <div>
-                      <div style={{ font:"700 12px 'Hanken Grotesk'", color:"#16233C" }}>{t}</div>
+                      <div style={{ font:"700 12px 'Hanken Grotesk'", color:"#16233C" }}>{lbl}</div>
                       <div style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>{s}</div>
                     </div>
                   </div>
@@ -448,13 +453,13 @@ export default function ExecutiveDashboard() {
 
           {/* Election scenarios */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)", display:"flex", flexDirection:"column" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Election scenarios</div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Modeled on current momentum</div>
+            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>{t("election_scenarios")}</div>
+            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>{t("modeled_on_momentum")}</div>
             <div style={{ display:"flex", flexDirection:"column", gap:11, flex:1 }}>
               {[
-                { icon:"verified", iconC:"#1E8A5B", border:"#2B5BD7", bg:"#F5F8FF", label:"Strong re-election", glow:true,  prob: strongProb,  barColor:"#2B5BD7"  },
-                { icon:"balance",  iconC:"#C9871F", border:"#EEF1F7", bg:"#fff",    label:"Competitive race",  glow:false, prob: compProb,    barColor:"#C9871F"  },
-                { icon:"warning",  iconC:"#C8453A", border:"#EEF1F7", bg:"#fff",    label:"At-risk",           glow:false, prob: atRiskProb,  barColor:"#C8453A"  },
+                { icon:"verified", iconC:"#1E8A5B", border:"#2B5BD7", bg:"#F5F8FF", label:t("strong_reelection"), glow:true,  prob: strongProb,  barColor:"#2B5BD7"  },
+                { icon:"balance",  iconC:"#C9871F", border:"#EEF1F7", bg:"#fff",    label:t("competitive_race"),  glow:false, prob: compProb,    barColor:"#C9871F"  },
+                { icon:"warning",  iconC:"#C8453A", border:"#EEF1F7", bg:"#fff",    label:t("at_risk"),           glow:false, prob: atRiskProb,  barColor:"#C8453A"  },
               ].map(s => (
                 <div key={s.label} style={{ border:`${s.glow?"1.5":"1"}px solid ${s.border}`, background:s.bg, borderRadius:15, padding:"15px 16px", ...(s.glow?{boxShadow:"0 0 0 3px rgba(43,91,215,.06)"}:{}) }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
@@ -480,9 +485,9 @@ export default function ExecutiveDashboard() {
 
           {/* Public sentiment — AI-derived with fallback to satisfaction ratings */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Public sentiment</div>
+            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>{t("public_sentiment")}</div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:20 }}>
-              {effectiveSentiment?._fallback ? "From satisfaction ratings" : "From comments & grievance descriptions"}
+              {effectiveSentiment?._fallback ? t("from_satisfaction_ratings") : t("from_comments_grievances")}
             </div>
             {effectiveSentiment?.hasData ? (
               <>
@@ -493,9 +498,9 @@ export default function ExecutiveDashboard() {
                 </div>
                 <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
                   {[
-                    ["#1E8A5B","Positive", effectiveSentiment.positive.pct],
-                    ["#C9871F","Neutral",  effectiveSentiment.neutral.pct],
-                    ["#C8453A","Negative", effectiveSentiment.negative.pct],
+                    ["#1E8A5B", t("positive"), effectiveSentiment.positive.pct],
+                    ["#C9871F", t("neutral"),  effectiveSentiment.neutral.pct],
+                    ["#C8453A", t("negative"), effectiveSentiment.negative.pct],
                   ].map(([c,l,pct]) => (
                     <div key={l} style={{ display:"flex", alignItems:"center", gap:10 }}>
                       <span style={{ width:11, height:11, borderRadius:3, background:c, flexShrink:0 }} />
@@ -510,7 +515,9 @@ export default function ExecutiveDashboard() {
                       {effectiveSentiment.positiveTrend >= 0 ? "arrow_upward" : "arrow_downward"}
                     </MS>
                     <span style={{ font:"500 12px 'Hanken Grotesk'", color:"#5A6678" }}>
-                      Positive sentiment {effectiveSentiment.positiveTrend >= 0 ? "up" : "down"} {Math.abs(effectiveSentiment.positiveTrend)}% this quarter
+                      {effectiveSentiment.positiveTrend >= 0
+                        ? t("positive_sentiment_up", { pct: Math.abs(effectiveSentiment.positiveTrend) })
+                        : t("positive_sentiment_down", { pct: Math.abs(effectiveSentiment.positiveTrend) })}
                     </span>
                   </div>
                 )}
@@ -519,7 +526,7 @@ export default function ExecutiveDashboard() {
               <>
                 <div style={{ display:"flex", height:14, borderRadius:8, overflow:"hidden", marginBottom:20, background:"#F0F2F7" }} />
                 <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                  {[["#1E8A5B","Positive"],["#C9871F","Neutral"],["#C8453A","Negative"]].map(([c,l]) => (
+                  {[[" #1E8A5B", t("positive")],["#C9871F", t("neutral")],["#C8453A", t("negative")]].map(([c,l]) => (
                     <div key={l} style={{ display:"flex", alignItems:"center", gap:10 }}>
                       <span style={{ width:11, height:11, borderRadius:3, background:c, flexShrink:0 }} />
                       <span style={{ flex:1, font:"600 14px 'Hanken Grotesk'", color:"#16233C" }}>{l}</span>
@@ -533,8 +540,8 @@ export default function ExecutiveDashboard() {
 
           {/* Approval by group — age-segmented sentiment */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Approval by group</div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:20 }}>Where your support is strongest</div>
+            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>{t("approval_by_group")}</div>
+            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:20 }}>{t("where_support_strongest")}</div>
             <div style={{ display:"flex", flexDirection:"column", gap:17 }}>
               {(byGroup?.groups || [
                 {label:"18–29"}, {label:"30–44"}, {label:"45–59"}, {label:"60+"}
@@ -563,8 +570,8 @@ export default function ExecutiveDashboard() {
 
           {/* What's moving your numbers — category drivers */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>What's moving your numbers</div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Issues with the biggest impact</div>
+            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>{t("whats_moving_numbers")}</div>
+            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>{t("issues_biggest_impact")}</div>
             {moving?.hasData ? (
               <div style={{ display:"flex", flexDirection:"column", gap:11 }}>
                 {moving.drivers.map((d, i) => {
@@ -587,7 +594,7 @@ export default function ExecutiveDashboard() {
               </div>
             ) : (
               <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", minHeight:160 }}>
-                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No data</span>
+                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>{t("no_data")}</span>
               </div>
             )}
           </div>
@@ -598,16 +605,16 @@ export default function ExecutiveDashboard() {
 
           {/* Standing vs. peers */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Standing vs. peers</div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Approval rank among wards</div>
+            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>{t("standing_vs_peers")}</div>
+            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>{t("approval_rank_wards")}</div>
             {peers?.hasData ? (
               peers.totalWards === 1 ? (
                 <>
                   <div style={{ display:"flex", alignItems:"flex-end", gap:8, marginBottom:8 }}>
                     <span style={{ font:"400 46px 'Newsreader'", color:"#2B5BD7", lineHeight:.9 }}>#1</span>
-                    <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#8590A6", paddingBottom:6 }}>of 1 ward</span>
+                    <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#8590A6", paddingBottom:6 }}>{t("of_1_ward")}</span>
                   </div>
-                  <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#C0C7D4" }}>Only ward in system — add more wards for peer comparison</div>
+                  <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#C0C7D4" }}>{t("only_ward_system")}</div>
                 </>
               ) : (
                 <>
@@ -638,7 +645,7 @@ export default function ExecutiveDashboard() {
                 <div style={{ display:"flex", alignItems:"flex-end", gap:14, marginBottom:20 }}>
                   <span style={{ font:"400 46px 'Newsreader'", color:"#2B5BD7", lineHeight:.9 }}>—</span>
                 </div>
-                <div style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No peer data available</div>
+                <div style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>{t("no_peer_data")}</div>
               </>
             )}
           </div>
@@ -646,15 +653,15 @@ export default function ExecutiveDashboard() {
           {/* Approval by neighborhood — reuses ward-level peer data */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Approval by neighborhood</div>
+              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>{t("approval_by_neighborhood")}</div>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>Low</span>
+                <span style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>{t("low")}</span>
                 <div style={{ width:70, height:8, borderRadius:4, background:"linear-gradient(90deg,#F2D9D5,#C9871F,#2B5BD7,#1B3C8F)" }} />
-                <span style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>High</span>
+                <span style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>{t("high")}</span>
               </div>
             </div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>
-              Ward · {peers?.totalWards ?? 0} areas
+              {t("ward_areas", { count: peers?.totalWards ?? 0 })}
             </div>
             {peers?.hasData ? (
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
@@ -666,7 +673,7 @@ export default function ExecutiveDashboard() {
                     <div key={w.wardId}>
                       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
                         <span style={{ font:"600 11px 'Hanken Grotesk'", color:"#16233C" }}>
-                          Ward {w.wardName}
+                          {t("ward")} {w.wardName}
                         </span>
                         <span style={{ font:"700 11px 'Hanken Grotesk'", color: barColor }}>
                           {pct}%
@@ -676,7 +683,7 @@ export default function ExecutiveDashboard() {
                         <div style={{ height:"100%", width:`${pct}%`, borderRadius:3, background: barColor, transition:"width .4s" }} />
                       </div>
                       <div style={{ font:"400 10px 'Hanken Grotesk'", color:"#B0B8C9", marginTop:2 }}>
-                        {w.total} grievance{w.total !== 1 ? "s" : ""}
+                        {w.total} {w.total !== 1 ? t("grievance_other") : t("grievance_one")}
                       </div>
                     </div>
                   );
@@ -684,7 +691,7 @@ export default function ExecutiveDashboard() {
               </div>
             ) : (
               <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:140 }}>
-                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No neighborhood data</span>
+                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>{t("no_neighborhood_data")}</span>
               </div>
             )}
           </div>
@@ -697,7 +704,7 @@ export default function ExecutiveDashboard() {
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:"26px 28px", boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:18 }}>
               <div>
-                <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#8590A6", textTransform:"uppercase", letterSpacing:".05em", marginBottom:10 }}>Overall approval rating</div>
+                <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#8590A6", textTransform:"uppercase", letterSpacing:".05em", marginBottom:10 }}>{t("overall_approval_rating")}</div>
                 <div style={{ display:"flex", alignItems:"flex-end", gap:14 }}>
                   <span style={{ font:"400 60px 'Newsreader'", color:"#16233C", lineHeight:.9, letterSpacing:"-.02em" }}>
                     {approvalPct != null ? `${Math.round(approvalPct)}%` : "—"}
@@ -715,24 +722,24 @@ export default function ExecutiveDashboard() {
                 </div>
               </div>
               <div style={{ textAlign:"right" }}>
-                <div style={{ font:"600 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:4 }}>Satisfaction score</div>
+                <div style={{ font:"600 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:4 }}>{t("satisfaction_score")}</div>
                 <div style={{ font:"400 26px 'Newsreader'", color:"#2B5BD7" }}>
                   {approvalPct != null ? `${Math.round(approvalPct / 10)}/10` : "—"}
                 </div>
-                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>composite index</div>
+                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>{t("composite_index")}</div>
               </div>
             </div>
             {/* Sentiment breakdown bar as trend proxy */}
             {approvalPct != null ? (
               <div style={{ borderTop:"1px solid #F0F2F7", marginTop:8, paddingTop:18 }}>
-                <div style={{ font:"600 11px 'Hanken Grotesk'", color:"#9AA3B5", marginBottom:10 }}>Sentiment breakdown</div>
+                <div style={{ font:"600 11px 'Hanken Grotesk'", color:"#9AA3B5", marginBottom:10 }}>{t("sentiment_breakdown")}</div>
                 <div style={{ display:"flex", height:12, borderRadius:8, overflow:"hidden", marginBottom:8 }}>
                   <div style={{ width:`${effectiveSentiment?.positive?.pct ?? 0}%`, background:"#1E8A5B" }} />
                   <div style={{ width:`${effectiveSentiment?.neutral?.pct ?? 0}%`,  background:"#C9871F" }} />
                   <div style={{ width:`${effectiveSentiment?.negative?.pct ?? 0}%`, background:"#C8453A" }} />
                 </div>
                 <div style={{ display:"flex", gap:16 }}>
-                  {[["#1E8A5B","Positive",effectiveSentiment?.positive?.pct],["#C9871F","Neutral",effectiveSentiment?.neutral?.pct],["#C8453A","Negative",effectiveSentiment?.negative?.pct]].map(([c,l,p])=>(
+                  {[["#1E8A5B",t("positive"),effectiveSentiment?.positive?.pct],["#C9871F",t("neutral"),effectiveSentiment?.neutral?.pct],["#C8453A",t("negative"),effectiveSentiment?.negative?.pct]].map(([c,l,p])=>(
                     <span key={l} style={{ display:"flex", alignItems:"center", gap:5, font:"500 11px 'Hanken Grotesk'", color:"#5A6678" }}>
                       <span style={{ width:8, height:8, borderRadius:2, background:c, display:"inline-block" }} />
                       {l} {p != null ? `${p}%` : "—"}
@@ -742,7 +749,7 @@ export default function ExecutiveDashboard() {
               </div>
             ) : (
               <div style={{ height:100, display:"flex", alignItems:"center", justifyContent:"center", borderTop:"1px solid #F0F2F7", marginTop:8, paddingTop:18 }}>
-                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No rating data yet</span>
+                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>{t("no_rating_data")}</span>
               </div>
             )}
           </div>
@@ -750,7 +757,7 @@ export default function ExecutiveDashboard() {
           {/* Re-election Outlook */}
           <div style={{ background:"linear-gradient(165deg,#1B3C8F,#2B5BD7)", borderRadius:22, padding:"26px 28px", color:"#fff", display:"flex", flexDirection:"column", boxShadow:"0 18px 36px -22px rgba(43,91,215,.7)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
-              <span style={{ font:"600 13px 'Hanken Grotesk'", color:"rgba(255,255,255,.82)", textTransform:"uppercase", letterSpacing:".05em" }}>Re-election outlook</span>
+              <span style={{ font:"600 13px 'Hanken Grotesk'", color:"rgba(255,255,255,.82)", textTransform:"uppercase", letterSpacing:".05em" }}>{t("re_election_outlook")}</span>
               <MS style={{ fontSize:20, color:"rgba(255,255,255,.7)" }}>help</MS>
             </div>
             <div style={{ display:"flex", justifyContent:"center", margin:"6px 0 0" }}>
@@ -762,8 +769,8 @@ export default function ExecutiveDashboard() {
               </div>
               <div style={{ font:"600 13px 'Hanken Grotesk'", color:"rgba(255,255,255,.85)" }}>
                 {strongProb != null
-                  ? strongProb >= 50 ? "Likely to hold seat" : compProb >= 40 ? "Competitive race" : "At risk — action needed"
-                  : "Insufficient data"}
+                  ? strongProb >= 50 ? t("likely_hold_seat") : compProb >= 40 ? t("competitive_race") : t("at_risk_action_needed")
+                  : t("insufficient_data")}
               </div>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(255,255,255,.14)", borderRadius:12, padding:"11px 14px", marginTop:18 }}>
@@ -772,8 +779,12 @@ export default function ExecutiveDashboard() {
               </MS>
               <span style={{ font:"600 13px 'Hanken Grotesk'", color:"#fff" }}>
                 {approvalTrend != null
-                  ? `Approval ${approvalTrend >= 0 ? "up" : "down"} ${Math.abs(Math.round(approvalTrend))} pts this quarter`
-                  : approvalPct != null ? `${Math.round(approvalPct)}% approval among residents` : "Momentum data unavailable"}
+                  ? (approvalTrend >= 0
+                      ? t("approval_up_quarter", { pts: Math.abs(Math.round(approvalTrend)) })
+                      : t("approval_down_quarter", { pts: Math.abs(Math.round(approvalTrend)) }))
+                  : approvalPct != null
+                    ? t("approval_among_residents", { pct: Math.round(approvalPct) })
+                    : t("momentum_data_unavailable")}
               </span>
             </div>
             <div style={{ display:"flex", gap:10, marginTop:12 }}>
@@ -781,13 +792,13 @@ export default function ExecutiveDashboard() {
                 <div style={{ font:"400 22px 'Newsreader'", color:"#fff" }}>
                   {analytics?.events?.totalEvents != null ? `${analytics.events.totalEvents} events` : "—"}
                 </div>
-                <div style={{ font:"500 11px 'Hanken Grotesk'", color:"rgba(255,255,255,.78)" }}>events held</div>
+                <div style={{ font:"500 11px 'Hanken Grotesk'", color:"rgba(255,255,255,.78)" }}>{t("events_held")}</div>
               </div>
               <div style={{ flex:1, background:"rgba(255,255,255,.1)", borderRadius:12, padding:"12px 13px" }}>
                 <div style={{ font:"400 22px 'Newsreader'", color:"#fff" }}>
                   {approvalPct != null ? `~${Math.min(100, Math.round(approvalPct * 0.9))}%` : "—"}
                 </div>
-                <div style={{ font:"500 11px 'Hanken Grotesk'", color:"rgba(255,255,255,.78)" }}>projected vote share</div>
+                <div style={{ font:"500 11px 'Hanken Grotesk'", color:"rgba(255,255,255,.78)" }}>{t("projected_vote_share")}</div>
               </div>
             </div>
           </div>

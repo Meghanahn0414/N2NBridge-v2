@@ -10,11 +10,12 @@ const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
 export default function LiveConstituencyStatus() {
   const navigate = useNavigate();
-  const { dashboard, loading, error } = useMlaDashboard();
+  const { dashboard } = useMlaDashboard();
 
   const handleViewComplaints = () => navigate(ROUTES.mlaComplaintsDashboard);
   const handleViewAlerts = () => navigate(ROUTES.mlaEmergencyCenter);
   const handleViewEvents = () => navigate(ROUTES.mlaEvents);
+
   const stats = {
     complaints: {
       new: formatNumber(dashboard?.summary?.openComplaints),
@@ -37,10 +38,9 @@ export default function LiveConstituencyStatus() {
 
   return (
     <div>
-      <PageHeader subtitle="Real-time command center view" />
+      <PageHeader subtitle="Real-Time Constituency Status" />
       <div className="mla-container">
 
-      {/* Complaints Widget */}
       <div className="mla-section">
         <h2>Complaints Status</h2>
         <div className="status-widget-grid">
@@ -67,7 +67,6 @@ export default function LiveConstituencyStatus() {
         </div>
       </div>
 
-      {/* Alerts Widget */}
       <div className="mla-section">
         <h2>Emergency Alerts</h2>
         <div className="status-widget-grid">
@@ -94,9 +93,8 @@ export default function LiveConstituencyStatus() {
         </div>
       </div>
 
-      {/* Events Widget */}
       <div className="mla-section">
-        <h2>Events & Outreach</h2>
+        <h2>Events &amp; Outreach</h2>
         <div className="status-widget-grid">
           <div className="status-widget events">
             <div className="status-number">{stats.events.today}</div>
@@ -116,7 +114,6 @@ export default function LiveConstituencyStatus() {
         </div>
       </div>
 
-      {/* View Details Buttons */}
       <div className="mla-section">
         <div className="detail-buttons">
           <button type="button" className="btn-primary" onClick={handleViewComplaints}>View All Complaints</button>

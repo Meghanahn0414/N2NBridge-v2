@@ -11,7 +11,6 @@ import {
   FaUsers,
   FaCalendarAlt,
   FaExclamationTriangle,
-  FaHeartbeat,
   FaUserTie,
   FaShieldAlt,
   FaPlus,
@@ -31,10 +30,9 @@ import {
 import "../../../styles/AdminDashboard.css";
 import { getAuthUser } from '../../../services/authStorage';
 
-const StatCard = ({ label, value, trend, icon: Icon, color }) => {
-  // Format number with commas
+const StatCard = ({ label, value, trend, icon: Icon, color, trendLabel }) => {
   const formatValue = (val) => {
-    if (typeof val === 'string') return val; // Return as-is if string (e.g., "99.9%")
+    if (typeof val === 'string') return val;
     if (typeof val === 'number') return val.toLocaleString();
     return val || "0";
   };
@@ -52,7 +50,7 @@ const StatCard = ({ label, value, trend, icon: Icon, color }) => {
       </div>
       {trend !== null && trend !== undefined && trend !== 0 && (
         <p className={`stat-trend ${trend >= 0 ? 'positive' : 'negative'}`}>
-          {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}% vs last 30 days
+          {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}% {trendLabel}
         </p>
       )}
     </div>
@@ -68,17 +66,35 @@ const QuickActionBtn = ({ label, icon: Icon, onClick }) => (
   </button>
 );
 
-const SystemStatusItem = ({ label, status, icon: Icon }) => (
+const SystemStatusItem = ({ label, statusLabel, healthy, icon: Icon }) => (
   <div className="system-status-item">
     <div className="status-header">
       <span className="status-label">{label}</span>
-      <div className={`status-indicator ${status === 'Healthy' || status === 'Up to date' || status === 'Online' ? 'healthy' : 'warning'}`}>
+      <div className={`status-indicator ${healthy ? 'healthy' : 'warning'}`}>
         <Icon className="status-icon" />
-        <span>{status}</span>
+        <span>{statusLabel}</span>
       </div>
     </div>
   </div>
 );
+
+const statusLabels = {
+  NEW: "New",
+  ASSIGNED: "Assigned",
+  IN_PROGRESS: "In Progress",
+  RESOLVED: "Resolved",
+  CLOSED: "Closed",
+  ESCALATED: "Escalated",
+};
+
+const roleLabels = {
+  ADMIN: "Administrators",
+  REPRESENTATIVE: "Representatives",
+  CONSTITUENCY_MANAGER: "Constituency Mgrs",
+  FIELD_OFFICER: "Field Officers",
+  CITIZEN: "Citizens",
+  MANAGER: "Managers",
+};
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -88,7 +104,7 @@ export default function AdminDashboard() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
   const role = getAuthRole();
   const user = getAuthUser();
-  const userName = user?.fullName || user?.name || 'Admin';
+
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
     setIsMobile(mq.matches);
@@ -102,10 +118,8 @@ export default function AdminDashboard() {
       setLoading(true);
       try {
         const result = await getDashboardForRole(role);
-        console.log("Dashboard data:", result);
         setDashboard(result);
       } catch (err) {
-        console.error("Dashboard fetch failed:", err);
         setError(err?.message || "Failed to load dashboard");
       } finally {
         setLoading(false);
@@ -114,58 +128,42 @@ export default function AdminDashboard() {
     loadDashboard();
   }, [role]);
 
-  // Build dynamic stats from backend data
   const stats = dashboard ? [
     {
-      label: "Total Citizens",
+      label: "TOTAL CITIZENS",
       value: dashboard?.metrics?.users?.total || 0,
       trend: dashboard?.metrics?.users?.trend || 0,
       icon: FaUsers,
       color: "blue",
     },
-    // {
-    //   label: "Active Users Today",
-    //   value: dashboard?.metrics?.activeUsers?.active || dashboard?.activeUsers || 0,
-    //   trend: dashboard?.metrics?.activeUsers?.trend || 0,
-    //   icon: FaUserTie,
-    //   color: "green",
-    // },
     {
-      label: "Total Complaints",
+      label: "TOTAL COMPLAINTS",
       value: dashboard?.metrics?.grievances?.total || 0,
       trend: dashboard?.metrics?.grievances?.trend || 0,
       icon: FaClipboardList,
       color: "orange",
     },
     {
-      label: "Open Complaints",
+      label: "OPEN COMPLAINTS",
       value: (dashboard?.metrics?.grievances?.byStatus?.NEW || 0) + (dashboard?.metrics?.grievances?.byStatus?.ASSIGNED || 0),
       trend: 0,
       icon: FaBell,
       color: "red",
     },
     {
-      label: "Critical Alerts",
+      label: "CRITICAL ALERTS",
       value: dashboard?.metrics?.alerts?.byPriority?.CRITICAL || 0,
       trend: dashboard?.metrics?.alerts?.trend || 0,
       icon: FaExclamationTriangle,
       color: "pink",
     },
     {
-      label: "Events Scheduled",
+      label: "EVENTS SCHEDULED",
       value: dashboard?.metrics?.events?.totalEvents || 0,
       trend: dashboard?.metrics?.events?.trend || 0,
       icon: FaCalendarAlt,
       color: "purple",
     },
-    // {
-    //   label: "Active Staff",
-    //   value: (dashboard?.metrics?.users?.byRole?.FIELD_OFFICER || 0) + (dashboard?.metrics?.users?.byRole?.MANAGER || 0) + (dashboard?.metrics?.users?.byRole?.REPRESENTATIVE || 0),
-    //   trend: 0,
-    //   icon: FaUsers,
-    //   color: "teal",
-    // },
-    
   ] : [];
 
   const quickActions = [
@@ -183,7 +181,6 @@ export default function AdminDashboard() {
   const maxTrend = Math.max(...trendCounts, 25);
 
   const teamData = dashboard?.teamPerformance || [];
-
   const recentActivity = dashboard?.recentActivity || [];
 
   if (isMobile) {
@@ -192,12 +189,11 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <PageHeader subtitle="Platform administration and oversight" />
+      <PageHeader subtitle="Overview of your constituency management platform" />
       <div className="admin-dashboard-container">
       {loading && <div className="loading-message">Loading dashboard...</div>}
       {error && <div className="error-message">{error}</div>}
 
-      {/* Stats Grid */}
       <div className="stats-grid">
         {stats.map((stat) => (
           <StatCard
@@ -205,19 +201,17 @@ export default function AdminDashboard() {
             label={stat.label}
             value={stat.value}
             trend={stat.trend}
+            trendLabel="vs last 30 days"
             icon={stat.icon}
             color={stat.color}
           />
         ))}
       </div>
 
-      {/* Charts Row - 3 Column Layout */}
       <div className="charts-row">
-        {/* Real-Time Activity Feed */}
         <div className="dashboard-card">
           <div className="card-header-flex">
-            <b><h2 className="card-title">Real-Time Activity Feed </h2></b>
-            {/* <a href="#" className="view-all-link">View All</a> */}
+            <b><h2 className="card-title">Real-Time Activity Feed</h2></b>
           </div>
           <div className="activity-feed">
             {recentActivity && recentActivity.length > 0 ? (
@@ -241,7 +235,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Top Complaint Categories */}
         <div className="dashboard-card">
           <h2 className="card-title">Top Complaint Categories</h2>
           <div className="pie-chart-container">
@@ -255,9 +248,9 @@ export default function AdminDashboard() {
                       const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
                       const percentage = total > 0 ? (entry[1] / total * 100) : 0;
                       return (
-                        <div 
-                          key={idx} 
-                          className="pie-item" 
+                        <div
+                          key={idx}
+                          className="pie-item"
                           style={{ background: colors[idx % colors.length], width: `${percentage}%` }}
                           title={`${entry[0]}: ${entry[1]} (${percentage.toFixed(1)}%)`}
                         ></div>
@@ -274,7 +267,7 @@ export default function AdminDashboard() {
                       const percentage = total > 0 ? (entry[1] / total * 100) : 0;
                       return (
                         <div key={idx} className="legend-item">
-                          <span className="legend-box" style={{background: colors[idx % colors.length]}}></span> 
+                          <span className="legend-box" style={{background: colors[idx % colors.length]}}></span>
                           {entry[0]} - {percentage.toFixed(0)}% ({entry[1]})
                         </div>
                       );
@@ -290,17 +283,15 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Team Performance */}
         <div className="dashboard-card">
           <div className="card-header-flex">
-            <h2 className="card-title">Team Performance (This Month)</h2>
-            {/* <a href="#" className="view-all-link">View All</a> */}
+            <h2 className="card-title">Team Performance This Month</h2>
           </div>
           <table className="team-table">
             <thead>
               <tr>
-                <th>Team / Officer</th>
-                <th>Tasks Assigned</th>
+                <th>Officer</th>
+                <th>Assigned</th>
                 <th>Completed</th>
                 <th>Resolution Time</th>
                 <th>Rating</th>
@@ -321,7 +312,7 @@ export default function AdminDashboard() {
                     </td>
                     <td>{member.assigned || 0}</td>
                     <td>{member.completed || 0}</td>
-                    <td>{member.time || '0 Days'}</td>
+                    <td>{member.time || '0 days'}</td>
                     <td><span className="stars">★ {member.rating || '0.0'}</span></td>
                   </tr>
                 ))
@@ -335,7 +326,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Complaint Status Breakdown */}
       <div className="charts-row">
         <div className="dashboard-card">
           <h2 className="card-title">Complaint Status Distribution</h2>
@@ -343,23 +333,10 @@ export default function AdminDashboard() {
             {(() => {
               const statuses = dashboard?.metrics?.grievances?.byStatus || {};
               const total = Object.values(statuses).reduce((a, b) => a + b, 0);
-              const statusLabels = {
-                NEW: 'New',
-                ASSIGNED: 'Assigned',
-                IN_PROGRESS: 'In Progress',
-                RESOLVED: 'Resolved',
-                CLOSED: 'Closed',
-                ESCALATED: 'Escalated'
-              };
               const statusColors = {
-                NEW: '#3B82F6',
-                ASSIGNED: '#F59E0B',
-                IN_PROGRESS: '#8B5CF6',
-                RESOLVED: '#10B981',
-                CLOSED: '#6B7280',
-                ESCALATED: '#EF4444'
+                NEW: '#3B82F6', ASSIGNED: '#F59E0B', IN_PROGRESS: '#8B5CF6',
+                RESOLVED: '#10B981', CLOSED: '#6B7280', ESCALATED: '#EF4444',
               };
-              
               return Object.entries(statuses).length > 0 ? (
                 <div className="status-list">
                   {Object.entries(statuses).map(([status, count], idx) => {
@@ -371,13 +348,7 @@ export default function AdminDashboard() {
                           <span className="status-count">{count}</span>
                         </div>
                         <div className="status-bar-bg">
-                          <div 
-                            className="status-bar" 
-                            style={{ 
-                              width: `${percentage}%`, 
-                              backgroundColor: statusColors[status] || '#9CA3AF'
-                            }}
-                          ></div>
+                          <div className="status-bar" style={{ width: `${percentage}%`, backgroundColor: statusColors[status] || '#9CA3AF' }}></div>
                         </div>
                         <span className="status-percentage">{percentage.toFixed(0)}%</span>
                       </div>
@@ -386,14 +357,13 @@ export default function AdminDashboard() {
                 </div>
               ) : (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-                  <p>No complaint status data available</p>
+                  <p>No complaint status data</p>
                 </div>
               );
             })()}
           </div>
         </div>
 
-        {/* Alert Priority Breakdown */}
         <div className="dashboard-card">
           <h2 className="card-title">Alert Priority Distribution</h2>
           <div className="status-breakdown">
@@ -401,12 +371,8 @@ export default function AdminDashboard() {
               const priorities = dashboard?.metrics?.alerts?.byPriority || {};
               const total = Object.values(priorities).reduce((a, b) => a + b, 0);
               const priorityColors = {
-                CRITICAL: '#EF4444',
-                HIGH: '#F59E0B',
-                MEDIUM: '#FBBF24',
-                LOW: '#10B981'
+                CRITICAL: '#EF4444', HIGH: '#F59E0B', MEDIUM: '#FBBF24', LOW: '#10B981',
               };
-              
               return Object.entries(priorities).length > 0 ? (
                 <div className="status-list">
                   {Object.entries(priorities).map(([priority, count], idx) => {
@@ -418,13 +384,7 @@ export default function AdminDashboard() {
                           <span className="status-count">{count}</span>
                         </div>
                         <div className="status-bar-bg">
-                          <div 
-                            className="status-bar" 
-                            style={{ 
-                              width: `${percentage}%`, 
-                              backgroundColor: priorityColors[priority] || '#9CA3AF'
-                            }}
-                          ></div>
+                          <div className="status-bar" style={{ width: `${percentage}%`, backgroundColor: priorityColors[priority] || '#9CA3AF' }}></div>
                         </div>
                         <span className="status-percentage">{percentage.toFixed(0)}%</span>
                       </div>
@@ -440,48 +400,29 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* User Roles Distribution */}
         <div className="dashboard-card">
           <h2 className="card-title">Staff by Role</h2>
           <div className="status-breakdown">
             {(() => {
               const roles = dashboard?.metrics?.users?.byRole || {};
               const total = Object.values(roles).reduce((a, b) => a + b, 0);
-              const roleLabels = {
-                ADMIN: 'Administrators',
-                REPRESENTATIVE: 'Representatives',
-                CONSTITUENCY_MANAGER: 'Constituency Mgrs',
-                FIELD_OFFICER: 'Field Officers',
-                CITIZEN: 'Citizens',
-                MANAGER: 'Managers'
-              };
               const roleColors = {
-                ADMIN: '#7C3AED',
-                REPRESENTATIVE: '#DC2626',
-                CONSTITUENCY_MANAGER: '#2563EB',
-                FIELD_OFFICER: '#059669',
-                CITIZEN: '#0891B2',
-                MANAGER: '#EA580C'
+                ADMIN: '#7C3AED', REPRESENTATIVE: '#DC2626',
+                CONSTITUENCY_MANAGER: '#2563EB', FIELD_OFFICER: '#059669',
+                CITIZEN: '#0891B2', MANAGER: '#EA580C',
               };
-              
               return Object.entries(roles).length > 0 ? (
                 <div className="status-list">
-                  {Object.entries(roles).map(([role, count], idx) => {
+                  {Object.entries(roles).map(([r, count], idx) => {
                     const percentage = total > 0 ? (count / total * 100) : 0;
                     return (
                       <div key={idx} className="status-item">
                         <div className="status-info">
-                          <span className="status-name">{roleLabels[role] || role}</span>
+                          <span className="status-name">{roleLabels[r] || r}</span>
                           <span className="status-count">{count}</span>
                         </div>
                         <div className="status-bar-bg">
-                          <div 
-                            className="status-bar" 
-                            style={{ 
-                              width: `${percentage}%`, 
-                              backgroundColor: roleColors[role] || '#9CA3AF'
-                            }}
-                          ></div>
+                          <div className="status-bar" style={{ width: `${percentage}%`, backgroundColor: roleColors[r] || '#9CA3AF' }}></div>
                         </div>
                         <span className="status-percentage">{percentage.toFixed(0)}%</span>
                       </div>
@@ -498,9 +439,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Complaint Trend & System Status Row */}
       <div className="charts-row">
-        {/* Complaint Trend Chart */}
         <div className="dashboard-card">
           <h2 className="card-title">Complaint Trend (Last 7 Days)</h2>
           <div className="chart-container">
@@ -521,23 +460,21 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* System Status */}
         <div className="dashboard-card">
           <h2 className="card-title">System Status</h2>
           <div className="system-status-grid">
-            <SystemStatusItem label="Server Status" status="Online" icon={FaServer} />
-            <SystemStatusItem label="Database" status="Healthy" icon={FaDatabase} />
-            <SystemStatusItem label="API Services" status="Up to date" icon={FaCheck} />
-            <SystemStatusItem label="Data Backup" status="Healthy" icon={FaHdd} />
+            <SystemStatusItem label="Server Status" statusLabel="Online"      healthy={true} icon={FaServer} />
+            <SystemStatusItem label="Database"      statusLabel="Healthy"     healthy={true} icon={FaDatabase} />
+            <SystemStatusItem label="API Services"  statusLabel="Up to Date"  healthy={true} icon={FaCheck} />
+            <SystemStatusItem label="Data Backup"   statusLabel="Healthy"     healthy={true} icon={FaHdd} />
           </div>
         </div>
 
-        {/* Resolution Time Stats */}
         <div className="dashboard-card">
           <h2 className="card-title">Resolution Metrics</h2>
           <div className="metrics-list">
             <div className="metric-item">
-              <span className="metric-label">Avg Resolution Time</span>
+              <span className="metric-label">Avg. Resolution Time</span>
               <span className="metric-value">{dashboard?.metrics?.resolutionTime?.avgResolutionTime ? (dashboard.metrics.resolutionTime.avgResolutionTime / (1000 * 60 * 60 * 24)).toFixed(1) : '--'} days</span>
             </div>
             <div className="metric-item">
@@ -556,9 +493,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Quick Actions Row */}
       <div className="actions-row-2">
-        {/* Quick Actions */}
         <div className="dashboard-card">
           <h2 className="card-title">Quick Actions</h2>
           <div className="quick-actions-grid">
@@ -568,7 +503,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-
 
     </div>
     </>
