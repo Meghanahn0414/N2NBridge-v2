@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, Switch, StatusBar, Platform, Alert,
+  ScrollView, Switch, StatusBar, Platform, Alert, ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
+import { changeLanguage, getCurrentLanguage, initLanguage, clearTranslationCache } from "../../i18n";
+import { useT } from "../../i18n/useT";
 
 const C = {
   primary: "#1D4ED8",
@@ -18,6 +20,7 @@ const C = {
 };
 
 export default function SettingsScreen() {
+  const tr = useT();
   const router = useRouter();
   const { logout } = useAuthStore();
   const [notif, setNotif] = useState({
@@ -26,10 +29,31 @@ export default function SettingsScreen() {
     polls: false,
   });
   const [showConfirm, setShowConfirm] = useState(false);
+  const [currentLang, setCurrentLang] = useState<'en'|'kn'|'hi'|'te'>(getCurrentLanguage());
+  const [lang, setLang] = useState<'en'|'kn'|'hi'|'te'>(getCurrentLanguage());
+  const [translating, setTranslating] = useState(false);
+
+  useEffect(() => {
+    initLanguage().then(() => {
+      setCurrentLang(getCurrentLanguage());
+      setLang(getCurrentLanguage());
+    });
+  }, []);
+
+  const handleLanguageChange = async (l: 'en' | 'kn' | 'hi' | 'te') => {
+    if (l === currentLang) return;
+    setTranslating(true);
+    try {
+      await changeLanguage(l);
+      setCurrentLang(l);
+      setLang(l);
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   const handleSignOut = () => {
     if (Platform.OS === "web") {
-      // window.confirm works reliably on web
       // @ts-ignore
       const ok = typeof window !== "undefined" && window.confirm("Sign out of Jana Seva CRM?");
       if (ok) { logout(); router.replace("/" as any); }
@@ -53,21 +77,21 @@ export default function SettingsScreen() {
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color={C.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Settings</Text>
+        <Text style={s.headerTitle}>{tr('settings.title')}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* Notifications */}
         <View style={s.card}>
-          <Text style={s.groupLabel}>NOTIFICATIONS</Text>
+          <Text style={s.groupLabel}>{tr('settings.notifications')}</Text>
 
           <View style={s.toggleRow}>
             <View style={s.toggleLeft}>
               <View style={s.iconBox}>
                 <Ionicons name="refresh-outline" size={17} color={C.primary} />
               </View>
-              <Text style={s.toggleText}>Status updates</Text>
+              <Text style={s.toggleText}>{tr('settings.statusUpdates')}</Text>
             </View>
             <Switch
               value={notif.statusUpdates}
@@ -82,7 +106,7 @@ export default function SettingsScreen() {
               <View style={s.iconBox}>
                 <Ionicons name="megaphone-outline" size={17} color={C.primary} />
               </View>
-              <Text style={s.toggleText}>Local announcements</Text>
+              <Text style={s.toggleText}>{tr('settings.localAnnouncements')}</Text>
             </View>
             <Switch
               value={notif.announcements}
@@ -97,7 +121,7 @@ export default function SettingsScreen() {
               <View style={s.iconBox}>
                 <Ionicons name="bar-chart-outline" size={17} color={C.primary} />
               </View>
-              <Text style={s.toggleText}>Polls &amp; surveys</Text>
+              <Text style={s.toggleText}>{tr('settings.pollsSurveys')}</Text>
             </View>
             <Switch
               value={notif.polls}
@@ -108,9 +132,38 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Language */}
+        <View style={s.card}>
+          <Text style={s.groupLabel}>{tr('settings.language')}</Text>
+          <View style={[s.toggleRow, { borderBottomWidth: 0 }]}>
+            <View style={s.toggleLeft}>
+              <View style={s.iconBox}>
+                <Ionicons name="language-outline" size={17} color={C.primary} />
+              </View>
+              <Text style={s.toggleText}>{tr('language.selectLanguage')}</Text>
+            </View>
+            <View style={s.langBtns}>
+              {([
+                { code: 'en', label: 'EN' },
+                { code: 'kn', label: 'ಕನ್ನಡ' },
+                { code: 'hi', label: 'हिंदी' },
+                { code: 'te', label: 'తెలుగు' },
+              ] as const).map(({ code, label }) => (
+                <TouchableOpacity
+                  key={code}
+                  style={[s.langBtn, currentLang === code && s.langBtnActive]}
+                  onPress={() => handleLanguageChange(code)}
+                >
+                  <Text style={[s.langBtnText, currentLang === code && s.langBtnTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
         {/* Account */}
         <View style={s.card}>
-          <Text style={s.groupLabel}>ACCOUNT</Text>
+          <Text style={s.groupLabel}>{tr('settings.account')}</Text>
 
           <TouchableOpacity
             style={s.menuRow}
@@ -119,7 +172,7 @@ export default function SettingsScreen() {
             <View style={s.iconBox}>
               <Ionicons name="person-outline" size={17} color={C.primary} />
             </View>
-            <Text style={s.menuText}>Edit profile</Text>
+            <Text style={s.menuText}>{tr('settings.editProfile')}</Text>
             <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
           </TouchableOpacity>
 
@@ -130,7 +183,7 @@ export default function SettingsScreen() {
             <View style={s.iconBox}>
               <Ionicons name="location-outline" size={17} color={C.primary} />
             </View>
-            <Text style={s.menuText}>Address &amp; ward</Text>
+            <Text style={s.menuText}>{tr('settings.addressWard')}</Text>
             <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
           </TouchableOpacity>
 
@@ -152,7 +205,7 @@ export default function SettingsScreen() {
             <View style={s.iconBox}>
               <Ionicons name="lock-closed-outline" size={17} color={C.primary} />
             </View>
-            <Text style={s.menuText}>Privacy &amp; data</Text>
+            <Text style={s.menuText}>{tr('settings.privacyData')}</Text>
             <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
           </TouchableOpacity>
         </View>
@@ -162,25 +215,35 @@ export default function SettingsScreen() {
           <View style={[s.iconBox, { backgroundColor: "#FEE2E2" }]}>
             <Ionicons name="log-out-outline" size={17} color="#EF4444" />
           </View>
-          <Text style={s.signOutText}>Sign out</Text>
+          <Text style={s.signOutText}>{tr('settings.signOut')}</Text>
         </TouchableOpacity>
 
         <Text style={s.version}>Jana Seva CRM v1.0.0</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      {/* Translation loading overlay */}
+      {translating && (
+        <View style={s.overlay}>
+          <View style={s.loadingBox}>
+            <ActivityIndicator size="large" color={C.primary} />
+            <Text style={s.loadingText}>Translating…</Text>
+          </View>
+        </View>
+      )}
+
       {/* Native confirm dialog (non-web only) */}
       {showConfirm && (
         <View style={s.overlay}>
           <View style={s.dialog}>
-            <Text style={s.dialogTitle}>Sign out</Text>
-            <Text style={s.dialogMsg}>Are you sure you want to sign out?</Text>
+            <Text style={s.dialogTitle}>{tr('settings.signOut')}</Text>
+            <Text style={s.dialogMsg}>{tr('settings.signOutConfirm')}</Text>
             <View style={s.dialogBtns}>
               <TouchableOpacity style={s.dialogCancel} onPress={() => setShowConfirm(false)}>
-                <Text style={s.dialogCancelText}>Cancel</Text>
+                <Text style={s.dialogCancelText}>{tr('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.dialogConfirm} onPress={confirmSignOut}>
-                <Text style={s.dialogConfirmText}>Sign out</Text>
+                <Text style={s.dialogConfirmText}>{tr('settings.signOut')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -248,6 +311,27 @@ const s = StyleSheet.create({
   },
   signOutText: { fontSize: 14, fontWeight: "600", color: "#EF4444", flex: 1 },
   version: { textAlign: "center", color: "#CBD5E1", fontSize: 12, marginTop: 24 },
+
+  langBtns: { flexDirection: "row", gap: 8 },
+  langBtn: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 20, borderWidth: 1.5, borderColor: "#E2E8F0",
+    backgroundColor: "#fff",
+  },
+  langBtnActive: { backgroundColor: C.primary, borderColor: C.primary },
+  langBtnText: { fontSize: 13, fontWeight: "600", color: C.muted },
+  langBtnTextActive: { color: "#fff" },
+
+  loadingBox: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 32,
+    alignItems: "center",
+    gap: 16,
+    elevation: 8,
+    shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 16,
+  },
+  loadingText: { fontSize: 15, fontWeight: "600", color: "#1E293B" },
 
   /* Inline confirm dialog */
   overlay: {

@@ -8,6 +8,28 @@
   box-sizing: border-box;
 }
 
+/* Prevent Google Translate from breaking Material Symbols ligature icons.
+   GT wraps text inside <font> children even on notranslate spans — so we
+   must target child elements too with !important on every ligature-critical prop. */
+.material-symbols-rounded,
+.material-symbols-rounded *,
+.material-symbols-outlined,
+.material-symbols-outlined *,
+.material-icons,
+.material-icons * {
+  font-family: 'Material Symbols Rounded', 'Material Icons' !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  white-space: nowrap !important;
+  word-wrap: normal !important;
+  direction: ltr !important;
+  -webkit-font-feature-settings: 'liga' !important;
+  font-feature-settings: 'liga' !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
 html, body, #root {
   height: 100%;
   width: 100%;
@@ -27,7 +49,7 @@ html, body, #root {
 body {
   background: var(--color-page);
   color: var(--color-text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans Kannada', Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -49,6 +71,15 @@ h4 { font-size: 15px; }
 p, span, label, td, th, input, textarea, select, button {
   font-family: inherit;
   font-size: inherit;
+}
+
+/* Google Translate wraps every translated text node in a <font> element.
+   Noto Sans Kannada at weight 700 renders visually much heavier than
+   Hanken Grotesk at 700, making Kannada text look excessively bold.
+   Capping GT-inserted <font> elements to weight 500 fixes this without
+   touching the SVG icons (which have no text nodes for GT to wrap). */
+font:not([class]) {
+  font-weight: 500 !important;
 }
 
 button {

@@ -117,7 +117,7 @@ export default function MLASidebar({ user, openComplaints = 0 }) {
         {showLogout && (
           <div className="mla-logout-popup">
             <p className="mla-logout-prompt">Sign out?</p>
-            <p className="mla-logout-sub">{displayName}</p>
+            <p className="mla-logout-sub notranslate" translate="no">{displayName}</p>
             <div className="mla-logout-btns">
               <button className="mla-logout-cancel" onClick={() => setShowLogout(false)}>Cancel</button>
               <button className="mla-logout-confirm" onClick={handleLogout}>Sign out</button>
@@ -125,12 +125,12 @@ export default function MLASidebar({ user, openComplaints = 0 }) {
           </div>
         )}
         <div className="mla-user-card" onClick={() => setShowLogout((v) => !v)}>
-          <div className="mla-user-avatar">
+          <div className="mla-user-avatar notranslate" translate="no">
             {user?.profilePhoto ? <img src={user.profilePhoto} alt={displayName} /> : initials}
           </div>
           <div className="mla-user-info">
-            <div className="mla-user-name">{displayName}</div>
-            <div className="mla-user-role">MLA · {constituency}</div>
+            <div className="mla-user-name notranslate" translate="no">{displayName}</div>
+            <div className="mla-user-role notranslate" translate="no">MLA · {constituency}</div>
           </div>
           <span className="mla-user-expand"><RiExpandUpDownLine /></span>
         </div>

@@ -5,6 +5,7 @@ import PageHeader from "../../../components/PageHeader";
 import { fetchUsers } from '../../../features/team-management/userService';
 import { fetchGrievances } from '../../../features/grievances/grievanceService';
 import Pagination from '../../../components/Pagination';
+import { FaClipboardList, FaCheckCircle, FaClock, FaUsers, FaSyncAlt, FaLock, FaChartBar } from 'react-icons/fa';
 
 const PAGE_SIZE = 100;
 
@@ -108,17 +109,17 @@ export default function TeamManagement() {
     : '0.0';
 
   const kpiMetrics = [
-    { id: 1, name: 'Open Tasks', description: 'Pending & in-progress', value: activeTaskCount, icon: '📋' },
-    { id: 2, name: 'Completed Tasks', description: 'Finished work', value: completedTaskCount, icon: '✅' },
-    { id: 3, name: 'Avg Resolution Time', description: 'SLA metric', value: `${avgResolutionHrs} hrs`, icon: '⏱️' },
-    { id: 4, name: 'Team Size', description: 'Total members', value: teamMembers.length, icon: '👥' },
+    { id: 1, name: 'Open Tasks', description: 'Pending & in-progress', value: activeTaskCount, icon: <FaClipboardList /> },
+    { id: 2, name: 'Completed Tasks', description: 'Finished work', value: completedTaskCount, icon: <FaCheckCircle /> },
+    { id: 3, name: 'Avg Resolution Time', description: 'SLA metric', value: `${avgResolutionHrs} hrs`, icon: <FaClock /> },
+    { id: 4, name: 'Team Size', description: 'Total members', value: teamMembers.length, icon: <FaUsers /> },
   ];
 
   const taskColumns = [
-    { id: 'open', title: 'Open', icon: '📋', items: grievances.filter(g => g.status === 'OPEN') },
-    { id: 'in-progress', title: 'In Progress', icon: '🔄', items: grievances.filter(g => g.status === 'IN_PROGRESS') },
-    { id: 'resolved', title: 'Resolved', icon: '✅', items: grievances.filter(g => g.status === 'RESOLVED') },
-    { id: 'closed', title: 'Closed', icon: '🔒', items: grievances.filter(g => g.status === 'CLOSED' || g.status === 'REJECTED') },
+    { id: 'open', title: 'Open', icon: <FaClipboardList />, items: grievances.filter(g => g.status === 'OPEN') },
+    { id: 'in-progress', title: 'In Progress', icon: <FaSyncAlt />, items: grievances.filter(g => g.status === 'IN_PROGRESS') },
+    { id: 'resolved', title: 'Resolved', icon: <FaCheckCircle />, items: grievances.filter(g => g.status === 'RESOLVED') },
+    { id: 'closed', title: 'Closed', icon: <FaLock />, items: grievances.filter(g => g.status === 'CLOSED' || g.status === 'REJECTED') },
   ];
 
   if (loading) return <div className="module-container"><p>Loading team data...</p></div>;
@@ -146,13 +147,13 @@ export default function TeamManagement() {
             className={`btn-secondary ${viewType === 'kpi' ? 'active' : ''}`}
             onClick={() => setViewType('kpi')}
           >
-            📊 KPI View
+            <FaChartBar style={{marginRight:5,verticalAlign:'middle'}} /> KPI View
           </button>
           <button
             className={`btn-secondary ${viewType === 'kanban' ? 'active' : ''}`}
             onClick={() => setViewType('kanban')}
           >
-            📋 Kanban View
+            <FaClipboardList style={{marginRight:5,verticalAlign:'middle'}} /> Kanban View
           </button>
         </div>
       </div>
@@ -167,7 +168,7 @@ export default function TeamManagement() {
             </div>
             <div className="stat-card">
               <span className="stat-label">Avg Team Rating</span>
-              <span className="stat-value">{avgRating}/5 ⭐</span>
+              <span className="stat-value">{avgRating}/5 <FaCheckCircle style={{color:'#f59e0b',verticalAlign:'middle',fontSize:14}} /></span>
             </div>
             <div className="stat-card">
               <span className="stat-label">Total Grievances</span>

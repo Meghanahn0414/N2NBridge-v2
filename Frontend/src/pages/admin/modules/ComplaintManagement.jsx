@@ -5,6 +5,7 @@ import PageHeader from "../../../components/PageHeader";
 import { fetchGrievances, updateGrievance, assignGrievance } from '../../../features/grievances/grievanceService';
 import { fetchUsers } from '../../../features/team-management/userService';
 import Pagination from '../../../components/Pagination';
+import { FaUserAlt, FaSyncAlt, FaCheck, FaDownload, FaExchangeAlt } from 'react-icons/fa';
 
 const PAGE_SIZE = 100;
 
@@ -194,7 +195,7 @@ export default function ComplaintManagement() {
           {priorities.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
         <button className="btn-primary" onClick={() => loadComplaints(page)} disabled={loading}>
-          {loading ? '🔄 Refreshing...' : '🔄 Refresh'}
+          {loading ? <><FaSyncAlt style={{marginRight:5,verticalAlign:'middle'}} />Refreshing...</> : <><FaSyncAlt style={{marginRight:5,verticalAlign:'middle'}} />Refresh</>}
         </button>
       </div>
 
@@ -226,10 +227,10 @@ export default function ComplaintManagement() {
                 const officer = officers.find(o => (o._id || o.id) === complaint.assignedOfficerId);
                 return (
                   <tr key={id}>
-                    <td>{String(id).substring(0, 8)}</td>
+                    <td className="notranslate" translate="no">{String(id).substring(0, 8)}</td>
                     <td>{complaint.description ? complaint.description.substring(0, 30) + '...' : 'N/A'}</td>
                     <td>{complaint.address || 'N/A'}</td>
-                    <td>{complaint.citizenName || (complaint.citizenId ? String(complaint.citizenId).substring(0, 8) : 'Unknown')}</td>
+                    <td className="notranslate" translate="no">{complaint.citizenName || (complaint.citizenId ? String(complaint.citizenId).substring(0, 8) : 'Unknown')}</td>
                     <td>
                       <span style={{ color: getPriorityColor(complaint.priority), fontWeight: 'bold' }}>
                         {complaint.priority || 'N/A'}
@@ -245,17 +246,17 @@ export default function ComplaintManagement() {
                     <td>
                       <div className="action-buttons">
                         <button className="btn-action btn-reassign" onClick={() => openReassign(complaint)} title="Reassign Officer">
-                          👤
+                          <FaUserAlt />
                         </button>
                         <button className="btn-action btn-status" onClick={() => openStatusModal(complaint)} title="Change Status">
-                          🔄
+                          <FaSyncAlt />
                         </button>
                         <button className="btn-action btn-resolve" onClick={() => handleResolve(complaint)} title="Mark Resolved"
                           disabled={complaint.status === 'RESOLVED' || complaint.status === 'CLOSED'}>
-                          ✓
+                          <FaCheck />
                         </button>
                         <button className="btn-action btn-download" onClick={() => handleDownload(complaint)} title="Download CSV">
-                          ⬇
+                          <FaDownload />
                         </button>
                       </div>
                     </td>
@@ -280,7 +281,7 @@ export default function ComplaintManagement() {
       {reassignModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setReassignModal(null)}>
           <div className="modal-content">
-            <h2>👤 Reassign Complaint</h2>
+            <h2><FaUserAlt style={{marginRight:7,verticalAlign:'middle',fontSize:18}} /> Reassign Complaint</h2>
             <p className="modal-subtitle">Complaint ID: <strong>{String(reassignModal._id || reassignModal.id).substring(0, 8)}</strong></p>
             <div className="form-group">
               <label>Select Officer</label>
@@ -308,7 +309,7 @@ export default function ComplaintManagement() {
       {statusModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setStatusModal(null)}>
           <div className="modal-content">
-            <h2>🔄 Change Status</h2>
+            <h2><FaExchangeAlt style={{marginRight:7,verticalAlign:'middle',fontSize:18}} /> Change Status</h2>
             <p className="modal-subtitle">Complaint ID: <strong>{String(statusModal._id || statusModal.id).substring(0, 8)}</strong></p>
             <div className="form-group">
               <label>Select New Status</label>

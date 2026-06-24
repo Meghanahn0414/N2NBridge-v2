@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import api from "../../../shared/services/api";
+import MIcon from "../../../components/MIcon";
 
 function MS({ children, style }) {
-  return <span className="material-symbols-rounded" style={{ fontSize: 21, ...style }}>{children}</span>;
+  return <MIcon name={children} style={style} />;
 }
 
 const PERIOD_DAYS = { "3M": 90, "6M": 180, "12M": 365, "All": 730 };
@@ -131,10 +132,10 @@ export default function CitizenSentimentDashboard() {
   return (
     <>
       {/* Topbar */}
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 34px", background: "#F3F5FA", position: "sticky", top: 0, zIndex: 10, borderBottom: "1px solid #E5E9F1" }}>
-        <div>
-          <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 3 }}>How residents feel about your work</div>
-          <h1 style={{ font: "400 30px 'Newsreader'", color: "#16233C", margin: 0, letterSpacing: "-.01em" }}>Popularity</h1>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 34px", background: "#F3F5FA", position: "sticky", top: 0, zIndex: 10, borderBottom: "1px solid #E5E9F1", gap: 16, flexWrap: "wrap", minHeight: 72 }}>
+        <div style={{ flex: 1, minWidth: 0, maxWidth: "60%" }}>
+          <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>How residents feel about your work</div>
+          <h1 style={{ fontFamily: "'Newsreader','Noto Sans Kannada',serif", fontSize: "clamp(16px,2.2vw,26px)", fontWeight: 400, color: "#16233C", margin: 0, letterSpacing: "-.01em", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Popularity</h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", border: "1px solid #E1E6F0", borderRadius: 13, padding: 5 }}>
           {["3M", "6M", "12M", "All"].map(p => (
@@ -155,7 +156,7 @@ export default function CitizenSentimentDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
-                <div style={{ font: "600 13px 'Hanken Grotesk'", color: "#8590A6", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8 }}>Approval over time</div>
+                <div style={{ font: "600 13px 'Hanken Grotesk'", color: "#8590A6", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8 }}>Overall Approval Rating</div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 13 }}>
                   <span style={{ font: "400 52px 'Newsreader'", color: "#16233C", lineHeight: .9, letterSpacing: "-.02em" }}>
                     {curApproval != null ? `${curApproval}%` : "—"}
@@ -189,7 +190,7 @@ export default function CitizenSentimentDashboard() {
 
           {/* Net sentiment score */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Net sentiment score</div>
+            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Citizen Sentiment Score</div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>Positive minus negative</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 6 }}>
               <span style={{ font: "400 56px 'Newsreader'", color: netScore != null ? (netScore >= 0 ? "#1E8A5B" : "#C8453A") : "#C0C7D4", lineHeight: .85 }}>
@@ -231,7 +232,7 @@ export default function CitizenSentimentDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
-                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Sentiment mix over time</div>
+                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Public Feedback Breakdown</div>
                 <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>Share of feedback by tone, {period}</div>
               </div>
               <div style={{ display: "flex", gap: 14 }}>
@@ -248,7 +249,7 @@ export default function CitizenSentimentDashboard() {
 
           {/* Where feedback comes from */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Where feedback comes from</div>
+            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Feedback Sources</div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>
               {sources?.total != null ? `${sources.total.toLocaleString()} signals this period` : "— signals this period"}
             </div>
@@ -285,7 +286,7 @@ export default function CitizenSentimentDashboard() {
 
           {/* Approval by age group */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Approval by age group</div>
+            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Approval by Age Group</div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 22 }}>Where you connect — and where to grow</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 18, height: 180, padding: "0 6px" }}>
               {(byGroup?.groups || [{ label: "18–29" }, { label: "30–44" }, { label: "45–59" }, { label: "60+" }]).map((g, i) => {
@@ -314,7 +315,7 @@ export default function CitizenSentimentDashboard() {
 
           {/* What's moving your numbers */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>What's moving your numbers</div>
+            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Top Issues Affecting Public Opinion</div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 18 }}>Issues with the biggest impact this period</div>
             {moving?.hasData ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>

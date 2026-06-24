@@ -64,7 +64,7 @@ export default function MLAList() {
             <table style={styles.table}>
               <thead>
                 <tr>
-                  <th style={styles.th}>#</th>
+                  <th style={styles.th} className="notranslate" translate="no">#</th>
                   <th style={styles.th}>Name</th>
                   <th style={styles.th}>Email</th>
                   <th style={styles.th}>Mobile</th>

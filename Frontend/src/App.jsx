@@ -1,3 +1,4 @@
+import './i18n/index.js';
 import AppRoutes from "./app/routes/AppRoutes";
 
 export default function App() {

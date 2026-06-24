@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import api from "../../services/api";
 import { API_BASE } from "../../config";
+import { useT } from "../../i18n/useT";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -39,22 +40,7 @@ const STATUS_COLOR: Record<string, string> = {
   RESOLVED: "#10B981", CLOSED: "#10B981",
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  NEW: "Open", OPEN: "Open",
-  ASSIGNED: "Assigned", IN_PROGRESS: "In progress", ON_HOLD: "On hold",
-  RESOLVED: "Resolved", CLOSED: "Closed",
-};
-
-const TIMELINE_LABEL: Record<string, string> = {
-  NEW: "Complaint Submitted",
-  OPEN: "Complaint Opened",
-  ASSIGNED: "Assigned",
-  IN_PROGRESS: "In Progress",
-  ON_HOLD: "On Hold",
-  RESOLVED: "Resolved",
-  CLOSED: "Closed",
-};
-
+// STATUS_LABEL and TIMELINE_LABEL will be computed inside the component using tr()
 const toAbsoluteUrl = (url: string | null | undefined): string | null => {
   if (!url) return null;
   if (url.startsWith("http") || url.startsWith("data:")) return url;
@@ -68,7 +54,6 @@ function extractPhotos(g: any): string[] {
     return toAbsoluteUrl(raw);
   };
 
-  // Arrays
   for (const key of ["photos", "images", "photoUrls", "mediaUrls", "fileUrls", "files", "attachments", "uploads", "media"]) {
     if (Array.isArray(g[key]) && g[key].length > 0) {
       const urls = g[key].map(toUrl).filter(Boolean) as string[];
@@ -76,7 +61,6 @@ function extractPhotos(g: any): string[] {
     }
   }
 
-  // Single-photo scalar fields
   for (const key of ["photo", "photoUrl", "image", "imageUrl", "mediaUrl", "fileUrl", "uploadUrl"]) {
     if (typeof g[key] === "string" && g[key].trim()) return [toAbsoluteUrl(g[key])!];
   }
@@ -84,12 +68,11 @@ function extractPhotos(g: any): string[] {
   return [];
 }
 
-// All standard steps in order — always shown, completed ones filled, future ones grayed
-const TRACKER_STEPS = [
-  { status: "NEW",         label: "Complaint Submitted", note: "Your complaint has been received." },
-  { status: "ASSIGNED",    label: "Assigned",            note: "Assigned to an officer." },
-  { status: "IN_PROGRESS", label: "In Progress",         note: "Being investigated." },
-  { status: "RESOLVED",    label: "Resolved",            note: "Issue has been resolved." },
+const TRACKER_STEP_KEYS = [
+  { status: "NEW",         labelKey: "complaints.complaintSubmitted", noteKey: "complaints.receivedNote" },
+  { status: "ASSIGNED",    labelKey: "complaints.assigned",           noteKey: "complaints.assignedNote" },
+  { status: "IN_PROGRESS", labelKey: "complaints.inProgress",        noteKey: "complaints.investigatingNote" },
+  { status: "RESOLVED",    labelKey: "complaints.resolved",          noteKey: "complaints.resolvedNote" },
 ];
 
 const STATUS_ORDER = ["NEW", "OPEN", "ASSIGNED", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "CLOSED"];
@@ -98,11 +81,9 @@ function statusRank(s: string) {
   return STATUS_ORDER.indexOf((s || "NEW").toUpperCase());
 }
 
-// Build timeline: all tracker steps always shown; completed steps get real timestamps from history
 function buildTimeline(g: any): TimelineItem[] {
   const currentRank = statusRank(g.status || "NEW");
 
-  // Map history entries by newStatus so we can attach real timestamps
   const historyMap: Record<string, any> = {};
   const rawHistory: any[] = Array.isArray(g.history)
     ? g.history
@@ -114,7 +95,7 @@ function buildTimeline(g: any): TimelineItem[] {
     if (key) historyMap[key] = h;
   }
 
-  return TRACKER_STEPS.map((step) => {
+  return TRACKER_STEP_KEYS.map((step) => {
     const rank = statusRank(step.status);
     const isDone = rank <= currentRank;
     const h = historyMap[step.status];
@@ -123,13 +104,14 @@ function buildTimeline(g: any): TimelineItem[] {
       timestamp: step.status === "NEW"
         ? (g.createdAt || g.created_at)
         : h?.createdAt || h?.updatedAt || null,
-      note: h?.remarks || h?.message || step.note,
-      label: step.label,
+      note: h?.remarks || h?.message || tr(step.noteKey as any),
+      label: tr(step.labelKey as any),
     } as any;
   });
 }
 
 export default function ComplaintDetailScreen() {
+  const tr = useT();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [complaint, setComplaint] = useState<ComplaintDetail | null>(null);
@@ -164,6 +146,19 @@ export default function ComplaintDetailScreen() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const getStatusLabel = (statusKey: string): string => {
+    const map: Record<string, string> = {
+      NEW: tr('complaints.open'),
+      OPEN: tr('complaints.open'),
+      ASSIGNED: tr('complaints.assigned'),
+      IN_PROGRESS: tr('complaints.inProgress'),
+      ON_HOLD: tr('complaints.onHold'),
+      RESOLVED: tr('complaints.resolved'),
+      CLOSED: tr('complaints.closed'),
+    };
+    return map[statusKey] ?? statusKey.replace(/_/g, " ");
+  };
+
   const formatDate = (dt?: string) => {
     if (!dt) return "";
     return new Date(dt).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
@@ -188,9 +183,9 @@ export default function ComplaintDetailScreen() {
     return (
       <View style={s.center}>
         <Ionicons name="alert-circle-outline" size={48} color="#CBD5E1" />
-        <Text style={s.notFound}>Complaint not found.</Text>
+        <Text style={s.notFound}>{tr('complaints.notFound')}</Text>
         <TouchableOpacity style={s.goBack} onPress={() => router.back()}>
-          <Text style={s.goBackText}>Go back</Text>
+          <Text style={s.goBackText}>{tr('complaints.goBack')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -198,7 +193,7 @@ export default function ComplaintDetailScreen() {
 
   const statusKey  = (complaint.status || "NEW").toUpperCase();
   const sc         = STATUS_COLOR[statusKey] ?? "#64748B";
-  const statusText = STATUS_LABEL[statusKey] ?? complaint.status?.replace(/_/g, " ") ?? "Unknown";
+  const statusText = getStatusLabel(statusKey);
 
   const timeline: TimelineItem[] = complaint.timeline?.length
     ? complaint.timeline
@@ -206,7 +201,7 @@ export default function ComplaintDetailScreen() {
 
   const metaParts = [
     complaint.address,
-    complaint.wardId ? `Ward ${complaint.wardId}` : null,
+    complaint.wardId ? `${tr('profile.ward')} ${complaint.wardId}` : null,
     complaint.categoryId,
   ].filter(Boolean);
 
@@ -243,7 +238,6 @@ export default function ComplaintDetailScreen() {
               <Image source={{ uri: item }} style={s.photoImg} resizeMode="cover" />
             )}
           />
-          {/* Dots indicator (only when multiple photos) */}
           {photos.length > 1 && (
             <View style={s.photoDots}>
               {photos.map((_, i) => (
@@ -255,7 +249,7 @@ export default function ComplaintDetailScreen() {
       ) : (
         <View style={s.photoPlaceholder}>
           <Ionicons name="image-outline" size={32} color="#CBD5E1" />
-          <Text style={s.photoLabel}>No photo attached</Text>
+          <Text style={s.photoLabel}>{tr('complaints.noPhoto')}</Text>
         </View>
       )}
 
@@ -288,19 +282,18 @@ export default function ComplaintDetailScreen() {
         )}
 
         {/* ── Progress / Timeline ── */}
-        <Text style={s.sectionHeading}>Progress</Text>
+        <Text style={s.sectionHeading}>{tr('complaints.progress')}</Text>
         <View style={s.timelineBlock}>
           {timeline.map((item, i) => {
             const isPending = item.status === "PENDING";
             const tColor    = isPending ? "#CBD5E1" : (STATUS_COLOR[item.status] ?? "#3B82F6");
             const isLast    = i === timeline.length - 1;
             const date      = item.timestamp;
-            const title     = item.label || TIMELINE_LABEL[item.status] || item.status?.replace(/_/g, " ") || "Update";
+            const title     = item.label || item.status?.replace(/_/g, " ") || "Update";
             const desc      = item.note;
 
             return (
               <View key={i} style={s.timelineRow}>
-                {/* Left: dot + vertical line */}
                 <View style={s.timelineLeft}>
                   <View style={[s.dot, { backgroundColor: isPending ? "#fff" : tColor, borderColor: tColor, borderWidth: isPending ? 2 : 0 }]}>
                     {!isPending && <View style={s.dotInner} />}
@@ -308,7 +301,6 @@ export default function ComplaintDetailScreen() {
                   {!isLast && <View style={[s.line, { backgroundColor: isPending ? "#E2E8F0" : `${tColor}60` }]} />}
                 </View>
 
-                {/* Right: title · timestamp · note */}
                 <View style={s.timelineRight}>
                   <Text style={[s.timelineTitle, isPending && { color: "#94A3B8" }]}>{title}</Text>
                   {date ? (
@@ -322,7 +314,7 @@ export default function ComplaintDetailScreen() {
                   {desc ? (
                     <Text style={s.timelineDesc}>{desc}</Text>
                   ) : i === 0 ? (
-                    <Text style={s.timelineDesc}>Your complaint has been received.</Text>
+                    <Text style={s.timelineDesc}>{tr('complaints.receivedNote')}</Text>
                   ) : null}
                 </View>
               </View>
@@ -333,7 +325,7 @@ export default function ComplaintDetailScreen() {
         {/* ── Rate response (resolved only) ── */}
         {["RESOLVED", "CLOSED"].includes(statusKey) && (
           <View style={s.rateCard}>
-            <Text style={s.sectionHeading}>Rate this response</Text>
+            <Text style={s.sectionHeading}>{tr('complaints.rateResponse')}</Text>
             <View style={s.starsRow}>
               {[1, 2, 3, 4, 5].map((star) => (
                 <TouchableOpacity key={star} onPress={() => handleRate(star)} disabled={ratingSubmitted} activeOpacity={0.7}>
@@ -345,20 +337,20 @@ export default function ComplaintDetailScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            {ratingSubmitted && <Text style={s.ratedMsg}>Thank you for your feedback!</Text>}
+            {ratingSubmitted && <Text style={s.ratedMsg}>{tr('complaints.thankYouFeedback')}</Text>}
           </View>
         )}
 
         {/* ── Details grid ── */}
-        <Text style={s.sectionHeading}>Details</Text>
+        <Text style={s.sectionHeading}>{tr('complaints.details')}</Text>
         <View style={s.detailsGrid}>
-          <DetailItem label="Category"  value={complaint.categoryId || "—"} />
-          <DetailItem label="Priority"  value={complaint.priority || "—"} color={
+          <DetailItem label={tr('complaints.category')}  value={complaint.categoryId || "—"} />
+          <DetailItem label={tr('complaints.priority')}  value={complaint.priority || "—"} color={
             complaint.priority === "HIGH" || complaint.priority === "CRITICAL" ? "#DC2626" :
             complaint.priority === "MEDIUM" ? "#D97706" : "#059669"
           } />
-          <DetailItem label="Ward"      value={complaint.wardId ? `Ward ${complaint.wardId}` : "—"} />
-          <DetailItem label="Submitted" value={formatDate(complaint.createdAt) || "—"} />
+          <DetailItem label={tr('profile.ward')}      value={complaint.wardId ? `${tr('profile.ward')} ${complaint.wardId}` : "—"} />
+          <DetailItem label={tr('complaints.submitted')} value={formatDate(complaint.createdAt) || "—"} />
         </View>
         {complaint.address && (
           <View style={s.addressRow}>
@@ -389,7 +381,6 @@ const s = StyleSheet.create({
   goBack: { backgroundColor: "#1D4ED8", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, marginTop: 8 },
   goBackText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
-  /* Top bar */
   topBar: {
     position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
     flexDirection: "row", justifyContent: "space-between",
@@ -402,7 +393,6 @@ const s = StyleSheet.create({
     elevation: 2, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 4,
   },
 
-  /* Photo */
   photoCarousel: { height: 220 },
   photoImg: { width: SCREEN_W, height: 220 },
   photoPlaceholder: {
@@ -417,7 +407,6 @@ const s = StyleSheet.create({
   photoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.5)" },
   photoDotActive: { backgroundColor: "#fff", width: 18, borderRadius: 3 },
 
-  /* Content */
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
 
@@ -438,7 +427,6 @@ const s = StyleSheet.create({
 
   sectionHeading: { fontSize: 16, fontWeight: "700", color: "#0F172A", marginBottom: 16, marginTop: 4 },
 
-  /* Timeline */
   timelineBlock: { marginBottom: 28 },
   timelineRow: { flexDirection: "row" },
   timelineLeft: { alignItems: "center", marginRight: 14, width: 22 },
@@ -455,7 +443,6 @@ const s = StyleSheet.create({
   timelineDate:  { fontSize: 12, color: "#94A3B8", marginTop: 2, marginBottom: 3 },
   timelineDesc:  { fontSize: 13, color: "#64748B", lineHeight: 18 },
 
-  /* Rating */
   rateCard: {
     backgroundColor: "#fff", borderRadius: 16, padding: 16,
     marginBottom: 24, elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6,
@@ -463,7 +450,6 @@ const s = StyleSheet.create({
   starsRow: { flexDirection: "row", gap: 10, marginBottom: 8 },
   ratedMsg: { fontSize: 13, color: "#10B981", fontWeight: "600", marginTop: 4 },
 
-  /* Details grid */
   detailsGrid: {
     flexDirection: "row", flexWrap: "wrap",
     backgroundColor: "#fff", borderRadius: 16, padding: 16,

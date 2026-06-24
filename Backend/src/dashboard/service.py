@@ -59,16 +59,32 @@ class DashboardService:
                 "icon": "FaCalendarAlt"
             })
         
-        # Sort by time and return — use epoch as fallback so None doesn't crash
-        activities.sort(
-            key=lambda x: x.get("time") or datetime(1970, 1, 1),
-            reverse=True
-        )
+        # Sort by time — normalize to datetime so str vs datetime comparisons don't crash
+        def _to_dt(activity):
+            t = activity.get("time")
+            if isinstance(t, datetime):
+                return t
+            if t is None:
+                return datetime(1970, 1, 1)
+            try:
+                return datetime.fromisoformat(str(t))
+            except Exception:
+                return datetime(1970, 1, 1)
+
+        activities.sort(key=_to_dt, reverse=True)
 
         # Format time safely
         for activity in activities:
             t = activity.get("time")
-            activity["time"] = t.strftime("%I:%M %p") if isinstance(t, datetime) else "—"
+            if isinstance(t, datetime):
+                activity["time"] = t.strftime("%I:%M %p")
+            elif isinstance(t, str) and t:
+                try:
+                    activity["time"] = datetime.fromisoformat(t).strftime("%I:%M %p")
+                except Exception:
+                    activity["time"] = "—"
+            else:
+                activity["time"] = "—"
 
         return activities[:limit]
     
@@ -278,25 +294,28 @@ class DashboardService:
     
     @staticmethod
     def get_admin_dashboard() -> dict:
-        """Get admin dashboard data"""
-        metrics = AnalyticsService.get_performance_metrics()
-        
-        # Extract active users from the metrics
+        """Get admin dashboard data — every sub-call is safe-wrapped so a single
+        failure (e.g. mixed datetime/str sort, DB timeout) returns partial data
+        instead of a 500 for the whole dashboard."""
+        sc = DashboardService._safe_call
+
+        metrics = sc(AnalyticsService.get_performance_metrics, default={}, label="performance_metrics")
         active_users_data = metrics.get("activeUsers", {"active": 0, "trend": 0})
-        
+
         return {
             "metrics": metrics,
             "overview": {
-                "grievances": AnalyticsService.get_grievance_stats(),
-                "alerts": AnalyticsService.get_alert_stats(),
-                "users": AnalyticsService.get_user_stats(),
-                "events": AnalyticsService.get_event_stats()
+                "grievances": sc(AnalyticsService.get_grievance_stats, default={}, label="overview_grievances"),
+                "alerts":     sc(AnalyticsService.get_alert_stats,    default={}, label="overview_alerts"),
+                "users":      sc(AnalyticsService.get_user_stats,     default={}, label="overview_users"),
+                "events":     sc(AnalyticsService.get_event_stats,    default={}, label="overview_events"),
             },
-            "recentActivity": DashboardService.get_recent_activity(10),
-            "teamPerformance": DashboardService.get_team_performance(),
-            "grievanceTrends": DashboardService.get_grievance_trends(7),
-            "activeUsers": active_users_data.get("active", 0) if isinstance(active_users_data, dict) else active_users_data,
-            "systemHealth": DashboardService.get_system_health()
+            "recentActivity":  sc(DashboardService.get_recent_activity, 10, default=[], label="recent_activity"),
+            "teamPerformance": sc(DashboardService.get_team_performance,    default=[], label="team_performance"),
+            "grievanceTrends": sc(DashboardService.get_grievance_trends, 7, default={}, label="grievance_trends"),
+            "activeUsers":     active_users_data.get("active", 0) if isinstance(active_users_data, dict) else active_users_data,
+            "systemHealth":    sc(DashboardService.get_system_health,       default="N/A", label="system_health"),
+            "categoryComplaints": sc(DashboardService.get_category_complaints, default={}, label="category_complaints"),
         }
     
     @staticmethod

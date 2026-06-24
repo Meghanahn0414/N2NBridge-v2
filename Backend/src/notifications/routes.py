@@ -56,7 +56,13 @@ async def list_notifications(
         limit
     )
     
-    return [NotificationResponse(**Helper.convert_mongo_doc(n)) for n in notifications]
+    result = []
+    for n in notifications:
+        try:
+            result.append(NotificationResponse(**Helper.convert_mongo_doc(n)))
+        except Exception as doc_exc:
+            logger.warning(f"Skipping malformed notification in list: {doc_exc}")
+    return result
 
 
 @router.get("/unread")
@@ -69,13 +75,16 @@ async def get_unread_notifications(
     try:
         user_id = current_user.get("user_id") if current_user else None
         notifications = NotificationService.get_unread_notifications(user_id)
-        data = [
-            NotificationResponse(**Helper.convert_mongo_doc(n)).model_dump(by_alias=True)
-            for n in notifications
-        ]
+        data = []
+        for n in notifications:
+            try:
+                converted = Helper.convert_mongo_doc(n)
+                data.append(NotificationResponse(**converted).model_dump(by_alias=True))
+            except Exception as doc_exc:
+                logger.warning(f"Skipping malformed notification doc: {doc_exc}")
         return JSONResponse(content=jsonable_encoder({
             "success": True,
-            "message": f"Retrieved {len(notifications)} unread notifications",
+            "message": f"Retrieved {len(data)} unread notifications",
             "data": data,
             "statusCode": 200,
         }))

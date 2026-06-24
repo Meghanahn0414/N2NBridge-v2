@@ -458,6 +458,10 @@ body.sidebar-collapsed .app-header {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Render the user name via CSS so Google Translate never sees it as a text node */
+.user-profile-name-text::before {
+  content: attr(data-name);
+}
 
 .user-profile-dropdown {
   position: absolute;

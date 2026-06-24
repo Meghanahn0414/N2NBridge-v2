@@ -3,89 +3,82 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../../../store/authStore";
-
-interface Service {
-  icon: string;
-  title: string;
-  subtitle: string;
-  color: string;
-  bg: string;
-  route: string;
-}
-
-const SERVICES: Service[] = [
-  {
-    icon: "📝",
-    title: "File Complaint",
-    subtitle: "Report a civic issue",
-    color: "#1D4ED8",
-    bg: "#EFF6FF",
-    route: "/citizen/new-complaint",
-  },
-  {
-    icon: "📋",
-    title: "My Complaints",
-    subtitle: "Track your submissions",
-    color: "#7C3AED",
-    bg: "#F5F3FF",
-    route: "/citizen/complaints",
-  },
-  {
-    icon: "📢",
-    title: "Campaigns",
-    subtitle: "Active government programs",
-    color: "#0891B2",
-    bg: "#ECFEFF",
-    route: "/citizen/campaigns",
-  },
-  {
-    icon: "⭐",
-    title: "Feedback",
-    subtitle: "Rate services & officers",
-    color: "#D97706",
-    bg: "#FFFBEB",
-    route: "/citizen/feedback",
-  },
-  {
-    icon: "🚨",
-    title: "Emergency SOS",
-    subtitle: "Raise an urgent alert",
-    color: "#DC2626",
-    bg: "#FEF2F2",
-    route: "/citizen/sos",
-  },
-  {
-    icon: "👤",
-    title: "My Profile",
-    subtitle: "View & update your info",
-    color: "#059669",
-    bg: "#ECFDF5",
-    route: "/citizen/profile",
-  },
-];
+import { useT } from "../../../i18n/useT";
 
 export default function ServicesScreen() {
+  const tr = useT();
   const router = useRouter();
   const { user } = useAuthStore();
+  // SERVICES array defined inside component so tr() picks up current language on re-render
+  const SERVICES = [
+    {
+      icon: "📝",
+      title: tr('services.fileComplaint'),
+      subtitle: tr('services.fileComplaintSub'),
+      color: "#1D4ED8",
+      bg: "#EFF6FF",
+      route: "/citizen/new-complaint",
+    },
+    {
+      icon: "📋",
+      title: tr('services.myComplaints'),
+      subtitle: tr('services.myComplaintsSub'),
+      color: "#7C3AED",
+      bg: "#F5F3FF",
+      route: "/citizen/complaints",
+    },
+    {
+      icon: "📢",
+      title: tr('services.campaigns'),
+      subtitle: tr('services.campaignsSub'),
+      color: "#0891B2",
+      bg: "#ECFEFF",
+      route: "/citizen/campaigns",
+    },
+    {
+      icon: "⭐",
+      title: tr('services.feedback'),
+      subtitle: tr('services.feedbackSub'),
+      color: "#D97706",
+      bg: "#FFFBEB",
+      route: "/citizen/feedback",
+    },
+    {
+      icon: "🚨",
+      title: tr('services.emergency'),
+      subtitle: tr('services.emergencySub'),
+      color: "#DC2626",
+      bg: "#FEF2F2",
+      route: "/citizen/sos",
+    },
+    {
+      icon: "👤",
+      title: tr('services.myProfile'),
+      subtitle: tr('services.myProfileSub'),
+      color: "#059669",
+      bg: "#ECFDF5",
+      route: "/citizen/profile",
+    },
+  ];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Services</Text>
-        <Text style={styles.headerSub}>Everything you need in one place</Text>
+        <Text style={styles.headerTitle}>{tr('services.title')}</Text>
+        <Text style={styles.headerSub}>{tr('services.subtitle')}</Text>
       </View>
 
       <View style={styles.welcomeStrip}>
         <Text style={styles.welcomeText}>
-          👋  Hello, {(user?.name || "Citizen").split(" ")[0]}
+          👋  {tr('services.welcomeHello')} {(user?.name || "Citizen").split(" ")[0]}
         </Text>
-        <Text style={styles.welcomeSub}>What can we help you with today?</Text>
+        <Text style={styles.welcomeSub}>{tr('services.welcomeQuestion')}</Text>
       </View>
 
       <View style={styles.grid}>
         {SERVICES.map((s) => (
           <TouchableOpacity
-            key={s.title}
+            key={s.route}
             style={[styles.card, { backgroundColor: s.bg }]}
             onPress={() => router.push(s.route as any)}
             activeOpacity={0.75}
@@ -100,10 +93,8 @@ export default function ServicesScreen() {
       </View>
 
       <View style={styles.helpCard}>
-        <Text style={styles.helpTitle}>Need Help?</Text>
-        <Text style={styles.helpText}>
-          Contact your local ward office or raise a complaint and a field officer will be assigned to assist you.
-        </Text>
+        <Text style={styles.helpTitle}>{tr('services.needHelp')}</Text>
+        <Text style={styles.helpText}>{tr('services.needHelpText')}</Text>
       </View>
     </ScrollView>
   );

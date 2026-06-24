@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import api from '../../services/api';
+import { useT } from '../../i18n/useT';
 
 type Notif = {
   id: string;
@@ -21,6 +22,7 @@ const TYPE_ICON: Record<string, string> = {
 };
 
 export default function NotificationsScreen() {
+  const tr = useT();
   const router = useRouter();
   const [notifs, setNotifs] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +40,6 @@ export default function NotificationsScreen() {
         isRead: n.isRead || n.read,
         createdAt: n.createdAt || n.created_at,
       })));
-      // Mark all as read
       await api.post('/api/notifications/mark-all-read').catch(() => {});
     } catch (_) {}
     finally { setLoading(false); setRefreshing(false); }
@@ -79,7 +80,7 @@ export default function NotificationsScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={s.backBtn}>←</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Notifications</Text>
+        <Text style={s.headerTitle}>{tr('notifications.title')}</Text>
         <View style={{ width: 50 }} />
       </View>
       {loading ? (
@@ -94,7 +95,7 @@ export default function NotificationsScreen() {
           ListEmptyComponent={
             <View style={s.empty}>
               <Text style={{ fontSize: 48, marginBottom: 12 }}>🔕</Text>
-              <Text style={s.emptyText}>No notifications yet</Text>
+              <Text style={s.emptyText}>{tr('notifications.noNotifications')}</Text>
             </View>
           }
         />

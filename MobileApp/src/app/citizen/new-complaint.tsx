@@ -9,7 +9,9 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
+import { useT } from "../../i18n/useT";
 
+// Internal English keys kept stable for CATEGORY_MAP lookup
 const CATEGORIES = ["Roads", "Water", "Noise", "Electricity", "Waste", "Other"];
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 const CATEGORY_MAP: Record<string, string> = {
@@ -18,6 +20,7 @@ const CATEGORY_MAP: Record<string, string> = {
 };
 
 export default function NewComplaintScreen() {
+  const tr = useT();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const profileComplete = useAuthStore((s) => s.profileComplete);
@@ -29,6 +32,7 @@ export default function NewComplaintScreen() {
       router.replace("/citizen/edit-profile?required=1" as any);
     }
   }, [profileComplete]);
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -42,6 +46,16 @@ export default function NewComplaintScreen() {
     longitude: null as number | null,
     confirmed: false,
   });
+
+  // Map English category key to translated label
+  const categoryLabel: Record<string, string> = {
+    Roads: tr('newComplaint.catRoads'),
+    Water: tr('newComplaint.catWater'),
+    Noise: tr('newComplaint.catNoise'),
+    Electricity: tr('newComplaint.catElectricity'),
+    Waste: tr('newComplaint.catWaste'),
+    Other: tr('newComplaint.catOther'),
+  };
 
   const setField = (key: string, value: any) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -140,10 +154,10 @@ export default function NewComplaintScreen() {
   const renderStep1 = () => (
     <View>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>File a complaint</Text>
-        <Text style={styles.stepSubtitle}>Step 1 of 4 — category</Text>
+        <Text style={styles.stepTitle}>{tr('newComplaint.title')}</Text>
+        <Text style={styles.stepSubtitle}>{tr('newComplaint.stepCategory')}</Text>
       </View>
-      <Text style={styles.label}>SELECT CATEGORY *</Text>
+      <Text style={styles.label}>{tr('newComplaint.selectCategory')}</Text>
       <View style={styles.chipRow}>
         {CATEGORIES.map((cat) => (
           <TouchableOpacity
@@ -151,13 +165,15 @@ export default function NewComplaintScreen() {
             style={[styles.chip, form.category === cat && styles.chipActive]}
             onPress={() => setField("category", cat)}
           >
-            <Text style={[styles.chipText, form.category === cat && styles.chipTextActive]}>{cat}</Text>
+            <Text style={[styles.chipText, form.category === cat && styles.chipTextActive]}>
+              {categoryLabel[cat]}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
       {errors.category ? <Text style={styles.errorText}>{errors.category}</Text> : null}
 
-      <Text style={[styles.label, { marginTop: 20 }]}>PRIORITY LEVEL</Text>
+      <Text style={[styles.label, { marginTop: 20 }]}>{tr('newComplaint.priorityLevel')}</Text>
       {PRIORITIES.map((p) => (
         <TouchableOpacity key={p} style={styles.radioRow} onPress={() => setField("priority", p)}>
           <View style={styles.radioOuter}>
@@ -173,10 +189,10 @@ export default function NewComplaintScreen() {
   const renderStep2 = () => (
     <View>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>File a complaint</Text>
-        <Text style={styles.stepSubtitle}>Step 2 of 4 — details</Text>
+        <Text style={styles.stepTitle}>{tr('newComplaint.title')}</Text>
+        <Text style={styles.stepSubtitle}>{tr('newComplaint.stepDetails')}</Text>
       </View>
-      <Text style={styles.label}>DESCRIBE THE ISSUE *</Text>
+      <Text style={styles.label}>{tr('newComplaint.describeIssue')}</Text>
       <TextInput
         style={[styles.textarea, errors.description && styles.inputError]}
         placeholder="Describe the issue in detail. Include what, where, and when..."
@@ -190,11 +206,11 @@ export default function NewComplaintScreen() {
       <Text style={styles.charCount}>{form.description.length}/500 characters</Text>
       {errors.description ? <Text style={styles.errorText}>{errors.description}</Text> : null}
 
-      <Text style={[styles.label, { marginTop: 20 }]}>ATTACH PHOTOS (OPTIONAL)</Text>
+      <Text style={[styles.label, { marginTop: 20 }]}>{tr('newComplaint.attachPhotos')}</Text>
       <TouchableOpacity style={styles.photoUploadBox} onPress={pickPhoto}>
         <Text style={styles.photoIcon}>📷</Text>
-        <Text style={styles.photoUploadText}>Tap to add photo</Text>
-        <Text style={styles.photoUploadHint}>Max 5 photos</Text>
+        <Text style={styles.photoUploadText}>{tr('newComplaint.tapToAddPhoto')}</Text>
+        <Text style={styles.photoUploadHint}>{tr('newComplaint.maxPhotos')}</Text>
       </TouchableOpacity>
       {form.photos.length > 0 && (
         <View style={styles.photoGrid}>
@@ -212,7 +228,9 @@ export default function NewComplaintScreen() {
         </View>
       )}
       {form.photos.length > 0 && (
-        <Text style={styles.charCount}>{form.photos.length} photo(s) added</Text>
+        <Text style={styles.charCount}>
+          {tr('newComplaint.photosAdded').replace('{n}', String(form.photos.length))}
+        </Text>
       )}
     </View>
   );
@@ -221,20 +239,20 @@ export default function NewComplaintScreen() {
   const renderStep3 = () => (
     <View>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>File a complaint</Text>
-        <Text style={styles.stepSubtitle}>Step 3 of 4 — location</Text>
+        <Text style={styles.stepTitle}>{tr('newComplaint.title')}</Text>
+        <Text style={styles.stepSubtitle}>{tr('newComplaint.stepLocation')}</Text>
       </View>
-      <Text style={styles.label}>LOCATION DETAILS *</Text>
+      <Text style={styles.label}>{tr('newComplaint.locationDetails')}</Text>
       <TextInput
         style={[styles.input, errors.address && styles.inputError]}
-        placeholder="Enter street, area, or landmark"
+        placeholder={tr('newComplaint.locationPlaceholder')}
         placeholderTextColor="#9CA3AF"
         value={form.address}
         onChangeText={(v) => setField("address", v)}
       />
       {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
 
-      <Text style={[styles.label, { marginTop: 16 }]}>WARD *</Text>
+      <Text style={[styles.label, { marginTop: 16 }]}>{tr('newComplaint.wardLabel')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
         <View style={styles.wardRow}>
           {Array.from({ length: 50 }, (_, i) => String(i + 1)).map((w) => (
@@ -244,7 +262,7 @@ export default function NewComplaintScreen() {
               onPress={() => setField("wardId", w)}
             >
               <Text style={[styles.chipText, form.wardId === w && styles.chipTextActive]}>
-                Ward {w}
+                {tr('newComplaint.wardChip').replace('{w}', w)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -253,7 +271,7 @@ export default function NewComplaintScreen() {
       {errors.wardId ? <Text style={styles.errorText}>{errors.wardId}</Text> : null}
 
       <TouchableOpacity style={styles.gpsBtn} onPress={getGPS}>
-        <Text style={styles.gpsBtnText}>📍 Get GPS Location</Text>
+        <Text style={styles.gpsBtnText}>📍 {tr('newComplaint.getGPS')}</Text>
       </TouchableOpacity>
       {form.latitude && (
         <Text style={styles.gpsInfo}>
@@ -267,16 +285,18 @@ export default function NewComplaintScreen() {
   const renderStep4 = () => (
     <View>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>File a complaint</Text>
-        <Text style={styles.stepSubtitle}>Step 4 of 4 — review</Text>
+        <Text style={styles.stepTitle}>{tr('newComplaint.title')}</Text>
+        <Text style={styles.stepSubtitle}>{tr('newComplaint.stepReview')}</Text>
       </View>
       {[
-        ["Category", form.category],
-        ["Priority", form.priority],
-        ["Description", form.description],
-        ["Location", form.address],
-        ["Ward", `Ward ${form.wardId}`],
-        form.photos.length > 0 ? ["Photos", `${form.photos.length} attached`] : null,
+        [tr('newComplaint.reviewCategory'), categoryLabel[form.category] || form.category],
+        [tr('newComplaint.reviewPriority'), form.priority],
+        [tr('newComplaint.reviewDescription'), form.description],
+        [tr('newComplaint.reviewLocation'), form.address],
+        [tr('newComplaint.reviewWard'), tr('newComplaint.wardChip').replace('{w}', form.wardId)],
+        form.photos.length > 0
+          ? [tr('newComplaint.reviewPhotos'), tr('newComplaint.photosAttached').replace('{n}', String(form.photos.length))]
+          : null,
       ].filter((row): row is string[] => row !== null).map(([label, value]) => (
         <View key={label} style={styles.reviewRow}>
           <Text style={styles.reviewLabel}>{label}:</Text>
@@ -291,7 +311,7 @@ export default function NewComplaintScreen() {
         <View style={[styles.checkbox, form.confirmed && styles.checkboxChecked]}>
           {form.confirmed && <Text style={{ color: "#fff", fontSize: 12 }}>✓</Text>}
         </View>
-        <Text style={styles.checkLabel}>I confirm that the information is accurate and factual</Text>
+        <Text style={styles.checkLabel}>{tr('newComplaint.confirmAccuracy')}</Text>
       </TouchableOpacity>
       {errors.confirmed ? <Text style={styles.errorText}>{errors.confirmed}</Text> : null}
     </View>
@@ -305,8 +325,8 @@ export default function NewComplaintScreen() {
           <Text style={styles.backArrowText}>←</Text>
         </TouchableOpacity>
         <View>
-          <Text style={styles.topHeaderTitle}>File a Complaint</Text>
-          <Text style={styles.topHeaderSub}>Step {step} of 4</Text>
+          <Text style={styles.topHeaderTitle}>{tr('newComplaint.title')}</Text>
+          <Text style={styles.topHeaderSub}>{tr('newComplaint.stepOf').replace('{n}', String(step))}</Text>
         </View>
         <View style={{ width: 44 }} />
       </View>
@@ -337,15 +357,15 @@ export default function NewComplaintScreen() {
       {/* Navigation */}
       <View style={styles.navRow}>
         <TouchableOpacity
-  style={[styles.navBtn, styles.navBack]}
-  onPress={() => step > 1 ? setStep(step - 1) : router.back()}
->
-  <Text style={styles.navBackText}>←</Text>
-</TouchableOpacity>
+          style={[styles.navBtn, styles.navBack]}
+          onPress={() => step > 1 ? setStep(step - 1) : router.back()}
+        >
+          <Text style={styles.navBackText}>←</Text>
+        </TouchableOpacity>
 
         {step < 4 ? (
           <TouchableOpacity style={[styles.navBtn, styles.navNext]} onPress={() => validate() && setStep(step + 1)}>
-            <Text style={styles.navNextText}>Next →</Text>
+            <Text style={styles.navNextText}>{tr('newComplaint.next')}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -353,7 +373,7 @@ export default function NewComplaintScreen() {
             onPress={handleSubmit}
             disabled={loading}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.navNextText}>Submit Complaint</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.navNextText}>{tr('newComplaint.submitComplaint')}</Text>}
           </TouchableOpacity>
         )}
       </View>

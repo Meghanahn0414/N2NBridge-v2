@@ -29,7 +29,7 @@
   display: flex;
   min-height: 100vh;
   background: var(--mla-bg);
-  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  font-family: 'Hanken Grotesk', 'Noto Sans Kannada', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -82,11 +82,14 @@
 
 /* section label */
 .mla-nav-label {
-  font: 600 11px 'Hanken Grotesk';
+  font: 600 10px 'Hanken Grotesk', 'Noto Sans Kannada', sans-serif;
   color: #55617E;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 22px 10px 10px;
+  letter-spacing: 0.04em;
+  padding: 18px 10px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mla-nav-label:first-of-type {
   padding-top: 0;
@@ -255,49 +258,67 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 34px;
+  padding: 16px 34px;
   background: var(--mla-bg);
   position: sticky;
   top: 0;
   z-index: 10;
   border-bottom: 1px solid #E5E9F1;
   gap: 16px;
+  flex-wrap: wrap;
+  min-height: 72px;
 }
-.mla-topbar-left {}
+.mla-topbar-left {
+  flex: 1;
+  min-width: 0;
+  max-width: 60%;
+}
 .mla-topbar-subtitle {
-  font: 500 13px 'Hanken Grotesk';
+  font: 500 12px 'Hanken Grotesk', 'Noto Sans Kannada', sans-serif;
   color: var(--mla-muted);
-  margin-bottom: 3px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mla-topbar-title {
-  font: 400 30px 'Newsreader';
+  font-family: 'Newsreader', 'Noto Sans Kannada', serif;
+  font-size: clamp(16px, 2.2vw, 26px);
+  font-weight: 400;
   color: var(--mla-dark);
   margin: 0;
   letter-spacing: -0.01em;
-  line-height: 1.1;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mla-topbar-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 /* topbar button */
 .mla-btn {
-  height: 44px;
+  height: 40px;
   background: #fff;
   border: 1px solid var(--mla-border);
   border-radius: 13px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 15px;
-  font: 600 14px 'Hanken Grotesk';
+  gap: 6px;
+  padding: 0 12px;
+  font: 600 13px 'Hanken Grotesk', 'Noto Sans Kannada', sans-serif;
   color: var(--mla-dark);
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
   white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mla-btn:hover {
   border-color: #c5cfe8;
@@ -342,15 +363,20 @@
   border: 1px solid var(--mla-border);
   border-radius: 13px;
   padding: 5px;
+  flex-wrap: wrap;
 }
 .mla-seg-item {
-  font: 600 13px 'Hanken Grotesk';
+  font: 600 12px 'Hanken Grotesk', 'Noto Sans Kannada', sans-serif;
   color: #7A839A;
-  padding: 8px 14px;
+  padding: 7px 11px;
   border-radius: 9px;
   cursor: pointer;
   border: none;
   background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
 }
 .mla-seg-item.active {
   background: #2B5BD7;
@@ -377,14 +403,20 @@
 .mla-card--lg { padding: 26px 28px; }
 
 .mla-card-title {
-  font: 700 16px 'Hanken Grotesk';
+  font: 700 15px 'Hanken Grotesk', 'Noto Sans Kannada', sans-serif;
   color: var(--mla-dark);
   margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mla-card-sub {
-  font: 500 12px 'Hanken Grotesk';
+  font: 500 12px 'Hanken Grotesk', 'Noto Sans Kannada', sans-serif;
   color: var(--mla-muted);
-  margin: 0 0 20px;
+  margin: 0 0 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── KPI strip card ── */
@@ -419,14 +451,22 @@
 .mla-kpi-trend.up { color: #1E7A50; }
 .mla-kpi-trend.down { color: #C8453A; }
 .mla-kpi-value {
-  font: 400 30px 'Newsreader';
+  font-family: 'Newsreader', 'Noto Sans Kannada', serif;
+  font-size: clamp(18px, 2vw, 28px);
+  font-weight: 400;
   color: var(--mla-dark);
-  line-height: 1;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mla-kpi-label {
-  font: 500 12px 'Hanken Grotesk';
+  font: 500 12px 'Hanken Grotesk', 'Noto Sans Kannada', sans-serif;
   color: var(--mla-muted);
   margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Chip / badge ── */

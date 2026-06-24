@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
 import api from '../../services/api';
+import { useT } from '../../i18n/useT';
 
 const C = {
   primary: '#1D4ED8',
@@ -36,6 +37,7 @@ const EVENT_ICONS: Record<string, string> = {
 };
 
 export default function Events() {
+  const tr = useT();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,7 +68,7 @@ export default function Events() {
   const onRefresh = () => { setRefreshing(true); fetchEvents(); };
 
   const formatDate = (dateStr?: string) => {
-    if (!dateStr) return 'Date TBD';
+    if (!dateStr) return tr('events.dateTbd');
     return new Date(dateStr).toLocaleDateString('en-IN', {
       weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
     });
@@ -81,14 +83,14 @@ export default function Events() {
     const displayTitle = item.eventName || item.title || 'Untitled Event';
 
     const handleRegister = async (eventId: string) => {
-  try {
-    await api.post(`/api/events/${eventId}/register`, {});
-    Alert.alert("Registered!", "You have successfully registered for this event.");
-  } catch (err: any) {
-    const msg = err?.response?.data?.detail || "Failed to register. Try again.";
-    Alert.alert("Error", String(msg));
-  }
-};
+      try {
+        await api.post(`/api/events/${eventId}/register`, {});
+        Alert.alert("Registered!", "You have successfully registered for this event.");
+      } catch (err: any) {
+        const msg = err?.response?.data?.detail || "Failed to register. Try again.";
+        Alert.alert("Error", String(msg));
+      }
+    };
 
     return (
       <View style={[s.card, !upcoming && s.cardPast]}>
@@ -99,7 +101,7 @@ export default function Events() {
           <View style={s.cardTop}>
             <Text style={s.cardTitle} numberOfLines={2}>{displayTitle}</Text>
             {!upcoming && (
-              <View style={s.pastBadge}><Text style={s.pastBadgeText}>Past</Text></View>
+              <View style={s.pastBadge}><Text style={s.pastBadgeText}>{tr('events.past')}</Text></View>
             )}
           </View>
           {item.description && (
@@ -107,7 +109,7 @@ export default function Events() {
           )}
           <Text style={s.metaItem}>📅 {formatDate(dateStr)}</Text>
           {item.location && <Text style={s.metaItem}>📍 {item.location}</Text>}
-          {item.ward && <Text style={s.metaItem}>🏘️ Ward: {item.ward}</Text>}
+          {item.ward && <Text style={s.metaItem}>🏘️ {tr('events.ward')} {item.ward}</Text>}
           {item.status && (
             <View style={s.statusBadge}>
               <Text style={s.statusText}>{item.status}</Text>
@@ -126,8 +128,8 @@ export default function Events() {
           <Text style={s.backBtn}>←</Text>
         </TouchableOpacity>
         <View>
-          <Text style={s.headerTitle}>Events & Programs</Text>
-          <Text style={s.headerSub}>Upcoming ward events</Text>
+          <Text style={s.headerTitle}>{tr('events.title')}</Text>
+          <Text style={s.headerSub}>{tr('events.subtitle')}</Text>
         </View>
         <View style={{ width: 50 }} />
       </View>
@@ -144,8 +146,8 @@ export default function Events() {
           ListEmptyComponent={
             <View style={s.empty}>
               <Text style={s.emptyIcon}>📅</Text>
-              <Text style={s.emptyTitle}>No events available</Text>
-              <Text style={s.emptyText}>Check back later for upcoming ward events and programs.</Text>
+              <Text style={s.emptyTitle}>{tr('events.noEvents')}</Text>
+              <Text style={s.emptyText}>{tr('events.noEventsText')}</Text>
             </View>
           }
           showsVerticalScrollIndicator={false}

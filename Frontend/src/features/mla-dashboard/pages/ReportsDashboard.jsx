@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "../../../shared/services/api";
+import MIcon from "../../../components/MIcon";
 import {
   RiTimeLine,
   RiSearchLine,
@@ -13,12 +14,12 @@ import {
 
 /* ── category metadata ─────────────────────── */
 const CATEGORY_META = {
-  WATER_SUPPLY:    { label: "Water",       abbr: "💧", bg: "#FBEAE8", color: "#C8453A" },
-  ROAD_ISSUE:      { label: "Roads",       abbr: "🛤",  bg: "#E3E9F5", color: "#4B5E80" },
-  ELECTRICITY:     { label: "Electricity", abbr: "⚡",  bg: "#E7EEFF", color: "#2B5BD7" },
-  GARBAGE:         { label: "Sanitation",  abbr: "🗑",  bg: "#F0EBF8", color: "#6B4FD8" },
-  NOISE_POLLUTION: { label: "Noise",       abbr: "🔊",  bg: "#FCF1E0", color: "#C9871F" },
-  OTHER:           { label: "Other",       abbr: "📋",  bg: "#EEF1F7", color: "#8590A6" },
+  WATER_SUPPLY:    { label: "Water",       icon: "water_drop", bg: "#FBEAE8", color: "#C8453A" },
+  ROAD_ISSUE:      { label: "Roads",       icon: "road",       bg: "#E3E9F5", color: "#4B5E80" },
+  ELECTRICITY:     { label: "Electricity", icon: "bolt",       bg: "#E7EEFF", color: "#2B5BD7" },
+  GARBAGE:         { label: "Sanitation",  icon: "trash",      bg: "#F0EBF8", color: "#6B4FD8" },
+  NOISE_POLLUTION: { label: "Noise",       icon: "noise",      bg: "#FCF1E0", color: "#C9871F" },
+  OTHER:           { label: "Other",       icon: "clipboard",  bg: "#EEF1F7", color: "#8590A6" },
 };
 
 /* Match a category name or ID to CATEGORY_META — fuzzy, case-insensitive */
@@ -346,7 +347,7 @@ export default function ReportsDashboard() {
                   <span style={{ fontFamily: "'Newsreader', Georgia, serif", fontWeight: 400, fontSize: 22, color: "#2B5BD7" }}>{idx + 1}</span>
 
                   <div style={{ width: 42, height: 42, borderRadius: 11, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 22 }}>{meta.abbr}</span>
+                    <MIcon name={meta.icon} style={{ fontSize: 20, color: meta.color }} />
                   </div>
 
                   <div>
@@ -484,7 +485,7 @@ export default function ReportsDashboard() {
                 >
                   {/* Icon */}
                   <div style={{ width: 48, height: 48, borderRadius: 11, background: iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: isNew ? 24 : 20 }}>{meta.abbr}</span>
+                    <MIcon name={meta.icon} style={{ fontSize: isNew ? 22 : 18, color: iconColor }} />
                   </div>
 
                   {/* Issue */}

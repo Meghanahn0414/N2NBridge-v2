@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Alert, ActivityIndicator, StatusBar, Linking,
@@ -6,28 +6,31 @@ import {
 import { useRouter } from "expo-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
-
-const SOS_TYPES = [
-  { icon: "🔥", label: "Fire", color: "#DC2626", bg: "#FEF2F2" },
-  { icon: "🚑", label: "Medical Emergency", color: "#7C3AED", bg: "#F5F3FF" },
-  { icon: "🌊", label: "Flood / Water", color: "#0891B2", bg: "#ECFEFF" },
-  { icon: "⚡", label: "Power Hazard", color: "#D97706", bg: "#FFFBEB" },
-  { icon: "🛣️", label: "Road Accident", color: "#DC2626", bg: "#FEF2F2" },
-  { icon: "🆘", label: "Other Emergency", color: "#64748B", bg: "#F8FAFC" },
-];
-
-const HELPLINES = [
-  { label: "Police", number: "100", icon: "👮" },
-  { label: "Ambulance", number: "108", icon: "🚑" },
-  { label: "Fire", number: "101", icon: "🔥" },
-  { label: "Disaster", number: "1070", icon: "⚠️" },
-];
+import { useT } from "../../i18n/useT";
 
 export default function SOSScreen() {
+  const tr = useT();
   const router = useRouter();
   const { user } = useAuthStore();
   const [selected, setSelected] = useState("");
   const [sending, setSending] = useState(false);
+
+  // SOS_TYPES defined inside component so tr() picks up current language
+  const SOS_TYPES = [
+    { icon: "🔥", labelKey: "sos.sosTypeFire",    color: "#DC2626", bg: "#FEF2F2" },
+    { icon: "🚑", labelKey: "sos.sosTypeMedical",  color: "#7C3AED", bg: "#F5F3FF" },
+    { icon: "🌊", labelKey: "sos.sosTypeFlood",    color: "#0891B2", bg: "#ECFEFF" },
+    { icon: "⚡", labelKey: "sos.sosTypePower",    color: "#D97706", bg: "#FFFBEB" },
+    { icon: "🛣️", labelKey: "sos.sosTypeRoad",     color: "#DC2626", bg: "#FEF2F2" },
+    { icon: "🆘", labelKey: "sos.sosTypeOther",    color: "#64748B", bg: "#F8FAFC" },
+  ];
+
+  const HELPLINES = [
+    { labelKey: "sos.helplinesPolice",   number: "100", icon: "👮" },
+    { labelKey: "sos.helplinesAmbulance",number: "108", icon: "🚑" },
+    { labelKey: "sos.helplinesFire",     number: "101", icon: "🔥" },
+    { labelKey: "sos.helplinesDisaster", number: "1070", icon: "⚠️" },
+  ];
 
   const handleSOS = async () => {
     if (!selected) {
@@ -38,7 +41,7 @@ export default function SOSScreen() {
       "Confirm Emergency Alert",
       `Send an emergency SOS for "${selected}"? This will notify local authorities.`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: tr('common.cancel'), style: "cancel" },
         {
           text: "Send SOS",
           style: "destructive",
@@ -74,14 +77,14 @@ export default function SOSScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={s.backBtn}>←</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>🚨 Emergency SOS</Text>
-        <Text style={s.headerSub}>Raise an urgent alert to authorities</Text>
+        <Text style={s.headerTitle}>🚨 {tr('sos.title')}</Text>
+        <Text style={s.headerSub}>{tr('sos.raiseUrgentAlert')}</Text>
       </View>
 
       <ScrollView style={s.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Helplines */}
         <View style={s.card}>
-          <Text style={s.sectionTitle}>EMERGENCY HELPLINES</Text>
+          <Text style={s.sectionTitle}>{tr('sos.emergencyHelplines')}</Text>
           <View style={s.helpGrid}>
             {HELPLINES.map((h) => (
               <TouchableOpacity
@@ -90,7 +93,7 @@ export default function SOSScreen() {
                 onPress={() => Linking.openURL(`tel:${h.number}`)}
               >
                 <Text style={s.helpIcon}>{h.icon}</Text>
-                <Text style={s.helpLabel}>{h.label}</Text>
+                <Text style={s.helpLabel}>{tr(h.labelKey as any)}</Text>
                 <Text style={s.helpNumber}>{h.number}</Text>
               </TouchableOpacity>
             ))}
@@ -99,18 +102,21 @@ export default function SOSScreen() {
 
         {/* SOS Type */}
         <View style={s.card}>
-          <Text style={s.sectionTitle}>SELECT EMERGENCY TYPE</Text>
+          <Text style={s.sectionTitle}>{tr('sos.selectEmergencyType')}</Text>
           <View style={s.sosGrid}>
-            {SOS_TYPES.map((t) => (
-              <TouchableOpacity
-                key={t.label}
-                style={[s.sosCard, { backgroundColor: t.bg }, selected === t.label && s.sosCardActive]}
-                onPress={() => setSelected(t.label)}
-              >
-                <Text style={s.sosIcon}>{t.icon}</Text>
-                <Text style={[s.sosLabel, { color: t.color }]}>{t.label}</Text>
-              </TouchableOpacity>
-            ))}
+            {SOS_TYPES.map((typ) => {
+              const label = tr(typ.labelKey as any);
+              return (
+                <TouchableOpacity
+                  key={typ.labelKey}
+                  style={[s.sosCard, { backgroundColor: typ.bg }, selected === label && s.sosCardActive]}
+                  onPress={() => setSelected(label)}
+                >
+                  <Text style={s.sosIcon}>{typ.icon}</Text>
+                  <Text style={[s.sosLabel, { color: typ.color }]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -122,7 +128,7 @@ export default function SOSScreen() {
         >
           {sending
             ? <ActivityIndicator color="#fff" />
-            : <Text style={s.sosBtnText}>🆘 Send Emergency Alert</Text>}
+            : <Text style={s.sosBtnText}>🆘 {tr('sos.sendAlert')}</Text>}
         </TouchableOpacity>
       </ScrollView>
     </View>

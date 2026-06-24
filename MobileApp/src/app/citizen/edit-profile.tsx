@@ -9,6 +9,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuthStore } from "../../store/authStore";
 import api from "../../services/api";
 import { API_BASE } from "../../config";
+import { useT } from "../../i18n/useT";
 
 const toAbsoluteUrl = (url: string | null | undefined) => {
   if (!url) return null;
@@ -31,9 +32,9 @@ const C = {
 
 type FieldConfig = {
   key: keyof typeof INITIAL_FORM;
-  label: string;
+  labelKey: string;
   icon: string;
-  placeholder: string;
+  placeholderKey: string;
   keyboard?: "default" | "email-address" | "phone-pad" | "number-pad";
   autoCapitalize?: "none" | "sentences";
   multiline?: boolean;
@@ -50,23 +51,23 @@ const INITIAL_FORM = {
 };
 
 const PERSONAL_FIELDS: FieldConfig[] = [
-  { key: "fullName", label: "Full Name", icon: "person-outline",    placeholder: "Enter your full name",   required: true },
-  { key: "email",    label: "Email",     icon: "mail-outline",       placeholder: "Enter email address",    keyboard: "email-address", autoCapitalize: "none" },
-  { key: "mobile",   label: "Phone",     icon: "call-outline",       placeholder: "Enter phone number",     keyboard: "phone-pad" },
-  { key: "age",      label: "Age",       icon: "calendar-outline",   placeholder: "Enter your age",          keyboard: "number-pad" },
+  { key: "fullName", labelKey: "profile.fullName",  icon: "person-outline",    placeholderKey: "profile.enterFullName",   required: true },
+  { key: "email",    labelKey: "profile.email",      icon: "mail-outline",       placeholderKey: "profile.enterEmail",      keyboard: "email-address", autoCapitalize: "none" },
+  { key: "mobile",   labelKey: "profile.phone",      icon: "call-outline",       placeholderKey: "profile.enterPhone",      keyboard: "phone-pad" },
+  { key: "age",      labelKey: "profile.age",        icon: "calendar-outline",   placeholderKey: "profile.enterAge",        keyboard: "number-pad" },
 ];
 
 const ADDRESS_FIELDS: FieldConfig[] = [
-  { key: "address",  label: "Address",     icon: "location-outline",   placeholder: "Enter your full address", multiline: true },
-  { key: "wardId",   label: "Ward Number", icon: "business-outline",   placeholder: "e.g. 8",                 keyboard: "number-pad" },
+  { key: "address",  labelKey: "profile.address",    icon: "location-outline",   placeholderKey: "profile.enterAddress",   multiline: true },
+  { key: "wardId",   labelKey: "profile.wardNumber", icon: "business-outline",   placeholderKey: "profile.wardNumber",     keyboard: "number-pad" },
 ];
 
 export default function EditProfileScreen() {
+  const tr = useT();
   const router      = useRouter();
   const params      = useLocalSearchParams<{ required?: string }>();
   const isRequired  = params.required === "1";
   const { user, setProfileComplete, updateUser } = useAuthStore();
-
   const [loading,        setLoading]        = useState(true);
   const [saving,         setSaving]         = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -215,7 +216,7 @@ export default function EditProfileScreen() {
         </View>
         <View style={s.fieldInputWrap}>
           <Text style={[s.fieldLabel, isFocused && s.fieldLabelFocused]}>
-            {f.label}{f.required ? " *" : ""}
+            {tr(f.labelKey as any)}{f.required ? " *" : ""}
           </Text>
           <TextInput
             style={[s.input, f.multiline && s.inputMulti]}
@@ -223,7 +224,7 @@ export default function EditProfileScreen() {
             onChangeText={(v) =>
               setField(f.key, (f.key === "wardId" || f.key === "age") ? v.replace(/[^0-9]/g, "") : v)
             }
-            placeholder={f.placeholder}
+            placeholder={tr(f.placeholderKey as any)}
             placeholderTextColor="#CBD5E1"
             keyboardType={f.keyboard ?? "default"}
             autoCapitalize={f.autoCapitalize ?? "sentences"}
@@ -245,7 +246,7 @@ export default function EditProfileScreen() {
       {loading ? (
         <View style={s.loadingWrap}>
           <ActivityIndicator size="large" color={C.primary} />
-          <Text style={s.loadingText}>Loading your profile…</Text>
+          <Text style={s.loadingText}>{tr('common.loading')}</Text>
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} bounces>
@@ -259,16 +260,13 @@ export default function EditProfileScreen() {
             )}
             <View style={s.bannerTextWrap}>
               <Text style={s.bannerTitle}>
-                {isRequired ? "Complete Your Profile" : "Edit Profile"}
+                {isRequired ? tr('profile.completeProfile') : tr('profile.editProfile')}
               </Text>
               <Text style={s.bannerSub}>
-                {isRequired
-                  ? "Fill in your details to get started"
-                  : "Update your personal information"}
+                {isRequired ? tr('profile.fillDetails') : tr('profile.updateInfo')}
               </Text>
             </View>
 
-            {/* Step dots for first-time setup */}
             {isRequired && (
               <View style={s.stepDots}>
                 {[0, 1, 2].map((i) => (
@@ -302,7 +300,7 @@ export default function EditProfileScreen() {
               </View>
             </TouchableOpacity>
             <Text style={s.photoHint}>
-              {uploadingPhoto ? "Uploading…" : "Tap to change photo"}
+              {uploadingPhoto ? tr('profile.uploading') : tr('profile.tapToChangePhoto')}
             </Text>
           </View>
 
@@ -310,7 +308,7 @@ export default function EditProfileScreen() {
           <View style={s.section}>
             <View style={s.sectionHeader}>
               <View style={s.sectionDot} />
-              <Text style={s.sectionTitle}>Personal Information</Text>
+              <Text style={s.sectionTitle}>{tr('profile.personalInfo')}</Text>
             </View>
             <View style={s.card}>
               {PERSONAL_FIELDS.map((f, i) => (
@@ -326,7 +324,7 @@ export default function EditProfileScreen() {
           <View style={s.section}>
             <View style={s.sectionHeader}>
               <View style={s.sectionDot} />
-              <Text style={s.sectionTitle}>Address & Ward</Text>
+              <Text style={s.sectionTitle}>{tr('profile.addressWard')}</Text>
             </View>
             <View style={s.card}>
               {ADDRESS_FIELDS.map((f, i) => (
@@ -356,7 +354,7 @@ export default function EditProfileScreen() {
                     color="#fff"
                   />
                   <Text style={s.saveBtnText}>
-                    {isRequired ? "Save & Continue" : "Save Changes"}
+                    {isRequired ? tr('profile.saveContinue') : tr('profile.saveChanges')}
                   </Text>
                 </>
               )}
@@ -379,7 +377,6 @@ const s = StyleSheet.create({
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
   loadingText: { color: C.muted, fontSize: 14 },
 
-  /* Banner */
   banner: {
     height: BANNER_H,
     backgroundColor: C.primaryDark,
@@ -387,10 +384,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 48,
     position: "relative",
-    // layered blue effect via border
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
-    // gradient approximation using a slightly lighter inset strip
     overflow: "hidden",
   },
   backBtn: {
@@ -416,7 +411,6 @@ const s = StyleSheet.create({
     backgroundColor: "#fff",
   },
 
-  /* Avatar area — pulls up over the banner */
   avatarArea: {
     alignItems: "center",
     marginTop: -(AVATAR_SIZE / 2 + 4),
@@ -427,7 +421,7 @@ const s = StyleSheet.create({
     width: AVATAR_SIZE + 8,
     height: AVATAR_SIZE + 8,
     borderRadius: (AVATAR_SIZE + 8) / 2,
-    backgroundColor: C.bg,          // ring colour = page background
+    backgroundColor: C.bg,
     alignItems: "center",
     justifyContent: "center",
     elevation: 6,
@@ -457,7 +451,6 @@ const s = StyleSheet.create({
   },
   photoHint: { marginTop: 8, fontSize: 12, color: C.muted, fontWeight: "500" },
 
-  /* Section */
   section: { marginHorizontal: 16, marginTop: 20 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   sectionDot: {
@@ -466,7 +459,6 @@ const s = StyleSheet.create({
   },
   sectionTitle: { fontSize: 13, fontWeight: "700", color: C.text, letterSpacing: 0.3 },
 
-  /* Card */
   card: {
     backgroundColor: C.card,
     borderRadius: 16,
@@ -479,7 +471,6 @@ const s = StyleSheet.create({
   },
   divider: { height: 1, backgroundColor: "#F1F5F9", marginLeft: 58 },
 
-  /* Field row */
   fieldRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -518,7 +509,6 @@ const s = StyleSheet.create({
   },
   inputMulti: { minHeight: 60, paddingTop: 4 },
 
-  /* Save */
   savePad: { paddingHorizontal: 16, marginTop: 28 },
   saveBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,

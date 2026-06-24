@@ -3,6 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { getDashboardForRole } from "../../../shared/services/dashboardService";
 import { getAuthUser } from "../../../services/authStorage";
 import { ROUTES } from "../../../app/routes/RouteConstants";
+import {
+  FaClipboardList,
+  FaCog,
+  FaCheckCircle,
+  FaBell,
+  FaCalendarAlt,
+  FaUser,
+  FaInbox,
+  FaMapMarkerAlt,
+  FaRoad,
+  FaTint,
+  FaBolt,
+  FaTrash,
+  FaVolumeUp,
+  FaExclamationTriangle,
+} from "react-icons/fa";
 import "../../../styles/field-officer.css";
 
 const STATUS_META = {
@@ -24,12 +40,12 @@ const PRIORITY_META = {
 };
 
 const CATEGORY_ICONS = {
-  ROAD_ISSUE:      "🛣️",
-  WATER_SUPPLY:    "💧",
-  ELECTRICITY:     "⚡",
-  GARBAGE:         "🗑️",
-  NOISE_POLLUTION: "🔊",
-  OTHER:           "📌",
+  ROAD_ISSUE:      FaRoad,
+  WATER_SUPPLY:    FaTint,
+  ELECTRICITY:     FaBolt,
+  GARBAGE:         FaTrash,
+  NOISE_POLLUTION: FaVolumeUp,
+  OTHER:           FaMapMarkerAlt,
 };
 
 export default function FieldDashboard() {
@@ -60,10 +76,10 @@ export default function FieldDashboard() {
   const recentGrievances = grievances.slice(0, 8);
 
   const stats = [
-    { label: "Total Assigned", value: total,       icon: "📋", gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", sub: "Grievances",   route: ROUTES.fieldGrievances },
-    { label: "In Progress",    value: inProgress,  icon: "⚙️",  gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)", sub: "Active",       route: ROUTES.fieldGrievances },
-    { label: "Resolved",       value: resolved,    icon: "✅",  gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)", sub: "Closed",       route: ROUTES.fieldGrievances },
-    { label: "Alerts",         value: pendingAlerts, icon: "🚨", gradient: pendingAlerts > 0 ? "linear-gradient(135deg, #fa709a 0%, #fee140 100%)" : "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)", sub: pendingAlerts > 0 ? "Pending" : "All clear", route: ROUTES.fieldAlerts },
+    { label: "Total Assigned", value: total,       icon: FaClipboardList, gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", sub: "Grievances",   route: ROUTES.fieldGrievances },
+    { label: "In Progress",    value: inProgress,  icon: FaCog,          gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)", sub: "Active",       route: ROUTES.fieldGrievances },
+    { label: "Resolved",       value: resolved,    icon: FaCheckCircle,  gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)", sub: "Closed",       route: ROUTES.fieldGrievances },
+    { label: "Alerts",         value: pendingAlerts, icon: FaBell,       gradient: pendingAlerts > 0 ? "linear-gradient(135deg, #fa709a 0%, #fee140 100%)" : "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)", sub: pendingAlerts > 0 ? "Pending" : "All clear", route: ROUTES.fieldAlerts },
   ];
 
   return (
@@ -131,14 +147,14 @@ export default function FieldDashboard() {
             {loading && <div style={{ padding: "24px", textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>Loading...</div>}
             {!loading && recentGrievances.length === 0 && (
               <div style={{ padding: "32px", textAlign: "center", color: "#94a3b8" }}>
-                <div style={{ fontSize: "36px" }}>📭</div>
+                <div style={{ fontSize: "36px" }}><FaInbox /></div>
                 <p style={{ margin: "8px 0 0", fontSize: "13px" }}>No grievances assigned</p>
               </div>
             )}
             {!loading && recentGrievances.map((g, i) => {
               const sm = STATUS_META[g.status] || STATUS_META.CLOSED;
               const pm = PRIORITY_META[g.priority];
-              const catIcon = CATEGORY_ICONS[g.category] || "📌";
+              const catIcon = CATEGORY_ICONS[g.category] || FaMapMarkerAlt;
               const category = g.category ? g.category.replace(/_/g, " ") : "General";
               return (
                 <div key={g._id || i} style={{ padding: "9px 16px", borderBottom: "1px solid #f8fafc", display: "flex", gap: "10px", alignItems: "center", cursor: "pointer", transition: "background 0.1s" }}
@@ -161,9 +177,9 @@ export default function FieldDashboard() {
                         {pm && <span style={{ padding: "1px 7px", borderRadius: "12px", fontSize: "10px", fontWeight: 600, background: pm.bg, color: pm.text }}>{g.priority}</span>}
                       </div>
                     </div>
-                    <div style={{ fontSize: "10px", color: "#94a3b8", marginTop: "1px", display: "flex", gap: "6px" }}>
+                    <div style={{ fontSize: "10px", color: "#94a3b8", marginTop: "1px", display: "flex", gap: "6px", alignItems: "center" }}>
                       <span>{category}</span>
-                      {g.address && <span>📍 {g.address.length > 20 ? g.address.slice(0, 20) + "…" : g.address}</span>}
+                      {g.address && <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><FaMapMarkerAlt />{g.address.length > 20 ? g.address.slice(0, 20) + "…" : g.address}</span>}
                       {g.createdAt && <span>{new Date(g.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>}
                     </div>
                   </div>
@@ -207,14 +223,14 @@ export default function FieldDashboard() {
               {loading && <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0 }}>Loading...</p>}
               {!loading && alerts.length === 0 && (
                 <div style={{ textAlign: "center", padding: "16px 0" }}>
-                  <div style={{ fontSize: "28px" }}>🟢</div>
+                  <div style={{ fontSize: "28px" }}><FaCheckCircle /></div>
                   <p style={{ margin: "4px 0 0", fontSize: "12px", fontWeight: 700, color: "#166534" }}>All clear</p>
                   <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#94a3b8" }}>No active alerts</p>
                 </div>
               )}
               {!loading && alerts.slice(0, 4).map((a, i) => (
                 <div key={a._id || i} style={{ display: "flex", gap: "8px", alignItems: "flex-start", padding: "8px", borderRadius: "8px", background: "#fff5f5", border: "1px solid #fecaca", marginBottom: "6px" }}>
-                  <span style={{ fontSize: "14px", flexShrink: 0 }}>🚨</span>
+                  <span style={{ fontSize: "14px", flexShrink: 0 }}><FaExclamationTriangle /></span>
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, fontSize: "12px", color: "#0f172a" }}>{a.emergencyType || a.type || "Emergency"}</p>
                     <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#64748b" }}>{(a.description || a.message || "No details").slice(0, 50)}…</p>
@@ -229,10 +245,10 @@ export default function FieldDashboard() {
             <p style={{ margin: "0 0 8px", fontSize: "10px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em" }}>Quick Actions</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
               {[
-                { label: "All Grievances",   icon: "📋", color: "#2563eb", bg: "#eff6ff", route: ROUTES.fieldGrievances },
-                { label: "Emergency Alerts", icon: "🚨", color: "#dc2626", bg: "#fef2f2", route: ROUTES.fieldAlerts },
-                { label: "Events",           icon: "📅", color: "#059669", bg: "#ecfdf5", route: ROUTES.fieldEvents },
-                { label: "My Profile",       icon: "👤", color: "#7c3aed", bg: "#f5f3ff", route: ROUTES.fieldProfile },
+                { label: "All Grievances",   icon: FaClipboardList,  color: "#2563eb", bg: "#eff6ff", route: ROUTES.fieldGrievances },
+                { label: "Emergency Alerts", icon: FaExclamationTriangle, color: "#dc2626", bg: "#fef2f2", route: ROUTES.fieldAlerts },
+                { label: "Events",           icon: FaCalendarAlt,     color: "#059669", bg: "#ecfdf5", route: ROUTES.fieldEvents },
+                { label: "My Profile",       icon: FaUser,            color: "#7c3aed", bg: "#f5f3ff", route: ROUTES.fieldProfile },
               ].map(a => (
                 <button key={a.label} onClick={() => navigate(a.route)}
                   style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 12px", borderRadius: "8px", background: a.bg, border: "none", cursor: "pointer", transition: "transform 0.1s" }}

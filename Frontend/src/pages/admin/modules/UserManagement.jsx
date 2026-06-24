@@ -4,6 +4,7 @@ import '../../../styles/modules/UserManagement.css';
 import PageHeader from "../../../components/PageHeader";
 import { fetchUsers, updateUser, deleteUser, resetUserPassword } from '../../../features/team-management/userService';
 import Pagination from '../../../components/Pagination';
+import { FaEdit, FaKey, FaBan, FaCheck, FaTrashAlt } from 'react-icons/fa';
 
 const PAGE_SIZE = 100;
 import PhoneInput from '../../../components/PhoneInput';
@@ -187,7 +188,7 @@ export default function UserManagement() {
           <table>
             <thead>
               <tr>
-                <th>#</th>
+                <th className="notranslate" translate="no">#</th>
                 <th>Name</th>
                 <th>Mobile</th>
                 <th>Email</th>
@@ -232,25 +233,25 @@ export default function UserManagement() {
                           className="action-btn edit"
                           title="Edit user"
                           onClick={() => openEdit(user)}
-                        >✏️</button>
+                        ><FaEdit /></button>
                         <button
                           className="action-btn reset"
                           title="Reset password"
                           onClick={() => handleResetPassword(user)}
-                        >🔑</button>
+                        ><FaKey /></button>
                         <button
                           className="action-btn block"
                           title={user.status === 'BLOCKED' ? 'Unblock user' : 'Block user'}
                           onClick={() => handleToggleBlock(user)}
                           disabled={blockingId === (user._id || user.id)}
                         >
-                          {user.status === 'BLOCKED' ? '✅' : '🚫'}
+                          {user.status === 'BLOCKED' ? <FaCheck /> : <FaBan />}
                         </button>
                         <button
                           className="action-btn delete"
                           title="Delete user"
                           onClick={() => setDeletingUser(user)}
-                        >🗑️</button>
+                        ><FaTrashAlt /></button>
                       </div>
                     </td>
                   </tr>
@@ -274,7 +275,7 @@ export default function UserManagement() {
       {editingUser && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setEditingUser(null)}>
           <div className="modal-content">
-            <h2>✏️ Edit User</h2>
+            <h2><FaEdit style={{marginRight:6,verticalAlign:'middle'}} /> Edit User</h2>
             <form onSubmit={handleEditSubmit}>
               <div className="form-group">
                 <label>Full Name</label>
@@ -322,7 +323,7 @@ export default function UserManagement() {
       {deletingUser && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setDeletingUser(null)}>
           <div className="modal-content delete-confirm-modal">
-            <div className="delete-icon">🗑️</div>
+            <div className="delete-icon"><FaTrashAlt /></div>
             <h2>Delete User?</h2>
             <p className="delete-msg">
               Are you sure you want to delete <strong>{deletingUser.fullName || deletingUser.email}</strong>?
@@ -342,7 +343,7 @@ export default function UserManagement() {
       {resetResult && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setResetResult(null)}>
           <div className="modal-content delete-confirm-modal">
-            <div className="delete-icon">🔑</div>
+            <div className="delete-icon"><FaKey /></div>
             <h2>Password Reset</h2>
             <p className="delete-msg">
               Password for <strong>{resetResult.userName}</strong> has been reset.

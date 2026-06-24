@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { RiExpandUpDownLine } from "react-icons/ri";
 import { RiSettings4Line } from "react-icons/ri";
+import { clearAuth, getAuthRole } from "../services/authStorage";
 import "../features/mla-dashboard/styles/mla-layout.css";
 
 /* ── Single nav item ─────────────────── */
@@ -55,9 +56,13 @@ export default function SharedSidebar({ user, roleSub = "STAFF", roleLabel = "St
     .toUpperCase();
 
   function handleLogout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/admin-login");
+    const role = getAuthRole();
+    clearAuth();
+    const loginPath =
+      role === "CITIZEN" || role === "citizen"
+        ? "/citizen-login"
+        : "/admin-login";
+    window.location.replace(loginPath);
   }
 
   return (
@@ -90,7 +95,7 @@ export default function SharedSidebar({ user, roleSub = "STAFF", roleLabel = "St
         {showLogout && (
           <div className="mla-logout-popup">
             <p className="mla-logout-prompt">Sign out?</p>
-            <p className="mla-logout-sub">{displayName}</p>
+            <p className="mla-logout-sub notranslate" translate="no">{displayName}</p>
             <div className="mla-logout-btns">
               <button className="mla-logout-cancel" onClick={() => setShowLogout(false)}>Cancel</button>
               <button className="mla-logout-confirm" onClick={handleLogout}>Sign out</button>
@@ -98,7 +103,7 @@ export default function SharedSidebar({ user, roleSub = "STAFF", roleLabel = "St
           </div>
         )}
         <div className="mla-user-card" onClick={() => setShowLogout((v) => !v)}>
-          <div className="mla-user-avatar">
+          <div className="mla-user-avatar notranslate" translate="no">
             {user?.profilePhoto ? (
               <img src={user.profilePhoto} alt={displayName} />
             ) : (
@@ -106,8 +111,8 @@ export default function SharedSidebar({ user, roleSub = "STAFF", roleLabel = "St
             )}
           </div>
           <div className="mla-user-info">
-            <div className="mla-user-name">{displayName}</div>
-            <div className="mla-user-role">
+            <div className="mla-user-name notranslate" translate="no">{displayName}</div>
+            <div className="mla-user-role notranslate" translate="no">
               {roleLabel}{constituency ? ` · ${constituency}` : ""}
             </div>
           </div>

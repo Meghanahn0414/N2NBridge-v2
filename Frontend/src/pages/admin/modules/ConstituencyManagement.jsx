@@ -263,7 +263,7 @@ export default function ConstituencyManagement() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>#</th>
+                <th className="notranslate" translate="no">#</th>
                 <th>Constituency Name</th>
                 <th>Code</th>
                 <th>District</th>
@@ -426,7 +426,7 @@ export default function ConstituencyManagement() {
                 <table className="data-table wards-table">
                   <thead>
                     <tr>
-                      <th>#</th>
+                      <th className="notranslate" translate="no">#</th>
                       <th>Ward No.</th>
                       <th>Ward Name</th>
                     </tr>

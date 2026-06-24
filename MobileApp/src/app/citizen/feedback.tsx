@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
+import { useT } from "../../i18n/useT";
 
 interface Complaint {
   id: string; title: string; status: string; closedAt?: string;
@@ -14,6 +15,7 @@ interface Complaint {
 }
 
 export default function Feedback() {
+  const tr = useT();
   const router = useRouter();
   const { user } = useAuthStore();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -87,8 +89,8 @@ export default function Feedback() {
           <Ionicons name="arrow-back" size={22} color="#BFDBFE" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Feedback</Text>
-          <Text style={styles.headerSub}>Rate your resolved complaints</Text>
+          <Text style={styles.headerTitle}>{tr('feedback.title')}</Text>
+          <Text style={styles.headerSub}>{tr('feedback.subtitle')}</Text>
         </View>
       </View>
 
@@ -99,8 +101,8 @@ export default function Feedback() {
         {complaints.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>⭐</Text>
-            <Text style={styles.emptyText}>No resolved complaints yet</Text>
-            <Text style={styles.emptySubText}>Feedback will appear here once your complaints are resolved</Text>
+            <Text style={styles.emptyText}>{tr('feedback.noResolved')}</Text>
+            <Text style={styles.emptySubText}>{tr('feedback.noResolvedSub')}</Text>
           </View>
         ) : (
           complaints.map((c) => (
@@ -113,7 +115,7 @@ export default function Feedback() {
                   <Text style={styles.badgeText}>{c.status}</Text>
                 </View>
                 {submitted[c.id] && (
-                  <Text style={styles.ratedLabel}>Rated ✓</Text>
+                  <Text style={styles.ratedLabel}>{tr('feedback.rated')}</Text>
                 )}
               </View>
 
@@ -141,7 +143,7 @@ export default function Feedback() {
                   onPress={() => submitRating(c.id)}
                   disabled={!ratings[c.id]}
                 >
-                  <Text style={styles.submitText}>Submit Rating</Text>
+                  <Text style={styles.submitText}>{tr('feedback.submitRating')}</Text>
                 </TouchableOpacity>
               )}
             </View>
