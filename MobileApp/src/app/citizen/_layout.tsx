@@ -13,6 +13,7 @@ export default function CitizenLayout() {
       <Stack.Screen name="feedback" />
       <Stack.Screen name="notification" />
       <Stack.Screen name="sos" />
+      <Stack.Screen name="mla-profile" />
     </Stack>
   );
 }

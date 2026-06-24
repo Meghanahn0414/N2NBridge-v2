@@ -59,6 +59,14 @@ export default function ServicesScreen() {
       bg: "#ECFDF5",
       route: "/citizen/profile",
     },
+    {
+      icon: "🏛️",
+      title: "My Representative",
+      subtitle: "View your MLA's profile & performance",
+      color: "#7C3AED",
+      bg: "#F5F3FF",
+      route: "/citizen/mla-profile",
+    },
   ];
 
   return (

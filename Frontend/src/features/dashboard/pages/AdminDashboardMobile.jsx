@@ -1,22 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FaBars,
-  FaBell,
-  FaHome,
-  FaUsers,
-  FaClipboardList,
-  FaExclamationTriangle,
-  FaUserCircle,
-  FaDownload,
-  FaBroadcastTower,
-  FaBullhorn,
-  FaCalendarAlt,
-  FaChartBar,
-  FaUserPlus,
-  FaInbox,
-  FaCheckCircle,
-  FaExclamationCircle,
+  FaBars, FaBell, FaHome, FaUsers, FaClipboardList,
+  FaExclamationTriangle, FaUserCircle, FaDownload,
 } from 'react-icons/fa';
 import { getAuthUser } from '../../../services/authStorage';
 import { ROUTES } from '../../../app/routes/RouteConstants';
@@ -107,12 +93,12 @@ export default function AdminDashboardMobile({ dashboard, loading }) {
 
   /* Quick actions */
   const quickActions = [
-    { label: 'Broadcast',    icon: <FaBroadcastTower />, route: ROUTES.communicationHub },
-    { label: 'Create event', icon: <FaCalendarAlt />,    route: ROUTES.eventManagement },
-    { label: 'Campaign',     icon: <FaBullhorn />,       route: ROUTES.campaignManagement },
-    { label: 'Add staff',    icon: <FaUserPlus />,       route: ROUTES.register },
-    { label: 'Sys backup',   icon: <FaDownload />,       route: ROUTES.systemConfiguration },
-    { label: 'Analytics',    icon: <FaChartBar />,       route: ROUTES.analyticsReports },
+    { label: 'Broadcast',    icon: '📢', route: ROUTES.communicationHub },
+    { label: 'Create event', icon: '📅', route: ROUTES.eventManagement },
+    { label: 'Campaign',     icon: '📣', route: ROUTES.campaignManagement },
+    { label: 'Add staff',    icon: '👤', route: ROUTES.register },
+    { label: 'Sys backup',   icon: '💾', route: ROUTES.systemConfiguration },
+    { label: 'Analytics',   icon: '📊', route: ROUTES.analyticsReports },
   ];
 
   /* Bottom nav */
@@ -168,7 +154,7 @@ export default function AdminDashboardMobile({ dashboard, loading }) {
 
       {/* ── SUB-HEADER ── */}
       <div className="adm-subheader">
-        <span className="adm-date"><FaCalendarAlt /> {dateStr}</span>
+        <span className="adm-date">☐ {dateStr}</span>
         <button className="adm-export">
           <FaDownload /> Export
         </button>
@@ -195,7 +181,7 @@ export default function AdminDashboardMobile({ dashboard, loading }) {
           {/* Activity */}
           <div className="adm-card">
             <div className="adm-card-head">
-              <span className="adm-card-icon-sm"><FaBars /></span>
+              <span className="adm-card-icon-sm">☰</span>
               <h2 className="adm-card-title">Activity</h2>
             </div>
             <div className="adm-activity-list">
@@ -221,7 +207,7 @@ export default function AdminDashboardMobile({ dashboard, loading }) {
           {/* Complaints by Category */}
           <div className="adm-card">
             <div className="adm-card-head">
-              <span className="adm-card-icon-sm"><FaChartBar /></span>
+              <span className="adm-card-icon-sm">📊</span>
               <h2 className="adm-card-title">Complaints by category</h2>
             </div>
             <CategoryBarChart categories={categories} />
@@ -231,7 +217,7 @@ export default function AdminDashboardMobile({ dashboard, loading }) {
         {/* System status */}
         <div className="adm-card">
           <div className="adm-card-head">
-            <span className="adm-card-icon-sm"><FaBars /></span>
+            <span className="adm-card-icon-sm">☰</span>
             <h2 className="adm-card-title">System status</h2>
           </div>
           <div className="adm-status-grid">

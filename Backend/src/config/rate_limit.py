@@ -13,7 +13,20 @@ Usage in a route:
         ...
 """
 from slowapi import Limiter
-from slowapi.util import get_remote_address
+from starlette.requests import Request
+
+
+def get_client_ip(request: Request) -> str:
+    """Safe IP extractor that works behind Vite proxy and direct connections."""
+    # Respect forwarded headers set by proxies
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    # Direct connection (uvicorn)
+    if request.client and request.client.host:
+        return request.client.host
+    return "127.0.0.1"
+
 
 # Keyed by client IP address
-limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+limiter = Limiter(key_func=get_client_ip, default_limits=["200/minute"])

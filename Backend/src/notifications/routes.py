@@ -183,6 +183,33 @@ class BroadcastRequest(BaseModel):
     type: str = "INFO"
 
 
+class DirectMessageRequest(BaseModel):
+    userId: str
+    title: str
+    body: str
+    type: str = "MESSAGE"
+
+
+@router.post("/send")
+async def send_to_user(payload: DirectMessageRequest):
+    """Send an in-app notification directly to a specific citizen."""
+    try:
+        notification_id = NotificationService.create_notification({
+            "userId":  payload.userId,
+            "title":   payload.title,
+            "body":    payload.body,
+            "type":    payload.type,
+            "isRead":  False,
+        })
+        return success_response(
+            {"notificationId": notification_id, "userId": payload.userId},
+            "Message delivered"
+        )
+    except Exception as exc:
+        logger.error(f"send_to_user failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.post("/notify-ward/{ward_id}")
 async def notify_ward(
     ward_id: str,

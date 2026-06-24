@@ -82,7 +82,7 @@ export default function MLASidebar({ user, openComplaints = 0 }) {
         {[
           { label: "Overview",       icon: <RiDashboardLine />, to: ROUTES.mlaExecutiveDashboard },
           { label: "Popularity",     icon: <RiBarChart2Line />, to: ROUTES.mlaCitizenSentiment },
-          { label: "Career Outlook", icon: <RiTimeLine />,      to: null },
+          { label: "Career Outlook", icon: <RiTimeLine />,      to: ROUTES.mlaCareerOutlook },
           { label: "Constituents",   icon: <RiGroupLine />,     to: ROUTES.mlaConstituents },
         ].map((item) => (
           <NavItem key={item.label} {...item} />
@@ -94,7 +94,7 @@ export default function MLASidebar({ user, openComplaints = 0 }) {
         {[
           { label: "Broadcasts", icon: <RiMegaphoneLine />,  to: ROUTES.mlaCommunications },
           { label: "Reports",    icon: <RiFileWarningLine />, to: ROUTES.mlaReports },
-          { label: "Messages",   icon: <RiMessage3Line />,    to: null },
+          { label: "Messages",   icon: <RiMessage3Line />,    to: ROUTES.mlaMessages },
           { label: "Settings",   icon: <RiSettings4Line />,   to: ROUTES.mlaSettings },
         ].map((item) => (
           <NavItem key={item.label} {...item} badgeCount={item.badge ? openComplaints : 0} />

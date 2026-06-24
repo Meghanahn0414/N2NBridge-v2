@@ -11,12 +11,6 @@ const DATE_OPTIONS = [
   { label: "Last 12 Months",days: 365 },
 ];
 
-const KPI = [
-  { icon: "task_alt",    iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "Complaints Resolved", sparkColor: "#2B5BD7" },
-  { icon: "bolt",        iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Avg Response Time",   sparkColor: "#1E8A5B" },
-  { icon: "groups",      iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: "Engaged Constituents",sparkColor: "#6B4FD8" },
-  { icon: "how_to_vote", iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Poll Participation",  sparkColor: "#C9871F" },
-];
 
 function useMLAInsights(days) {
   const [data, setData]       = useState(null);

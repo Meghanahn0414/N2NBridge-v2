@@ -42,13 +42,15 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://localhost:8081",
         "http://127.0.0.1:8081",
+        "http://localhost:19006",      # Expo web dev server
+        "http://127.0.0.1:19006",
         "http://192.168.1.10:3000",
         "http://192.168.1.36:3000",
         "http://10.62.179.92:3000",
     ]
     CORS_ALLOW_REGEX: str = os.getenv(
         "CORS_ALLOW_REGEX",
-        r"http://(localhost|127\.0\.0\.1|192\.168\.1\.\d+|10\.62\.179\.\d+):(3000|5173|5174|5175)"
+        r"http://(localhost|127\.0\.0\.1|192\.168\.1\.\d+|10\.62\.179\.\d+)(:\d+)?"
     )
     # Production EC2 origin — appended to CORS_ORIGINS at startup
     FRONTEND_ORIGIN: Optional[str] = None

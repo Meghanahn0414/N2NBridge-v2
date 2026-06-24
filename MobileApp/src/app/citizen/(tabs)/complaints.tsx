@@ -82,6 +82,7 @@ export default function MyComplaints() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // FILTERS defined inside component so tr() picks up current language on re-render
   const FILTERS = [
@@ -92,6 +93,7 @@ export default function MyComplaints() {
   ];
 
   const fetchComplaints = useCallback(async (pageNum = 1, refresh = false) => {
+    if (refresh || pageNum === 1) setFetchError(null);
     try {
       const { data } = await api.get(`/api/grievances/citizen/${user?.id}?page=${pageNum}`);
       const list: Complaint[] = Array.isArray(data) ? data : (data.items ?? data.results ?? data.data ?? []);
@@ -113,8 +115,10 @@ export default function MyComplaints() {
       }
       setHasMore(mapped.length === 10);
       setPage(pageNum);
-    } catch (_) {
-      // silent
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Network error';
+      setFetchError(`${status ? `Error ${status}: ` : ''}${detail}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -219,6 +223,13 @@ export default function MyComplaints() {
         })}
       </View>
 
+      {fetchError && (
+        <View style={s.errorBanner}>
+          <Text style={s.errorBannerText}>⚠️ {fetchError}</Text>
+          <TouchableOpacity onPress={onRefresh}><Text style={s.errorRetry}>Retry</Text></TouchableOpacity>
+        </View>
+      )}
+
       {loading ? (
         <View style={s.centered}><ActivityIndicator size="large" color={C.primary} /></View>
       ) : (
@@ -296,4 +307,11 @@ const s = StyleSheet.create({
   emptyText: { fontSize: 14, color: C.textMuted, textAlign: 'center', marginBottom: 24 },
   emptyBtn: { backgroundColor: C.primary, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 12 },
   emptyBtnText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
+  errorBanner: {
+    backgroundColor: '#FEF2F2', borderLeftWidth: 4, borderLeftColor: C.error,
+    paddingHorizontal: 16, paddingVertical: 12,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  errorBannerText: { color: C.error, fontSize: 13, flex: 1 },
+  errorRetry: { color: C.primary, fontWeight: '700', fontSize: 13, marginLeft: 8 },
 });

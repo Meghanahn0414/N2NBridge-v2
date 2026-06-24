@@ -57,6 +57,8 @@ import DailyBriefing from "../../features/mla-dashboard/pages/DailyBriefing";
 import MLASettings from "../../features/mla-dashboard/pages/MLASettings";
 import ConstituentsDashboard from "../../features/mla-dashboard/pages/ConstituentsDashboard";
 import ReportsDashboard from "../../features/mla-dashboard/pages/ReportsDashboard";
+import CareerOutlook from "../../features/mla-dashboard/pages/CareerOutlook";
+import Messages from "../../features/mla-dashboard/pages/Messages";
 import FieldOfficerGrievances from "../../features/field-officer/pages/FieldOfficerGrievances";
 import FieldOfficerAlerts from "../../features/field-officer/pages/FieldOfficerAlerts";
 import FieldOfficerProfile from "../../features/field-officer/pages/FieldOfficerProfile";
@@ -188,6 +190,8 @@ function AppRoutesContent() {
             <Route path={ROUTES.mlaDailyBriefing}       element={<DailyBriefing />} />
             <Route path={ROUTES.mlaConstituents}        element={<ConstituentsDashboard />} />
             <Route path={ROUTES.mlaReports}            element={<ReportsDashboard />} />
+            <Route path={ROUTES.mlaCareerOutlook}      element={<CareerOutlook />} />
+            <Route path={ROUTES.mlaMessages}           element={<Messages />} />
           </Route>
           
           <Route path="*" element={<Navigate to={ROUTES.login} replace />} />

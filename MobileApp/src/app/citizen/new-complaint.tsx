@@ -321,7 +321,7 @@ export default function NewComplaintScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       {/* Header */}
       <View style={styles.topHeader}>
-        <TouchableOpacity style={styles.backArrowBtn} onPress={() => step > 1 ? setStep(step - 1) : router.back()}>
+        <TouchableOpacity style={styles.backArrowBtn} onPress={() => step > 1 ? setStep(step - 1) : router.canGoBack() ? router.back() : router.replace('/(tabs)/complaints' as any)}>
           <Text style={styles.backArrowText}>←</Text>
         </TouchableOpacity>
         <View>

@@ -10,8 +10,7 @@ import { storage } from "../utils/storage";
 import { useAuthStore } from "../store/authStore";
 import { changeLanguage, getCurrentLanguage, initLanguage } from "../i18n";
 import { useT } from "../i18n/useT";
-
-const API_BASE = "https://testing-repository-grevienace-1.onrender.com";
+import { API_BASE } from "../config";
 
 const ROLE_ROUTES: Record<string, string> = {
   CITIZEN:               "/citizen/",
