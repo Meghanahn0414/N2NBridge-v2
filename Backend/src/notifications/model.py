@@ -1,9 +1,10 @@
 """
 Notification Model and Schemas
 """
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class NotificationCreate(BaseModel):
@@ -24,8 +25,7 @@ class NotificationResponse(BaseModel):
     isRead: Optional[bool] = False
     createdAt: Optional[datetime] = None
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class NotificationUpdate(BaseModel):

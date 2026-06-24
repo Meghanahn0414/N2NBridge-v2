@@ -14,22 +14,6 @@ import {
 import { ROUTES } from "../../../app/routes/RouteConstants";
 import "../styles/mla-layout.css";
 
-/* ── nav items config ────────────────── */
-const INSIGHTS = [
-  { label: "Overview",       icon: <RiDashboardLine />,    to: ROUTES.mlaExecutiveDashboard },
-  { label: "Popularity",     icon: <RiBarChart2Line />,    to: ROUTES.mlaCitizenSentiment },
-  { label: "Career outlook", icon: <RiTimeLine />,         to: null },
-  { label: "Constituents",   icon: <RiGroupLine />,        to: ROUTES.mlaConstituents },
-];
-
-const ENGAGE = [
-  { label: "Broadcasts", icon: <RiMegaphoneLine />, to: ROUTES.mlaCommunications },
-  { label: "Reports",    icon: <RiFileWarningLine />, to: ROUTES.mlaReports },
-  { label: "Messages",   icon: <RiMessage3Line />,   to: null },
-  { label: "Settings",   icon: <RiSettings4Line />,  to: ROUTES.mlaSettings },
-];
-
-/* ── Single nav item ─────────────────── */
 function NavItem({ icon, label, to, badge, badgeCount }) {
   const disabled = !to;
 
@@ -57,7 +41,6 @@ function NavItem({ icon, label, to, badge, badgeCount }) {
   );
 }
 
-/* ── Main sidebar ────────────────────── */
 export default function MLASidebar({ user, openComplaints = 0 }) {
   const [showLogout, setShowLogout] = useState(false);
   const navigate = useNavigate();
@@ -72,7 +55,6 @@ export default function MLASidebar({ user, openComplaints = 0 }) {
     .toUpperCase();
 
   function handleLogout() {
-    // Clear from both storages (authStorage.js writes to sessionStorage first)
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("user");
     sessionStorage.removeItem("role");
@@ -85,34 +67,40 @@ export default function MLASidebar({ user, openComplaints = 0 }) {
 
   return (
     <nav className="mla-sidebar">
-      {/* Brand */}
       <div className="mla-brand">
         <div className="mla-brand-icon">
           <RiSettings4Line style={{ fontSize: 20 }} />
         </div>
         <div>
           <div className="mla-brand-name">CRM Portal</div>
-          <div className="mla-brand-sub">REPRESENTATIVE</div>
+          <div className="mla-brand-sub">Representative Portal</div>
         </div>
       </div>
 
-      {/* Insights */}
-      <div className="mla-nav-label">Insights</div>
+      <div className="mla-nav-label">INSIGHTS</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {INSIGHTS.map((item) => (
+        {[
+          { label: "Overview",       icon: <RiDashboardLine />, to: ROUTES.mlaExecutiveDashboard },
+          { label: "Popularity",     icon: <RiBarChart2Line />, to: ROUTES.mlaCitizenSentiment },
+          { label: "Career Outlook", icon: <RiTimeLine />,      to: null },
+          { label: "Constituents",   icon: <RiGroupLine />,     to: ROUTES.mlaConstituents },
+        ].map((item) => (
           <NavItem key={item.label} {...item} />
         ))}
       </div>
 
-      {/* Engage */}
-      <div className="mla-nav-label">Engage</div>
+      <div className="mla-nav-label">ENGAGE</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {ENGAGE.map((item) => (
+        {[
+          { label: "Broadcasts", icon: <RiMegaphoneLine />,  to: ROUTES.mlaCommunications },
+          { label: "Reports",    icon: <RiFileWarningLine />, to: ROUTES.mlaReports },
+          { label: "Messages",   icon: <RiMessage3Line />,    to: null },
+          { label: "Settings",   icon: <RiSettings4Line />,   to: ROUTES.mlaSettings },
+        ].map((item) => (
           <NavItem key={item.label} {...item} badgeCount={item.badge ? openComplaints : 0} />
         ))}
       </div>
 
-      {/* User card */}
       <div style={{ position: "relative", marginTop: "auto" }}>
         {showLogout && (
           <div className="mla-logout-popup">

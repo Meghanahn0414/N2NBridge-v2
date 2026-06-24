@@ -4,7 +4,8 @@ Grievance Model and Schemas
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class GrievanceStatus(str, Enum):
@@ -120,8 +121,7 @@ class GrievanceResponse(BaseModel):
     isDeleted: Optional[bool] = False
     citizenName: Optional[str] = None
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class GrievanceCategoryCreate(BaseModel):
@@ -137,8 +137,7 @@ class GrievanceCategoryResponse(BaseModel):
     description: str
     isActive: bool
     
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class GrievanceFeedbackCreate(BaseModel):

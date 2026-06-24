@@ -25,12 +25,18 @@ function timeAgo(dateStr) {
   return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
+const GREETINGS = {
+  good_morning: "Good morning",
+  good_afternoon: "Good afternoon",
+  good_evening: "Good evening",
+};
+
 export default function PageHeader({ title, subtitle }) {
   const user = getAuthUser();
   const name = user?.fullName || user?.name || "User";
   const firstName = name.split(" ")[0];
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greetingKey = hour < 12 ? "good_morning" : hour < 17 ? "good_afternoon" : "good_evening";
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
@@ -100,7 +106,6 @@ export default function PageHeader({ title, subtitle }) {
       borderBottom: "1px solid #E5E9F1",
       fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
     }}>
-      {/* Left: date + greeting + page title */}
       <div>
         <div style={{ fontSize: 13, fontWeight: 500, color: "#8590A6", marginBottom: 3 }}>
           {today}
@@ -112,14 +117,13 @@ export default function PageHeader({ title, subtitle }) {
           letterSpacing: "-.01em",
           lineHeight: 1.2,
         }}>
-          {title || `${greeting}, ${firstName}`}
+          {title || `${GREETINGS[greetingKey]}, ${firstName}`}
         </h1>
         {subtitle && (
           <p style={{ margin: "3px 0 0", fontSize: 13, color: "#8590A6" }}>{subtitle}</p>
         )}
       </div>
 
-      {/* Right: notifications bell */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ position: "relative" }} ref={notifRef}>
           <button
@@ -218,7 +222,11 @@ export default function PageHeader({ title, subtitle }) {
 
               <div style={{ padding: "10px 18px", borderTop: "1px solid #E5E9F1", textAlign: "center" }}>
                 <span style={{ fontSize: 12, color: "#8590A6" }}>
-                  {unreadCount === 0 ? "You're all caught up!" : `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`}
+                  {unreadCount === 0
+                    ? "All caught up!"
+                    : unreadCount === 1
+                      ? "1 unread notification"
+                      : `${unreadCount} unread notifications`}
                 </span>
               </div>
             </div>

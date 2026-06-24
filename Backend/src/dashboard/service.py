@@ -2,7 +2,6 @@
 Dashboard Service
 """
 from analytics.service import AnalyticsService
-from bson import ObjectId
 from config.database import MongoDatabase
 from grievances.service import GrievanceService
 from utils.helper import Helper
@@ -92,135 +91,97 @@ class DashboardService:
     def get_team_performance() -> list:
         """Get team performance data"""
         db = MongoDatabase.get_db()
-        
-        # Get officers/staff with their performance metrics
+
         officers = list(db.users.find(
             {"role": {"$in": ["FIELD_OFFICER", "OFFICER", "MANAGER"]}, "isDeleted": False}
         ))
-        
+
         team_data = []
         for officer in officers:
             officer_id = str(officer.get("_id"))
-            
-            # Get assigned tasks
-            assigned_tasks = db.tasks.count_documents({"assignedTo": officer_id})
-            completed_tasks = db.tasks.count_documents({
-                "assignedTo": officer_id,
-                "status": "COMPLETED"
-            })
-            
-            # Get assigned grievances
-            assigned_grievances = db.grievances.count_documents(
-                {"assignedOfficerId": officer_id}
+
+            assigned_tasks  = db.tasks.count_documents({"assignedTo": officer_id})
+            completed_tasks = db.tasks.count_documents({"assignedTo": officer_id, "status": "COMPLETED"})
+
+            assigned_grievances = db.grievances.count_documents({"assignedOfficerId": officer_id})
+            resolved_grievances = db.grievances.count_documents(
+                {"assignedOfficerId": officer_id, "status": "RESOLVED"}
             )
-            resolved_grievances = db.grievances.count_documents({
-                "assignedOfficerId": officer_id,
-                "status": "RESOLVED"
-            })
-            
-            # Calculate average resolution time
+
             resolved = list(db.grievances.aggregate([
-                {
-                    "$match": {
-                        "assignedOfficerId": officer_id,
-                        "status": "RESOLVED",
-                        "updatedAt": {"$exists": True},
-                        "createdAt": {"$exists": True}
-                    }
-                },
-                {
-                    "$project": {
-                        "resolutionTime": {
-                            "$subtract": ["$updatedAt", "$createdAt"]
-                        }
-                    }
-                },
-                {
-                    "$group": {
-                        "_id": None,
-                        "avgTime": {"$avg": "$resolutionTime"}
-                    }
-                }
+                {"$match": {
+                    "assignedOfficerId": officer_id, "status": "RESOLVED",
+                    "updatedAt": {"$exists": True}, "createdAt": {"$exists": True}
+                }},
+                {"$project": {"resolutionTime": {"$subtract": ["$updatedAt", "$createdAt"]}}},
+                {"$group": {"_id": None, "avgTime": {"$avg": "$resolutionTime"}}}
             ]))
-            
-            avg_time_ms = resolved[0]["avgTime"] if resolved else 0
+            avg_time_ms   = resolved[0]["avgTime"] if resolved else 0
             avg_time_days = round(avg_time_ms / (1000 * 60 * 60 * 24), 1) if avg_time_ms > 0 else 0
-            
-            # Calculate rating based on multiple factors
+
+            # Build rating only from components that have real data
+            # FIX: officers with no assignments get None (unrated), not 0
             rating_components = []
-            
-            # Task completion rate (if any tasks exist)
+
             if assigned_tasks > 0:
-                task_completion_rate = (completed_tasks / assigned_tasks * 100)
-                rating_components.append(task_completion_rate / 100 * 5)
-            
-            # Grievance resolution rate (if any grievances assigned)
+                # Task completion rate → scaled to 0–5
+                rating_components.append((completed_tasks / assigned_tasks) * 5)
+
             if assigned_grievances > 0:
-                grievance_resolution_rate = (resolved_grievances / assigned_grievances * 100)
-                rating_components.append(grievance_resolution_rate / 100 * 5)
+                # Grievance resolution rate → scaled to 0–5
+                rating_components.append((resolved_grievances / assigned_grievances) * 5)
 
-            # Average customer satisfaction (if available)
-            satisfaction_ratings = list(db.grievances.aggregate([
-                {
-                    "$match": {
-                        "assignedOfficerId": officer_id,
-                        "satisfactionRating": {"$exists": True, "$ne": None}
-                    }
-                },
-                {
-                    "$group": {
-                        "_id": None,
-                        "avgRating": {"$avg": "$satisfactionRating"}
-                    }
-                }
+            satisfaction = list(db.grievances.aggregate([
+                {"$match": {"assignedOfficerId": officer_id,
+                            "satisfactionRating": {"$exists": True, "$ne": None}}},
+                {"$group": {"_id": None, "avgRating": {"$avg": "$satisfactionRating"}}}
             ]))
+            if satisfaction and satisfaction[0].get("avgRating"):
+                rating_components.append(satisfaction[0]["avgRating"])
 
-            if satisfaction_ratings and satisfaction_ratings[0].get("avgRating"):
-                rating_components.append(satisfaction_ratings[0]["avgRating"])
+            if rating_components:
+                rating = str(round(min(5.0, max(0.0, sum(rating_components) / len(rating_components))), 1))
+            else:
+                rating = "N/A"  # no data yet — never show 0 for unassigned officers
 
-            # Only compute rating if there is real activity data
-            rating = round(sum(rating_components) / len(rating_components), 1) if rating_components else 0.0
-            rating = min(5, max(0, rating))  # Clamp between 0 and 5
-            
             team_data.append({
-                "name": officer.get("fullName", officer.get("username", "Unknown")),
-                "role": officer.get("role", "Officer"),
-                "assigned": assigned_tasks,
+                "name":      officer.get("fullName", officer.get("username", "Unknown")),
+                "role":      officer.get("role", "Officer"),
+                "assigned":  assigned_tasks,
                 "completed": completed_tasks,
-                "time": f"{avg_time_days} Days",
-                "rating": str(rating)
+                "time":      f"{avg_time_days} Days",
+                "rating":    rating,
             })
-        
+
         return team_data
     
     @staticmethod
     def get_grievance_trends(days: int = 7) -> dict:
-        """Get grievance trends for the last N days"""
-        db = MongoDatabase.get_db()
-        trends = {}
-        
-        from datetime import time as _time
-        for i in range(days):
-            date = (datetime.utcnow() - timedelta(days=i)).date()
-            start = datetime.combine(date, _time.min)
-            end = datetime.combine(date, _time.max)
-            
-            count = db.grievances.count_documents({
-                "createdAt": {"$gte": start, "$lte": end},
-                "isDeleted": False
-            })
-            
-            date_key = date.strftime("%d %b")
-            trends[date_key] = count
-        
-        # Reverse to get chronological order - sort by date object, not by string
+        """
+        Get complaint count per day for the last N days.
+        FIX: Use IST (UTC+5:30) day boundaries so the chart shows
+        Indian calendar days, not UTC days (which are offset by 5h30m).
+        """
+        db  = MongoDatabase.get_db()
+        IST = timedelta(hours=5, minutes=30)
+
+        # Current time in IST
+        now_ist = datetime.utcnow() + IST
+
         trend_list = []
         for i in range(days - 1, -1, -1):
-            date = (datetime.utcnow() - timedelta(days=i)).date()
-            date_key = date.strftime("%d %b")
-            if date_key in trends:
-                trend_list.append((date_key, trends[date_key]))
-        
+            day_ist = (now_ist - timedelta(days=i)).date()
+
+            # IST midnight → converted to UTC for MongoDB query
+            start_utc = datetime(day_ist.year, day_ist.month, day_ist.day, 0,  0,  0)  - IST
+            end_utc   = datetime(day_ist.year, day_ist.month, day_ist.day, 23, 59, 59) - IST
+
+            count = db.grievances.count_documents({
+                "createdAt": {"$gte": start_utc, "$lte": end_utc},
+                "isDeleted": False,
+            })
+            trend_list.append((day_ist.strftime("%d %b"), count))
+
         return dict(trend_list)
     
     @staticmethod
@@ -270,22 +231,30 @@ class DashboardService:
 
     @staticmethod
     def get_system_health() -> str:
-        """Calculate health score from real complaint resolution data."""
+        """
+        Health score formula:
+          resolution_rate   = resolved / total × 100       (0–100)
+          critical_rate     = unresolved_critical / total  (0–1)
+          score = resolution_rate − (critical_rate × 50)
+
+        This way the penalty scales with how many critical complaints
+        are open as a proportion of all complaints, not an arbitrary cap.
+        Example: 80% resolved, 10% critical open → 80 − 5 = 75%
+        """
         db = MongoDatabase.get_db()
         try:
             total = db.grievances.count_documents({"isDeleted": False})
             if total == 0:
                 return "N/A"
-            resolved = db.grievances.count_documents({"isDeleted": False, "status": "RESOLVED"})
+            resolved      = db.grievances.count_documents({"isDeleted": False, "status": "RESOLVED"})
             critical_open = db.grievances.count_documents({
                 "isDeleted": False,
                 "priority": {"$in": ["CRITICAL", "HIGH"]},
-                "status": {"$nin": ["RESOLVED", "CLOSED"]}
+                "status":   {"$nin": ["RESOLVED", "CLOSED"]},
             })
-            # Resolution rate (0–100)
-            resolution_rate = (resolved / total) * 100
-            # Penalty: each unresolved critical complaint costs 2 points (max 30 deduction)
-            critical_penalty = min(30, critical_open * 2)
+            resolution_rate  = (resolved / total) * 100
+            critical_rate    = critical_open / total          # proportion 0–1
+            critical_penalty = critical_rate * 50             # max penalty = 50 points
             score = max(0, round(resolution_rate - critical_penalty, 1))
             return f"{score}%"
         except Exception as e:
@@ -366,13 +335,16 @@ class DashboardService:
 
         # Aggregate all complaints by ward with priority breakdown
         def _highest_priority(priorities):
-            if "CRITICAL" in priorities: return "CRITICAL"
-            if "HIGH" in priorities: return "HIGH"
-            if "MEDIUM" in priorities: return "MEDIUM"
+            if "CRITICAL" in priorities:
+                return "CRITICAL"
+            if "HIGH" in priorities:
+                return "HIGH"
+            if "MEDIUM" in priorities:
+                return "MEDIUM"
             return "LOW"
 
         ward_stats_raw = list(db.grievances.aggregate([
-            {"$match": {"isDeleted": False, "wardId": {"$exists": True, "$ne": None, "$ne": ""}}},
+            {"$match": {"isDeleted": False, "wardId": {"$exists": True, "$nin": [None, ""]}}},
             {"$group": {
                 "_id": "$wardId",
                 "count": {"$sum": 1},

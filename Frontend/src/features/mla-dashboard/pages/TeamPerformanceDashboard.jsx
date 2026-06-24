@@ -10,7 +10,8 @@ const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
 export default function TeamPerformanceDashboard() {
   const navigate = useNavigate();
-  const { dashboard, loading, error } = useMlaDashboard();
+  const { dashboard } = useMlaDashboard();
+
   const teamData = dashboard?.teamPerformance || [];
   const activeOfficers = dashboard?.summary?.activeOfficers || teamData.length;
   const managerCount = teamData.length;
@@ -21,48 +22,35 @@ export default function TeamPerformanceDashboard() {
   const handleScheduleMeeting = () => navigate(ROUTES.mlaEvents);
   const handleViewAnalytics = () => navigate(ROUTES.mlaAIInsights);
   const handleSendReport = () => navigate(ROUTES.mlaCommunications);
+
   const managers = teamData
-    .filter(member => (member.completed || 0) > 0 || (member.assigned || 0) > 0)
+    .filter(m => (m.completed || 0) > 0 || (m.assigned || 0) > 0)
     .slice(0, 3)
-    .map((member, idx) => ({
-      id: idx + 1,
-      name: member.name || 'Unknown',
-      complaints: member.assigned || 0,
-      resolved: member.completed || 0,
-      rating: member.rating || '0.0',
-      ward: member.role || 'Field Officer',
-    }));
+    .map((m, idx) => ({ id: idx + 1, name: m.name || 'Unknown', complaints: m.assigned || 0, resolved: m.completed || 0, rating: m.rating || '0.0', ward: m.role || 'Field Officer' }));
 
   const officers = teamData
-    .filter(member => (member.completed || 0) > 0 || (member.assigned || 0) > 0)
+    .filter(m => (m.completed || 0) > 0 || (m.assigned || 0) > 0)
     .slice(0, 4)
-    .map((member, idx) => ({
-      rank: idx + 1,
-      name: member.name || 'Officer',
-      resolved: member.completed || 0,
-      rating: member.rating || '0.0',
-      wards: member.role || 'N/A',
-    }));
+    .map((m, idx) => ({ rank: idx + 1, name: m.name || 'Officer', resolved: m.completed || 0, rating: m.rating || '0.0', wards: m.role || 'N/A' }));
 
   const averageRating = teamData.length
-    ? (teamData.reduce((sum, member) => sum + Number(member.rating || 0), 0) / teamData.length).toFixed(1)
+    ? (teamData.reduce((sum, m) => sum + Number(m.rating || 0), 0) / teamData.length).toFixed(1)
     : '0.0';
 
-  const poorPerformance = teamData.slice(3, 5).map((member) => ({
-    name: member.name || 'No data',
-    resolutionTime: member.time || 'N/A',
+  const poorPerformance = teamData.slice(3, 5).map((m) => ({
+    name: m.name || 'No data',
+    resolutionTime: m.time || 'N/A',
     target: dashboard?.metrics?.resolutionTime?.avgResolutionTime
-      ? `${Math.round(dashboard.metrics.resolutionTime.avgResolutionTime / (1000 * 60 * 60 * 24))} Days`
+      ? `${Math.round(dashboard.metrics.resolutionTime.avgResolutionTime / (1000 * 60 * 60 * 24))} days`
       : '24h',
-    wards: member.role || 'N/A',
+    wards: m.role || 'N/A',
   }));
 
   return (
     <div>
-      <PageHeader subtitle="Monitor staff performance and team metrics" />
+      <PageHeader subtitle="Monitor staff performance and take action" />
       <div className="mla-container">
 
-      {/* Team Summary */}
       <div className="mla-section">
         <div className="team-summary-grid">
           <div className="summary-card">
@@ -84,9 +72,8 @@ export default function TeamPerformanceDashboard() {
         </div>
       </div>
 
-      {/* Constituency Managers */}
       <div className="mla-section">
-        <h2>Constituency Managers Performance</h2>
+        <h2>Managers Performance</h2>
         <div className="performance-table">
           <table>
             <thead>
@@ -103,7 +90,7 @@ export default function TeamPerformanceDashboard() {
               {managers.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px', fontSize: 13 }}>
-                    No manager activity yet
+                    No manager activity data available
                   </td>
                 </tr>
               ) : managers.map(mgr => (
@@ -121,13 +108,10 @@ export default function TeamPerformanceDashboard() {
         </div>
       </div>
 
-      {/* Officers Ranking */}
       <div className="mla-section">
         <h2>🏆 Top Performing Officers</h2>
         {officers.length === 0 ? (
-          <p style={{ color: '#94a3b8', fontSize: 13, padding: '16px 0' }}>
-            No performance data yet — officers will appear here once complaints are assigned and resolved.
-          </p>
+          <p style={{ color: '#94a3b8', fontSize: 13, padding: '16px 0' }}>No performance data available</p>
         ) : (
           <div className="ranking-list">
             {officers.map(officer => (
@@ -153,7 +137,6 @@ export default function TeamPerformanceDashboard() {
         )}
       </div>
 
-      {/* Poor Performance Alerts */}
       <div className="mla-section">
         <h2>⚠️ Performance Concerns</h2>
         <div className="performance-alerts">
@@ -166,11 +149,11 @@ export default function TeamPerformanceDashboard() {
               <div className="alert-details">
                 <div className="detail">
                   <span className="label">Resolution Time:</span>
-                  <span className="value">{perf.resolutionTime} days</span>
+                  <span className="value">{perf.resolutionTime}</span>
                 </div>
                 <div className="detail">
                   <span className="label">Target:</span>
-                  <span className="value">{perf.target} days</span>
+                  <span className="value">{perf.target}</span>
                 </div>
                 <div className="detail">
                   <span className="label">Wards:</span>
@@ -183,7 +166,6 @@ export default function TeamPerformanceDashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
       <div className="mla-section">
         <div className="detail-buttons">
           <button type="button" className="btn-primary" onClick={handleScheduleMeeting}>Schedule Meeting</button>

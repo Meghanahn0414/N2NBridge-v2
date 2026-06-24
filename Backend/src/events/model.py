@@ -1,10 +1,11 @@
 """
 Event Model and Schemas
 """
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EventStatus(str, Enum):
@@ -59,8 +60,7 @@ class EventResponse(BaseModel):
     createdAt: datetime
     updatedAt: datetime
     
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class EventRegistrationCreate(BaseModel):
@@ -78,5 +78,4 @@ class EventRegistrationResponse(BaseModel):
     attendanceStatus: str
     registeredAt: datetime
     
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)

@@ -371,6 +371,7 @@ export default function Header({ onMobileMenuClick }) {
             <FaDownload />
             <span>Export Report</span>
           </button>
+
           <div className="notification-icon">
             <div style={{ position: 'relative', display: 'inline-block' }}>
               <FaBell

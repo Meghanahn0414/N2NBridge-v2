@@ -1,10 +1,11 @@
 """
 Task Model and Schemas
 """
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TaskStatus(str, Enum):
@@ -58,8 +59,7 @@ class TaskResponse(BaseModel):
     createdAt: datetime
     updatedAt: datetime
     
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class FieldReportCreate(BaseModel):
@@ -80,5 +80,4 @@ class FieldReportResponse(BaseModel):
     gpsLocation: Optional[dict] = None
     submittedAt: datetime
     
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)

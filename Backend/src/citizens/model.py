@@ -1,9 +1,10 @@
 """
 Citizen Profile Models
 """
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class CitizenProfileUpdate(BaseModel):
@@ -35,5 +36,4 @@ class CitizenProfileResponse(BaseModel):
     createdAt: datetime
     updatedAt: datetime
     
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)

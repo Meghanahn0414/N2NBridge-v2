@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/ComplaintsDashboard.css';
@@ -10,6 +11,7 @@ const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
 export default function ComplaintsDashboard() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { dashboard, loading, error } = useMlaDashboard();
   const grievanceStats = dashboard?.metrics?.grievances || {};
   const totalComplaints = grievanceStats.total || 0;
@@ -44,26 +46,26 @@ export default function ComplaintsDashboard() {
 
   return (
     <div>
-      <PageHeader subtitle="Monitor and analyze citizen complaints" />
+      <PageHeader subtitle={t("monitor_analyze_complaints")} />
       <div className="mla-container">
 
       {/* Overview Stats */}
       <div className="mla-section">
         <div className="complaint-stats-grid">
           <div className="stat-box">
-            <div className="stat-label">Total Complaints</div>
+            <div className="stat-label">{t("total_complaints")}</div>
             <div className="stat-value">{totalComplaints}</div>
           </div>
           <div className="stat-box alert">
-            <div className="stat-label">Open Complaints</div>
+            <div className="stat-label">{t("open_complaints")}</div>
             <div className="stat-value">{openComplaints}</div>
           </div>
           <div className="stat-box">
-            <div className="stat-label">Escalated</div>
+            <div className="stat-label">{t("escalated")}</div>
             <div className="stat-value">{escalatedComplaints}</div>
           </div>
           <div className="stat-box success">
-            <div className="stat-label">Resolved</div>
+            <div className="stat-label">{t("resolved")}</div>
             <div className="stat-value">{resolvedComplaints}</div>
           </div>
         </div>
@@ -71,7 +73,7 @@ export default function ComplaintsDashboard() {
 
       {/* Category-wise Complaints */}
       <div className="mla-section">
-        <h2>Complaints by Category</h2>
+        <h2>{t("complaints_by_category")}</h2>
         <div className="category-grid">
           {complaints.map((item, idx) => (
             <div key={idx} className="category-card">
@@ -85,7 +87,7 @@ export default function ComplaintsDashboard() {
                   style={{ width: `${(item.count / 450) * 100}%` }}
                 ></div>
               </div>
-              <button type="button" className="btn-secondary btn-sm" onClick={handleViewCategory}>View</button>
+              <button type="button" className="btn-secondary btn-sm" onClick={handleViewCategory}>{t("view")}</button>
             </div>
           ))}
         </div>
@@ -94,14 +96,14 @@ export default function ComplaintsDashboard() {
       {/* Top Problematic Wards */}
       <div className="mla-section">
         <div className="ward-table-card">
-          <h3 className="ward-table-title">Most Problematic Wards</h3>
+          <h3 className="ward-table-title">{t("top_wards_by_complaints")}</h3>
           <table className="ward-table">
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Ward</th>
-                <th>Issues</th>
-                <th>Priority</th>
+                <th>{t("ward")}</th>
+                <th>{t("issues")}</th>
+                <th>{t("priority")}</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
@@ -159,9 +161,9 @@ export default function ComplaintsDashboard() {
       {/* Quick Actions */}
       <div className="mla-section">
         <div className="detail-buttons">
-          <button type="button" className="btn-primary" onClick={handleViewAllComplaints}>View All Complaints</button>
-          <button type="button" className="btn-primary" onClick={handleEscalateIssue}>Escalate Issue</button>
-          <button type="button" className="btn-primary" onClick={handleDownloadReport}>Download Report</button>
+          <button type="button" className="btn-primary" onClick={handleViewAllComplaints}>{t("view_all_complaints")}</button>
+          <button type="button" className="btn-primary" onClick={handleEscalateIssue}>{t("escalate_issue")}</button>
+          <button type="button" className="btn-primary" onClick={handleDownloadReport}>{t("download_report")}</button>
         </div>
       </div>
     </div>

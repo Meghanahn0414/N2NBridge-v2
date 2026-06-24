@@ -31,13 +31,13 @@ import "../../features/mla-dashboard/styles/mla-layout.css";
 
 const SECTIONS = [
   {
-    label: "Overview",
+    label: "OVERVIEW",
     items: [
       { label: "Dashboard", icon: <RiDashboardLine />, to: ROUTES.admin },
     ],
   },
   {
-    label: "People",
+    label: "PEOPLE",
     items: [
       { label: "Citizens",        icon: <RiGroupLine />,      to: ROUTES.adminUsers },
       { label: "Representatives", icon: <RiVipCrownLine />,   to: ROUTES.mlaList },
@@ -46,18 +46,18 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Services",
+    label: "SERVICES",
     items: [
-      { label: "Complaints",        icon: <RiFileListLine />,       to: ROUTES.complaintManagement },
-      { label: "Alerts",            icon: <RiAlarmWarningLine />,   to: ROUTES.alertManagement },
-      { label: "Events",            icon: <RiCalendarLine />,       to: ROUTES.eventManagement },
-      { label: "Communication Hub", icon: <RiMessage3Line />,       to: ROUTES.communicationHub },
-      { label: "Campaigns",         icon: <RiBroadcastLine />,      to: ROUTES.campaignManagement },
-      { label: "Surveys",           icon: <RiSurveyLine />,         to: ROUTES.surveyManagement },
+      { label: "Complaints",        icon: <RiFileListLine />,     to: ROUTES.complaintManagement },
+      { label: "Alerts",            icon: <RiAlarmWarningLine />, to: ROUTES.alertManagement },
+      { label: "Events",            icon: <RiCalendarLine />,     to: ROUTES.eventManagement },
+      { label: "Communication Hub", icon: <RiMessage3Line />,     to: ROUTES.communicationHub },
+      { label: "Campaigns",         icon: <RiBroadcastLine />,    to: ROUTES.campaignManagement },
+      { label: "Surveys",           icon: <RiSurveyLine />,       to: ROUTES.surveyManagement },
     ],
   },
   {
-    label: "System",
+    label: "SYSTEM",
     items: [
       { label: "Analytics",      icon: <RiBarChartGroupedLine />, to: ROUTES.analyticsReports },
       { label: "Team",           icon: <RiTeamLine />,            to: ROUTES.teamManagement },
@@ -70,12 +70,12 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Access",
+    label: "ACCESS",
     items: [
-      { label: "User Management",   icon: <RiUserSettingsLine />, to: ROUTES.userManagement },
-      { label: "Registration",      icon: <RiUserAddLine />,      to: ROUTES.register },
-      { label: "Role & Permissions",icon: <RiKeyLine />,          to: ROUTES.rolePermissions },
-      { label: "Settings",          icon: <RiSettings4Line />,    to: ROUTES.adminSettings },
+      { label: "User Management",    icon: <RiUserSettingsLine />, to: ROUTES.userManagement },
+      { label: "Registration",       icon: <RiUserAddLine />,      to: ROUTES.register },
+      { label: "Role & Permissions", icon: <RiKeyLine />,          to: ROUTES.rolePermissions },
+      { label: "Settings",           icon: <RiSettings4Line />,    to: ROUTES.adminSettings },
     ],
   },
 ];
@@ -86,7 +86,7 @@ export default function AdminLayout() {
     <div className="mla-shell">
       <SharedSidebar
         user={user}
-        roleSub="ADMINISTRATOR"
+        roleSub="Admin Portal"
         roleLabel="Admin"
         sections={SECTIONS}
       />

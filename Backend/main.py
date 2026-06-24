@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +22,7 @@ from alerts.routes import router as alerts_router  # noqa: E402
 from analytics.routes import router as analytics_router  # noqa: E402
 from auth.routes import router as auth_router  # noqa: E402
 from campaigns.routes import router as campaigns_router  # noqa: E402
+from citizens.routes import router as citizens_router  # noqa: E402
 from config.cache import close_cache, init_cache  # noqa: E402
 from config.database import MongoDatabase  # noqa: E402
 from config.rate_limit import limiter  # noqa: E402
@@ -30,7 +31,6 @@ from dashboard.routes import router as dashboard_router  # noqa: E402
 from events.routes import router as events_router  # noqa: E402
 from grievances.routes import router as grievances_router  # noqa: E402
 from lookups.routes import router as lookups_router  # noqa: E402
-from citizens.routes import router as citizens_router  # noqa: E402
 from mla.routes import router as mla_router  # noqa: E402
 from notifications.routes import router as notifications_router  # noqa: E402
 from surveys.routes import router as surveys_router  # noqa: E402
@@ -109,7 +109,7 @@ except Exception as e:
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Log all requests; handle CORS preflight."""
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     if request.method == "OPTIONS":
         origin = request.headers.get("origin", "*")
@@ -136,7 +136,7 @@ async def log_requests(request: Request, call_next):
             logger.warning(f"[MIDDLEWARE] {request.method} {request.url.path} - NO Authorization header")
 
     response = await call_next(request)
-    duration = (datetime.utcnow() - start_time).total_seconds()
+    duration = (datetime.now(timezone.utc) - start_time).total_seconds()
     logger.info(f"{request.method} {request.url.path} - {response.status_code} - {duration:.3f}s")
     return response
 
@@ -157,7 +157,7 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "service": settings.API_TITLE,
     }
 

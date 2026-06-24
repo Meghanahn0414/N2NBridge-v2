@@ -10,12 +10,13 @@ const formatNumber = (value) => (value == null || value === '' ? '-' : value.toL
 
 export default function EventsPublicPrograms() {
   const navigate = useNavigate();
-  const { dashboard, loading, error } = useMlaDashboard();
+  const { dashboard } = useMlaDashboard();
 
   const handleCreateEvent = () => window.alert('Create Event feature coming soon. Please contact your administrator to create events.');
   const handleViewAnalytics = () => navigate(ROUTES.mlaAIInsights);
   const handleSendReminders = () => navigate(ROUTES.mlaCommunications);
   const handleManageEvent = () => navigate(ROUTES.mlaCommunications);
+
   const eventMetrics = dashboard?.metrics?.events || {};
   const events = Array.isArray(eventMetrics.recent) ? eventMetrics.recent.slice(0, 4) : [];
   const totalMetrics = {
@@ -28,10 +29,9 @@ export default function EventsPublicPrograms() {
 
   return (
     <div>
-      <PageHeader subtitle="Manage constituency events and community outreach" />
+      <PageHeader subtitle="Manage events and public programs" />
       <div className="mla-container">
 
-      {/* Event Metrics */}
       <div className="mla-section">
         <div className="event-metrics-grid">
           <div className="metric-card">
@@ -48,16 +48,15 @@ export default function EventsPublicPrograms() {
           </div>
           <div className="metric-card">
             <div className="metric-value">{totalMetrics.avgAttendance}%</div>
-            <div className="metric-label">Avg Attendance</div>
+            <div className="metric-label">Avg. Attendance</div>
           </div>
           <div className="metric-card">
             <div className="metric-value">{totalMetrics.avgFeedback}/5 ⭐</div>
-            <div className="metric-label">Avg Feedback</div>
+            <div className="metric-label">Avg. Feedback</div>
           </div>
         </div>
       </div>
 
-      {/* Calendar View */}
       <div className="mla-section">
         <h2>Upcoming Events Calendar</h2>
         <div className="calendar-placeholder">
@@ -65,7 +64,6 @@ export default function EventsPublicPrograms() {
         </div>
       </div>
 
-      {/* Upcoming Events */}
       <div className="mla-section">
         <h2>Upcoming Events</h2>
         <div className="events-list">
@@ -79,7 +77,7 @@ export default function EventsPublicPrograms() {
                 <h4>{event.name}</h4>
                 <p className="event-location">📍 {event.ward}</p>
                 <div className="event-stats">
-                  <span>👥 {event.registrations} registrations</span>
+                  <span>👥 {event.registrations} Registrations</span>
                   <span>⭐ {event.feedback}/5</span>
                 </div>
               </div>
@@ -89,10 +87,9 @@ export default function EventsPublicPrograms() {
         </div>
       </div>
 
-      {/* Create Event Button */}
       <div className="mla-section">
         <div className="detail-buttons">
-          <button type="button" className="btn-primary" onClick={handleCreateEvent}>+ Create New Event</button>
+          <button type="button" className="btn-primary" onClick={handleCreateEvent}>Create New Event</button>
           <button type="button" className="btn-primary" onClick={handleViewAnalytics}>View Event Analytics</button>
           <button type="button" className="btn-primary" onClick={handleSendReminders}>Send Reminders</button>
         </div>
