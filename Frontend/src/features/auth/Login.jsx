@@ -59,7 +59,9 @@ export default function Login() {
           </label>
         </div>
 
-        <label className="mb-3 block text-sm font-medium text-slate-700">{type === "phone" ? "Phone Number" : "Email Address"}</label>
+        <label className="mb-3 block text-sm font-medium text-slate-700">
+          {type === "phone" ? "Phone Number" : "Email Address"}
+        </label>
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -79,7 +81,7 @@ export default function Login() {
         </button>
 
         <div className="mt-5 text-center text-sm text-slate-600">
-          New admin?{' '}
+          New admin?{" "}
           <button
             type="button"
             onClick={() => navigate("/admin-signup")}

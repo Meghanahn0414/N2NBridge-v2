@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { getAuthUser, getAuthRole } from "../services/authStorage";
 import { notificationService } from "../shared/services/notification";
 import { getNotificationRoute } from "../utils/notificationRoute";
+import { FaBell, FaClipboardList, FaCalendarAlt, FaBullhorn, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
 
 const TYPE_ICON = {
-  GRIEVANCE: "📋", COMPLAINT: "📋",
-  EVENT: "📅",
-  CAMPAIGN: "📢",
-  ALERT: "⚠️", EMERGENCY: "⚠️",
-  TASK: "✅",
+  GRIEVANCE: <FaClipboardList />, COMPLAINT: <FaClipboardList />,
+  EVENT: <FaCalendarAlt />,
+  CAMPAIGN: <FaBullhorn />,
+  ALERT: <FaExclamationTriangle />, EMERGENCY: <FaExclamationTriangle />,
+  TASK: <FaCheckCircle />,
 };
 
 function timeAgo(dateStr) {
@@ -137,7 +138,7 @@ export default function PageHeader({ title, subtitle }) {
             }}
             title="Notifications"
           >
-            🔔
+            <FaBell />
             {unreadCount > 0 && (
               <span style={{
                 position: "absolute", top: 6, right: 6,
@@ -182,7 +183,7 @@ export default function PageHeader({ title, subtitle }) {
                   </div>
                 ) : (
                   notifications.map((n, i) => {
-                    const icon = TYPE_ICON[(n.type || '').toUpperCase()] || "🔔";
+                    const icon = TYPE_ICON[(n.type || '').toUpperCase()] || <FaBell />;
                     const isUnread = !n.isRead;
                     return (
                       <div

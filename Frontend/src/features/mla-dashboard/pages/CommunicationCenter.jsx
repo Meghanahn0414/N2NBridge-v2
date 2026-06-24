@@ -1,11 +1,8 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { fetchCampaigns, createCampaign, uploadCampaignImage } from "../../../features/campaigns/campaignService";
+import MIcon from "../../../components/MIcon";
 
-const MS = ({ children, style }) => (
-  <span className="material-symbols-rounded" style={{ fontSize: 21, lineHeight: 1, ...style }}>
-    {children}
-  </span>
-);
+const MS = ({ children, style }) => <MIcon name={children} style={style} />;
 
 const TYPES = [
   { key: "event", icon: "event", label: "Event" },
@@ -290,10 +287,10 @@ export default function CommunicationCenter() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#F3F5FA", fontFamily: "'Hanken Grotesk', sans-serif" }}>
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 34px", background: "#F3F5FA", position: "sticky", top: 0, zIndex: 10, borderBottom: "1px solid #E5E9F1" }}>
-        <div>
-          <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 3 }}>Reach your community directly</div>
-          <h1 style={{ font: "400 30px 'Newsreader'", color: "#16233C", margin: 0, letterSpacing: "-.01em" }}>Broadcasts</h1>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 34px", background: "#F3F5FA", position: "sticky", top: 0, zIndex: 10, borderBottom: "1px solid #E5E9F1", gap: 16, flexWrap: "wrap", minHeight: 72 }}>
+        <div style={{ flex: 1, minWidth: 0, maxWidth: "60%" }}>
+          <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Reach your community directly</div>
+          <h1 style={{ fontFamily: "'Newsreader','Noto Sans Kannada',serif", fontSize: "clamp(16px,2.2vw,26px)", fontWeight: 400, color: "#16233C", margin: 0, letterSpacing: "-.01em", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Broadcasts</h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
@@ -659,8 +656,8 @@ export default function CommunicationCenter() {
                   <div key={campaign.id || campaign._id} style={{ padding: "20px 22px", borderRadius: 20, background: "#fff", border: "1px solid #EAEDF4", boxShadow: "0 10px 20px -12px rgba(20,35,60,.2)" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                       <div>
-                        <div style={{ font: "700 15px 'Hanken Grotesk'", color: "#16233C" }}>{campaign.name || campaign.title || "Untitled broadcast"}</div>
-                        <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>{campaign.status || "ACTIVE"}</div>
+                        <div className="notranslate" translate="no" style={{ font: "600 15px 'Hanken Grotesk'", color: "#16233C" }}>{campaign.name || campaign.title || "Untitled broadcast"}</div>
+                        <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6" }}>{campaign.status || "ACTIVE"}</div>
                       </div>
                       <span style={{ font: "600 11px 'Hanken Grotesk'", color: "#2B5BD7", background: "#EEF4FF", padding: "8px 10px", borderRadius: 16 }}>{campaign.type || "Awareness"}</span>
                     </div>
@@ -681,8 +678,8 @@ export default function CommunicationCenter() {
           <div style={{ background: "linear-gradient(165deg,#1B3C8F,#2B5BD7)", borderRadius: 22, padding: 24, color: "#fff", boxShadow: "0 18px 36px -22px rgba(43,91,215,.7)" }}>
             <div style={{ font: "600 13px 'Hanken Grotesk'", color: "rgba(255,255,255,.82)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 12 }}>This will reach</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 4 }}>
-              <span style={{ font: "400 46px 'Newsreader'", color: "#fff", lineHeight: .9 }}>{totalReach.toLocaleString()}</span>
-              <span style={{ font: "500 14px 'Hanken Grotesk'", color: "rgba(255,255,255,.8)", marginBottom: 6 }}>residents</span>
+              <span className="notranslate" translate="no" style={{ font: "400 46px 'Newsreader'", color: "#fff", lineHeight: .9 }}>{totalReach.toLocaleString()}</span>
+              <span style={{ font: "500 14px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "rgba(255,255,255,.8)", marginBottom: 6 }}>residents</span>
             </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "rgba(255,255,255,.78)", margin: "8px 0 18px" }}>{activeCampaigns.length} active broadcast campaign{activeCampaigns.length === 1 ? "" : "s"}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -739,15 +736,17 @@ export default function CommunicationCenter() {
                 {scheduledCampaigns.map((c) => (
                   <div key={c._id || c.id} style={{ padding: "12px 14px", borderRadius: 14, background: "#F8FAFF", border: "1px solid #E6EDFF" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C" }}>{c.name || "Untitled"}</span>
+                      <span className="notranslate" translate="no" style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C" }}>{c.name || "Untitled"}</span>
                       <span style={{ font: "600 11px 'Hanken Grotesk'", color: "#2B5BD7", background: "#EEF4FF", padding: "3px 8px", borderRadius: 10 }}>{c.type || "Update"}</span>
                     </div>
-                    <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>
-                      📅 {new Date(c.startDate).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+                    <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", display: "flex", alignItems: "center", gap: 5 }}>
+                      <MIcon name="calendar_month" style={{ fontSize: 13, color: "#8590A6" }} />
+                      <span className="notranslate" translate="no">{new Date(c.startDate).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span>
                     </div>
                     {c.targetAudience?.length > 0 && (
-                      <div style={{ font: "500 11px 'Hanken Grotesk'", color: "#9AA3B5", marginTop: 3 }}>
-                        👥 {c.targetAudience.join(", ")}
+                      <div style={{ font: "500 11px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#9AA3B5", marginTop: 3, display: "flex", alignItems: "center", gap: 5 }}>
+                        <MIcon name="groups" style={{ fontSize: 13, color: "#9AA3B5" }} />
+                        <span>{c.targetAudience.join(", ")}</span>
                       </div>
                     )}
                   </div>

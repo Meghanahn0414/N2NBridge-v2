@@ -54,6 +54,7 @@ export default function Header({ onMobileMenuClick }) {
     return () => window.removeEventListener('auth-user-updated', handleAuthUserUpdated);
   }, []);
 
+
   // helper to tightly normalize patient IDs that sometimes come prefixed with
   // ":patientId=" or "?patientId=" (an earlier bug in Header navigation)
  
@@ -171,12 +172,11 @@ export default function Header({ onMobileMenuClick }) {
     clearAuth();
     setOpen(false);
     setShowUserProfile(false);
-    // Navigate to appropriate login page based on role
-    if (role === 'CITIZEN' || role === 'citizen') {
-      navigate('/citizen-login');
-    } else {
-      navigate('/admin-login');
-    }
+    // Full page reload so Google Translate's DOM state is fully cleared on the login page.
+    const loginPath = (role === 'CITIZEN' || role === 'citizen')
+      ? '/citizen-login'
+      : '/admin-login';
+    window.location.href = loginPath;
   };
 
   const fetchNotificationsList = async () => {
@@ -460,7 +460,7 @@ export default function Header({ onMobileMenuClick }) {
           </div>
 
           {/* User Profile Section */}
-          <div className="user-profile-section" ref={userProfileRef}>
+          <div className="user-profile-section notranslate" ref={userProfileRef}>
             <button
               className="user-profile-btn"
               onClick={() => setShowUserProfile(!showUserProfile)}
@@ -477,11 +477,14 @@ export default function Header({ onMobileMenuClick }) {
                     }}
                   />
                 ) : null}
-                <span className="profile-fallback" style={{ display: profileImageUrl ? 'none' : 'inline-flex' }}>
+                <span className="profile-fallback notranslate" style={{ display: profileImageUrl ? 'none' : 'inline-flex' }}>
                   {(user?.fullName || user?.name || '?').charAt(0).toUpperCase()}
                 </span>
               </div>
-              <span className="user-profile-name-text">{user?.fullName || user?.name || 'User'}</span>
+              <span
+                className="user-profile-name-text"
+                data-name={user?.fullName || user?.name || 'User'}
+              />
             </button>
 
             {showUserProfile && (
@@ -498,13 +501,13 @@ export default function Header({ onMobileMenuClick }) {
                         }}
                       />
                     ) : null}
-                    <span className="profile-fallback-large" style={{ display: profileImageUrl ? 'none' : 'inline-flex' }}>
+                    <span className="profile-fallback-large notranslate" style={{ display: profileImageUrl ? 'none' : 'inline-flex' }}>
                       {(user?.fullName || user?.name || '?').charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div className="user-profile-info">
-                    <div className="user-profile-name">{user?.fullName || user?.name || 'Admin User'}</div>
-                    <div className="user-profile-email">{user?.email || ''}</div>
+                    <div className="user-profile-name notranslate">{user?.fullName || user?.name || 'Admin User'}</div>
+                    <div className="user-profile-email notranslate">{user?.email || ''}</div>
                     <div className="user-profile-role">{getAuthRole() || 'User'}</div>
                   </div>
                 </div>

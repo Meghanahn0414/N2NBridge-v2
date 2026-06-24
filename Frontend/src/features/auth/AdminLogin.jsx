@@ -1,8 +1,74 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { loginAdmin } from "./authService";
 import { setAuthToken, setAuthRole, setAuthUser } from "../../services/authStorage";
+import { changeLanguage, getCurrentLanguage } from "../../i18n/index";
 import "./auth.css";
+
+const LANGUAGES = [
+  { code: "en", label: "English",  native: "English"  },
+  { code: "kn", label: "Kannada",  native: "ಕನ್ನಡ"    },
+  { code: "hi", label: "Hindi",    native: "हिंदी"     },
+  { code: "te", label: "Telugu",   native: "తెలుగు"   },
+];
+
+function LanguageDropdown() {
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState(getCurrentLanguage());
+  const [translating, setTranslating] = useState(false);
+  const ref = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSelect = async (code) => {
+    setOpen(false);
+    if (code === current) return;
+    setTranslating(true);
+    await changeLanguage(code);
+    setCurrent(code);
+    setTranslating(false);
+  };
+
+  const selected = LANGUAGES.find((l) => l.code === current) || LANGUAGES[0];
+
+  return (
+    <div className="lang-dropdown" ref={ref} data-notranslate>
+      <button
+        type="button"
+        className="lang-dropdown-trigger"
+        onClick={() => setOpen((o) => !o)}
+        disabled={translating}
+      >
+        <span className="lang-globe">🌐</span>
+        <span className="lang-current">{translating ? "…" : selected.native}</span>
+        <span className="lang-chevron">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <ul className="lang-dropdown-menu">
+          {LANGUAGES.map((lang) => (
+            <li key={lang.code}>
+              <button
+                type="button"
+                className={`lang-option ${lang.code === current ? "lang-option-active" : ""}`}
+                onClick={() => handleSelect(lang.code)}
+              >
+                <span className="lang-option-native">{lang.native}</span>
+                <span className="lang-option-label">{lang.label}</span>
+                {lang.code === current && <span className="lang-check">✓</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -20,10 +86,7 @@ export default function AdminLogin() {
     FIELD_OFFICER: "/field",
   };
 
-  // Get role from URL query parameter
   const roleFromUrl = searchParams.get("role");
-  
-  // Roles that cannot access signup
   const restrictedSignupRoles = ["REPRESENTATIVE", "MANAGER", "CONSTITUENCY_MANAGER", "FIELD_OFFICER"];
   const showSignupLink = !restrictedSignupRoles.includes(roleFromUrl);
 
@@ -32,22 +95,15 @@ export default function AdminLogin() {
       setError("Please enter email and password");
       return;
     }
-
     setError("");
     setLoading(true);
-
     try {
       const response = await loginAdmin({ email, password });
-
-      // Store token and user info (backend returns `accessToken`)
       setAuthToken(response.accessToken);
       const userRole = response.user?.role || "ADMIN";
       setAuthRole(userRole);
       setAuthUser(response.user);
-
-      // Redirect based on user role
-      const redirectPath = redirectByRole[userRole] || "/admin";
-      navigate(redirectPath);
+      navigate(redirectByRole[userRole] || "/admin");
     } catch (err) {
       setError(err.message || "Login failed");
     } finally {
@@ -55,13 +111,15 @@ export default function AdminLogin() {
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") handleLogin();
-  };
-
   return (
     <div className="auth-container">
       <div className="auth-card">
+
+        {/* Language Dropdown — top right */}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
+          <LanguageDropdown />
+        </div>
+
         <div className="auth-header">
           <h1 className="auth-title">Login to Your Account</h1>
           <p className="auth-subtitle">Staff & Admin Access</p>
@@ -69,56 +127,41 @@ export default function AdminLogin() {
 
         <form className="auth-form" onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
           <div className="form-group">
-            <label className="form-label">
-              Email <span className="required">*</span>
-            </label>
+            <label className="form-label">Email <span className="required">*</span></label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter your email"
+              onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+              placeholder="Email"
               className="form-input"
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">
-              Password <span className="required">*</span>
-            </label>
+            <label className="form-label">Password <span className="required">*</span></label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter password"
+              onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+              placeholder="Password"
               className="form-input"
             />
           </div>
 
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
+          {error && <div className="error-message" data-notranslate>{error}</div>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="auth-button"
-          >
-            {loading ? "Logging in..." : "Login"}
+          <button type="submit" disabled={loading} className="auth-button">
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
         {showSignupLink && (
           <div className="auth-footer">
-            <p>Don't have an account?
-              <button
-                type="button"
-                onClick={() => navigate("/admin-signup")}
-                className="auth-link"
-              >
+            <p>
+              Don't have an account?{" "}
+              <button type="button" onClick={() => navigate("/admin-signup")} className="auth-link">
                 Sign up here
               </button>
             </p>

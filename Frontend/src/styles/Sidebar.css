@@ -235,6 +235,8 @@
   padding-top: 10px;
   border-top: 1px solid var(--sb-border);
   position: relative;
+  /* Allow the absolutely-positioned logout popup to escape sidebar's overflow:hidden */
+  overflow: visible;
 }
 
 .sidebar-user-btn {
@@ -331,8 +333,8 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   padding: 14px;
-  margin-bottom: 8px;
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
+  /* No margin-bottom — card is now absolutely positioned above the user button */
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .sidebar-logout-prompt {

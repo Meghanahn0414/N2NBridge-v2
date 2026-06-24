@@ -6,6 +6,32 @@ import {
 import { router } from 'expo-router';
 import api from '../../../services/api';
 import { useAuthStore } from '../../../store/authStore';
+import { useT } from '../../../i18n/useT';
+
+type Tr = (key: string) => string;
+
+const priorityLabel = (p: string, tr: Tr) => {
+  switch (p?.toUpperCase()) {
+    case 'LOW':      return tr('complaints.low');
+    case 'MEDIUM':   return tr('complaints.medium');
+    case 'HIGH':     return tr('complaints.high');
+    case 'CRITICAL': return tr('complaints.critical') || 'Critical';
+    default:         return p || '';
+  }
+};
+
+const statusDisplayLabel = (s: string, tr: Tr) => {
+  switch (s?.toUpperCase()) {
+    case 'NEW':         return tr('complaints.open');
+    case 'OPEN':        return tr('complaints.open');
+    case 'IN_PROGRESS': return tr('complaints.inProgress');
+    case 'ASSIGNED':    return tr('complaints.assigned');
+    case 'ON_HOLD':     return tr('complaints.onHold');
+    case 'RESOLVED':    return tr('complaints.resolved');
+    case 'CLOSED':      return tr('complaints.closed');
+    default:            return (s || '').replace(/_/g, ' ');
+  }
+};
 
 const C = {
   primary: '#1D4ED8',
@@ -36,7 +62,7 @@ type Complaint = {
   created_at?: string;
 };
 
-const FILTERS = ['All', 'Open', 'In Progress', 'Resolved'];
+// Keys stay as English for STATUS_MAP filtering logic
 const STATUS_MAP: Record<string, string[]> = {
   All: [],
   Open: ['OPEN', 'NEW'],
@@ -45,7 +71,9 @@ const STATUS_MAP: Record<string, string[]> = {
 };
 
 export default function MyComplaints() {
+  const tr = useT();
   const { user } = useAuthStore();
+  const [lang, setLang] = useState(0); // kept for compat, not used
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [filtered, setFiltered] = useState<Complaint[]>([]);
   const [activeFilter, setActiveFilter] = useState('All');
@@ -54,6 +82,14 @@ export default function MyComplaints() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // FILTERS defined inside component so tr() picks up current language on re-render
+  const FILTERS = [
+    { key: 'All', label: tr('complaints.filterAll') },
+    { key: 'Open', label: tr('complaints.filterOpen') },
+    { key: 'In Progress', label: tr('complaints.filterInProgress') },
+    { key: 'Resolved', label: tr('complaints.filterResolved') },
+  ];
 
   const fetchComplaints = useCallback(async (pageNum = 1, refresh = false) => {
     try {
@@ -129,7 +165,7 @@ export default function MyComplaints() {
         <Text style={s.cardId} numberOfLines={1}>#{item.id?.slice(-10).toUpperCase()}</Text>
         <View style={[s.statusBadge, { backgroundColor: `${statusColor(item.status)}18` }]}>
           <Text style={[s.statusText, { color: statusColor(item.status) }]}>
-            {item.status?.replace(/_/g, ' ')}
+            {statusDisplayLabel(item.status, tr)}
           </Text>
         </View>
       </View>
@@ -141,10 +177,10 @@ export default function MyComplaints() {
       )}
       <View style={s.cardFooter}>
         <View style={[s.priorityBadge, { backgroundColor: priorityColor(item.priority) }]}>
-          <Text style={s.priorityText}>{item.priority} Priority</Text>
+          <Text style={s.priorityText}>{priorityLabel(item.priority, tr)}</Text>
         </View>
         <Text style={s.cardDate}>
-          {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN') : 'Recently'}
+          {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN') : tr('common.recently')}
         </Text>
       </View>
     </TouchableOpacity>
@@ -156,27 +192,27 @@ export default function MyComplaints() {
 
       <View style={s.header}>
         <View>
-          <Text style={s.headerTitle}>My Complaints</Text>
-          <Text style={s.headerSub}>Track and manage your complaints</Text>
+          <Text style={s.headerTitle}>{tr('complaints.title')}</Text>
+          <Text style={s.headerSub}>{tr('complaints.trackSubtitle')}</Text>
         </View>
         <TouchableOpacity style={s.newBtn} onPress={() => router.push('/citizen/new-complaint' as any)}>
-          <Text style={s.newBtnText}>+ New</Text>
+          <Text style={s.newBtnText}>{tr('complaints.newBtn')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={s.filterBar}>
         {FILTERS.map((f) => {
-          const count = f === 'All'
+          const count = f.key === 'All'
             ? complaints.length
-            : complaints.filter((c) => STATUS_MAP[f].includes(c.status?.toUpperCase())).length;
+            : complaints.filter((c) => STATUS_MAP[f.key].includes(c.status?.toUpperCase())).length;
           return (
             <TouchableOpacity
-              key={f}
-              style={[s.filterTab, activeFilter === f && s.filterTabActive]}
-              onPress={() => setActiveFilter(f)}
+              key={f.key}
+              style={[s.filterTab, activeFilter === f.key && s.filterTabActive]}
+              onPress={() => setActiveFilter(f.key)}
             >
-              <Text style={[s.filterText, activeFilter === f && s.filterTextActive]}>
-                {f}{count > 0 ? ` (${count})` : ''}
+              <Text style={[s.filterText, activeFilter === f.key && s.filterTextActive]}>
+                {f.label}{count > 0 ? ` (${count})` : ''}
               </Text>
             </TouchableOpacity>
           );
@@ -200,15 +236,15 @@ export default function MyComplaints() {
           ListEmptyComponent={
             <View style={s.empty}>
               <Text style={s.emptyIcon}>📭</Text>
-              <Text style={s.emptyTitle}>No complaints</Text>
+              <Text style={s.emptyTitle}>{tr('complaints.noComplaints')}</Text>
               <Text style={s.emptyText}>
                 {activeFilter === 'All'
-                  ? "You haven't filed any complaints yet."
-                  : `No ${activeFilter.toLowerCase()} complaints.`}
+                  ? tr('complaints.noComplaintsYetMsg')
+                  : tr('complaints.noFilterComplaints').replace('{filter}', activeFilter.toLowerCase())}
               </Text>
               {activeFilter === 'All' && (
                 <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/citizen/new-complaint' as any)}>
-                  <Text style={s.emptyBtnText}>File a complaint</Text>
+                  <Text style={s.emptyBtnText}>{tr('complaints.fileComplaint')}</Text>
                 </TouchableOpacity>
               )}
             </View>

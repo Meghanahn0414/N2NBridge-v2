@@ -37,7 +37,7 @@ export default function LandingPage() {
                   window.open("http://localhost:8081", "_blank");
                 }}
               >
-                <div className="login-option-icon">👤</div>
+                <div className="login-option-icon notranslate">👤</div>
                 <h3>Citizen</h3>
                 <p>Login as a citizen</p>
               </button>
@@ -50,7 +50,7 @@ export default function LandingPage() {
                   handleLogin("/admin-login");
                 }}
               >
-                <div className="login-option-icon">👨‍💼</div>
+                <div className="login-option-icon notranslate">👨‍💼</div>
                 <h3>Admin</h3>
                 <p>Login as admin</p>
               </button>
@@ -63,7 +63,7 @@ export default function LandingPage() {
                   handleLogin("/admin-login?role=MANAGER");
                 }}
               >
-                <div className="login-option-icon">📋</div>
+                <div className="login-option-icon notranslate">📋</div>
                 <h3>Manager</h3>
                 <p>Constituency Manager</p>
               </button>
@@ -76,7 +76,7 @@ export default function LandingPage() {
                   handleLogin("/admin-login?role=FIELD_OFFICER");
                 }}
               >
-                <div className="login-option-icon">🚗</div>
+                <div className="login-option-icon notranslate">🚗</div>
                 <h3>Field Officer</h3>
                 <p>Login as field officer</p>
               </button>
@@ -89,13 +89,13 @@ export default function LandingPage() {
                   handleLogin("/admin-login?role=REPRESENTATIVE");
                 }}
               >
-                <div className="login-option-icon">🏛️</div>
+                <div className="login-option-icon notranslate">🏛️</div>
                 <h3>Representative</h3>
                 <p>MLA/Representative Login</p>
               </button>
             </div>
-            <button 
-              className="close-modal-btn"
+            <button
+              className="close-modal-btn notranslate"
               onClick={() => setShowLoginOptions(false)}
             >
               ✕

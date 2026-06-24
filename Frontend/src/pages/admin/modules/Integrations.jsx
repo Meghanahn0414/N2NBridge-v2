@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/Integrations.css';
 import PageHeader from "../../../components/PageHeader";
+import { FaCheck, FaExclamationTriangle, FaCog, FaFlask, FaClipboardList } from 'react-icons/fa';
 
 export default function Integrations() {
   const [integrations, setIntegrations] = useState([
@@ -28,7 +29,7 @@ export default function Integrations() {
         {integrations.map((integration, idx) => (
           <div key={idx} className="integration-card">
             <div className={`status-badge ${integration.status}`}>
-              {integration.status === 'connected' ? '✓' : '⚠'}
+              {integration.status === 'connected' ? <FaCheck /> : <FaExclamationTriangle />}
             </div>
             <h3>{integration.name}</h3>
             <p className={`status-text ${integration.status}`}>
@@ -37,10 +38,10 @@ export default function Integrations() {
             <p className="sync-time">Last Sync: {integration.lastSync}</p>
             <div className="card-actions">
               <button className="btn-secondary" onClick={() => setShowConfig(integration.name)}>
-                ⚙️ Configure
+                <FaCog style={{marginRight:4,verticalAlign:'middle'}} /> Configure
               </button>
-              <button className="btn-secondary">🧪 Test</button>
-              <button className="btn-secondary">📋 Logs</button>
+              <button className="btn-secondary"><FaFlask style={{marginRight:4,verticalAlign:'middle'}} /> Test</button>
+              <button className="btn-secondary"><FaClipboardList style={{marginRight:4,verticalAlign:'middle'}} /> Logs</button>
             </div>
           </div>
         ))}

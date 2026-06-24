@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import api from '../../services/api';
+import { useT } from '../../i18n/useT';
 
 const C = {
   primary: '#1D4ED8',
@@ -40,6 +41,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function Campaigns() {
+  const tr = useT();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -117,8 +119,8 @@ export default function Campaigns() {
           <Text style={s.backBtn}>←</Text>
         </TouchableOpacity>
         <View>
-          <Text style={s.headerTitle}>Programs & Campaigns</Text>
-          <Text style={s.headerSub}>Active government initiatives</Text>
+          <Text style={s.headerTitle}>{tr('campaigns.title')}</Text>
+          <Text style={s.headerSub}>{tr('campaigns.subtitle')}</Text>
         </View>
         <View style={{ width: 50 }} />
       </View>
@@ -135,8 +137,8 @@ export default function Campaigns() {
           ListEmptyComponent={
             <View style={s.empty}>
               <Text style={s.emptyIcon}>📢</Text>
-              <Text style={s.emptyTitle}>No active campaigns</Text>
-              <Text style={s.emptyText}>No government programs or campaigns are currently active.</Text>
+              <Text style={s.emptyTitle}>{tr('campaigns.noActive')}</Text>
+              <Text style={s.emptyText}>{tr('campaigns.noActiveText')}</Text>
             </View>
           }
           showsVerticalScrollIndicator={false}

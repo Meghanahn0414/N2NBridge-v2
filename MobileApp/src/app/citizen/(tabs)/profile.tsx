@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   ActivityIndicator, Image, RefreshControl, StatusBar,
@@ -10,6 +10,7 @@ import api from "../../../services/api";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Platform } from "react-native";
 import { API_BASE } from "../../../config";
+import { useT } from "../../../i18n/useT";
 
 const realEmail = (e: string | null | undefined) =>
   e && !e.startsWith("otp-") ? e : "";
@@ -65,6 +66,7 @@ const dr = StyleSheet.create({
 });
 
 export default function ProfileScreen() {
+  const tr = useT();
   const router = useRouter();
   const { user } = useAuthStore();
   const [profile, setProfile] = useState<any>(null);
@@ -135,8 +137,8 @@ export default function ProfileScreen() {
     );
   }
 
-  const wardLabel = profile?.wardId ? `Ward ${profile.wardId}` : null;
-  const areaLabel = profile?.address || "Your ward";
+  const wardLabel = profile?.wardId ? `${tr('profile.ward')} ${profile.wardId}` : null;
+  const areaLabel = profile?.address || tr('profile.yourWard');
   const locationStr = [areaLabel, wardLabel].filter(Boolean).join(" · ");
 
   return (
@@ -186,31 +188,31 @@ export default function ProfileScreen() {
           <Text style={s.location}>{locationStr}</Text>
           <View style={s.verifiedBadge}>
             <Ionicons name="checkmark-circle" size={12} color="#BFDBFE" />
-            <Text style={s.verifiedText}>Verified resident</Text>
+            <Text style={s.verifiedText}>{tr('profile.verifiedResident')}</Text>
           </View>
         </View>
 
         {/* ── Person details ── */}
         <View style={s.card}>
           <View style={s.cardHeader}>
-            <Text style={s.cardTitle}>Personal Details</Text>
+            <Text style={s.cardTitle}>{tr('profile.personalDetails')}</Text>
           </View>
 
-          <DetailRow icon="person-outline" label="Full Name"
-            value={profile?.fullName || user?.name || "Not provided"} />
-          <DetailRow icon="call-outline" label="Phone"
-            value={profile?.mobile || profile?.phone || "Not provided"} />
-          <DetailRow icon="mail-outline" label="Email"
-            value={realEmail(profile?.email) || realEmail(user?.email) || "Not provided"} />
-          <DetailRow icon="location-outline" label="Address"
-            value={profile?.address || "Not provided"} />
-          <DetailRow icon="map-outline" label="Ward"
-            value={profile?.wardId ? `Ward ${profile.wardId}` : "Not assigned"} />
+          <DetailRow icon="person-outline" label={tr('profile.fullName')}
+            value={profile?.fullName || user?.name || tr('profile.notProvided')} />
+          <DetailRow icon="call-outline" label={tr('profile.phone')}
+            value={profile?.mobile || profile?.phone || tr('profile.notProvided')} />
+          <DetailRow icon="mail-outline" label={tr('profile.email')}
+            value={realEmail(profile?.email) || realEmail(user?.email) || tr('profile.notProvided')} />
+          <DetailRow icon="location-outline" label={tr('profile.address')}
+            value={profile?.address || tr('profile.notProvided')} />
+          <DetailRow icon="map-outline" label={tr('profile.ward')}
+            value={profile?.wardId ? `${tr('profile.ward')} ${profile.wardId}` : tr('profile.notAssigned')} />
           {profile?.citizenId && (
-            <DetailRow icon="card-outline" label="Citizen ID"
+            <DetailRow icon="card-outline" label={tr('profile.citizenId')}
               value={profile.citizenId} mono />
           )}
-          <DetailRow icon="calendar-outline" label="Member Since"
+          <DetailRow icon="calendar-outline" label={tr('profile.memberSince')}
             value={profile?.createdAt
               ? new Date(profile.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
               : "—"}
@@ -225,7 +227,7 @@ export default function ProfileScreen() {
           <View style={s.settingsLinkIcon}>
             <Ionicons name="settings-outline" size={18} color={C.primary} />
           </View>
-          <Text style={s.settingsLinkText}>Settings &amp; Account</Text>
+          <Text style={s.settingsLinkText}>{tr('profile.settingsAccount')}</Text>
           <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
         </TouchableOpacity>
 

@@ -2,6 +2,8 @@ import { Tabs } from "expo-router";
 import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import React from "react";
+import { useT } from "../../../i18n/useT";
 
 function FABButton() {
   return (
@@ -18,6 +20,8 @@ function FABButton() {
 }
 
 export default function CitizenTabsLayout() {
+  const tr = useT();
+
   return (
     <Tabs
       screenOptions={{
@@ -38,7 +42,7 @@ export default function CitizenTabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: tr('Home'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} />
           ),
@@ -47,7 +51,7 @@ export default function CitizenTabsLayout() {
       <Tabs.Screen
         name="complaints"
         options={{
-          title: "Activity",
+          title: tr('Complaints'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? "list" : "list-outline"} size={22} color={color} />
           ),
@@ -63,7 +67,7 @@ export default function CitizenTabsLayout() {
       <Tabs.Screen
         name="services"
         options={{
-          title: "Services",
+          title: tr('Services'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? "grid" : "grid-outline"} size={22} color={color} />
           ),
@@ -72,7 +76,7 @@ export default function CitizenTabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: tr('Profile'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? "person" : "person-outline"} size={22} color={color} />
           ),

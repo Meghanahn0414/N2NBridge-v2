@@ -3,6 +3,7 @@ import '../../../styles/modules/ModulePageTemplate.css';
 import PageHeader from "../../../components/PageHeader";
 import { fetchEvents, createEvent, updateEvent, deleteEvent, publishEvent, cancelEvent } from '../../../features/events/eventService';
 import Pagination from '../../../components/Pagination';
+import { FaEdit, FaBan, FaTrashAlt, FaRocket, FaPlus } from 'react-icons/fa';
 
 const PAGE_SIZE = 100;
 const EMPTY_FORM = { name: '', description: '', dateTime: '', location: '', capacity: '', eventType: '', wardId: '' };
@@ -230,7 +231,7 @@ export default function EventManagement() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>#</th>
+                <th className="notranslate" translate="no">#</th>
                 <th>Event Name</th>
                 <th>Date & Time</th>
                 <th>Location</th>
@@ -261,16 +262,16 @@ export default function EventManagement() {
                   <td>
                     <div className="action-btns">
                       {event.status === 'DRAFT' && (
-                        <button className="action-btn publish" title="Publish event" onClick={() => handlePublish(event)}>🚀</button>
+                        <button className="action-btn publish" title="Publish event" onClick={() => handlePublish(event)}><FaRocket /></button>
                       )}
                       {event.status !== 'CANCELLED' && event.status !== 'COMPLETED' && (
                         <button className="action-btn" title="Cancel event" onClick={() => setCancellingEvent(event)}
                           style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 14 }}>
-                          🚫
+                          <FaBan />
                         </button>
                       )}
-                      <button className="action-btn edit" title="Edit event" onClick={() => openEdit(event)}>✏️</button>
-                      <button className="action-btn delete" title="Delete event" onClick={() => setDeletingEvent(event)}>🗑️</button>
+                      <button className="action-btn edit" title="Edit event" onClick={() => openEdit(event)}><FaEdit /></button>
+                      <button className="action-btn delete" title="Delete event" onClick={() => setDeletingEvent(event)}><FaTrashAlt /></button>
                     </div>
                   </td>
                 </tr>
@@ -292,7 +293,7 @@ export default function EventManagement() {
       {showModal && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && closeModal()}>
           <div className="modal-content">
-            <h2>{editingEvent ? '✏️ Edit Event' : '➕ Create New Event'}</h2>
+            <h2>{editingEvent ? <><FaEdit style={{marginRight:6,verticalAlign:'middle'}} />Edit Event</> : <><FaPlus style={{marginRight:6,verticalAlign:'middle'}} />Create New Event</>}</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Event Name *</label>
@@ -350,7 +351,7 @@ export default function EventManagement() {
       {cancellingEvent && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setCancellingEvent(null)}>
           <div className="modal-content delete-confirm-modal">
-            <div className="delete-icon">🚫</div>
+            <div className="delete-icon"><FaBan /></div>
             <h2>Cancel Event?</h2>
             <p className="delete-msg">
               Are you sure you want to cancel <strong>{cancellingEvent.eventName}</strong>?
@@ -370,7 +371,7 @@ export default function EventManagement() {
       {deletingEvent && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setDeletingEvent(null)}>
           <div className="modal-content delete-confirm-modal">
-            <div className="delete-icon">🗑️</div>
+            <div className="delete-icon"><FaTrashAlt /></div>
             <h2>Delete Event?</h2>
             <p className="delete-msg">
               Are you sure you want to delete <strong>{deletingEvent.eventName}</strong>?

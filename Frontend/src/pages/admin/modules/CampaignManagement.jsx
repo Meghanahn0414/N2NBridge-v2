@@ -3,6 +3,7 @@ import '../../../styles/modules/ModulePageTemplate.css';
 import { fetchCampaigns, createCampaign, deleteCampaign, cancelCampaign, launchCampaign, sendCampaignNotifications } from '../../../features/campaigns/campaignService';
 import PageHeader from "../../../components/PageHeader";
 import Pagination from '../../../components/Pagination';
+import { FaBell, FaBan, FaTrashAlt, FaBullhorn } from 'react-icons/fa';
 
 const PAGE_SIZE = 100;
 
@@ -173,7 +174,7 @@ export default function CampaignManagement() {
         {/* Stats */}
         <div className="module-stats">
           <div className="stat-card"><span className="stat-label">Active Campaigns</span><span className="stat-value">{stats.active}</span></div>
-          <div className="stat-card"><span className="stat-label">Total Reach</span><span className="stat-value">{stats.reach.toLocaleString()}</span></div>
+          <div className="stat-card"><span className="stat-label">Total Reach</span><span className="stat-value notranslate" translate="no">{stats.reach.toLocaleString()}</span></div>
           <div className="stat-card"><span className="stat-label">Engagement Rate</span><span className="stat-value">{stats.engagement}%</span></div>
           <div className="stat-card"><span className="stat-label">ROI</span><span className="stat-value">{stats.roi}%</span></div>
         </div>
@@ -196,7 +197,7 @@ export default function CampaignManagement() {
             <div style={{ margin: 24, padding: '12px 16px', background: '#fef2f2', color: '#b91c1c', borderRadius: 10, fontSize: 13 }}>{error}</div>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8', fontSize: 14 }}>
-              📭 {search ? 'No campaigns match your search.' : 'No campaigns yet. Click "+ Launch Campaign" to get started.'}
+{search ? 'No campaigns match your search.' : 'No campaigns yet. Click "+ Launch Campaign" to get started.'}
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -223,10 +224,10 @@ export default function CampaignManagement() {
                       <td style={{ padding: '13px 16px', fontSize: 13, color: '#94a3b8', fontWeight: 600, width: 40 }}>{i + 1}</td>
                       <td style={{ padding: '13px 16px', fontSize: 13 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${typeColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-                            📢
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${typeColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <FaBullhorn style={{ fontSize: 15, color: typeColor }} />
                           </div>
-                          <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{c.name}</span>
+                          <span className="notranslate" translate="no" style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{c.name}</span>
                         </div>
                       </td>
                       <td style={{ padding: '13px 16px', fontSize: 13 }}>
@@ -260,17 +261,17 @@ export default function CampaignManagement() {
                             </button>
                           )}
                           {c.status === 'ACTIVE' && (
-                            <button onClick={() => handleNotify(id, c.name)} style={{ padding: '5px 12px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                              🔔 Notify
+                            <button onClick={() => handleNotify(id, c.name)} style={{ padding: '5px 12px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600, display:'inline-flex', alignItems:'center', gap:5 }}>
+                              <FaBell /> Notify
                             </button>
                           )}
                           {c.status !== 'CANCELLED' && c.status !== 'COMPLETED' && (
-                            <button onClick={() => handleCancel(id, c.name)} style={{ padding: '5px 12px', background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                              🚫 Cancel
+                            <button onClick={() => handleCancel(id, c.name)} style={{ padding: '5px 12px', background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600, display:'inline-flex', alignItems:'center', gap:5 }}>
+                              <FaBan /> Cancel
                             </button>
                           )}
-                          <button onClick={() => handleDelete(id)} style={{ padding: '5px 12px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                            🗑️ Delete
+                          <button onClick={() => handleDelete(id)} style={{ padding: '5px 12px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 600, display:'inline-flex', alignItems:'center', gap:5 }}>
+                            <FaTrashAlt /> Delete
                           </button>
                         </div>
                       </td>

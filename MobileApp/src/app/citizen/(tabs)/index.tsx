@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../../../services/api";
 import { useAuthStore } from "../../../store/authStore";
+import { useT } from "../../../i18n/useT";
 
 const C = {
   primary: "#1D4ED8",
@@ -21,14 +22,6 @@ const C = {
   error: "#DC2626",
 };
 
-const getGreeting = () => {
-  const h = new Date().getHours();
-  if (h >= 5  && h < 12) return "Good Morning,";
-  if (h >= 12 && h < 17) return "Good Afternoon,";
-  if (h >= 17 && h < 21) return "Good Evening,";
-  return "Good Night,";
-};
-
 type Stats = { open: number; in_progress: number; resolved: number };
 type Complaint = {
   id: string; title?: string; description: string;
@@ -36,20 +29,30 @@ type Complaint = {
   categoryId?: string; category?: string;
 };
 
-const QUICK_ACTIONS = [
-  { label: "File Complaint", icon: "document-text-outline" as const, route: "/citizen/new-complaint", color: C.primary, bg: "#EEF2FF" },
-  { label: "My Activity",    icon: "list-outline" as const,          route: "/citizen/complaints",    color: "#7C3AED",  bg: "#F5F3FF" },
-  { label: "Events",         icon: "calendar-outline" as const,       route: "/citizen/events",        color: "#0891B2",  bg: "#ECFEFF" },
-  { label: "Emergency",      icon: "warning-outline" as const,        route: "/citizen/sos",           color: "#DC2626",  bg: "#FEF2F2" },
-];
-
 export default function CitizenDashboard() {
+  const tr = useT();
   const { user } = useAuthStore();
   const [stats, setStats] = useState<Stats>({ open: 0, in_progress: 0, resolved: 0 });
   const [recent, setRecent] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h >= 5  && h < 12) return tr('greeting.morning');
+    if (h >= 12 && h < 17) return tr('greeting.afternoon');
+    if (h >= 17 && h < 21) return tr('greeting.evening');
+    return tr('greeting.night');
+  };
+
+  const QUICK_ACTIONS = [
+    { label: tr('home.fileComplaint'), icon: "document-text-outline" as const, route: "/citizen/new-complaint", color: C.primary, bg: "#EEF2FF" },
+    { label: tr('home.myActivity'),    icon: "list-outline" as const,          route: "/citizen/complaints",    color: "#7C3AED",  bg: "#F5F3FF" },
+    { label: tr('home.events'),        icon: "calendar-outline" as const,       route: "/citizen/events",        color: "#0891B2",  bg: "#ECFEFF" },
+    { label: tr('home.emergency'),     icon: "warning-outline" as const,        route: "/citizen/sos",           color: "#DC2626",  bg: "#FEF2F2" },
+  ];
 
   const fetchData = useCallback(async () => {
     try {
@@ -104,21 +107,21 @@ export default function CitizenDashboard() {
 
   const statusLabel = (st: string) => {
     switch ((st || "").toUpperCase()) {
-      case "NEW": return "Open";
-      case "IN_PROGRESS": return "In progress";
-      case "ASSIGNED": return "Assigned";
-      case "RESOLVED": return "Resolved";
-      case "CLOSED": return "Closed";
+      case "NEW": return tr('complaints.open');
+      case "IN_PROGRESS": return tr('complaints.inProgress');
+      case "ASSIGNED": return tr('complaints.assigned');
+      case "RESOLVED": return tr('complaints.resolved');
+      case "CLOSED": return tr('complaints.closed');
       default: return (st || "").replace(/_/g, " ");
     }
   };
 
   const timeAgo = (dateStr?: string) => {
-    if (!dateStr) return "Recently";
+    if (!dateStr) return tr('common.recently');
     const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-    if (days === 0) return "Today";
-    if (days === 1) return "1 day ago";
-    if (days < 7)  return `${days}d ago`;
+    if (days === 0) return tr('common.today');
+    if (days === 1) return `1 ${tr('common.daysAgo')}`;
+    if (days < 7)  return `${days} ${tr('common.daysAgo')}`;
     return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   };
 
@@ -182,9 +185,9 @@ export default function CitizenDashboard() {
         {/* ── Stats row ── */}
         <View style={s.statsRow}>
           {[
-            { label: "Open",        val: stats.open,        color: C.open },
-            { label: "In Progress", val: stats.in_progress, color: C.inProgress },
-            { label: "Resolved",    val: stats.resolved,    color: C.resolved },
+            { label: tr('home.open'),        val: stats.open,        color: C.open },
+            { label: tr('home.inProgress'),  val: stats.in_progress, color: C.inProgress },
+            { label: tr('home.resolved'),    val: stats.resolved,    color: C.resolved },
           ].map((item) => (
             <View key={item.label} style={[s.statCard, { borderTopColor: item.color }]}>
               <Text style={[s.statNum, { color: item.color }]}>{item.val}</Text>
@@ -194,7 +197,7 @@ export default function CitizenDashboard() {
         </View>
 
         {/* ── Quick Actions ── */}
-        <Text style={s.sectionTitle}>Quick actions</Text>
+        <Text style={s.sectionTitle}>{tr('home.quickActions')}</Text>
         <View style={s.actionsGrid}>
           {QUICK_ACTIONS.map((a) => (
             <TouchableOpacity
@@ -213,17 +216,17 @@ export default function CitizenDashboard() {
 
         {/* ── Recent reports ── */}
         <View style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>Recent reports</Text>
+          <Text style={s.sectionTitle}>{tr('home.recentReports')}</Text>
           <TouchableOpacity onPress={() => router.push("/citizen/complaints" as any)}>
-            <Text style={s.seeAll}>See all</Text>
+            <Text style={s.seeAll}>{tr('home.seeAll')}</Text>
           </TouchableOpacity>
         </View>
 
         {recent.length === 0 ? (
           <View style={s.emptyCard}>
             <Text style={s.emptyIcon}>📭</Text>
-            <Text style={s.emptyTitle}>No reports yet</Text>
-            <Text style={s.emptyBody}>Tap the + button below to file your first complaint.</Text>
+            <Text style={s.emptyTitle}>{tr('home.noReportsYet')}</Text>
+            <Text style={s.emptyBody}>{tr('home.tapToFile')}</Text>
           </View>
         ) : (
           <View style={s.reportsCard}>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -8,6 +8,8 @@ import { useRouter, useRootNavigationState } from "expo-router";
 import axios from "axios";
 import { storage } from "../utils/storage";
 import { useAuthStore } from "../store/authStore";
+import { changeLanguage, getCurrentLanguage, initLanguage } from "../i18n";
+import { useT } from "../i18n/useT";
 
 const API_BASE = "https://testing-repository-grevienace-1.onrender.com";
 
@@ -23,6 +25,7 @@ type Method = "phone" | "email";
 type Step   = "input" | "otp";
 
 export default function LoginScreen() {
+  const tr = useT();
   const router  = useRouter();
   const rootNavState = useRootNavigationState();
   const { setAuth } = useAuthStore();
@@ -32,9 +35,18 @@ export default function LoginScreen() {
   const [value,   setValue]   = useState("");
   const [otp,     setOtp]     = useState("");
   const [step,    setStep]    = useState<Step>("input");
-  const [loading, setLoading] = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [lang,     setLang]     = useState(getCurrentLanguage());
+  const [langOpen, setLangOpen] = useState(false);
+
+  const handleLangChange = async (l: 'en' | 'kn' | 'hi' | 'te') => {
+    await changeLanguage(l);
+    setLang(l);
+  };
 
   // ── On mount: redirect if already logged in, or show onboarding ──
+  useEffect(() => { initLanguage().then(() => setLang(getCurrentLanguage())); }, []);
+
   useEffect(() => {
     if (!rootNavState?.key) return; // Root layout not mounted yet — wait
     (async () => {
@@ -147,12 +159,52 @@ export default function LoginScreen() {
   }
 
   // ─────────────────────────────────────────────
+  const LANG_OPTIONS = [
+    { code: 'en', label: 'English' },
+    { code: 'kn', label: 'ಕನ್ನಡ' },
+    { code: 'hi', label: 'हिंदी' },
+    { code: 'te', label: 'తెలుగు' },
+  ] as const;
+
+  const langLabel = LANG_OPTIONS.find(o => o.code === lang)?.label ?? 'English';
+
   return (
     <KeyboardAvoidingView
       style={s.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+
+      {/* Language dropdown — outside ScrollView so it's never clipped */}
+      <View style={s.langFloatWrap} pointerEvents="box-none">
+        <TouchableOpacity style={s.langDropBtn} onPress={() => setLangOpen(o => !o)} activeOpacity={0.8}>
+          <Text style={s.langGlobe}>🌐</Text>
+          <Text style={s.langDropBtnText}>{langLabel}</Text>
+          <Text style={s.langDropArrow}>{langOpen ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+        {langOpen && (
+          <>
+            {/* Tap-outside dismissal */}
+            <TouchableOpacity style={s.langBackdrop} activeOpacity={1} onPress={() => setLangOpen(false)} />
+            <View style={s.langDropList}>
+              {LANG_OPTIONS.map(({ code, label }) => (
+                <TouchableOpacity
+                  key={code}
+                  style={[s.langDropItem, lang === code && s.langDropItemActive]}
+                  onPress={() => { handleLangChange(code); setLangOpen(false); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.langDropItemText, lang === code && s.langDropItemTextActive]}>
+                    {label}
+                  </Text>
+                  {lang === code && <Text style={s.langCheck}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+      </View>
+
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
         {/* Back arrow (OTP step) */}
@@ -163,12 +215,12 @@ export default function LoginScreen() {
         )}
 
         <Text style={s.welcome}>
-          {step === "input" ? "Welcome back" : "Enter your OTP"}
+          {step === "input" ? tr('auth.welcomeBack') : tr('auth.enterOtp')}
         </Text>
         <Text style={s.sub}>
           {step === "input"
-            ? "Sign in to pick up where you left off."
-            : `OTP sent to ${value}. Enter it below.`}
+            ? tr('auth.signIn')
+            : `${tr('auth.otpSent')} ${value}. ${tr('auth.enterItBelow')}`}
         </Text>
 
         {/* ── Input step ── */}
@@ -180,7 +232,7 @@ export default function LoginScreen() {
                 onPress={() => { setMethod("phone"); setValue(""); }}
               >
                 <Text style={[s.toggleText, method === "phone" && s.toggleTextActive]}>
-                  📱 Phone
+                  📱 {tr('auth.phone')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -188,13 +240,13 @@ export default function LoginScreen() {
                 onPress={() => { setMethod("email"); setValue(""); }}
               >
                 <Text style={[s.toggleText, method === "email" && s.toggleTextActive]}>
-                  ✉️ Email
+                  ✉️ {tr('auth.email')}
                 </Text>
               </TouchableOpacity>
             </View>
 
             <Text style={s.label}>
-              {method === "phone" ? "Phone Number" : "Email Address"}
+              {method === "phone" ? tr('auth.phoneNumber') : tr('auth.emailAddress')}
             </Text>
             <View style={s.inputRow}>
               <Text style={s.inputIcon}>{method === "phone" ? "📱" : "✉️"}</Text>
@@ -216,7 +268,7 @@ export default function LoginScreen() {
             >
               {loading
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={s.btnPrimaryText}>Send OTP</Text>}
+                : <Text style={s.btnPrimaryText}>{tr('auth.sendOtp')}</Text>}
             </TouchableOpacity>
           </>
         )}
@@ -224,7 +276,7 @@ export default function LoginScreen() {
         {/* ── OTP step ── */}
         {step === "otp" && (
           <>
-            <Text style={s.label}>One-Time Password</Text>
+            <Text style={s.label}>{tr('auth.oneTimePassword')}</Text>
             <View style={s.inputRow}>
               <Text style={s.inputIcon}>🔒</Text>
               <TextInput
@@ -245,19 +297,19 @@ export default function LoginScreen() {
             >
               {loading
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={s.btnPrimaryText}>Sign in</Text>}
+                : <Text style={s.btnPrimaryText}>{tr('auth.signInBtn')}</Text>}
             </TouchableOpacity>
 
             <TouchableOpacity style={s.resendBtn} onPress={handleSendOtp} disabled={loading}>
-              <Text style={s.resendText}>Resend OTP</Text>
+              <Text style={s.resendText}>{tr('auth.resendOtp')}</Text>
             </TouchableOpacity>
           </>
         )}
 
         <View style={s.footer}>
-          <Text style={s.footerText}>New to Jana Seva? </Text>
+          <Text style={s.footerText}>{tr('auth.newToApp')} </Text>
           <TouchableOpacity onPress={() => router.replace("/onboarding" as any)}>
-            <Text style={s.footerLink}>Create account</Text>
+            <Text style={s.footerLink}>{tr('auth.createAccount')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -308,4 +360,17 @@ const s = StyleSheet.create({
   footer:     { flexDirection: "row", justifyContent: "center", marginTop: "auto", paddingTop: 32 },
   footerText: { color: "#64748B", fontSize: 14 },
   footerLink: { color: "#1D4ED8", fontSize: 14, fontWeight: "700" },
+
+  langFloatWrap:       { position: "absolute", top: 16, right: 16, zIndex: 999 },
+  langDropBtn:         { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 24, borderWidth: 1.5, borderColor: "#D1D5DB", backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  langGlobe:           { fontSize: 15 },
+  langDropBtnText:     { fontSize: 14, fontWeight: "600", color: "#374151" },
+  langDropArrow:       { fontSize: 9, color: "#9CA3AF", marginLeft: 2 },
+  langBackdrop:        { position: "fixed" as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 },
+  langDropList:        { position: "absolute", top: 46, right: 0, backgroundColor: "#fff", borderRadius: 14, borderWidth: 1, borderColor: "#E5E7EB", shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 20, minWidth: 170, zIndex: 999, overflow: "hidden" },
+  langDropItem:        { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" },
+  langDropItemActive:  { backgroundColor: "#F0F4FF" },
+  langDropItemText:    { fontSize: 14, fontWeight: "500", color: "#374151" },
+  langDropItemTextActive: { color: "#1D4ED8", fontWeight: "700" },
+  langCheck:           { fontSize: 13, color: "#1D4ED8", fontWeight: "700" },
 });

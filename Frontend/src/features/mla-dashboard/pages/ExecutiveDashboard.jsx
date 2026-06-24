@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthRole } from "../../../services/authStorage";
 import api from "../../../shared/services/api";
+import MIcon from "../../../components/MIcon";
 
 const DATE_OPTIONS = [
   { label: "Last 30 Days",  days: 30  },
@@ -68,9 +69,17 @@ function GaugeArc({ pct }) {
   );
 }
 
+// MS is now an alias for MIcon — SVG icons immune to Google Translate
 function MS({ children, style }) {
-  return <span className="material-symbols-rounded" style={{ fontSize: 21, ...style }}>{children}</span>;
+  return <MIcon name={children} style={style} />;
 }
+
+const KPI = [
+  { icon: "task_alt",   iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "People Surveyed",     sparkColor: "#2B5BD7" },
+  { icon: "bolt",       iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Average Time Spent",   sparkColor: "#1E8A5B" },
+  { icon: "groups",     iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: "People Participating", sparkColor: "#6B4FD8" },
+  { icon: "how_to_vote",iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Poll Participation Rate",   sparkColor: "#C9871F" },
+];
 
 export default function ExecutiveDashboard() {
   const pg       = { background: "#F3F5FA", minHeight: "100vh", fontFamily: "'Hanken Grotesk', sans-serif" };
@@ -190,20 +199,20 @@ export default function ExecutiveDashboard() {
   return (
     <>
       {/* Topbar */}
-      <header style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"24px 34px", background:"#F3F5FA", position:"sticky", top:0, zIndex:10, borderBottom:"1px solid #E5E9F1" }}>
-        <div>
-          <div style={{ font:"500 13px 'Hanken Grotesk'", color:"#8590A6", marginBottom:3 }}>Welcome back, Representative</div>
-          <h1 style={{ font:"400 30px 'Newsreader'", color:"#16233C", margin:0, letterSpacing:"-.01em" }}>Overview & Standing</h1>
+      <header style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 34px", background:"#F3F5FA", position:"sticky", top:0, zIndex:10, borderBottom:"1px solid #E5E9F1", gap:16, flexWrap:"wrap", minHeight:72 }}>
+        <div style={{ flex:1, minWidth:0, maxWidth:"60%" }}>
+          <div style={{ font:"500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#8590A6", marginBottom:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Welcome back, Representative</div>
+          <h1 style={{ fontFamily:"'Newsreader','Noto Sans Kannada',serif", fontSize:"clamp(16px,2.2vw,26px)", fontWeight:400, color:"#16233C", margin:0, letterSpacing:"-.01em", lineHeight:1.25, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Overview &amp; standing</h1>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", flexShrink:0 }}>
 
           {/* Date filter dropdown */}
           <div ref={dateRef} style={{ position:"relative" }}>
             <button onClick={() => setShowDateMenu(v => !v)}
-              style={{ height:44, background:"#fff", border:`1px solid ${showDateMenu?"#2B5BD7":"#E1E6F0"}`, borderRadius:13, display:"flex", alignItems:"center", gap:9, padding:"0 15px", cursor:"pointer", outline:"none" }}>
-              <MS style={{ fontSize:19, color:"#2B5BD7" }}>calendar_month</MS>
-              <span style={{ font:"600 14px 'Hanken Grotesk'", color:"#16233C" }}>{selectedOption.label}</span>
-              <MS style={{ fontSize:19, color:"#9AA3B5" }}>{showDateMenu ? "expand_less" : "expand_more"}</MS>
+              style={{ height:40, background:"#fff", border:`1px solid ${showDateMenu?"#2B5BD7":"#E1E6F0"}`, borderRadius:13, display:"flex", alignItems:"center", gap:7, padding:"0 12px", cursor:"pointer", outline:"none", maxWidth:200, overflow:"hidden" }}>
+              <MS style={{ fontSize:18, color:"#2B5BD7", flexShrink:0 }}>calendar_month</MS>
+              <span style={{ font:"600 13px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#16233C", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{selectedOption.label}</span>
+              <MS style={{ fontSize:18, color:"#9AA3B5", flexShrink:0 }}>{showDateMenu ? "expand_less" : "expand_more"}</MS>
             </button>
             {showDateMenu && (
               <div style={{ position:"absolute", top:50, right:0, background:"#fff", border:"1px solid #E1E6F0", borderRadius:13, boxShadow:"0 8px 24px rgba(20,35,60,.12)", minWidth:180, zIndex:100, overflow:"hidden" }}>
@@ -221,9 +230,9 @@ export default function ExecutiveDashboard() {
 
           {/* Export button */}
           <button onClick={handleExport} disabled={exporting}
-            style={{ height:44, background: exporting ? "#F3F5FA" : "#fff", border:"1px solid #E1E6F0", borderRadius:13, display:"flex", alignItems:"center", gap:8, padding:"0 15px", cursor: exporting ? "not-allowed" : "pointer", outline:"none", opacity: exporting ? 0.7 : 1 }}>
-            <MS style={{ fontSize:19, color:"#5A6678" }}>{exporting ? "hourglass_top" : "ios_share"}</MS>
-            <span style={{ font:"600 14px 'Hanken Grotesk'", color:"#16233C" }}>{exporting ? "Exporting..." : "Export"}</span>
+            style={{ height:40, background: exporting ? "#F3F5FA" : "#fff", border:"1px solid #E1E6F0", borderRadius:13, display:"flex", alignItems:"center", gap:7, padding:"0 12px", cursor: exporting ? "not-allowed" : "pointer", outline:"none", opacity: exporting ? 0.7 : 1, maxWidth:140, overflow:"hidden" }}>
+            <MS style={{ fontSize:18, color:"#5A6678", flexShrink:0 }}>{exporting ? "hourglass_top" : "ios_share"}</MS>
+            <span style={{ font:"600 13px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#16233C", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{exporting ? "Exporting…" : "Export"}</span>
           </button>
 
           {/* Notifications button */}
@@ -259,8 +268,9 @@ export default function ExecutiveDashboard() {
                   </div>
                   <span style={{ font:"600 12px 'Hanken Grotesk'", color:trendColor }}>{trendLabel}</span>
                 </div>
-                <div style={{ font:"400 30px 'Newsreader'", color:"#16233C", lineHeight:1 }}>{kv.value}</div>
-                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginTop:4 }}>{subLabel}</div>
+                <div style={{ fontFamily:"'Newsreader','Noto Sans Kannada',serif", fontSize:"clamp(18px,2vw,28px)", fontWeight:400, color:"#16233C", lineHeight:1.2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{kv.value}</div>
+                <div style={{ font:"500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#8590A6", marginTop:4, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{k.label}</div>
+                {/* Trend bar — width proportional to value, no fake sparkline */}
                 <div style={{ marginTop:12, height:4, borderRadius:3, background:"#F0F2F7", overflow:"hidden" }}>
                   <div style={{
                     height:"100%", borderRadius:3, background: k.sparkColor,
@@ -285,8 +295,8 @@ export default function ExecutiveDashboard() {
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:"26px 28px", boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
               <div>
-                <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Career Trajectory</div>
-                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>Standing & Projected Outlook</div>
+                <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Trend Over Time</div>
+                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>Standing projected to the next election</div>
               </div>
               <span style={{ display:"inline-flex", alignItems:"center", gap:5, background:"#E7EEFF", color:"#2B5BD7", font:"700 12px 'Hanken Grotesk'", padding:"6px 12px", borderRadius:20 }}>
                 {survey?.avgScore != null ? `⭐ ${survey.avgScore}/5 survey` : approvalPct != null ? `${approvalPct}% approval` : "—"}
@@ -409,7 +419,7 @@ export default function ExecutiveDashboard() {
 
           {/* Election scenarios */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)", display:"flex", flexDirection:"column" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Election Scenarios</div>
+            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Winning Chances</div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Modeled on current momentum</div>
             <div style={{ display:"flex", flexDirection:"column", gap:11, flex:1 }}>
               {[
@@ -420,7 +430,7 @@ export default function ExecutiveDashboard() {
                 <div key={s.label} style={{ border:`${s.glow?"1.5":"1"}px solid ${s.border}`, background:s.bg, borderRadius:15, padding:"15px 16px", ...(s.glow?{boxShadow:"0 0 0 3px rgba(43,91,215,.06)"}:{}) }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
                     <span style={{ display:"flex", alignItems:"center", gap:7, font:"700 14px 'Hanken Grotesk'", color:"#16233C" }}>
-                      <span className="material-symbols-rounded" style={{ fontSize:19, color:s.iconC }}>{s.icon}</span>
+                      <MIcon name={s.icon} style={{ fontSize:19, color:s.iconC }} />
                       {s.label}
                     </span>
                     <span style={{ font:"400 22px 'Newsreader'", color:s.glow?"#2B5BD7":s.iconC }}>
@@ -441,7 +451,7 @@ export default function ExecutiveDashboard() {
 
           {/* Public sentiment */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Public Sentiment</div>
+            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Public Opinion</div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:20 }}>
               {effectiveSentiment?._fallback ? "From satisfaction ratings" : "From comments & grievances"}
             </div>
@@ -496,7 +506,7 @@ export default function ExecutiveDashboard() {
 
           {/* Approval by group */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Approval by Group</div>
+            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Support by Age Group</div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:20 }}>Where your support is strongest</div>
             <div style={{ display:"flex", flexDirection:"column", gap:17 }}>
               {(byGroup?.groups || [
@@ -524,7 +534,7 @@ export default function ExecutiveDashboard() {
 
           {/* What's moving your numbers */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>What's Moving Your Numbers</div>
+            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Top Issues Affecting Public Opinion</div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Issues with the biggest impact</div>
             {moving?.hasData ? (
               <div style={{ display:"flex", flexDirection:"column", gap:11 }}>
@@ -559,8 +569,8 @@ export default function ExecutiveDashboard() {
 
           {/* Standing vs. peers */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Standing vs. Peers</div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Approval rank across wards</div>
+            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Compared to Other Wards</div>
+            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Approval rank among wards</div>
             {peers?.hasData ? (
               peers.totalWards === 1 ? (
                 <>
@@ -607,7 +617,7 @@ export default function ExecutiveDashboard() {
           {/* Approval by neighborhood */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Approval by Neighborhood</div>
+              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Support by Area</div>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                 <span style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>Low</span>
                 <div style={{ width:70, height:8, borderRadius:4, background:"linear-gradient(90deg,#F2D9D5,#C9871F,#2B5BD7,#1B3C8F)" }} />
@@ -642,7 +652,7 @@ export default function ExecutiveDashboard() {
               </div>
             ) : (
               <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:140 }}>
-                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No neighborhood data available</span>
+                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No area data</span>
               </div>
             )}
           </div>
@@ -655,7 +665,7 @@ export default function ExecutiveDashboard() {
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:"26px 28px", boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:18 }}>
               <div>
-                <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#8590A6", textTransform:"uppercase", letterSpacing:".05em", marginBottom:10 }}>Overall Approval Rating</div>
+                <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#8590A6", textTransform:"uppercase", letterSpacing:".05em", marginBottom:10 }}>Your Approval Score</div>
                 <div style={{ display:"flex", alignItems:"flex-end", gap:14 }}>
                   <span style={{ font:"400 60px 'Newsreader'", color:"#16233C", lineHeight:.9, letterSpacing:"-.02em" }}>
                     {approvalPct != null ? `${Math.round(approvalPct)}%` : "—"}
@@ -673,7 +683,7 @@ export default function ExecutiveDashboard() {
                 </div>
               </div>
               <div style={{ textAlign:"right" }}>
-                <div style={{ font:"600 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:4 }}>Satisfaction Score</div>
+                <div style={{ font:"600 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:4 }}>People's Satisfaction</div>
                 <div style={{ font:"400 26px 'Newsreader'", color:"#2B5BD7" }}>
                   {approvalPct != null ? `${Math.round(approvalPct / 10)}/10` : "—"}
                 </div>
@@ -707,7 +717,7 @@ export default function ExecutiveDashboard() {
           {/* Re-election Outlook */}
           <div style={{ background:"linear-gradient(165deg,#1B3C8F,#2B5BD7)", borderRadius:22, padding:"26px 28px", color:"#fff", display:"flex", flexDirection:"column", boxShadow:"0 18px 36px -22px rgba(43,91,215,.7)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
-              <span style={{ font:"600 13px 'Hanken Grotesk'", color:"rgba(255,255,255,.82)", textTransform:"uppercase", letterSpacing:".05em" }}>Re-Election Outlook</span>
+              <span style={{ font:"600 13px 'Hanken Grotesk'", color:"rgba(255,255,255,.82)", textTransform:"uppercase", letterSpacing:".05em" }}>Chance of Re-Election</span>
               <MS style={{ fontSize:20, color:"rgba(255,255,255,.7)" }}>help</MS>
             </div>
             <div style={{ display:"flex", justifyContent:"center", margin:"6px 0 0" }}>

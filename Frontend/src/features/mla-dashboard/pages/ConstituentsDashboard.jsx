@@ -4,6 +4,11 @@ import api from "../../../shared/services/api";
 import { getAuthUser } from "../../../services/authStorage";
 import { ROUTES } from "../../../app/routes/RouteConstants";
 import "../styles/mla-layout.css";
+import MIcon from "../../../components/MIcon";
+
+function MI({ children, style }) {
+  return <MIcon name={children} style={style} />;
+}
 
 /* ── helpers ─────────────────────────────────────────────── */
 function fmt(n) {
@@ -57,7 +62,7 @@ function SegmentRow({ icon, label, count, engPct, color = "#2B5BD7", bg = "#E7EE
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
       <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 12, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: 22, color: iconColor }}>{icon}</span>
+        <MIcon name={icon} style={{ fontSize: 20, color: iconColor }} />
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -95,13 +100,14 @@ function KpiCard({ iconBg, iconColor, iconEl, label, value, sub, subGreen }) {
   return (
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: 20, color: iconColor }}>{iconEl}</span>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {/* notranslate prevents GT from wrapping the emoji in <font> and duplicating it */}
+          <span className="notranslate" translate="no" style={{ fontSize: 20, color: iconColor, lineHeight: 1, display: "block" }}>{iconEl}</span>
         </div>
-        <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#8590A6" }}>{label}</span>
+        <span style={{ font: "600 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
       </div>
-      <div style={{ font: "400 32px 'Newsreader', Georgia, serif", color: "#16233C", lineHeight: 1 }}>{value}</div>
-      <div style={{ font: "500 12px 'Hanken Grotesk'", color: subGreen ? "#1E7A50" : "#8590A6", marginTop: 3 }}>{sub}</div>
+      <div style={{ fontFamily: "'Newsreader','Noto Sans Kannada',serif", fontSize: "clamp(20px,2.5vw,30px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+      <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: subGreen ? "#1E7A50" : "#8590A6", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>
     </div>
   );
 }
@@ -214,7 +220,7 @@ export default function ConstituentsDashboard() {
   const wardTotal = wards.reduce((s, w) => s + w.count, 0);
   const segments = wards.length > 0
     ? wards.slice(0, 5).map((w, i) => ({
-        icon: ["🏘️", "🏠", "🏢", "🏡", "🏗️"][i] || "📍",
+        icon: ["location_on", "place", "location_on", "place", "location_on"][i] || "location_on",
         label: w.ward,
         count: w.count,
         engPct: pct(w.count, wardTotal > 0 ? wardTotal : 1),
@@ -223,8 +229,8 @@ export default function ConstituentsDashboard() {
         iconColor: i < 3 ? "#2B5BD7" : "#C9871F",
       }))
     : [
-        { icon: "👨‍👩‍👧", label: "Families & parents",   count: 0, engPct: 0, color: "#2B5BD7", bg: "#E7EEFF", iconColor: "#2B5BD7" },
-        { icon: "🏠",       label: "Long-term residents", count: 0, engPct: 0, color: "#2B5BD7", bg: "#E7EEFF", iconColor: "#2B5BD7" },
+        { icon: "group",    label: "Families & parents",   count: 0, engPct: 0, color: "#2B5BD7", bg: "#E7EEFF", iconColor: "#2B5BD7" },
+        { icon: "place",    label: "Long-term residents",  count: 0, engPct: 0, color: "#2B5BD7", bg: "#E7EEFF", iconColor: "#2B5BD7" },
       ];
 
   /* Growth badge — only show % when there's a real prior-period baseline */
@@ -237,12 +243,12 @@ export default function ConstituentsDashboard() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
 
       {/* ── Topbar ── */}
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 34px", background: "#F3F5FA", position: "sticky", top: 0, zIndex: 20, borderBottom: "1px solid #E5E9F1" }}>
-        <div>
-          <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 3 }}>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 34px", background: "#F3F5FA", position: "sticky", top: 0, zIndex: 20, borderBottom: "1px solid #E5E9F1", gap: 16, flexWrap: "wrap", minHeight: 72 }}>
+        <div style={{ flex: 1, minWidth: 0, maxWidth: "60%" }}>
+          <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             The residents you serve in {ward}
           </div>
-          <h1 style={{ font: "400 30px 'Newsreader', Georgia, serif", color: "#16233C", margin: 0, letterSpacing: "-.01em" }}>
+          <h1 style={{ fontFamily: "'Newsreader','Noto Sans Kannada',serif", fontSize: "clamp(16px,2.2vw,26px)", fontWeight: 400, color: "#16233C", margin: 0, letterSpacing: "-.01em", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             Constituents
           </h1>
         </div>
@@ -251,7 +257,7 @@ export default function ConstituentsDashboard() {
           {/* ── Live search ── */}
           <div ref={searchRef} style={{ position: "relative" }}>
             <div style={{ height: 44, background: "#fff", border: `1px solid ${showSearch ? "#2B5BD7" : "#E1E6F0"}`, borderRadius: 13, display: "flex", alignItems: "center", gap: 9, padding: "0 15px", width: 260, transition: "border-color 0.15s" }}>
-              <span style={{ fontSize: 17, color: "#9AA3B5", flexShrink: 0 }}>🔍</span>
+              <MIcon name="search" style={{ fontSize: 17, color: "#9AA3B5" }} />
               <input
                 value={searchQ}
                 onChange={handleSearchChange}
@@ -282,11 +288,11 @@ export default function ConstituentsDashboard() {
                         onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                         onClick={() => { setShowSearch(false); setSearchQ(""); }}
                       >
-                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: AVATAR_COLORS[i % AVATAR_COLORS.length], display: "flex", alignItems: "center", justifyContent: "center", font: "700 13px 'Hanken Grotesk'", color: "#fff", flexShrink: 0 }}>
+                        <div className="notranslate" translate="no" style={{ width: 36, height: 36, borderRadius: "50%", background: AVATAR_COLORS[i % AVATAR_COLORS.length], display: "flex", alignItems: "center", justifyContent: "center", font: "700 13px 'Hanken Grotesk'", color: "#fff", flexShrink: 0 }}>
                           {r.initials}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ font: "700 14px 'Hanken Grotesk'", color: "#16233C", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
+                          <div className="notranslate" translate="no" style={{ font: "700 14px 'Hanken Grotesk'", color: "#16233C", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
                           <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>
                             {[r.ward && `Ward ${r.ward}`, r.age && `Age ${r.age}`, r.gender].filter(Boolean).join(" · ") || r.mobile}
                           </div>
@@ -305,7 +311,7 @@ export default function ConstituentsDashboard() {
             onClick={() => setShowMsgModal(true)}
             style={{ height: 44, padding: "0 18px", border: "none", borderRadius: 13, background: "#2B5BD7", color: "#fff", font: "700 14px 'Hanken Grotesk'", display: "flex", alignItems: "center", gap: 7, boxShadow: "0 12px 24px -10px rgba(43,91,215,.7)", cursor: "pointer" }}
           >
-            <span style={{ fontSize: 18 }}>📢</span> Message a segment
+            <MIcon name="campaign" style={{ fontSize: 18, color: "#fff" }} /> Message a segment
           </button>
         </div>
       </header>
@@ -324,7 +330,7 @@ export default function ConstituentsDashboard() {
 
             {msgSent ? (
               <div style={{ padding: "40px 26px", textAlign: "center" }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                <div style={{ fontSize: 40, marginBottom: 12 }}><MIcon name="check_circle" style={{ fontSize: 40, color: "#1E8A5B" }} /></div>
                 <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#1E8A5B" }}>Broadcast sent!</div>
                 <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#8590A6", marginTop: 4 }}>Residents will receive the notification</div>
               </div>
@@ -370,7 +376,7 @@ export default function ConstituentsDashboard() {
                     disabled={!msgText.trim() || msgSending}
                     style={{ flex: 2, height: 44, border: "none", borderRadius: 11, background: !msgText.trim() ? "#B8C7F0" : "#2B5BD7", color: "#fff", font: "700 14px 'Hanken Grotesk'", cursor: !msgText.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: msgText.trim() ? "0 8px 20px -8px rgba(43,91,215,.6)" : "none" }}
                   >
-                    {msgSending ? "Sending…" : "📢 Send broadcast"}
+                    {msgSending ? "Sending…" : " Send broadcast"}
                   </button>
                 </div>
               </div>
@@ -391,30 +397,30 @@ export default function ConstituentsDashboard() {
       <div style={{ padding: "28px 34px 40px", display: "flex", flexDirection: "column", gap: 20, flex: 1 }}>
 
         {/* KPI Strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 5 }}>
           <KpiCard
-            iconBg="#E7EEFF" iconColor="#2B5BD7" iconEl="👥"
-            label="Registered residents"
+            iconBg="#E7EEFF" iconColor="#2B5BD7" iconEl={<MIcon name="groups" style={{ fontSize: 20, color: "#2B5BD7" }} />}
+            label="Total Registered Residents"
             value={loading ? "—" : fmt(total)}
             sub={`${pct(verified, total)}% profile complete`}
           />
           <KpiCard
-            iconBg="#E6F4EC" iconColor="#1E8A5B" iconEl="✅"
-            label="Verified"
+            iconBg="#E6F4EC" iconColor="#1E8A5B" iconEl={<MIcon name="check_circle" style={{ fontSize: 20, color: "#1E8A5B" }} />}
+            label="Verified Residents"
             value={loading ? "—" : fmt(verified)}
             sub="Address-confirmed citizens"
           />
           <KpiCard
-            iconBg="#EDEAFB" iconColor="#6B4FD8" iconEl="⚡"
-            label="Active · 30d"
+            iconBg="#EDEAFB" iconColor="#6B4FD8" iconEl={<MIcon name="bolt" style={{ fontSize: 20, color: "#6B4FD8" }} />}
+            label="Active Residents·30d"
             value={loading ? "—" : fmt(active30d)}
             sub={`${pct(active30d, total)}% of registered`}
             subGreen
           />
           <KpiCard
-            iconBg="#FCF1E0" iconColor="#C9871F" iconEl="➕"
-            label="New · 30d"
-            value={loading ? "—" : `+${fmt(new30d)}`}
+            iconBg="#FCF1E0" iconColor="#C9871F" iconEl={<MIcon name="person_add" style={{ fontSize: 20, color: "#C9871F" }} />}
+            label="New Residents·30d"
+            value={loading ? "—" : `${fmt(new30d)}`}
             sub={newPct >= 0 ? `+${newPct}% vs. previous month` : `${newPct}% vs. previous month`}
             subGreen={newPct >= 0}
           />
@@ -427,7 +433,7 @@ export default function ConstituentsDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
-                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Audience segments</div>
+                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Resident Groups</div>
                 <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>
                   {wards.length > 0 ? "Residents grouped by ward" : "Who makes up your base"}
                 </div>
@@ -444,7 +450,7 @@ export default function ConstituentsDashboard() {
 
           {/* Registration growth */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Registration growth</div>
+            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Resident Growth Trend</div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 6 }}>Residents joining, last 12 months</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 14 }}>
               <span style={{ font: "400 38px 'Newsreader', Georgia, serif", color: "#16233C", lineHeight: .9 }}>{fmt(total)}</span>
@@ -485,7 +491,7 @@ export default function ConstituentsDashboard() {
               ))}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: "auto", paddingTop: 16, borderTop: "1px solid #F0F2F7" }}>
-              <span style={{ fontSize: 16, color: "#1E7A50" }}>📢</span>
+              <MIcon name="campaign" style={{ fontSize: 16, color: "#1E7A50" }} />
               <span style={{ font: "500 12px 'Hanken Grotesk'", color: "#5A6678" }}>
                 {new30d > 0
                   ? `${fmt(new30d)} new residents joined in the last 30 days`
@@ -500,7 +506,7 @@ export default function ConstituentsDashboard() {
 
           {/* Engagement funnel */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Engagement funnel</div>
+            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Resident Engagement Journey</div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>How residents move from signed-up to advocate</div>
             {loading
               ? <div style={{ height: 180, background: "#F3F5FA", borderRadius: 10 }} />
@@ -519,7 +525,7 @@ export default function ConstituentsDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
-                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Most engaged residents</div>
+                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Top Active Residents</div>
                 <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>Your strongest advocates this quarter</div>
               </div>
               <span
@@ -538,15 +544,15 @@ export default function ConstituentsDashboard() {
               <div style={{ display: "flex", flexDirection: "column" }}>
                 {topResidents.map((r, i) => (
                   <div key={r.name} style={{ display: "flex", alignItems: "center", gap: 13, padding: "12px 0", borderBottom: i < topResidents.length - 1 ? "1px solid #F4F6FA" : "none" }}>
-                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: AVATAR_COLORS[i % AVATAR_COLORS.length], display: "flex", alignItems: "center", justifyContent: "center", font: "700 14px 'Hanken Grotesk'", color: "#fff", flexShrink: 0 }}>
+                    <div className="notranslate" translate="no" style={{ width: 40, height: 40, borderRadius: "50%", background: AVATAR_COLORS[i % AVATAR_COLORS.length], display: "flex", alignItems: "center", justifyContent: "center", font: "700 14px 'Hanken Grotesk'", color: "#fff", flexShrink: 0 }}>
                       {r.initials}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ font: "700 14px 'Hanken Grotesk'", color: "#16233C" }}>{r.name}</div>
-                      <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>{r.ward || "—"}</div>
+                      <div className="notranslate" translate="no" style={{ font: "700 14px 'Hanken Grotesk'", color: "#16233C" }}>{r.name}</div>
+                      <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>Ward: {r.ward || "—"}</div>
                     </div>
                     {i === 0 && (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#FCF1E0", color: "#B5781A", font: "700 11px 'Hanken Grotesk'", padding: "4px 10px", borderRadius: 20, flexShrink: 0 }}>
+                      <span className="notranslate" translate="no" style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#FCF1E0", color: "#B5781A", font: "700 11px 'Hanken Grotesk'", padding: "4px 10px", borderRadius: 20, flexShrink: 0 }}>
                         🔥 Top advocate
                       </span>
                     )}

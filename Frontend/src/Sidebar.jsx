@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "./Logo";
 import { ROUTES } from "./app/routes/RouteConstants";
@@ -42,6 +43,59 @@ import {
   RiAdminLine,
   RiHospitalLine,
 } from "react-icons/ri";
+
+/** Popup rendered via portal so sidebar's overflow:hidden never clips it */
+function LogoutConfirmPopup({ userName, collapsed, anchorRef, onCancel, onConfirm }) {
+  const popupRef = useRef(null);
+  const [style, setStyle] = useState({});
+
+  useEffect(() => {
+    if (anchorRef.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setStyle({
+        position: "fixed",
+        bottom: window.innerHeight - rect.top + 8,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 2000,
+      });
+    }
+  }, [anchorRef]);
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (
+        popupRef.current && !popupRef.current.contains(e.target) &&
+        anchorRef.current && !anchorRef.current.contains(e.target)
+      ) {
+        onCancel();
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [onCancel, anchorRef]);
+
+  return (
+    <div className="sidebar-logout-card" ref={popupRef} style={style}>
+      <p className="sidebar-logout-prompt">Sign out?</p>
+      {!collapsed && <p className="sidebar-logout-name notranslate">{userName}</p>}
+      <div className="sidebar-logout-actions">
+        <button
+          className="sidebar-logout-no"
+          onClick={(e) => { e.stopPropagation(); onCancel(); }}
+        >
+          Cancel
+        </button>
+        <button
+          className="sidebar-logout-yes"
+          onClick={(e) => { e.stopPropagation(); onConfirm(); }}
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function NavItem({ icon: Icon, label, active, onClick, badge, collapsed }) {
   return (
@@ -92,15 +146,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowLogoutConfirm(false);
-      }
-    };
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+  // click-outside for logout popup is handled inside LogoutConfirmPopup itself
 
   useEffect(() => {
     if (role === "REPRESENTATIVE" || role === "representative") {
@@ -123,13 +169,12 @@ export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
   };
   const profileImageUrl = getProfileImageUrl();
 
-  const handleLogout = () => {
+  const doLogout = () => {
     clearAuth();
-    if (role === "CITIZEN" || role === "citizen") {
-      navigate("/citizen-login");
-    } else {
-      navigate("/admin-login");
-    }
+    const loginPath = (role === "CITIZEN" || role === "citizen")
+      ? "/citizen-login"
+      : "/admin-login";
+    window.location.replace(loginPath);
   };
 
   const toggleCollapse = () => {
@@ -317,22 +362,19 @@ export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
         </nav>
 
         {/* ── BOTTOM USER AREA ── */}
-        <div className="sidebar-footer" ref={dropdownRef}>
-          {showLogoutConfirm && (
-            <div className="sidebar-logout-card">
-              <p className="sidebar-logout-prompt">Sign out?</p>
-              {!collapsed && <p className="sidebar-logout-name">{userName}</p>}
-              <div className="sidebar-logout-actions">
-                <button className="sidebar-logout-no" onClick={() => setShowLogoutConfirm(false)}>
-                  Cancel
-                </button>
-                <button className="sidebar-logout-yes" onClick={handleLogout}>
-                  Sign out
-                </button>
-              </div>
-            </div>
-          )}
+        {/* Portal: logout confirm rendered in <body> so sidebar overflow:hidden can't clip it */}
+        {showLogoutConfirm && createPortal(
+          <LogoutConfirmPopup
+            userName={userName}
+            collapsed={collapsed}
+            anchorRef={dropdownRef}
+            onCancel={() => setShowLogoutConfirm(false)}
+            onConfirm={doLogout}
+          />,
+          document.body
+        )}
 
+        <div className="sidebar-footer" ref={dropdownRef}>
           <button
             className="sidebar-user-btn"
             onClick={() => setShowLogoutConfirm((s) => !s)}
@@ -342,13 +384,13 @@ export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
               {profileImageUrl ? (
                 <img src={profileImageUrl} alt={userName} className="sidebar-avatar-img" />
               ) : (
-                <span className="sidebar-avatar-initials">
+                <span className="sidebar-avatar-initials notranslate">
                   {userName.charAt(0).toUpperCase()}
                 </span>
               )}
             </div>
             {!collapsed && (
-              <div className="sidebar-user-info">
+              <div className="sidebar-user-info notranslate">
                 <strong>{userName}</strong>
                 <small>{userRole}</small>
               </div>

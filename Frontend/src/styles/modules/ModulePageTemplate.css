@@ -912,38 +912,67 @@ form {
   color: #991b1b;
 }
 
-/* Action Buttons in Table */
+/* Action Buttons in Table
+   Use .module-container prefix for higher specificity than mla-dashboard.css .action-btn
+   (which sets a blue gradient background globally) */
 .action-btns {
   display: flex;
   gap: 6px;
   align-items: center;
 }
 
-.action-btn {
-  background: none;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 5px 8px;
+.module-container .action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s ease;
+  font-size: 13px;
+  background: #f3f4f6;
+  color: #374151;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: none;
   line-height: 1;
 }
 
-.action-btn:hover {
-  border-color: #d1d5db;
-  background-color: #f9fafb;
-  transform: scale(1.1);
+.module-container .action-btn:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+  background: #f3f4f6;
 }
 
-.action-btn.publish {
-  border-color: #10b981;
-  background-color: #d1fae5;
+/* Coloured variants */
+.module-container .action-btn.edit {
+  background: #dbeafe;
+  color: #2563eb;
 }
-
-.action-btn.publish:hover {
-  background-color: #10b981;
-  border-color: #059669;
+.module-container .action-btn.reset {
+  background: #fef3c7;
+  color: #d97706;
+}
+.module-container .action-btn.block {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.module-container .action-btn.delete {
+  background: #fce7f3;
+  color: #be185d;
+}
+.module-container .action-btn.publish {
+  background: #d1fae5;
+  color: #059669;
+}
+.module-container .action-btn.publish:hover {
+  background: #10b981;
+  color: #fff;
+}
+.module-container .action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* Delete Confirmation Modal */

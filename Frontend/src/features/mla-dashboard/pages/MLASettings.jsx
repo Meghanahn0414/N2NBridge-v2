@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import api from "../../../shared/services/api";
 import { updateAuthUser } from "../../../services/authStorage";
+import MIcon from "../../../components/MIcon";
 
-const MS = ({ children, style }) => (
-  <span className="material-symbols-rounded" style={{ fontSize: 21, ...style }}>{children}</span>
-);
+const MS = ({ children, style }) => <MIcon name={children} style={style} />;
 
 function Toggle({ on, onChange }) {
   return (
@@ -223,12 +222,12 @@ export default function MLASettings() {
 
       {/* Topbar */}
       <header style={{ position:"sticky", top:0, zIndex:30, background:"#F3F5FA",
-        borderBottom:"1px solid #E5E9F1", padding:"24px 34px", display:"flex", alignItems:"center" }}>
-        <div>
-          <div style={{ font:"500 13px 'Hanken Grotesk'", color:"#8590A6", marginBottom:3 }}>
+        borderBottom:"1px solid #E5E9F1", padding:"16px 34px", display:"flex", alignItems:"center", gap:16, flexWrap:"wrap", minHeight:72 }}>
+        <div style={{ flex:1, minWidth:0, maxWidth:"60%" }}>
+          <div style={{ font:"500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#8590A6", marginBottom:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
             Preferences &amp; account
           </div>
-          <h1 style={{ font:"400 30px 'Newsreader', Georgia, serif", color:"#16233C", margin:0, letterSpacing:"-.01em" }}>
+          <h1 style={{ fontFamily:"'Newsreader','Noto Sans Kannada',serif", fontSize:"clamp(16px,2.2vw,26px)", fontWeight:400, color:"#16233C", margin:0, letterSpacing:"-.01em", lineHeight:1.25, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
             Settings
           </h1>
         </div>

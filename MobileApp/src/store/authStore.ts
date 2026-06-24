@@ -28,9 +28,13 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (token, user) => set({ token, user }),
       setProfileComplete: (profileComplete) => set({ profileComplete }),
       updateUser: (partial) => set((s) => ({ user: s.user ? { ...s.user, ...partial } : s.user })),
-      logout: () => set({ token: null, user: null }),
-      // profileComplete is intentionally kept across logouts so the
-      // profile-setup screen is only shown the very first time.
+      logout: () => {
+        // Remove the persisted key synchronously BEFORE updating in-memory state.
+        // This prevents a race where rehydrate() on the login screen reads the
+        // old token back from storage before the async persist write completes.
+        storage.removeItem("jana-seva-auth");
+        set({ token: null, user: null, profileComplete: false });
+      },
     }),
     {
       name: "jana-seva-auth",

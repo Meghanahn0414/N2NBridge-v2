@@ -3,6 +3,7 @@ import '../../../styles/modules/ModulePageTemplate.css';
 import '../../../styles/modules/AnalyticsReports.css';
 import PageHeader from "../../../components/PageHeader";
 import { getGrievanceStats, getAlertStats, getEventStats, getDashboardMetrics } from '../../../features/analytics/analyticsService';
+import { FaClipboardList, FaMap, FaChartLine, FaCheckCircle, FaExclamationCircle, FaClock, FaChartBar, FaExclamationTriangle, FaUsers, FaEnvelope, FaEye, FaComments, FaBullhorn, FaDownload, FaRobot, FaSmile, FaMeh, FaFrown, FaStar, FaCalendarAlt } from 'react-icons/fa';
 
 export default function AnalyticsReports() {
   const [reportType, setReportType] = useState('COMPLAINTS');
@@ -45,31 +46,31 @@ export default function AnalyticsReports() {
   };
 
   const complaintMetrics = [
-    { name: 'Category-wise Complaints', icon: '📋' },
-    { name: 'Ward-wise Complaints', icon: '🗺️' },
-    { name: 'Monthly Trend', icon: '📈' },
-    { name: 'Resolution Trend', icon: '✅' },
+    { name: 'Category-wise Complaints', icon: <FaClipboardList /> },
+    { name: 'Ward-wise Complaints', icon: <FaMap /> },
+    { name: 'Monthly Trend', icon: <FaChartLine /> },
+    { name: 'Resolution Trend', icon: <FaCheckCircle /> },
   ];
 
   const alertMetrics = [
-    { name: 'Alert Types Distribution', icon: '🚨' },
-    { name: 'Alert Resolution Time', icon: '⏱️' },
-    { name: 'Alert Frequency', icon: '📊' },
-    { name: 'Severity Breakdown', icon: '⚠️' },
+    { name: 'Alert Types Distribution', icon: <FaExclamationCircle /> },
+    { name: 'Alert Resolution Time', icon: <FaClock /> },
+    { name: 'Alert Frequency', icon: <FaChartBar /> },
+    { name: 'Severity Breakdown', icon: <FaExclamationTriangle /> },
   ];
 
   const eventMetrics = [
-    { name: 'Event Attendance', icon: '👥' },
-    { name: 'Participation Rate', icon: '📊' },
-    { name: 'Feedback Rating', icon: '⭐' },
-    { name: 'Event Timeline', icon: '📅' },
+    { name: 'Event Attendance', icon: <FaUsers /> },
+    { name: 'Participation Rate', icon: <FaChartBar /> },
+    { name: 'Feedback Rating', icon: <FaStar /> },
+    { name: 'Event Timeline', icon: <FaCalendarAlt /> },
   ];
 
   const communicationMetrics = [
-    { name: 'Delivery Rate', icon: '📬' },
-    { name: 'Read Rate', icon: '👁️' },
-    { name: 'Engagement Rate', icon: '💬' },
-    { name: 'Channel Performance', icon: '📢' },
+    { name: 'Delivery Rate', icon: <FaEnvelope /> },
+    { name: 'Read Rate', icon: <FaEye /> },
+    { name: 'Engagement Rate', icon: <FaComments /> },
+    { name: 'Channel Performance', icon: <FaBullhorn /> },
   ];
 
   const getMetricsForType = (type) => {
@@ -104,7 +105,7 @@ export default function AnalyticsReports() {
           <option value="CUSTOM">Custom Range</option>
         </select>
 
-        <button className="btn-primary">📥 Download Report</button>
+        <button className="btn-primary"><FaDownload style={{marginRight:5,verticalAlign:'middle'}} /> Download Report</button>
       </div>
 
       {/* Summary Stats */}
@@ -206,7 +207,7 @@ export default function AnalyticsReports() {
       {/* AI Analytics Section */}
       {reportType === 'COMPLAINTS' && (
         <div className="ai-analytics" style={{ marginTop: '32px' }}>
-          <h3>🤖 AI Complaint Categorization</h3>
+          <h3><FaRobot style={{marginRight:6,verticalAlign:'middle'}} /> AI Complaint Categorization</h3>
           <div className="ai-metrics">
             <div className="ai-metric-card">
               <div className="metric-label">Auto-Categorized</div>
@@ -225,17 +226,17 @@ export default function AnalyticsReports() {
           <h4 style={{ marginTop: '20px' }}>Sentiment Analysis</h4>
           <div className="sentiment-grid">
             <div className="sentiment-card positive">
-              <div className="sentiment-icon">😊</div>
+              <div className="sentiment-icon"><FaSmile /></div>
               <div className="sentiment-label">Positive</div>
               <div className="sentiment-value">0</div>
             </div>
             <div className="sentiment-card neutral">
-              <div className="sentiment-icon">😐</div>
+              <div className="sentiment-icon"><FaMeh /></div>
               <div className="sentiment-label">Neutral</div>
               <div className="sentiment-value">0</div>
             </div>
             <div className="sentiment-card negative">
-              <div className="sentiment-icon">😞</div>
+              <div className="sentiment-icon"><FaFrown /></div>
               <div className="sentiment-label">Negative</div>
               <div className="sentiment-value">0</div>
             </div>
