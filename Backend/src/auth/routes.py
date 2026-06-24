@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from auth.otp_service import OTP_STORAGE, OTPService
+from auth.otp_service import OTPService
 from pymongo import ReturnDocument
 from auth.service import AuthService
 from config.database import MongoDatabase
@@ -233,13 +233,10 @@ async def send_otp(request: Request, otp_request: SendOtpRequest):
         success = OTPService.send_otp(otp_request.type, otp_request.value)
 
         if success:
-            normalized_value = OTPService.normalize_contact(otp_request.type, otp_request.value)
-            otp_data = OTP_STORAGE.get(normalized_value, {})
             return {
                 "success": True,
                 "message": f"OTP sent to {otp_request.type}",
                 "statusCode": 200,
-                "debug_otp": otp_data.get("otp", "")  # Development only - remove in production
             }
         else:
             raise HTTPException(status_code=500, detail="Failed to send OTP")

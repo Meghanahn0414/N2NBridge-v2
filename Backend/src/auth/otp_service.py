@@ -56,15 +56,26 @@ class OTPService:
                 "type": type_,
             }
 
-            # TODO: Integrate with actual SMS/Email service
-            # For now, log to console for testing
-            print(f"🔐 DEBUG OTP sent to {type_} {value}: {otp}", flush=True)  # Debug output
-            logger.info(f"OTP for {type_} {value}: {otp}")
-            print(f"🔐 DEBUG OTP: {otp} for {value}", flush=True)
+            if type_ == "phone":
+                print(f"[OTP] Calling send_otp_via_sms for {normalized_value}", flush=True)
+                try:
+                    from utils.sms_service import send_otp_via_sms
+                    sent = send_otp_via_sms(normalized_value, otp)
+                    if sent:
+                        print(f"[OTP] SMS sent successfully to {normalized_value}", flush=True)
+                    else:
+                        print(f"[OTP] SMS failed for {normalized_value}", flush=True)
+                        logger.warning(f"SMS delivery failed for {value}")
+                except Exception as sms_err:
+                    print(f"[OTP] SMS exception: {sms_err}", flush=True)
+                    logger.error(f"SMS exception: {sms_err}", exc_info=True)
+            else:
+                logger.info(f"OTP for email {value}: {otp}")
 
             return True
         except Exception as e:
-            logger.error(f"Failed to send OTP: {e}")
+            print(f"[OTP] Outer exception: {e}", flush=True)
+            logger.error(f"Failed to send OTP: {e}", exc_info=True)
             return False
 
     @staticmethod
