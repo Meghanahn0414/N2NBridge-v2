@@ -13,14 +13,13 @@
     "expo-constants": "~17.0.4",
     "expo-device": "~7.0.2",
     "expo-file-system": "~18.0.12",
-    "expo-font": "~13.0.3",
+    "expo-font": "~13.0.4",
     "expo-image": "~2.0.6",
     "expo-image-picker": "~16.0.6",
     "expo-keep-awake": "~14.0.0",
     "expo-linear-gradient": "~14.0.2",
     "expo-linking": "~7.0.4",
     "expo-location": "~18.0.7",
-    "expo-notifications": "~0.29.14",
     "expo-router": "~4.0.17",
     "expo-splash-screen": "~0.29.22",
     "expo-status-bar": "~2.0.1",
@@ -52,6 +51,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "dev:web": "expo start --web --port 8081",
     "lint": "expo lint"
   },
   "private": true

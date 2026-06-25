@@ -6,7 +6,6 @@ import Header from "../../Header";
 import OtpVerify from "../../features/auth/OtpVerify";
 import AdminSignup from "../../features/auth/AdminSignup";
 import AdminLogin from "../../features/auth/AdminLogin";
-import CitizenLogin from "../../features/auth/Login";
 import SurveyManagement from "../../pages/admin/modules/SurveyManagement";
 import FieldDashboard from "../../features/dashboard/pages/FieldDashboard";
 import ManagerDashboard from "../../features/dashboard/pages/ManagerDashboard";
@@ -16,8 +15,6 @@ import PublicRoute from "./PublicRoute";
 import RoleRoute from "./RoleRoute";
 import { ROUTES } from "./RouteConstants";
 import LandingPage from "../../landing/LandingPage";
-import CitizenDashboard from "../../pages/citizen/CitizenDashboard";
-import ProfileCreation from "../../pages/citizen/ProfileCreation";
 // Admin page imports
 import CitizenListPage from "../../pages/admin/CitizenList";
 import EventListPage from "../../features/events/pages/EventList";
@@ -77,7 +74,7 @@ function AppRoutesContent() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, ROUTES.otp, "/admin-login", "/otp", ROUTES.citizenLogin].includes(location.pathname);
+  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, ROUTES.otp, "/admin-login", "/otp"].includes(location.pathname);
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isRepDashboard = location.pathname === ROUTES.rep || location.pathname === ROUTES.mlaExecutiveDashboard;
   const isRepSubRoute = location.pathname.startsWith("/rep/");
@@ -128,11 +125,8 @@ function AppRoutesContent() {
           <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/admin-login" replace /></PublicRoute>} />
           <Route path="/admin-login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
           <Route path={ROUTES.otp} element={<PublicRoute><OtpVerify /></PublicRoute>} />
-          <Route path={ROUTES.citizenLogin} element={<PublicRoute><CitizenLogin /></PublicRoute>} />
           <Route path={ROUTES.adminSignup} element={<PublicRoute><AdminSignup /></PublicRoute>} />
-          <Route path="/profile-creation" element={<ProfileCreation />} />
-          <Route path={ROUTES.citizen} element={<RoleRoute allowedRoles={["CITIZEN"]}><CitizenDashboard /></RoleRoute>} />
-          
+
           {/* Field Officer Routes — new unified layout */}
           <Route element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldLayout /></RoleRoute>}>
             <Route path={ROUTES.field}           element={<FieldDashboard />} />

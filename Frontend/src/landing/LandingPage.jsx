@@ -34,7 +34,9 @@ export default function LandingPage() {
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowLoginOptions(false);
-                  handleLogin("/citizen-login");
+                  // Skip onboarding if already completed (stored by Expo app in localStorage)
+                  const done = localStorage.getItem("onboarding_done");
+                  window.location.href = done ? "/citizen/" : "/citizen/onboarding";
                 }}
               >
                 <div className="login-option-icon notranslate">👤</div>

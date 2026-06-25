@@ -18,7 +18,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package":"com.fatima237.mobileapp"
+      "package": "com.swaghrafatima.mobileapp"
     },
     "web": {
       "output": "single",
@@ -28,7 +28,7 @@
     },
     "plugins": [
       "expo-router",
-      [ 
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
@@ -48,7 +48,13 @@
       "checkAutomatically": "NEVER"
     },
     "extra": {
-      "router": {}
-    }
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "1fa1f646-cfcd-450a-ab70-735db03e0126"
+      }
+    },
+    "owner": "swaghrafatima"
   }
 }

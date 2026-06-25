@@ -30,7 +30,9 @@ export default function OnboardingScreen() {
 
   async function finish() {
     await storage.setItem("onboarding_done", "1");
-    router.replace("/citizen" as any);
+    // Go to Expo login (index.tsx at "/").
+    // This is a client-side navigation within the Expo SPA — no page reload.
+    router.replace("/");
   }
 
   async function skipToSignIn() {
