@@ -70,7 +70,9 @@ class OTPService:
                     print(f"[OTP] SMS exception: {sms_err}", flush=True)
                     logger.error(f"SMS exception: {sms_err}", exc_info=True)
             else:
+                print(f"🔐 DEBUG OTP sent to email {value}: {otp}", flush=True)
                 logger.info(f"OTP for email {value}: {otp}")
+                print(f"🔐 DEBUG OTP: {otp} for {value}", flush=True)
 
             return True
         except Exception as e:

@@ -225,25 +225,7 @@ async def send_otp(request: Request):
 
     # Step 1: parse body
     try:
-        if otp_request.type not in ["phone", "email"]:
-            raise HTTPException(status_code=400, detail="Type must be 'phone' or 'email'")
-
-        if not otp_request.value:
-            raise HTTPException(status_code=400, detail="Phone number or email required")
-
-        # Send OTP
-        success = OTPService.send_otp(otp_request.type, otp_request.value)
-
-        if success:
-            return {
-                "success": True,
-                "message": f"OTP sent to {otp_request.type}",
-                "statusCode": 200,
-            }
-        else:
-            raise HTTPException(status_code=500, detail="Failed to send OTP")
-    except HTTPException:
-        raise
+        body = await request.json()
     except Exception as e:
         return {"success": False, "step": "json_parse", "error": str(e)}
 
