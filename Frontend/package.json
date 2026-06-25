@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "concurrently \"vite --open\" \"cd ../MobileApp && set BROWSER=none&& npx expo start --web --port 8081\"",
     "build": "vite build",
+    "build:all": "vite build && cd ../MobileApp && npx expo export --platform web && xcopy /E /I /Y dist ..\\Frontend\\dist\\citizen",
     "start": "vite --host"
   },
   "dependencies": {
@@ -25,6 +27,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.0",
+    "concurrently": "^8.2.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "vite": "^5.1.0"
