@@ -6,6 +6,7 @@ import Header from "../../Header";
 import OtpVerify from "../../features/auth/OtpVerify";
 import AdminSignup from "../../features/auth/AdminSignup";
 import AdminLogin from "../../features/auth/AdminLogin";
+import CitizenLogin from "../../features/auth/Login";
 import SurveyManagement from "../../pages/admin/modules/SurveyManagement";
 import FieldDashboard from "../../features/dashboard/pages/FieldDashboard";
 import ManagerDashboard from "../../features/dashboard/pages/ManagerDashboard";
@@ -126,6 +127,7 @@ function AppRoutesContent() {
           <Route path="/" element={<LandingPage />} />
           <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/admin-login" replace /></PublicRoute>} />
           <Route path="/admin-login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
+          <Route path={ROUTES.citizenLogin} element={<PublicRoute><CitizenLogin /></PublicRoute>} />
           <Route path={ROUTES.otp} element={<PublicRoute><OtpVerify /></PublicRoute>} />
           <Route path={ROUTES.adminSignup} element={<PublicRoute><AdminSignup /></PublicRoute>} />
           <Route path="/profile-creation" element={<ProfileCreation />} />

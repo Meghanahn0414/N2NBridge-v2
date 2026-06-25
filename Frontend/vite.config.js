@@ -29,22 +29,19 @@ export default defineConfig({
         target: 'http://127.0.0.1:19006',
         changeOrigin: true,
         secure: false,
-        ws: true,                        // forward WebSocket (Expo HMR)
+        ws: true,
         rewrite: (path) => path.replace(/^\/citizen/, ''),
       },
-      // Expo static assets (fonts, images)
       '/assets': {
         target: 'http://127.0.0.1:19006',
         changeOrigin: true,
         secure: false,
       },
-      // Expo's JS bundle (served at an absolute path from Expo's HTML)
       '/node_modules/expo-router/entry.bundle': {
         target: 'http://127.0.0.1:19006',
         changeOrigin: true,
         secure: false,
       },
-      // Expo's internal asset/bundle paths
       '/_expo': {
         target: 'http://127.0.0.1:19006',
         changeOrigin: true,
@@ -57,14 +54,12 @@ export default defineConfig({
         secure: false,
         ws: true,
       },
-      // Expo HMR WebSocket
       '/hot': {
         target: 'http://127.0.0.1:19006',
         changeOrigin: true,
         secure: false,
         ws: true,
       },
-      // App message/notification WebSocket
       '/message': {
         target: 'http://127.0.0.1:19006',
         changeOrigin: true,
