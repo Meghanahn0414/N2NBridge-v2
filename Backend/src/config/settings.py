@@ -93,7 +93,15 @@ class Settings(BaseSettings):
 
     # ── SMS / Twilio ───────────────────────────────────────────────────────────
     SMS_API_KEY: Optional[str] = None
+    SMS_API_URL: Optional[str] = None
     SMS_PROVIDER: Optional[str] = None
+    TWILIO_ACCOUNT_SID: Optional[str] = None
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_PHONE_NUMBER: Optional[str] = None
+    FAST2SMS_API_KEY: Optional[str] = None
+    TWOFACTOR_API_KEY: Optional[str] = None
+    VONAGE_API_KEY: Optional[str] = None
+    VONAGE_API_SECRET: Optional[str] = None
 
     # ── AI / Anthropic ─────────────────────────────────────────────────────────
     ANTHROPIC_API_KEY: Optional[str] = None

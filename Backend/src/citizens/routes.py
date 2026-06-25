@@ -6,7 +6,6 @@ from citizens.service import CitizenService
 from citizens.model import CitizenProfileUpdate, CitizenProfileResponse
 from auth.routes import get_current_user
 from users.service import UserService
-from utils.response import success_response
 import logging
 
 router = APIRouter(prefix="/api/citizen", tags=["Citizen"])
