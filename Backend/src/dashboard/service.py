@@ -147,8 +147,8 @@ class DashboardService:
             team_data.append({
                 "name":      officer.get("fullName", officer.get("username", "Unknown")),
                 "role":      officer.get("role", "Officer"),
-                "assigned":  assigned_tasks,
-                "completed": completed_tasks,
+                "assigned":  assigned_grievances,
+                "completed": resolved_grievances,
                 "time":      f"{avg_time_days} Days",
                 "rating":    rating,
             })
@@ -296,6 +296,121 @@ class DashboardService:
             logger.error(f"DashboardService sub-call failed [{label}]: {exc}", exc_info=True)
             return default
 
+    # ------------------------------------------------------------------
+    # AI Insights helpers — previously computed in the frontend
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_ai_recommendations(metrics: dict, summary: dict) -> list:
+        """
+        Generate recommendation cards from live metrics.
+        Previously lived in AIInsights.jsx (getRecommendations).
+        Moved here so the logic is server-side and testable.
+        """
+        alerts_trend     = (metrics.get("alerts")     or {}).get("trend", 0) or 0
+        grievances_trend = (metrics.get("grievances") or {}).get("trend", 0) or 0
+        total_events     = (metrics.get("events")     or {}).get("totalEvents", 0) or 0
+
+        items = []
+
+        if metrics.get("alerts") is not None:
+            direction = "Up" if alerts_trend >= 0 else "Down"
+            items.append({
+                "id":          "alerts",
+                "title":       f"Alert Volume {direction} {abs(alerts_trend)}%",
+                "description": "Prioritize response in high-alert wards",
+                "action":      "Coordinate with response teams",
+                "priority":    "high" if alerts_trend >= 10 else "medium",
+            })
+
+        if metrics.get("grievances") is not None:
+            items.append({
+                "id":          "grievances",
+                "title":       f"Complaint Trend: {grievances_trend}%",
+                "description": "Review service delivery in affected areas",
+                "action":      "Initiate citizen outreach campaigns",
+                "priority":    "medium" if abs(grievances_trend) > 5 else "low",
+            })
+
+        if metrics.get("events") is not None:
+            items.append({
+                "id":          "events",
+                "title":       f"Managing {total_events} Active Events" if total_events > 0 else "No Active Events Data",
+                "description": "Use event participation to boost engagement",
+                "action":      "Review event performance metrics",
+                "priority":    "low" if total_events > 0 else "medium",
+            })
+
+        if not items:
+            items.append({
+                "id":          "none",
+                "title":       "No Insights Yet",
+                "description": "Dashboard data is loading or unavailable",
+                "action":      "Check back after data sync",
+                "priority":    "low",
+            })
+
+        return items
+
+    @staticmethod
+    def get_risk_scores(summary: dict) -> list:
+        """
+        Compute constituency risk gauge scores from summary KPIs.
+        Previously computed inline in AIInsights.jsx (riskScores array).
+        Moved here so the scoring formula is server-side.
+        """
+        health_str = str(summary.get("healthScore", "0")).replace("%", "")
+        try:
+            health_score = float(health_str)
+        except (ValueError, TypeError):
+            health_score = 0.0
+
+        return [
+            {
+                "category": "Alert Analytics",
+                "score":    min(100, (summary.get("criticalAlerts", 0) or 0) * 5),
+                "color":    "#ef4444",
+            },
+            {
+                "category": "Complaint Analytics",
+                "score":    min(100, (summary.get("openComplaints", 0) or 0) * 2),
+                "color":    "#f59e0b",
+            },
+            {
+                "category": "Citizen Satisfaction",
+                "score":    min(100, (summary.get("citizenSatisfaction", 0) or 0) * 20),
+                "color":    "#10b981",
+            },
+            {
+                "category": "Health Score",
+                "score":    health_score,
+                "color":    "#3b82f6",
+            },
+        ]
+
+    @staticmethod
+    def get_team_summary(team_performance: list) -> dict:
+        """
+        Aggregate team-level KPIs from the team performance list.
+        averageRating was previously computed in TeamPerformanceDashboard.jsx.
+        """
+        if not team_performance:
+            return {"averageRating": "0.0", "totalOfficers": 0}
+
+        ratings = []
+        for m in team_performance:
+            try:
+                r = float(m.get("rating", 0) or 0)
+                ratings.append(r)
+            except (TypeError, ValueError):
+                pass
+
+        avg = round(sum(ratings) / len(ratings), 1) if ratings else 0.0
+        return {
+            "averageRating": str(avg),
+            "totalOfficers": len(team_performance),
+        }
+
     @staticmethod
     def get_mla_dashboard() -> dict:
         """Get MLA dashboard data"""
@@ -382,33 +497,43 @@ class DashboardService:
             DashboardService.get_recent_activity, 10, default=[], label="recent_activity"
         )
 
+        summary = {
+            "totalComplaints":     total_complaints,
+            "openComplaints":      open_complaints,
+            "resolvedThisMonth":   resolved_complaints,
+            "criticalAlerts":      critical_alerts,
+            "upcomingEvents":      metrics.get("events", {}).get("totalEvents", 0),
+            "citizenSatisfaction": avg_satisfaction,
+            "healthScore":         health_score,
+            "activeOfficers":      active_officers,
+            "registeredCitizens":  registered_citizens,
+        }
+
+        sc = DashboardService._safe_call
+        team_performance = sc(DashboardService.get_team_performance, default=[], label="team_performance")
+
         return {
-            "summary": {
-                "totalComplaints": total_complaints,
-                "openComplaints": open_complaints,
-                "resolvedThisMonth": resolved_complaints,
-                "criticalAlerts": critical_alerts,
-                "upcomingEvents": metrics.get("events", {}).get("totalEvents", 0),
-                "citizenSatisfaction": avg_satisfaction,
-                "healthScore": health_score,
-                "activeOfficers": active_officers,
-                "registeredCitizens": registered_citizens,
-            },
+            "summary": summary,
             "metrics": metrics,
             "overview": {
-                "grievances": DashboardService._safe_call(AnalyticsService.get_grievance_stats, default={}, label="overview_grievances"),
-                "alerts":     DashboardService._safe_call(AnalyticsService.get_alert_stats,    default={}, label="overview_alerts"),
-                "users":      DashboardService._safe_call(AnalyticsService.get_user_stats,     default={}, label="overview_users"),
-                "events":     DashboardService._safe_call(AnalyticsService.get_event_stats,    default={}, label="overview_events"),
+                "grievances": sc(AnalyticsService.get_grievance_stats, default={}, label="overview_grievances"),
+                "alerts":     sc(AnalyticsService.get_alert_stats,    default={}, label="overview_alerts"),
+                "users":      sc(AnalyticsService.get_user_stats,     default={}, label="overview_users"),
+                "events":     sc(AnalyticsService.get_event_stats,    default={}, label="overview_events"),
             },
-            "wardStats": ward_stats,
-            "recentAlerts": recent_alerts,
+            "wardStats":        ward_stats,
+            "recentAlerts":     recent_alerts,
             "recentComplaints": recent_complaints,
-            "teamPerformance": DashboardService._safe_call(DashboardService.get_team_performance, default=[], label="team_performance"),
-            "grievanceTrends": DashboardService._safe_call(DashboardService.get_grievance_trends, 7, default={}, label="grievance_trends"),
-            "recentActivity": recent_activity,
-            "systemHealth": health_score,
-            "categoryComplaints": DashboardService._safe_call(DashboardService.get_category_complaints, default={}, label="category_complaints"),
+            "teamPerformance":  team_performance,
+            # teamSummary — aggregates previously computed in TeamPerformanceDashboard.jsx
+            "teamSummary":      sc(DashboardService.get_team_summary, team_performance, default={"averageRating": "0.0", "totalOfficers": 0}, label="team_summary"),
+            "grievanceTrends":  sc(DashboardService.get_grievance_trends, 7, default={}, label="grievance_trends"),
+            "recentActivity":   recent_activity,
+            "systemHealth":     health_score,
+            "categoryComplaints": sc(DashboardService.get_category_complaints, default={}, label="category_complaints"),
+            # recommendations & riskScores — previously computed in AIInsights.jsx frontend
+            "recommendations":  sc(DashboardService.get_ai_recommendations, metrics, summary, default=[], label="recommendations"),
+            "riskScores":       sc(DashboardService.get_risk_scores, summary, default=[], label="risk_scores"),
         }
     
     @staticmethod

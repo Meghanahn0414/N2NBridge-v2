@@ -1,19 +1,22 @@
 import { Tabs } from "expo-router";
-import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
+import { TouchableOpacity, View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import { useT } from "../../../i18n/useT";
 
+const PRIMARY = "#2B5BD7";
+const INACTIVE = "#9AA3B5";
+
 function FABButton() {
   return (
     <TouchableOpacity
-      style={fabS.wrap}
+      style={fab.wrap}
       onPress={() => router.push("/citizen/new-complaint" as any)}
       activeOpacity={0.85}
     >
-      <View style={fabS.circle}>
-        <Text style={fabS.plus}>+</Text>
+      <View style={fab.btn}>
+        <Ionicons name="add" size={28} color="#fff" />
       </View>
     </TouchableOpacity>
   );
@@ -26,34 +29,38 @@ export default function CitizenTabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#1D4ED8",
-        tabBarInactiveTintColor: "#9CA3AF",
+        tabBarActiveTintColor: PRIMARY,
+        tabBarInactiveTintColor: INACTIVE,
         tabBarStyle: {
           backgroundColor: "#fff",
-          borderTopColor: "#E5E7EB",
+          borderTopColor: "#EDF0F6",
           borderTopWidth: 1,
-          height: 68,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height: 72,
+          paddingBottom: 10,
+          paddingTop: 8,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "600",
+          marginTop: 2,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: tr('Home'),
+          title: tr("Home"),
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "home" : "home-outline"} size={23} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="complaints"
         options={{
-          title: tr('Complaints'),
+          title: tr("Activity"),
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? "list" : "list-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "list" : "list-outline"} size={23} color={color} />
           ),
         }}
       />
@@ -67,18 +74,18 @@ export default function CitizenTabsLayout() {
       <Tabs.Screen
         name="services"
         options={{
-          title: tr('Services'),
+          title: tr("Explore"),
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? "grid" : "grid-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "compass" : "compass-outline"} size={23} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: tr('Profile'),
+          title: tr("Profile"),
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? "person" : "person-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "person" : "person-outline"} size={23} color={color} />
           ),
         }}
       />
@@ -86,32 +93,25 @@ export default function CitizenTabsLayout() {
   );
 }
 
-const fabS = StyleSheet.create({
+const fab = StyleSheet.create({
   wrap: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingBottom: 4,
+    paddingBottom: 6,
   },
-  circle: {
+  btn: {
     width: 54,
     height: 54,
-    borderRadius: 27,
-    backgroundColor: "#1D4ED8",
+    borderRadius: 18,
+    backgroundColor: PRIMARY,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -12,
-    elevation: 6,
-    shadowColor: "#1D4ED8",
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
+    marginTop: -14,
+    elevation: 8,
+    shadowColor: PRIMARY,
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
-  },
-  plus: {
-    color: "#fff",
-    fontSize: 30,
-    fontWeight: "300",
-    lineHeight: 32,
-    marginTop: -2,
   },
 });

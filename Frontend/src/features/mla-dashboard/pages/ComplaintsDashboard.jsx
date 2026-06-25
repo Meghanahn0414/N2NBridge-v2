@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../../app/routes/RouteConstants';
@@ -6,6 +6,7 @@ import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/ComplaintsDashboard.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
+import ExportButton from '../../../components/ExportButton';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
@@ -13,6 +14,7 @@ export default function ComplaintsDashboard() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { dashboard, loading, error } = useMlaDashboard();
+  const pageRef = useRef(null);
   const grievanceStats = dashboard?.metrics?.grievances || {};
   const totalComplaints = grievanceStats.total || 0;
   const openComplaints = dashboard?.summary?.openComplaints || 0;
@@ -23,7 +25,12 @@ export default function ComplaintsDashboard() {
   const handleInvestigate = () => navigate(ROUTES.mlaEmergencyCenter);
   const handleViewAllComplaints = () => navigate(ROUTES.mlaConstituencyStatus);
   const handleEscalateIssue = () => navigate(ROUTES.mlaEmergencyCenter);
-  const handleDownloadReport = () => window.alert('Downloading complaints report...');
+  // Export columns for ward-level data
+  const exportColumns = [
+    { key: 'ward',     label: 'Ward' },
+    { key: 'issues',   label: 'Issues' },
+    { key: 'priority', label: 'Priority' },
+  ];
   const byCategory = grievanceStats.byCategory || {};
 
   const complaints = Object.entries(byCategory).map(([category, count]) => ({ category, count }))
@@ -47,7 +54,7 @@ export default function ComplaintsDashboard() {
   return (
     <div>
       <PageHeader subtitle={t("monitor_analyze_complaints")} />
-      <div className="mla-container">
+      <div className="mla-container" ref={pageRef}>
 
       {/* Overview Stats */}
       <div className="mla-section">
@@ -163,7 +170,12 @@ export default function ComplaintsDashboard() {
         <div className="detail-buttons">
           <button type="button" className="btn-primary" onClick={handleViewAllComplaints}>{t("view_all_complaints")}</button>
           <button type="button" className="btn-primary" onClick={handleEscalateIssue}>{t("escalate_issue")}</button>
-          <button type="button" className="btn-primary" onClick={handleDownloadReport}>{t("download_report")}</button>
+          <ExportButton
+            filename="complaints-report"
+            pdfRef={pageRef}
+            data={topWards}
+            columns={exportColumns}
+          />
         </div>
       </div>
     </div>

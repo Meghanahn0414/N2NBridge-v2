@@ -69,6 +69,8 @@ export const ROUTES = {
   mlaConstituents: "/rep/constituents",
   mlaReports: "/rep/reports",
   mlaSettings: "/rep/settings",
+  mlaCareerOutlook: "/rep/career-outlook",
+  mlaMessages: "/rep/messages",
   // Field Officer Routes
   fieldGrievances: "/field/grievances",
   fieldTasks: "/field/tasks",

@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Alert, ScrollView, Image, Platform,
   KeyboardAvoidingView,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import api from "../../services/api";
@@ -22,6 +22,7 @@ const CATEGORY_MAP: Record<string, string> = {
 export default function NewComplaintScreen() {
   const tr = useT();
   const router = useRouter();
+  const { photoUri } = useLocalSearchParams<{ photoUri?: string }>();
   const user = useAuthStore((s) => s.user);
   const profileComplete = useAuthStore((s) => s.profileComplete);
   const [step, setStep] = useState(1);
@@ -32,6 +33,13 @@ export default function NewComplaintScreen() {
       router.replace("/citizen/edit-profile?required=1" as any);
     }
   }, [profileComplete]);
+
+  // Pre-populate photo if launched from camera shortcut
+  useEffect(() => {
+    if (photoUri) {
+      setForm((f) => ({ ...f, photos: [{ uri: decodeURIComponent(photoUri) }] }));
+    }
+  }, [photoUri]);
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -321,7 +329,7 @@ export default function NewComplaintScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       {/* Header */}
       <View style={styles.topHeader}>
-        <TouchableOpacity style={styles.backArrowBtn} onPress={() => step > 1 ? setStep(step - 1) : router.back()}>
+        <TouchableOpacity style={styles.backArrowBtn} onPress={() => step > 1 ? setStep(step - 1) : router.canGoBack() ? router.back() : router.replace('/(tabs)/complaints' as any)}>
           <Text style={styles.backArrowText}>←</Text>
         </TouchableOpacity>
         <View>

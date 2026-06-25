@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getAuthRole } from "../../../services/authStorage";
 import api from "../../../shared/services/api";
 import MIcon from "../../../components/MIcon";
+import ExportButton from "../../../components/ExportButton";
 
 const DATE_OPTIONS = [
   { label: "Last 30 Days",  days: 30  },
@@ -11,12 +12,6 @@ const DATE_OPTIONS = [
   { label: "Last 12 Months",days: 365 },
 ];
 
-const KPI = [
-  { icon: "task_alt",    iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "Complaints Resolved", sparkColor: "#2B5BD7" },
-  { icon: "bolt",        iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Avg Response Time",   sparkColor: "#1E8A5B" },
-  { icon: "groups",      iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: "Engaged Constituents",sparkColor: "#6B4FD8" },
-  { icon: "how_to_vote", iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Poll Participation",  sparkColor: "#C9871F" },
-];
 
 function useMLAInsights(days) {
   const [data, setData]       = useState(null);
@@ -89,7 +84,6 @@ export default function ExecutiveDashboard() {
   const [showDateMenu,  setShowDateMenu] = useState(false);
   const dateRef      = useRef(null);
   const dashboardRef = useRef(null);
-  const [exporting, setExporting] = useState(false);
   const selectedOption = DATE_OPTIONS.find(o => o.days === selectedDays) || DATE_OPTIONS[3];
 
   useEffect(() => {
@@ -134,55 +128,13 @@ export default function ExecutiveDashboard() {
   const approvalResponses = sentiment?.hasData ? sentiment.total : sentDist?.total ?? null;
   const approvalTrend = sentiment?.positiveTrend ?? null;
 
-  const Φ = (z) => {
-    const s = z < 0 ? -1 : 1, x = Math.abs(z);
-    const t2 = 1 / (1 + 0.3275911 * x);
-    const p = t2 * (0.254829592 + t2 * (-0.284496736 + t2 * (1.421413741 + t2 * (-1.453152027 + t2 * 1.061405429))));
-    return 0.5 + s * 0.5 * (1 - p * Math.exp(-x * x / 2));
-  };
-
-  let strongProb = null, compProb = null, atRiskProb = null;
-  if (approvalPct != null) {
-    const σ = 15;
-    const voteShare = Math.max(5, Math.min(95, 0.5 * approvalPct + 25 - 5));
-    const pStrong = (1 - Φ((55 - voteShare) / σ)) * 100;
-    const pLoss   = Φ((45 - voteShare) / σ)         * 100;
-    strongProb = Math.max(1, Math.round(pStrong));
-    atRiskProb = Math.max(1, Math.round(pLoss));
-    compProb   = Math.max(1, 100 - strongProb - atRiskProb);
-  }
+  // Election probability is computed server-side (mla/sentiment_service.py → /api/mla/insights)
+  const electionProb = insights?.electionProbability || {};
+  const strongProb   = electionProb.strongReelection ?? null;
+  const compProb     = electionProb.competitiveRace  ?? null;
+  const atRiskProb   = electionProb.atRisk           ?? null;
   const gaugeLen = approvalPct != null ? Math.round(2.83 * approvalPct) : 0;
 
-  const handleExport = async () => {
-    if (exporting) return;
-    const el = dashboardRef.current;
-    if (!el || !window.html2canvas || !window.jspdf) return;
-    setExporting(true);
-    try {
-      const canvas = await window.html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#F3F5FA", logging: false });
-      const { jsPDF } = window.jspdf;
-      const pdf   = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-      const W     = pdf.internal.pageSize.getWidth();
-      const H     = pdf.internal.pageSize.getHeight();
-      const ratio = canvas.width / canvas.height;
-      const pdfH  = W / ratio;
-      const pages = Math.ceil(pdfH / H);
-      for (let i = 0; i < pages; i++) {
-        if (i > 0) pdf.addPage();
-        const srcY   = i * (canvas.height / pages);
-        const sliceH = canvas.height / pages;
-        const sc = document.createElement("canvas");
-        sc.width = canvas.width; sc.height = sliceH;
-        sc.getContext("2d").drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-        pdf.addImage(sc.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, W, H);
-      }
-      pdf.save(`mla-dashboard-${new Date().toISOString().slice(0, 10)}.pdf`);
-    } catch (e) {
-      console.error("PDF export failed:", e);
-    } finally {
-      setExporting(false);
-    }
-  };
 
   const effectiveSentiment = sentiment?.hasData
     ? sentiment
@@ -229,11 +181,28 @@ export default function ExecutiveDashboard() {
           </div>
 
           {/* Export button */}
-          <button onClick={handleExport} disabled={exporting}
-            style={{ height:40, background: exporting ? "#F3F5FA" : "#fff", border:"1px solid #E1E6F0", borderRadius:13, display:"flex", alignItems:"center", gap:7, padding:"0 12px", cursor: exporting ? "not-allowed" : "pointer", outline:"none", opacity: exporting ? 0.7 : 1, maxWidth:140, overflow:"hidden" }}>
-            <MS style={{ fontSize:18, color:"#5A6678", flexShrink:0 }}>{exporting ? "hourglass_top" : "ios_share"}</MS>
-            <span style={{ font:"600 13px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#16233C", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{exporting ? "Exporting…" : "Export"}</span>
-          </button>
+          <ExportButton
+            filename="mla-overview"
+            pdfRef={dashboardRef}
+            pdfOrientation="landscape"
+            data={[
+              { metric: 'Approval Rating',         value: approvalPct != null ? `${approvalPct}%` : '—' },
+              { metric: 'Positive Sentiment',      value: effectiveSentiment?.positive?.pct != null ? `${effectiveSentiment.positive.pct}%` : '—' },
+              { metric: 'Neutral Sentiment',       value: effectiveSentiment?.neutral?.pct  != null ? `${effectiveSentiment.neutral.pct}%`  : '—' },
+              { metric: 'Negative Sentiment',      value: effectiveSentiment?.negative?.pct != null ? `${effectiveSentiment.negative.pct}%` : '—' },
+              { metric: 'Strong Re-election',      value: strongProb  != null ? `${strongProb}%`  : '—' },
+              { metric: 'Competitive Race',        value: compProb    != null ? `${compProb}%`    : '—' },
+              { metric: 'At Risk',                 value: atRiskProb  != null ? `${atRiskProb}%`  : '—' },
+              { metric: 'Resolved Grievances',     value: resolved    != null ? String(resolved)  : '—' },
+              { metric: 'Total Grievances',        value: total       != null ? String(total)      : '—' },
+              { metric: 'Citizens',                value: citizens    != null ? String(citizens)   : '—' },
+              { metric: 'Poll Participation',      value: pollPart    != null ? String(pollPart)   : '—' },
+            ]}
+            columns={[
+              { key: 'metric', label: 'Metric' },
+              { key: 'value',  label: 'Value'  },
+            ]}
+          />
 
           {/* Notifications button */}
           <button onClick={() => navigate("/rep/daily-briefing")}

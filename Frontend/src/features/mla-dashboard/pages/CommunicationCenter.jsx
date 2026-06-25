@@ -574,26 +574,6 @@ export default function CommunicationCenter() {
               </button>
               <button
                 type="button"
-                disabled={submitting || !canSchedule}
-                onClick={handleSchedule}
-                style={{
-                  height: 52,
-                  padding: "0 20px",
-                  border: `1.5px solid ${canSchedule ? "#E1E6F0" : "#D1D5DB"}`,
-                  borderRadius: 14,
-                  background: canSchedule ? "#fff" : "#F9FAFB",
-                  color: canSchedule ? "#16233C" : "#9CA3AF",
-                  font: "700 15px 'Hanken Grotesk'",
-                  cursor: submitting || !canSchedule ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <MS style={{ fontSize: 20, color: canSchedule ? "#5A6678" : "#9CA3AF" }}>schedule</MS>Schedule
-              </button>
-              <button
-                type="button"
                 disabled={submitting}
                 onClick={handleSaveDraft}
                 style={{

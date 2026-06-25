@@ -123,8 +123,26 @@ class GrievanceService:
             if filters.get("assignedOfficerId"):
                 query["assignedOfficerId"] = filters["assignedOfficerId"]
         
-        grievances = list(db.grievances.find(query).skip(skip).limit(limit))
-        return [GrievanceService._populate_citizen_name(g) for g in grievances]
+        grievances = list(db.grievances.find(query).sort("createdAt", -1).skip(skip).limit(limit))
+        grievances = [GrievanceService._populate_citizen_name(g) for g in grievances]
+
+        # Batch-resolve assigned officer names in a single DB query
+        officer_ids = list({g["assignedOfficerId"] for g in grievances if g.get("assignedOfficerId")})
+        if officer_ids:
+            try:
+                officer_docs = db.users.find(
+                    {"_id": {"$in": [ObjectId(oid) for oid in officer_ids]}},
+                    {"fullName": 1}
+                )
+                officer_map = {str(u["_id"]): u.get("fullName", "") for u in officer_docs}
+                for g in grievances:
+                    oid = g.get("assignedOfficerId")
+                    if oid:
+                        g["assignedOfficerName"] = officer_map.get(oid, "")
+            except Exception:
+                logger.warning("Unable to batch-resolve officer names")
+
+        return grievances
     
     @staticmethod
     def update_grievance_status(

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../../app/routes/RouteConstants';
@@ -6,11 +6,13 @@ import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/DailyBriefing.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
+import ExportButton from '../../../components/ExportButton';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
 export default function DailyBriefing() {
   const navigate = useNavigate();
+  const pageRef = useRef(null);
   const { t } = useTranslation();
   const { dashboard, loading, error } = useMlaDashboard();
   const summary = dashboard?.summary || {};
@@ -57,7 +59,7 @@ export default function DailyBriefing() {
   return (
     <div>
       <PageHeader subtitle={briefing.date} />
-      <div className="mla-container daily-briefing-container">
+      <div className="mla-container daily-briefing-container" ref={pageRef}>
 
       {/* Today's Summary Card */}
       <div className="mla-section briefing-summary">
@@ -195,6 +197,32 @@ export default function DailyBriefing() {
           <button className="nav-btn" onClick={handleNavigate(ROUTES.mlaTeamPerformance)}>👥 Team Performance</button>
           <button className="nav-btn" onClick={handleNavigate(ROUTES.mlaAIInsights)}>🤖 AI Insights</button>
           <button className="nav-btn" onClick={handleNavigate(ROUTES.mlaComplaintsDashboard)}>📋 All Complaints</button>
+        </div>
+      </div>
+
+      {/* Export */}
+      <div className="mla-section">
+        <div className="detail-buttons">
+          <ExportButton
+            filename="daily-briefing"
+            pdfRef={pageRef}
+            data={[
+              { metric: 'Total Complaints',      value: briefing.newComplaints },
+              { metric: 'Resolved',              value: briefing.resolved },
+              { metric: 'Critical Alerts',       value: briefing.criticalAlerts },
+              { metric: 'Upcoming Events',       value: briefing.events },
+              { metric: 'Open Complaints',       value: briefing.pendingEscalations },
+              { metric: 'Citizen Satisfaction',  value: metrics.citizenSatisfaction },
+              { metric: 'Health Score',          value: metrics.healthScore },
+              { metric: 'Resolved This Month',   value: metrics.resolvedThisMonth },
+              { metric: 'Team On Duty',          value: metrics.teamOnDuty },
+              { metric: 'Events This Week',      value: metrics.eventsThisWeek },
+            ]}
+            columns={[
+              { key: 'metric', label: 'Metric' },
+              { key: 'value',  label: 'Value' },
+            ]}
+          />
         </div>
       </div>
 

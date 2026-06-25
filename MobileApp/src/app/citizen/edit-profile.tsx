@@ -160,6 +160,11 @@ export default function EditProfileScreen() {
   };
 
   const handleSave = async () => {
+    if (!user?.id) {
+      showMsg("Session expired", "Please log in again.");
+      router.replace("/" as any);
+      return;
+    }
     if (!form.fullName.trim()) {
       showMsg("Required", "Full name is required");
       return;

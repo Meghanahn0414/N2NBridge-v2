@@ -1,20 +1,30 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/GovernmentSchemeDashboard.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
+import ExportButton from '../../../components/ExportButton';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value.toLocaleString());
+
+const SCHEME_EXPORT_COLUMNS = [
+  { key: 'name',       label: 'Category' },
+  { key: 'total',      label: 'Total' },
+  { key: 'open',       label: 'Open' },
+  { key: 'resolved',   label: 'Resolved' },
+  { key: 'inProgress', label: 'In Progress' },
+  { key: 'escalated',  label: 'Escalated' },
+];
 
 export default function GovernmentSchemeDashboard() {
   const navigate = useNavigate();
   const { dashboard, loading, error } = useMlaDashboard();
+  const pageRef = useRef(null);
 
   const handleViewBeneficiaries = () => navigate(ROUTES.mlaComplaintsDashboard);
   const handleReviewApproval = () => navigate(ROUTES.mlaComplaintsDashboard);
-  const handleDownloadBeneficiaries = () => window.alert('Downloading beneficiary list...');
   const handleViewSchemeReports = () => navigate(ROUTES.mlaAIInsights);
   const handleScheduleApproval = () => navigate(ROUTES.mlaEvents);
   const categoryComplaints = dashboard?.categoryComplaints || {};
@@ -39,7 +49,7 @@ export default function GovernmentSchemeDashboard() {
   return (
     <div>
       <PageHeader subtitle="Track scheme applications and beneficiaries" />
-      <div className="mla-container">
+      <div className="mla-container" ref={pageRef}>
 
       {/* Overall Metrics */}
       <div className="mla-section">
@@ -131,7 +141,7 @@ export default function GovernmentSchemeDashboard() {
       {/* Quick Actions */}
       <div className="mla-section">
         <div className="detail-buttons">
-          <button type="button" className="btn-primary" onClick={handleDownloadBeneficiaries}>Download Beneficiary List</button>
+          <ExportButton filename="government-schemes" pdfRef={pageRef} data={schemes} columns={SCHEME_EXPORT_COLUMNS} />
           <button type="button" className="btn-primary" onClick={handleViewSchemeReports}>View Scheme Reports</button>
           <button type="button" className="btn-primary" onClick={handleScheduleApproval}>Schedule Approval Meeting</button>
         </div>

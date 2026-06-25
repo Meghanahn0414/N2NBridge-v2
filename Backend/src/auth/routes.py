@@ -219,9 +219,11 @@ async def verify_token(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/send-otp")
-@limiter.limit("5/minute")
-async def send_otp(request: Request, otp_request: SendOtpRequest):
+async def send_otp(request: Request):
     """Send OTP to phone or email"""
+    import traceback
+
+    # Step 1: parse body
     try:
         if otp_request.type not in ["phone", "email"]:
             raise HTTPException(status_code=400, detail="Type must be 'phone' or 'email'")
@@ -243,8 +245,43 @@ async def send_otp(request: Request, otp_request: SendOtpRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Send OTP error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        return {"success": False, "step": "json_parse", "error": str(e)}
+
+    # Step 2: extract fields
+    try:
+        contact_type = (body.get("type") or "").strip()
+        value = (body.get("value") or "").strip()
+        logger.info(f"[send-otp] contact_type={contact_type!r} value={value!r}")
+    except Exception as e:
+        return {"success": False, "step": "field_extract", "error": str(e)}
+
+    if contact_type not in ["phone", "email"]:
+        raise HTTPException(status_code=400, detail="Type must be 'phone' or 'email'")
+    if not value:
+        raise HTTPException(status_code=400, detail="Phone number or email required")
+
+    # Step 3: generate and store OTP
+    try:
+        success = OTPService.send_otp(contact_type, value)
+    except Exception as e:
+        return {"success": False, "step": "otp_send", "error": str(e), "tb": traceback.format_exc()}
+
+    if not success:
+        return {"success": False, "step": "otp_send", "error": "OTPService.send_otp returned False"}
+
+    # Step 4: read back OTP for debug response
+    try:
+        normalized_value = OTPService.normalize_contact(contact_type, value)
+        otp_data = OTP_STORAGE.get(normalized_value, {})
+        logger.info(f"[send-otp] success — otp={otp_data.get('otp', '?')}")
+        return {
+            "success": True,
+            "message": f"OTP sent to {contact_type}",
+            "statusCode": 200,
+            "debug_otp": otp_data.get("otp", ""),
+        }
+    except Exception as e:
+        return {"success": False, "step": "otp_read", "error": str(e), "tb": traceback.format_exc()}
 
 
 @router.post("/verify-otp", response_model=OtpResponse)

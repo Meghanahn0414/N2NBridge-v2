@@ -627,6 +627,57 @@ def get_sentiment_trend(months: int = 12) -> dict:
 # Card 6 — Where feedback comes from
 # ---------------------------------------------------------------------------
 
+def get_election_probability(approval_pct) -> dict:
+    """
+    Compute re-election probability scenarios from an approval percentage.
+    Uses a normal-distribution model (Abramowitz & Stegun CDF approximation).
+
+    Moved here from the frontend ExecutiveDashboard so the algorithm lives
+    in exactly one place and is testable server-side.
+    """
+    if approval_pct is None:
+        return {
+            "strongReelection": None,
+            "competitiveRace": None,
+            "atRisk": None,
+            "hasData": False,
+        }
+
+    import math
+
+    def phi(z: float) -> float:
+        """Standard normal CDF — Abramowitz & Stegun §7.1.26 (max |error| < 7.5e-8)."""
+        s = -1 if z < 0 else 1
+        x = abs(z)
+        t2 = 1.0 / (1.0 + 0.3275911 * x)
+        p = t2 * (0.254829592 + t2 * (
+            -0.284496736 + t2 * (
+                1.421413741 + t2 * (
+                    -1.453152027 + t2 * 1.061405429
+                )
+            )
+        ))
+        return 0.5 + s * 0.5 * (1.0 - p * math.exp(-x * x / 2.0))
+
+    # Map approval % → estimated vote-share (heuristic: every 1 pt approval ≈ 0.5 pt vote-share, offset by -5)
+    sigma = 15.0
+    vote_share = max(5.0, min(95.0, 0.5 * approval_pct + 25.0 - 5.0))
+
+    p_strong = (1.0 - phi((55.0 - vote_share) / sigma)) * 100.0   # P(vote_share > 55%)
+    p_loss   = phi((45.0 - vote_share) / sigma)         * 100.0   # P(vote_share < 45%)
+
+    strong_prob   = max(1, round(p_strong))
+    at_risk_prob  = max(1, round(p_loss))
+    comp_prob     = max(1, 100 - strong_prob - at_risk_prob)
+
+    return {
+        "strongReelection": strong_prob,
+        "competitiveRace":  comp_prob,
+        "atRisk":           at_risk_prob,
+        "hasData":          True,
+    }
+
+
 def get_feedback_sources(days: int = 90) -> dict:
     """Count feedback signals from each channel in the given period."""
     db    = MongoDatabase.get_db()

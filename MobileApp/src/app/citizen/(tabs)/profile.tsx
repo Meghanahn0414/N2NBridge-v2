@@ -1,104 +1,136 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  ActivityIndicator, Image, RefreshControl, StatusBar,
+  ActivityIndicator, Image, RefreshControl, StatusBar, Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../../store/authStore";
 import api from "../../../services/api";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Platform } from "react-native";
 import { API_BASE } from "../../../config";
 import { useT } from "../../../i18n/useT";
 
-const realEmail = (e: string | null | undefined) =>
-  e && !e.startsWith("otp-") ? e : "";
+const C = {
+  primary:     "#2B5BD7",
+  primaryDark: "#1B3C8F",
+  bg:          "#F3F5FA",
+  card:        "#FFFFFF",
+  ink:         "#16233C",
+  muted:       "#5A6678",
+  mutedLight:  "#9AA3B5",
+  border:      "#EDF0F6",
+};
 
+const realEmail = (e: string | null | undefined) => (e && !e.startsWith("otp-") ? e : "");
 const toAbsoluteUrl = (url: string | null | undefined) => {
   if (!url) return null;
   if (url.startsWith("http") || url.startsWith("data:")) return url;
   return `${API_BASE}/${url}`;
 };
 
-const C = {
-  primary: "#1D4ED8",
-  primaryDark: "#1E3A8A",
-  bg: "#F0F4FF",
-  card: "#FFFFFF",
-  text: "#1E293B",
-  muted: "#64748B",
-  border: "#F1F5F9",
+type RecentComplaint = {
+  id: string; title?: string; description?: string;
+  status: string; category?: string; categoryId?: string;
+  createdAt?: string;
 };
 
-function DetailRow({ icon, label, value, mono, isLast }: {
-  icon: any; label: string; value: string; mono?: boolean; isLast?: boolean;
-}) {
-  return (
-    <View style={[dr.row, isLast && { borderBottomWidth: 0 }]}>
-      <View style={dr.iconBox}>
-        <Ionicons name={icon} size={16} color={C.primary} />
-      </View>
-      <View style={dr.body}>
-        <Text style={dr.label}>{label}</Text>
-        <Text style={[dr.value, mono && { fontFamily: "monospace", fontSize: 12 }]} numberOfLines={2}>
-          {value}
-        </Text>
-      </View>
-    </View>
-  );
-}
+const statusMeta = (st: string) => {
+  switch ((st || "").toUpperCase()) {
+    case "OPEN": case "NEW":
+      return { color: "#2B5BD7", bg: "#E7EEFF", label: "Open" };
+    case "IN_PROGRESS": case "ASSIGNED": case "ON_HOLD":
+      return { color: "#C9871F", bg: "#FEF3C7", label: "In progress" };
+    case "RESOLVED": case "CLOSED":
+      return { color: "#1E8A5B", bg: "#E6F4EC", label: "Resolved" };
+    default:
+      return { color: C.muted, bg: "#F3F5FA", label: (st || "").replace(/_/g, " ") };
+  }
+};
 
-const dr = StyleSheet.create({
-  row: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: C.border, gap: 12,
-  },
-  iconBox: {
-    width: 30, height: 30, borderRadius: 8,
-    backgroundColor: "#EEF2FF",
-    alignItems: "center", justifyContent: "center",
-  },
-  body: { flex: 1 },
-  label: { fontSize: 11, fontWeight: "600", color: C.muted, marginBottom: 2 },
-  value: { fontSize: 14, fontWeight: "500", color: C.text },
-});
+const getCatIcon = (cat?: string): keyof typeof Ionicons.glyphMap => {
+  const c = (cat || "").toUpperCase();
+  if (c.includes("ROAD") || c.includes("POTHOLE"))   return "construct-outline";
+  if (c.includes("WATER"))                            return "water-outline";
+  if (c.includes("GARBAGE") || c.includes("SANIT"))  return "trash-outline";
+  if (c.includes("ELECTRIC") || c.includes("LIGHT")) return "flash-outline";
+  if (c.includes("PARK"))                             return "leaf-outline";
+  return "document-text-outline";
+};
+
+const getCatStyle = (cat?: string) => {
+  const c = (cat || "").toUpperCase();
+  if (c.includes("ROAD") || c.includes("POTHOLE"))   return { color: "#C9871F", bg: "#FEF3C7" };
+  if (c.includes("WATER"))                            return { color: "#0891B2", bg: "#E0F7FA" };
+  if (c.includes("GARBAGE") || c.includes("SANIT"))  return { color: "#1E8A5B", bg: "#E6F4EC" };
+  if (c.includes("ELECTRIC") || c.includes("LIGHT")) return { color: "#6B4FD8", bg: "#EDEAFB" };
+  if (c.includes("PARK"))                             return { color: "#1E8A5B", bg: "#E6F4EC" };
+  return { color: C.primary, bg: "#E7EEFF" };
+};
+
+const timeAgo = (dateStr?: string) => {
+  if (!dateStr) return "";
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Updated yesterday";
+  if (days < 7)  return `Updated ${days}d ago`;
+  return `Updated ${new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
+};
 
 export default function ProfileScreen() {
   const tr = useT();
   const router = useRouter();
   const { user } = useAuthStore();
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [profile, setProfile]           = useState<any>(null);
+  const [recentComplaints, setRecentComplaints] = useState<RecentComplaint[]>([]);
+  const [statsData, setStatsData]       = useState({ total: 0, resolved: 0 });
+  const [loading, setLoading]           = useState(true);
+  const [refreshing, setRefreshing]     = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [photoError, setPhotoError] = useState(false);
+  const [photoError, setPhotoError]     = useState(false);
 
   const loadData = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const pRes = await api.get(`/api/users/${user.id}`);
+      const [pRes, cRes, sRes] = await Promise.all([
+        api.get(`/api/users/${user.id}`),
+        api.get(`/api/grievances/citizen/${user.id}?page=1`).catch(() => ({ data: [] })),
+        api.get(`/api/grievances/stats/citizen/${user.id}`).catch(() => ({ data: null })),
+      ]);
       const p = pRes.data?.data ?? pRes.data;
       if (p?.profileImage) p.profileImage = toAbsoluteUrl(p.profileImage);
       setPhotoError(false);
       setProfile(p);
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+
+      // Accurate counts from the stats endpoint
+      const s = sRes.data?.data ?? sRes.data;
+      if (s) {
+        const byStatus: Record<string, number> = s.byStatus ?? {};
+        const total    = s.total ?? Object.values(byStatus).reduce((a: number, b: any) => a + (b as number), 0);
+        const resolved = (byStatus.RESOLVED ?? 0) + (byStatus.CLOSED ?? 0);
+        setStatsData({ total, resolved });
+      }
+
+      const c = cRes.data;
+      const list = Array.isArray(c) ? c : (c.items ?? c.results ?? c.data ?? []);
+      setRecentComplaints(list.slice(0, 3).map((g: any) => ({
+        id: g._id || g.id,
+        title: g.title,
+        description: g.description,
+        status: g.status || "NEW",
+        category: g.category,
+        categoryId: g.categoryId,
+        createdAt: g.createdAt || g.created_at,
+      })));
+    } catch { /* silent */ }
+    finally { setLoading(false); setRefreshing(false); }
   }, [user?.id]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
   const handlePhotoUpload = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"], quality: 0.8,
-    });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
     if (result.canceled || !result.assets[0]) return;
-
     const localUri = result.assets[0].uri;
     setProfile((p: any) => ({ ...p, profileImage: localUri }));
     setPhotoError(false);
@@ -115,60 +147,41 @@ export default function ProfileScreen() {
       const { data } = await api.post(`/api/users/${user?.id}/upload-profile-photo`, fd);
       const rawUri = data?.profileImage || data?.data?.profileImage;
       if (rawUri) setProfile((p: any) => ({ ...p, profileImage: toAbsoluteUrl(rawUri) }));
-    } catch {
-      // keep local preview on failure
-    } finally {
-      setUploadingPhoto(false);
-    }
+    } catch { /* keep local preview */ }
+    finally { setUploadingPhoto(false); }
   };
 
   const initials = (profile?.fullName || user?.name || user?.email || "C")
-    .split(" ")
-    .map((w: string) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+    .split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
+
+  const wardLabel  = profile?.wardId ? `Ward ${profile.wardId}` : null;
+  const areaLabel  = profile?.address || null;
+  const locationStr = [areaLabel, wardLabel, "Verified resident"].filter(Boolean).join(" · ");
 
   if (loading) {
-    return (
-      <View style={s.center}>
-        <ActivityIndicator size="large" color={C.primary} />
-      </View>
-    );
+    return <View style={s.center}><ActivityIndicator size="large" color={C.primary} /></View>;
   }
 
-  const wardLabel = profile?.wardId ? `${tr('profile.ward')} ${profile.wardId}` : null;
-  const areaLabel = profile?.address || tr('profile.yourWard');
-  const locationStr = [areaLabel, wardLabel].filter(Boolean).join(" · ");
+  const totalComplaints = statsData.total || profile?.totalComplaints || 0;
+  const resolvedCount   = statsData.resolved || profile?.resolvedComplaints || 0;
+  const supportsCount   = profile?.supportCount ?? profile?.supports ?? 0;
 
   return (
     <View style={s.root}>
       <StatusBar backgroundColor={C.primaryDark} barStyle="light-content" />
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); loadData(); }}
-            colors={[C.primary]}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} colors={[C.primary]} />
         }
       >
-        {/* ── Blue Header ── */}
+        {/* ── Header ── */}
         <View style={s.header}>
-          <TouchableOpacity
-            style={s.cogBtn}
-            onPress={() => router.push("/citizen/settings" as any)}
-          >
+          <TouchableOpacity style={s.cogBtn} onPress={() => router.push("/citizen/settings" as any)}>
             <Ionicons name="settings-outline" size={20} color="rgba(255,255,255,0.85)" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={s.avatarWrap}
-            onPress={handlePhotoUpload}
-            disabled={uploadingPhoto}
-          >
+          <TouchableOpacity style={s.avatarWrap} onPress={handlePhotoUpload} disabled={uploadingPhoto}>
             {uploadingPhoto ? (
               <View style={s.avatarInner}><ActivityIndicator color="#fff" /></View>
             ) : profile?.profileImage && !photoError ? (
@@ -185,50 +198,108 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <Text style={s.name}>{profile?.fullName || user?.name || "Citizen"}</Text>
-          <Text style={s.location}>{locationStr}</Text>
-          <View style={s.verifiedBadge}>
-            <Ionicons name="checkmark-circle" size={12} color="#BFDBFE" />
-            <Text style={s.verifiedText}>{tr('profile.verifiedResident')}</Text>
+          <Text style={s.location} numberOfLines={1}>{locationStr}</Text>
+        </View>
+
+        {/* ── Stats strip ── */}
+        <View style={s.statsStrip}>
+          {[
+            { label: "Reports",  val: totalComplaints },
+            { label: "Resolved", val: resolvedCount },
+            { label: "Supports", val: supportsCount },
+          ].map((item, i, arr) => (
+            <View key={i} style={[s.statItem, i < arr.length - 1 && s.statItemBorder]}>
+              <Text style={s.statVal}>{item.val}</Text>
+              <Text style={s.statLbl}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ── Your reports ── */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Your reports</Text>
+            <TouchableOpacity onPress={() => router.push("/citizen/complaint-list" as any)}>
+              <Text style={s.seeAll}>See all</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={s.card}>
+            {recentComplaints.length === 0 ? (
+              <View style={s.reportsEmpty}>
+                <Text style={s.reportsEmptyText}>No reports filed yet.</Text>
+                <TouchableOpacity onPress={() => router.push("/citizen/new-complaint" as any)}>
+                  <Text style={s.reportsEmptyLink}>File your first complaint →</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              recentComplaints.map((c, idx) => {
+                const sm  = statusMeta(c.status);
+                const cat = getCatStyle(c.categoryId || c.category);
+                const icon = getCatIcon(c.categoryId || c.category);
+                const isLast = idx === recentComplaints.length - 1;
+                return (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={[s.reportRow, isLast && { borderBottomWidth: 0 }]}
+                    onPress={() => router.push(`/citizen/complaint-detail?id=${c.id}` as any)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[s.reportIconBox, { backgroundColor: cat.bg }]}>
+                      <Ionicons name={icon} size={18} color={cat.color} />
+                    </View>
+                    <View style={s.reportBody}>
+                      <Text style={s.reportTitle} numberOfLines={1}>
+                        {c.title || c.description || "Complaint"}
+                      </Text>
+                      <Text style={s.reportTime}>{timeAgo(c.createdAt)}</Text>
+                    </View>
+                    <View style={[s.pill, { backgroundColor: sm.bg }]}>
+                      <Text style={[s.pillText, { color: sm.color }]}>{sm.label}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         </View>
 
-        {/* ── Person details ── */}
-        <View style={s.card}>
-          <View style={s.cardHeader}>
-            <Text style={s.cardTitle}>{tr('profile.personalDetails')}</Text>
+        {/* ── Account details ── */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Personal details</Text>
+            <TouchableOpacity onPress={() => router.push("/citizen/edit-profile" as any)}>
+              <Text style={s.seeAll}>Edit</Text>
+            </TouchableOpacity>
           </View>
-
-          <DetailRow icon="person-outline" label={tr('profile.fullName')}
-            value={profile?.fullName || user?.name || tr('profile.notProvided')} />
-          <DetailRow icon="call-outline" label={tr('profile.phone')}
-            value={profile?.mobile || profile?.phone || tr('profile.notProvided')} />
-          <DetailRow icon="mail-outline" label={tr('profile.email')}
-            value={realEmail(profile?.email) || realEmail(user?.email) || tr('profile.notProvided')} />
-          <DetailRow icon="location-outline" label={tr('profile.address')}
-            value={profile?.address || tr('profile.notProvided')} />
-          <DetailRow icon="map-outline" label={tr('profile.ward')}
-            value={profile?.wardId ? `${tr('profile.ward')} ${profile.wardId}` : tr('profile.notAssigned')} />
-          {profile?.citizenId && (
-            <DetailRow icon="card-outline" label={tr('profile.citizenId')}
-              value={profile.citizenId} mono />
-          )}
-          <DetailRow icon="calendar-outline" label={tr('profile.memberSince')}
-            value={profile?.createdAt
-              ? new Date(profile.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
-              : "—"}
-            isLast />
+          <View style={s.card}>
+            {[
+              { icon: "person-outline"   as const, label: "Full name",   value: profile?.fullName || user?.name || "—" },
+              { icon: "call-outline"     as const, label: "Phone",       value: profile?.mobile || profile?.phone || "—" },
+              { icon: "mail-outline"     as const, label: "Email",       value: realEmail(profile?.email) || realEmail(user?.email) || "—" },
+              { icon: "location-outline" as const, label: "Address",     value: profile?.address || "—" },
+              { icon: "map-outline"      as const, label: "Ward",        value: profile?.wardId ? `Ward ${profile.wardId}` : "—" },
+            ].map((row, idx, arr) => (
+              <View key={row.label} style={[s.detailRow, idx === arr.length - 1 && { borderBottomWidth: 0 }]}>
+                <View style={s.detailIconBox}>
+                  <Ionicons name={row.icon} size={15} color={C.primary} />
+                </View>
+                <View style={s.detailBody}>
+                  <Text style={s.detailLabel}>{row.label}</Text>
+                  <Text style={s.detailValue} numberOfLines={1}>{row.value}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
 
-        {/* ── Quick link to settings ── */}
-        <TouchableOpacity
-          style={s.settingsLink}
-          onPress={() => router.push("/citizen/settings" as any)}
-        >
-          <View style={s.settingsLinkIcon}>
+        {/* ── Settings link ── */}
+        <TouchableOpacity style={s.settingsRow} onPress={() => router.push("/citizen/settings" as any)}>
+          <View style={s.settingsIcon}>
             <Ionicons name="settings-outline" size={18} color={C.primary} />
           </View>
-          <Text style={s.settingsLinkText}>{tr('profile.settingsAccount')}</Text>
-          <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+          <Text style={s.settingsText}>Settings & account</Text>
+          <Ionicons name="chevron-forward" size={18} color={C.mutedLight} />
         </TouchableOpacity>
 
         <Text style={s.version}>Jana Seva CRM v1.0.0</Text>
@@ -239,66 +310,102 @@ export default function ProfileScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root:   { flex: 1, backgroundColor: C.bg },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.bg },
 
   header: {
     backgroundColor: C.primaryDark,
-    paddingTop: 56, paddingBottom: 32,
-    alignItems: "center",
-    position: "relative",
+    paddingTop: 56, paddingBottom: 30,
+    alignItems: "center", position: "relative",
   },
   cogBtn: {
     position: "absolute", top: 56, right: 18,
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.14)",
     alignItems: "center", justifyContent: "center",
   },
   avatarWrap: {
     width: 84, height: 84, borderRadius: 42,
-    borderWidth: 3, borderColor: "rgba(255,255,255,0.35)",
+    borderWidth: 2.5, borderColor: "rgba(255,255,255,0.35)",
     overflow: "hidden", marginBottom: 14,
   },
-  avatarImg: { width: "100%", height: "100%" },
-  avatarInner: {
-    flex: 1, backgroundColor: "#2563EB",
-    alignItems: "center", justifyContent: "center",
+  avatarImg:   { width: "100%", height: "100%" },
+  avatarInner: { flex: 1, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
+  avatarText:  { color: "#fff", fontSize: 30, fontWeight: "700" },
+  name:        { color: "#fff", fontSize: 22, fontWeight: "700", marginBottom: 6 },
+  location:    { color: "rgba(255,255,255,0.65)", fontSize: 12, paddingHorizontal: 32, textAlign: "center" },
+
+  statsStrip: {
+    backgroundColor: C.card, flexDirection: "row",
+    marginHorizontal: 18, marginTop: 14,
+    borderRadius: 16, overflow: "hidden",
+    borderWidth: 1, borderColor: C.border,
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
   },
-  avatarText: { color: "#fff", fontSize: 30, fontWeight: "700" },
-  name: { color: "#fff", fontSize: 22, fontWeight: "700", marginBottom: 5 },
-  location: { color: "#BFDBFE", fontSize: 13, marginBottom: 10 },
-  verifiedBadge: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20,
+  statItem:       { flex: 1, alignItems: "center", paddingVertical: 16 },
+  statItemBorder: { borderRightWidth: 1, borderRightColor: C.border },
+  statVal:        { fontSize: 24, fontWeight: "800", color: C.primary },
+  statLbl:        { fontSize: 11, color: C.muted, marginTop: 3, fontWeight: "600" },
+
+  section: { marginTop: 20, marginHorizontal: 18 },
+  sectionHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginBottom: 12,
   },
-  verifiedText: { color: "#BFDBFE", fontSize: 12, fontWeight: "600" },
+  sectionTitle: { fontSize: 16, fontWeight: "800", color: C.ink },
+  seeAll:       { fontSize: 13, color: C.primary, fontWeight: "600" },
 
   card: {
-    backgroundColor: C.card,
-    marginHorizontal: 16, marginTop: 14,
-    borderRadius: 18, overflow: "hidden",
-    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8,
+    backgroundColor: C.card, borderRadius: 16, overflow: "hidden",
+    borderWidth: 1, borderColor: C.border,
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
   },
-  cardHeader: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12,
+
+  // Your reports
+  reportsEmpty: { paddingVertical: 24, paddingHorizontal: 16, alignItems: "center" },
+  reportsEmptyText: { fontSize: 14, color: C.muted, marginBottom: 6 },
+  reportsEmptyLink: { fontSize: 13, color: C.primary, fontWeight: "600" },
+  reportRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: C.border,
   },
-  cardTitle: { fontSize: 15, fontWeight: "700", color: C.text },
-
-  settingsLink: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: C.card, marginHorizontal: 16, marginTop: 14,
-    paddingHorizontal: 16, paddingVertical: 16,
-    borderRadius: 16,
-    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6,
+  reportIconBox: {
+    width: 38, height: 38, borderRadius: 11,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
-  settingsLinkIcon: {
-    width: 32, height: 32, borderRadius: 8,
-    backgroundColor: "#EEF2FF",
+  reportBody:  { flex: 1 },
+  reportTitle: { fontSize: 14, fontWeight: "600", color: C.ink, marginBottom: 2 },
+  reportTime:  { fontSize: 12, color: C.mutedLight },
+  pill:        { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 },
+  pillText:    { fontSize: 11, fontWeight: "700" },
+
+  // Personal details
+  detailRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: 16, paddingVertical: 13,
+    borderBottomWidth: 1, borderBottomColor: C.border,
+  },
+  detailIconBox: {
+    width: 30, height: 30, borderRadius: 9,
+    backgroundColor: "#E7EEFF",
     alignItems: "center", justifyContent: "center",
   },
-  settingsLinkText: { flex: 1, fontSize: 14, fontWeight: "500", color: C.text },
-  version: { textAlign: "center", color: "#CBD5E1", fontSize: 12, marginTop: 22 },
+  detailBody:  { flex: 1 },
+  detailLabel: { fontSize: 10, fontWeight: "700", color: C.mutedLight, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 2 },
+  detailValue: { fontSize: 14, fontWeight: "500", color: C.ink },
+
+  settingsRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: C.card, marginHorizontal: 18, marginTop: 14,
+    paddingHorizontal: 16, paddingVertical: 16, borderRadius: 16,
+    borderWidth: 1, borderColor: C.border,
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+  },
+  settingsIcon: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: "#E7EEFF", alignItems: "center", justifyContent: "center",
+  },
+  settingsText: { flex: 1, fontSize: 14, fontWeight: "500", color: C.ink },
+  version:      { textAlign: "center", color: C.mutedLight, fontSize: 12, marginTop: 22 },
 });

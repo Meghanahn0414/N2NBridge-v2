@@ -34,14 +34,13 @@ export default function LandingPage() {
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowLoginOptions(false);
-                  window.open("http://localhost:8081", "_blank");
+                  window.open("/citizen/", "_blank");
                 }}
               >
                 <div className="login-option-icon notranslate">👤</div>
                 <h3>Citizen</h3>
-                <p>Login as a citizen</p>
+                <p>Login as a Citizen</p>
               </button>
-              
               <button
                 type="button"
                 className="login-option-card admin"

@@ -30,6 +30,11 @@ export default function OnboardingScreen() {
 
   async function finish() {
     await storage.setItem("onboarding_done", "1");
+    router.replace("/citizen" as any);
+  }
+
+  async function skipToSignIn() {
+    await storage.setItem("onboarding_done", "1");
     router.replace("/");
   }
 
@@ -63,7 +68,7 @@ export default function OnboardingScreen() {
             <TouchableOpacity style={s.btnBlue} onPress={goNext}>
               <Text style={s.btnBlueText}>Get started →</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={finish} style={s.centerLink}>
+            <TouchableOpacity onPress={skipToSignIn} style={s.centerLink}>
               <Text style={s.grayLink}>Have an account? <Text style={s.blueLink}>Sign in</Text></Text>
             </TouchableOpacity>
           </View>
@@ -126,7 +131,7 @@ export default function OnboardingScreen() {
             <TouchableOpacity style={s.btnBlue} onPress={goNext}>
               <Text style={s.btnBlueText}>Create account</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={finish} style={s.centerLink}>
+            <TouchableOpacity onPress={skipToSignIn} style={s.centerLink}>
               <Text style={s.signInPlain}>Sign in</Text>
             </TouchableOpacity>
           </View>

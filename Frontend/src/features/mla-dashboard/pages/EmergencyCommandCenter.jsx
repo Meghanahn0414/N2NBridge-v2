@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/EmergencyCommandCenter.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
+import ExportButton from '../../../components/ExportButton';
 
 export default function EmergencyCommandCenter() {
   const navigate = useNavigate();
+  const pageRef = useRef(null);
   const [activeTab, setActiveTab] = useState('all');
   const { dashboard } = useMlaDashboard();
 
@@ -61,7 +63,7 @@ export default function EmergencyCommandCenter() {
   return (
     <div>
       <PageHeader subtitle="Emergency response and coordination" />
-      <div className="mla-container">
+      <div className="mla-container" ref={pageRef}>
 
       <div className="mla-section">
         <div className="critical-alert-banner">
@@ -143,6 +145,18 @@ export default function EmergencyCommandCenter() {
           <button type="button" className="btn-danger" onClick={handleSendEmergencyBroadcast}>📢 Send Emergency Broadcast</button>
           <button type="button" className="btn-primary" onClick={handleCallMeeting}>📞 Call Emergency Meeting</button>
           <button type="button" className="btn-primary" onClick={handleViewResponseLogs}>📋 View Response Logs</button>
+          <ExportButton
+            filename="emergency-alerts"
+            pdfRef={pageRef}
+            data={alerts}
+            columns={[
+              { key: 'type',     label: 'Alert Type' },
+              { key: 'ward',     label: 'Location' },
+              { key: 'priority', label: 'Priority' },
+              { key: 'status',   label: 'Status' },
+              { key: 'time',     label: 'Time' },
+            ]}
+          />
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity,
 import { router } from 'expo-router';
 import api from '../../services/api';
 import { useT } from '../../i18n/useT';
+import { useAuthStore } from '../../store/authStore';
 
 const C = {
   primary: '#1D4ED8',
@@ -38,9 +39,12 @@ const EVENT_ICONS: Record<string, string> = {
 
 export default function Events() {
   const tr = useT();
+  const user = useAuthStore((s) => s.user);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [registering, setRegistering] = useState<string | null>(null); // tracks which event is in-flight
+  const [registeredIds, setRegisteredIds] = useState<Set<string>>(new Set()); // events already registered
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -67,6 +71,29 @@ export default function Events() {
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
   const onRefresh = () => { setRefreshing(true); fetchEvents(); };
 
+  const handleRegister = async (eventId: string) => {
+    if (!user?.id) {
+      Alert.alert("Error", "Please log in again to register.");
+      return;
+    }
+    setRegistering(eventId);
+    try {
+      const res = await api.post(`/api/events/${eventId}/register`, { citizenId: user.id });
+      const alreadyHad = res?.data?.message === "Already registered";
+      // Mark as registered so the button disables
+      setRegisteredIds((prev) => new Set(prev).add(eventId));
+      Alert.alert(
+        alreadyHad ? "Already Registered" : "Registered!",
+        alreadyHad ? "You have already registered for this event." : "You have successfully registered for this event.",
+      );
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || "Failed to register. Try again.";
+      Alert.alert("Error", String(msg));
+    } finally {
+      setRegistering(null);
+    }
+  };
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return tr('events.dateTbd');
     return new Date(dateStr).toLocaleDateString('en-IN', {
@@ -81,16 +108,6 @@ export default function Events() {
     const icon = EVENT_ICONS[item.type?.toUpperCase() ?? ''] ?? EVENT_ICONS.DEFAULT;
     const upcoming = isUpcoming(dateStr);
     const displayTitle = item.eventName || item.title || 'Untitled Event';
-
-    const handleRegister = async (eventId: string) => {
-      try {
-        await api.post(`/api/events/${eventId}/register`, {});
-        Alert.alert("Registered!", "You have successfully registered for this event.");
-      } catch (err: any) {
-        const msg = err?.response?.data?.detail || "Failed to register. Try again.";
-        Alert.alert("Error", String(msg));
-      }
-    };
 
     return (
       <View style={[s.card, !upcoming && s.cardPast]}>
@@ -114,6 +131,24 @@ export default function Events() {
             <View style={s.statusBadge}>
               <Text style={s.statusText}>{item.status}</Text>
             </View>
+          )}
+          {upcoming && (
+            <TouchableOpacity
+              style={[
+                s.registerBtn,
+                (registering === item.id || registeredIds.has(item.id)) && s.registerBtnDone,
+              ]}
+              onPress={() => handleRegister(item.id)}
+              disabled={registering === item.id || registeredIds.has(item.id)}
+            >
+              <Text style={s.registerBtnText}>
+                {registering === item.id
+                  ? 'Registering…'
+                  : registeredIds.has(item.id)
+                  ? '✓ Registered'
+                  : 'Register'}
+              </Text>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -198,6 +233,9 @@ const s = StyleSheet.create({
   registerBtn: {
     backgroundColor: "#1D4ED8", borderRadius: 8,
     paddingVertical: 10, alignItems: "center", marginTop: 10,
+  },
+  registerBtnDone: {
+    backgroundColor: "#16A34A", // green when registered
   },
   registerBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });

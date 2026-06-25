@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "../../../shared/services/api";
 import MIcon from "../../../components/MIcon";
+import ExportButton from "../../../components/ExportButton";
 
 function MS({ children, style }) {
   return <MIcon name={children} style={style} />;
@@ -105,6 +106,7 @@ function SentimentMixChart({ points }) {
 
 export default function CitizenSentimentDashboard() {
   const [period, setPeriod] = useState("12M");
+  const pageRef = useRef(null);
   const days = PERIOD_DAYS[period];
   const { data, loading } = usePopularityData(days);
   const pg = { background: "#F3F5FA", minHeight: "100vh", fontFamily: "'Hanken Grotesk', sans-serif" };
@@ -137,17 +139,36 @@ export default function CitizenSentimentDashboard() {
           <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>How residents feel about your work</div>
           <h1 style={{ fontFamily: "'Newsreader','Noto Sans Kannada',serif", fontSize: "clamp(16px,2.2vw,26px)", fontWeight: 400, color: "#16233C", margin: 0, letterSpacing: "-.01em", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Popularity</h1>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", border: "1px solid #E1E6F0", borderRadius: 13, padding: 5 }}>
-          {["3M", "6M", "12M", "All"].map(p => (
-            <button key={p} onClick={() => setPeriod(p)}
-              style={{ font: `${period === p ? "700" : "600"} 13px 'Hanken Grotesk'`, color: period === p ? "#fff" : "#7A839A", background: period === p ? "#2B5BD7" : "transparent", border: "none", borderRadius: 9, padding: "8px 14px", cursor: "pointer" }}>
-              {p}
-            </button>
-          ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", border: "1px solid #E1E6F0", borderRadius: 13, padding: 5 }}>
+            {["3M", "6M", "12M", "All"].map(p => (
+              <button key={p} onClick={() => setPeriod(p)}
+                style={{ font: `${period === p ? "700" : "600"} 13px 'Hanken Grotesk'`, color: period === p ? "#fff" : "#7A839A", background: period === p ? "#2B5BD7" : "transparent", border: "none", borderRadius: 9, padding: "8px 14px", cursor: "pointer" }}>
+                {p}
+              </button>
+            ))}
+          </div>
+          <ExportButton
+            filename={`citizen-sentiment-${period}`}
+            pdfRef={pageRef}
+            data={[
+              { metric: 'Approval Rating',  value: curApproval != null ? `${curApproval}%` : '—' },
+              { metric: 'Period Low',       value: moLow  != null ? `${moLow}%`  : '—' },
+              { metric: 'Period High',      value: moHigh != null ? `${moHigh}%` : '—' },
+              { metric: 'Net Score',        value: netScore != null ? String(netScore) : '—' },
+              { metric: 'Positive',         value: posPct != null ? `${posPct}%` : '—' },
+              { metric: 'Neutral',          value: neuPct != null ? `${neuPct}%` : '—' },
+              { metric: 'Negative',         value: negPct != null ? `${negPct}%` : '—' },
+            ]}
+            columns={[
+              { key: 'metric', label: 'Metric' },
+              { key: 'value',  label: 'Value' },
+            ]}
+          />
         </div>
       </header>
 
-      <div style={{ ...pg, padding: "28px 34px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
+      <div ref={pageRef} style={{ ...pg, padding: "28px 34px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
 
         {/* Row 1: Approval over time + Net sentiment score */}
         <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 20 }}>

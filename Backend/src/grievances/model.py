@@ -110,6 +110,7 @@ class GrievanceResponse(BaseModel):
     status: Optional[str] = "NEW"
     escalationLevel: Optional[int] = 0
     assignedOfficerId: Optional[str] = None
+    assignedOfficerName: Optional[str] = None
     attachments: Optional[List[AttachmentSchema]] = []
     history: Optional[List[HistoryEntry]] = []
     feedback: Optional[FeedbackSchema] = None

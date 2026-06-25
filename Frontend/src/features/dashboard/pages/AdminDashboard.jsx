@@ -294,7 +294,6 @@ export default function AdminDashboard() {
                 <th>Assigned</th>
                 <th>Completed</th>
                 <th>Resolution Time</th>
-                <th>Rating</th>
               </tr>
             </thead>
             <tbody>
@@ -313,12 +312,11 @@ export default function AdminDashboard() {
                     <td>{member.assigned || 0}</td>
                     <td>{member.completed || 0}</td>
                     <td>{member.time || '0 days'}</td>
-                    <td><span className="stars">★ {member.rating || '0.0'}</span></td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px 0' }}>No team data available</td>
+                  <td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px 0' }}>No team data available</td>
                 </tr>
               )}
             </tbody>
