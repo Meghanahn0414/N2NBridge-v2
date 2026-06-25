@@ -39,9 +39,8 @@ export default function LandingPage() {
               >
                 <div className="login-option-icon notranslate">👤</div>
                 <h3>Citizen</h3>
-                <p>Login as a citizen</p>
+                <p>Login as a Citizen</p>
               </button>
-              
               <button
                 type="button"
                 className="login-option-card admin"

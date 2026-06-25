@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
-import Logo from "./Logo";
 import { ROUTES } from "./app/routes/RouteConstants";
 import { getAuthRole, getAuthUser, clearAuth } from "./services/authStorage";
 import api from "./shared/services/api";
@@ -217,7 +216,6 @@ export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
       <aside className={`sidebar${collapsed ? " collapsed" : ""}${mobileOpen ? " mobile-open" : ""}`}>
         {/* ── TOP BRAND ── */}
         <div className="sidebar-brand">
-          {!collapsed && <Logo />}
           <button className="sidebar-collapse-toggle" onClick={toggleCollapse} title="Toggle sidebar">
             {collapsed ? <RiMenuLine size={18} /> : <RiArrowLeftSLine size={20} />}
           </button>

@@ -15,7 +15,6 @@ import PublicRoute from "./PublicRoute";
 import RoleRoute from "./RoleRoute";
 import { ROUTES } from "./RouteConstants";
 import LandingPage from "../../landing/LandingPage";
-import Login from "../../features/auth/Login";
 import CitizenDashboard from "../../pages/citizen/CitizenDashboard";
 import ProfileCreation from "../../pages/citizen/ProfileCreation";
 // Admin page imports
@@ -127,7 +126,6 @@ function AppRoutesContent() {
           <Route path="/" element={<LandingPage />} />
           <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/admin-login" replace /></PublicRoute>} />
           <Route path="/admin-login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
-          <Route path={ROUTES.citizenLogin} element={<PublicRoute><Login /></PublicRoute>} />
           <Route path={ROUTES.otp} element={<PublicRoute><OtpVerify /></PublicRoute>} />
           <Route path={ROUTES.adminSignup} element={<PublicRoute><AdminSignup /></PublicRoute>} />
           <Route path="/profile-creation" element={<ProfileCreation />} />

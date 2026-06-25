@@ -32,7 +32,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-10">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-200/40">
-        <h1 className="mb-6 text-center text-3xl font-semibold text-slate-900">Login</h1>
+        <h1 className="mb-6 text-center text-3xl font-semibold text-slate-900">Citizen Login</h1>
 
         <div className="mb-4 flex items-center justify-center gap-3 text-sm text-slate-700">
           <label className="flex items-center gap-2">
@@ -81,13 +81,13 @@ export default function Login() {
         </button>
 
         <div className="mt-5 text-center text-sm text-slate-600">
-          New admin?{" "}
+          Not a citizen?{" "}
           <button
             type="button"
-            onClick={() => navigate("/admin-signup")}
+            onClick={() => navigate("/admin-login")}
             className="font-semibold text-indigo-700 underline underline-offset-2"
           >
-            Sign up here
+            Staff login
           </button>
         </div>
       </div>
