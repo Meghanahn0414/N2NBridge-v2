@@ -23,7 +23,8 @@
     "web": {
       "output": "single",
       "favicon": "./assets/images/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "baseUrl": "/citizen"
     },
     "plugins": [
       "expo-router",
