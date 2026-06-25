@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/TeamPerformanceDashboard.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
+import ExportButton from '../../../components/ExportButton';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
 export default function TeamPerformanceDashboard() {
   const navigate = useNavigate();
+  const pageRef = useRef(null);
   const { dashboard } = useMlaDashboard();
 
   const teamData = dashboard?.teamPerformance || [];
@@ -33,9 +35,8 @@ export default function TeamPerformanceDashboard() {
     .slice(0, 4)
     .map((m, idx) => ({ rank: idx + 1, name: m.name || 'Officer', resolved: m.completed || 0, rating: m.rating || '0.0', wards: m.role || 'N/A' }));
 
-  const averageRating = teamData.length
-    ? (teamData.reduce((sum, m) => sum + Number(m.rating || 0), 0) / teamData.length).toFixed(1)
-    : '0.0';
+  // averageRating is now computed server-side (DashboardService.get_team_summary)
+  const averageRating = dashboard?.teamSummary?.averageRating ?? '0.0';
 
   const poorPerformance = teamData.slice(3, 5).map((m) => ({
     name: m.name || 'No data',
@@ -49,7 +50,7 @@ export default function TeamPerformanceDashboard() {
   return (
     <div>
       <PageHeader subtitle="Monitor staff performance and take action" />
-      <div className="mla-container">
+      <div className="mla-container" ref={pageRef}>
 
       <div className="mla-section">
         <div className="team-summary-grid">
@@ -170,7 +171,24 @@ export default function TeamPerformanceDashboard() {
         <div className="detail-buttons">
           <button type="button" className="btn-primary" onClick={handleScheduleMeeting}>Schedule Meeting</button>
           <button type="button" className="btn-primary" onClick={handleViewAnalytics}>View Detailed Analytics</button>
-          <button type="button" className="btn-primary" onClick={handleSendReport}>Send Performance Report</button>
+          <ExportButton
+            filename="team-performance"
+            pdfRef={pageRef}
+            data={teamData.map(m => ({
+              name: m.name || 'Unknown',
+              role: m.role || 'Field Officer',
+              assigned: m.assigned || 0,
+              completed: m.completed || 0,
+              rating: m.rating || '0.0',
+            }))}
+            columns={[
+              { key: 'name',      label: 'Name' },
+              { key: 'role',      label: 'Role' },
+              { key: 'assigned',  label: 'Assigned' },
+              { key: 'completed', label: 'Completed' },
+              { key: 'rating',    label: 'Rating' },
+            ]}
+          />
         </div>
       </div>
     </div>

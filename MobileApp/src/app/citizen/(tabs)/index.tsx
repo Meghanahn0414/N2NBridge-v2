@@ -1,75 +1,75 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, ActivityIndicator, StatusBar,
+  RefreshControl, ActivityIndicator, StatusBar, Alert, Image,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import api from "../../../services/api";
 import { useAuthStore } from "../../../store/authStore";
 import { useT } from "../../../i18n/useT";
+import { API_BASE } from "../../../config";
 
-const C = {
-  primary: "#1D4ED8",
-  primaryDark: "#1E3A8A",
-  bg: "#F0F4FF",
-  card: "#FFFFFF",
-  text: "#1E293B",
-  muted: "#64748B",
-  open: "#3B82F6",
-  inProgress: "#F59E0B",
-  resolved: "#10B981",
-  error: "#DC2626",
+const toAbsoluteUrl = (url: string | null | undefined) => {
+  if (!url) return null;
+  if (url.startsWith("http") || url.startsWith("data:")) return url;
+  return `${API_BASE}/${url}`;
 };
 
-type Stats = { open: number; in_progress: number; resolved: number };
+const C = {
+  primary:      "#2B5BD7",
+  primaryDark:  "#1B3C8F",
+  bg:           "#F3F5FA",
+  card:         "#FFFFFF",
+  ink:          "#16233C",
+  muted:        "#5A6678",
+  mutedLight:   "#9AA3B5",
+  border:       "#EDF0F6",
+  progressBg:   "#FFF3E0",
+  progressColor:"#C9871F",
+  resolvedBg:   "#E6F4EC",
+  resolvedColor:"#1E8A5B",
+  newBg:        "#E7EEFF",
+  newColor:     "#2B5BD7",
+};
+
 type Complaint = {
   id: string; title?: string; description: string;
-  status: string; priority: string; createdAt?: string; created_at?: string;
-  categoryId?: string; category?: string;
+  status: string; category?: string; categoryId?: string;
+  createdAt?: string; created_at?: string;
+};
+type Announcement = {
+  id: string; title?: string; message?: string; createdAt?: string;
 };
 
 export default function CitizenDashboard() {
   const tr = useT();
   const { user } = useAuthStore();
-  const [stats, setStats] = useState<Stats>({ open: 0, in_progress: 0, resolved: 0 });
-  const [recent, setRecent] = useState<Complaint[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [recent, setRecent]       = useState<Complaint[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [profile, setProfile]     = useState<any>(null);
+  const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-
   const getGreeting = () => {
     const h = new Date().getHours();
-    if (h >= 5  && h < 12) return tr('greeting.morning');
-    if (h >= 12 && h < 17) return tr('greeting.afternoon');
-    if (h >= 17 && h < 21) return tr('greeting.evening');
-    return tr('greeting.night');
+    if (h >= 5  && h < 12) return tr("greeting.morning");
+    if (h >= 12 && h < 17) return tr("greeting.afternoon");
+    if (h >= 17 && h < 21) return tr("greeting.evening");
+    return tr("greeting.night");
   };
-
-  const QUICK_ACTIONS = [
-    { label: tr('home.fileComplaint'), icon: "document-text-outline" as const, route: "/citizen/new-complaint", color: C.primary, bg: "#EEF2FF" },
-    { label: tr('home.myActivity'),    icon: "list-outline" as const,          route: "/citizen/complaints",    color: "#7C3AED",  bg: "#F5F3FF" },
-    { label: tr('home.events'),        icon: "calendar-outline" as const,       route: "/citizen/events",        color: "#0891B2",  bg: "#ECFEFF" },
-    { label: tr('home.emergency'),     icon: "warning-outline" as const,        route: "/citizen/sos",           color: "#DC2626",  bg: "#FEF2F2" },
-  ];
 
   const fetchData = useCallback(async () => {
     try {
-      const [sRes, cRes, nRes] = await Promise.all([
-        api.get(`/api/grievances/stats/citizen/${user?.id}`),
+      const [cRes, nRes, pRes] = await Promise.all([
         api.get(`/api/grievances/citizen/${user?.id}?page=1`),
         api.get(`/api/notifications?page=1&per_page=20`).catch(() => ({ data: [] })),
+        user?.id ? api.get(`/api/users/${user.id}`).catch(() => ({ data: null })) : Promise.resolve({ data: null }),
       ]);
 
-      const s = sRes.data?.data ?? sRes.data;
-      const byStatus: Record<string, number> = s.byStatus ?? {};
-      setStats({
-        open:        byStatus.NEW ?? s.open ?? 0,
-        in_progress: (byStatus.IN_PROGRESS ?? 0) + (byStatus.ASSIGNED ?? 0) + (byStatus.ON_HOLD ?? 0),
-        resolved:    (byStatus.RESOLVED ?? 0) + (byStatus.CLOSED ?? 0),
-      });
-
+      // Recent complaints
       const c = cRes.data;
       const list = Array.isArray(c) ? c : (c.items ?? c.results ?? c.data ?? []);
       setRecent(list.slice(0, 4).map((g: any) => ({
@@ -77,16 +77,33 @@ export default function CitizenDashboard() {
         title: g.title,
         description: g.description || "",
         status: g.status || "NEW",
-        priority: g.priority || "MEDIUM",
-        createdAt: g.createdAt || g.created_at,
-        categoryId: g.categoryId,
         category: g.category,
+        categoryId: g.categoryId,
+        createdAt: g.createdAt || g.created_at,
       })));
 
+      // Notifications — split unread count vs announcements
       const nList = Array.isArray(nRes.data) ? nRes.data : (nRes.data?.items ?? nRes.data?.data ?? []);
       setUnreadCount(nList.filter((n: any) => !n.isRead && !n.read).length);
+      const ann = nList
+        .filter((n: any) => ["CAMPAIGN", "EVENT", "GENERAL"].includes((n.type || "").toUpperCase()))
+        .slice(0, 2)
+        .map((n: any) => ({
+          id: n._id || n.id,
+          title: n.title,
+          message: n.message || n.body,
+          createdAt: n.createdAt || n.created_at,
+        }));
+      setAnnouncements(ann);
+
+      // Profile (ward info + photo)
+      if (pRes.data) {
+        const p = pRes.data?.data ?? pRes.data;
+        if (p?.profileImage) p.profileImage = toAbsoluteUrl(p.profileImage);
+        setProfile(p);
+      }
     } catch {
-      // silent — show empty states
+      // silent
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -96,53 +113,77 @@ export default function CitizenDashboard() {
   useEffect(() => { fetchData(); }, [fetchData]);
   const onRefresh = () => { setRefreshing(true); fetchData(); };
 
-  const statusColor = (st: string) => {
+  const statusMeta = (st: string) => {
     switch ((st || "").toUpperCase()) {
-      case "OPEN": case "NEW": return C.open;
-      case "IN_PROGRESS": case "ASSIGNED": case "ON_HOLD": return C.inProgress;
-      case "RESOLVED": case "CLOSED": return C.resolved;
-      default: return C.muted;
+      case "OPEN": case "NEW":
+        return { color: C.newColor, bg: C.newBg, label: "Open" };
+      case "IN_PROGRESS": case "ASSIGNED": case "ON_HOLD":
+        return { color: C.progressColor, bg: C.progressBg, label: "In progress" };
+      case "RESOLVED": case "CLOSED":
+        return { color: C.resolvedColor, bg: C.resolvedBg, label: "Resolved" };
+      default:
+        return { color: C.muted, bg: "#F3F5FA", label: (st || "").replace(/_/g, " ") };
     }
   };
 
-  const statusLabel = (st: string) => {
-    switch ((st || "").toUpperCase()) {
-      case "NEW": return tr('complaints.open');
-      case "IN_PROGRESS": return tr('complaints.inProgress');
-      case "ASSIGNED": return tr('complaints.assigned');
-      case "RESOLVED": return tr('complaints.resolved');
-      case "CLOSED": return tr('complaints.closed');
-      default: return (st || "").replace(/_/g, " ");
-    }
+  const getCatIcon = (cat?: string): keyof typeof Ionicons.glyphMap => {
+    const c = (cat || "").toUpperCase();
+    if (c.includes("ROAD") || c.includes("POTHOLE"))   return "construct-outline";
+    if (c.includes("WATER"))                            return "water-outline";
+    if (c.includes("GARBAGE") || c.includes("WASTE") || c.includes("SANIT")) return "trash-outline";
+    if (c.includes("ELECTRIC") || c.includes("LIGHT")) return "flash-outline";
+    if (c.includes("PARK"))                             return "leaf-outline";
+    return "document-text-outline";
+  };
+
+  const getCatColor = (cat?: string) => {
+    const c = (cat || "").toUpperCase();
+    if (c.includes("ROAD") || c.includes("POTHOLE"))   return { color: "#C9871F", bg: "#FEF3C7" };
+    if (c.includes("WATER"))                            return { color: "#0891B2", bg: "#E0F7FA" };
+    if (c.includes("GARBAGE") || c.includes("SANIT"))  return { color: "#1E8A5B", bg: "#E6F4EC" };
+    if (c.includes("ELECTRIC") || c.includes("LIGHT")) return { color: "#C9871F", bg: "#FEF3C7" };
+    if (c.includes("PARK"))                             return { color: "#1E8A5B", bg: "#E6F4EC" };
+    return { color: C.primary, bg: C.newBg };
   };
 
   const timeAgo = (dateStr?: string) => {
-    if (!dateStr) return tr('common.recently');
+    if (!dateStr) return "Recently";
     const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-    if (days === 0) return tr('common.today');
-    if (days === 1) return `1 ${tr('common.daysAgo')}`;
-    if (days < 7)  return `${days} ${tr('common.daysAgo')}`;
+    const hrs  = Math.floor((Date.now() - new Date(dateStr).getTime()) / 3600000);
+    if (hrs < 24)  return `${hrs}h ago`;
+    if (days === 1) return "1d ago";
+    if (days < 7)  return `${days}d ago`;
     return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   };
 
-  const getCatIcon = (cat?: string) => {
-    const c = (cat || "").toUpperCase();
-    if (c.includes("ROAD"))    return "🛣️";
-    if (c.includes("WATER"))   return "💧";
-    if (c.includes("GARBAGE") || c.includes("WASTE")) return "🗑️";
-    if (c.includes("ELECTRIC")) return "⚡";
-    if (c.includes("NOISE"))   return "🔊";
-    return "📋";
+  const firstName = (user?.name || "Citizen").split(" ")[0];
+  const wardLabel  = profile?.wardId ? `Ward ${profile.wardId}` : null;
+  const areaLabel  = profile?.address || null;
+  const locationStr = [areaLabel, wardLabel].filter(Boolean).join(" · ");
+
+  const handleCameraPress = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Allow photo access to attach a photo to your complaint.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"], quality: 0.7, allowsEditing: false,
+    }).catch(() =>
+      // fallback to gallery if camera not available (e.g. simulator)
+      ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.7 })
+    );
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      router.push(`/citizen/new-complaint?photoUri=${encodeURIComponent(uri)}` as any);
+    } else {
+      // No photo taken — just go to form
+      router.push("/citizen/new-complaint" as any);
+    }
   };
 
-  const firstName = (user?.name || "Citizen").split(" ")[0];
-
   if (loading) {
-    return (
-      <View style={s.centered}>
-        <ActivityIndicator size="large" color={C.primary} />
-      </View>
-    );
+    return <View style={s.centered}><ActivityIndicator size="large" color={C.primary} /></View>;
   }
 
   return (
@@ -154,24 +195,34 @@ export default function CitizenDashboard() {
         <View style={s.headerLeft}>
           <Text style={s.greeting}>{getGreeting()}</Text>
           <Text style={s.userName}>{firstName}</Text>
+          {locationStr ? (
+            <View style={s.locationPill}>
+              <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.75)" />
+              <Text style={s.locationText}>{locationStr}</Text>
+              <Ionicons name="chevron-down" size={11} color="rgba(255,255,255,0.55)" />
+            </View>
+          ) : null}
         </View>
         <View style={s.headerRight}>
           <TouchableOpacity
             style={s.iconBtn}
             onPress={() => router.push("/citizen/notification" as any)}
           >
-            <Ionicons name="notifications-outline" size={22} color="#BFDBFE" />
-            {unreadCount > 0 && (
-              <View style={s.notifBadge}>
-                <Text style={s.notifBadgeText}>{unreadCount > 9 ? "9+" : String(unreadCount)}</Text>
-              </View>
-            )}
+            <Ionicons name="notifications-outline" size={22} color="rgba(255,255,255,0.85)" />
+            {unreadCount > 0 && <View style={s.notifDot} />}
           </TouchableOpacity>
           <TouchableOpacity
-            style={s.avatarBtn}
+            style={s.avatar}
             onPress={() => router.push("/citizen/profile" as any)}
           >
-            <Text style={s.avatarText}>{firstName[0].toUpperCase()}</Text>
+            {profile?.profileImage ? (
+              <Image
+                source={{ uri: profile.profileImage }}
+                style={s.avatarImg}
+              />
+            ) : (
+              <Text style={s.avatarText}>{firstName[0].toUpperCase()}</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -182,85 +233,92 @@ export default function CitizenDashboard() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Stats row ── */}
-        <View style={s.statsRow}>
-          {[
-            { label: tr('home.open'),        val: stats.open,        color: C.open },
-            { label: tr('home.inProgress'),  val: stats.in_progress, color: C.inProgress },
-            { label: tr('home.resolved'),    val: stats.resolved,    color: C.resolved },
-          ].map((item) => (
-            <View key={item.label} style={[s.statCard, { borderTopColor: item.color }]}>
-              <Text style={[s.statNum, { color: item.color }]}>{item.val}</Text>
-              <Text style={s.statLabel}>{item.label}</Text>
-            </View>
-          ))}
-        </View>
+        {/* ── Report CTA ── */}
+        <TouchableOpacity
+          style={s.ctaCard}
+          onPress={() => router.push("/citizen/new-complaint" as any)}
+          activeOpacity={0.85}
+        >
+          <View style={s.ctaLeft}>
+            <Text style={s.ctaTitle}>Report an issue</Text>
+            <Text style={s.ctaSub}>Photo + location in 30 seconds</Text>
+          </View>
+          <TouchableOpacity style={s.ctaIconBox} onPress={handleCameraPress} activeOpacity={0.75}>
+            <Ionicons name="camera-outline" size={26} color="#fff" />
+          </TouchableOpacity>
+        </TouchableOpacity>
 
-        {/* ── Quick Actions ── */}
-        <Text style={s.sectionTitle}>{tr('home.quickActions')}</Text>
-        <View style={s.actionsGrid}>
-          {QUICK_ACTIONS.map((a) => (
-            <TouchableOpacity
-              key={a.label}
-              style={[s.actionCard, { backgroundColor: a.bg }]}
-              onPress={() => router.push(a.route as any)}
-              activeOpacity={0.75}
-            >
-              <View style={[s.actionIconCircle, { backgroundColor: `${a.color}18` }]}>
-                <Ionicons name={a.icon} size={24} color={a.color} />
-              </View>
-              <Text style={[s.actionLabel, { color: a.color }]}>{a.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* ── Recent reports ── */}
+        {/* ── Near you ── */}
         <View style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>{tr('home.recentReports')}</Text>
-          <TouchableOpacity onPress={() => router.push("/citizen/complaints" as any)}>
-            <Text style={s.seeAll}>{tr('home.seeAll')}</Text>
+          <Text style={s.sectionTitle}>Near you</Text>
+          <TouchableOpacity onPress={() => router.push("/citizen/complaint-list" as any)}>
+            <Text style={s.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
 
         {recent.length === 0 ? (
           <View style={s.emptyCard}>
-            <Text style={s.emptyIcon}>📭</Text>
-            <Text style={s.emptyTitle}>{tr('home.noReportsYet')}</Text>
-            <Text style={s.emptyBody}>{tr('home.tapToFile')}</Text>
+            <View style={s.emptyIconBox}>
+              <Ionicons name="inbox-outline" size={44} color={C.mutedLight} />
+            </View>
+            <Text style={s.emptyTitle}>No reports yet</Text>
+            <Text style={s.emptyBody}>Tap "Report an issue" to submit your first complaint.</Text>
           </View>
         ) : (
-          <View style={s.reportsCard}>
-            {recent.map((c, idx) => {
-              const sc = statusColor(c.status);
-              const isLast = idx === recent.length - 1;
-              return (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[s.reportRow, isLast && { borderBottomWidth: 0 }]}
-                  onPress={() => router.push(`/citizen/complaint-detail?id=${c.id}` as any)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[s.reportIconBox, { backgroundColor: `${sc}15` }]}>
-                    <Text style={{ fontSize: 18 }}>{getCatIcon(c.categoryId || c.category)}</Text>
+          recent.map((c) => {
+            const sm  = statusMeta(c.status);
+            const cat = getCatColor(c.categoryId || c.category);
+            const icon = getCatIcon(c.categoryId || c.category);
+            return (
+              <TouchableOpacity
+                key={c.id}
+                style={s.nearCard}
+                onPress={() => router.push(`/citizen/complaint-detail?id=${c.id}` as any)}
+                activeOpacity={0.78}
+              >
+                {/* Photo placeholder */}
+                <View style={s.photoPlaceholder}>
+                  <View style={[s.photoIcon, { backgroundColor: cat.bg }]}>
+                    <Ionicons name={icon} size={28} color={cat.color} />
                   </View>
-                  <View style={s.reportBody}>
-                    <Text style={s.reportTitle} numberOfLines={1}>
-                      {c.title || c.description || "Complaint"}
-                    </Text>
-                    <Text style={s.reportTime}>{timeAgo(c.createdAt)}</Text>
+                  <View style={[s.statusBadge, { backgroundColor: sm.bg }]}>
+                    <Text style={[s.statusBadgeText, { color: sm.color }]}>{sm.label}</Text>
                   </View>
-                  <View style={[s.statusPill, { backgroundColor: `${sc}18` }]}>
-                    <Text style={[s.statusPillText, { color: sc }]}>
-                      {statusLabel(c.status)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                </View>
+                {/* Info */}
+                <View style={s.nearCardBody}>
+                  <Text style={s.nearCardTitle} numberOfLines={2}>
+                    {c.title || c.description || "Complaint"}
+                  </Text>
+                  <Text style={s.nearCardMeta}>
+                    {[c.category, timeAgo(c.createdAt)].filter(Boolean).join(" · ")}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
         )}
 
-        <View style={{ height: 28 }} />
+        {/* ── Announcements ── */}
+        {announcements.length > 0 && (
+          <>
+            <Text style={[s.sectionTitle, { marginTop: 24 }]}>Announcements</Text>
+            {announcements.map((a) => (
+              <View key={a.id} style={s.announcementCard}>
+                <View style={s.annIconBox}>
+                  <Ionicons name="megaphone-outline" size={18} color={C.primary} />
+                </View>
+                <View style={s.annBody}>
+                  {a.title && <Text style={s.annTitle} numberOfLines={2}>{a.title}</Text>}
+                  {a.message && !a.title && <Text style={s.annTitle} numberOfLines={2}>{a.message}</Text>}
+                  <Text style={s.annTime}>{timeAgo(a.createdAt)}</Text>
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </View>
   );
@@ -268,87 +326,115 @@ export default function CitizenDashboard() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.bg },
+  centered:  { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.bg },
 
   header: {
     backgroundColor: C.primaryDark,
-    paddingTop: 52, paddingBottom: 20,
-    paddingHorizontal: 20,
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingTop: 54, paddingBottom: 22, paddingHorizontal: 22,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
   },
-  headerLeft: {},
-  greeting: { color: "#BFDBFE", fontSize: 12, fontWeight: "500" },
-  userName: { color: "#fff", fontSize: 22, fontWeight: "800", marginTop: 1 },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
-  iconBtn: { position: "relative", padding: 4 },
-  notifBadge: {
-    position: "absolute", top: 2, right: 2,
-    backgroundColor: "#EF4444", borderRadius: 7,
-    minWidth: 14, height: 14, alignItems: "center", justifyContent: "center",
-    borderWidth: 1.5, borderColor: C.primaryDark,
+  headerLeft:   {},
+  greeting:     { color: "rgba(255,255,255,0.65)", fontSize: 13, fontWeight: "500" },
+  userName:     { color: "#fff", fontSize: 24, fontWeight: "800", marginTop: 2, marginBottom: 8 },
+  locationPill: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 20, alignSelf: "flex-start",
   },
-  notifBadgeText: { color: "#fff", fontSize: 8, fontWeight: "800" },
-  avatarBtn: {
+  locationText: { color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "600" },
+  headerRight:  { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 4 },
+  iconBtn:      { position: "relative", padding: 6 },
+  notifDot: {
+    position: "absolute", top: 6, right: 6,
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: "#F59E0B", borderWidth: 1.5, borderColor: C.primaryDark,
+  },
+  avatar: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: "#2563EB",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderWidth: 2, borderColor: "rgba(255,255,255,0.3)",
     justifyContent: "center", alignItems: "center",
-    borderWidth: 2, borderColor: "#93C5FD",
   },
-  avatarText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  avatarText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  avatarImg:  { width: 40, height: 40, borderRadius: 20 },
 
-  scroll: { flex: 1 },
-  scrollContent: { padding: 16 },
+  scroll:        { flex: 1 },
+  scrollContent: { padding: 18, paddingTop: 20 },
 
-  statsRow: { flexDirection: "row", gap: 10, marginBottom: 22 },
-  statCard: {
-    flex: 1, backgroundColor: C.card, borderRadius: 14, padding: 14,
-    alignItems: "center", borderTopWidth: 3, elevation: 2,
-    shadowColor: "#000", shadowOpacity: 0.07, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+  ctaCard: {
+    backgroundColor: C.primary,
+    borderRadius: 18, padding: 20,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginBottom: 26,
+    elevation: 4, shadowColor: C.primary, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 6 },
   },
-  statNum: { fontSize: 26, fontWeight: "800" },
-  statLabel: { fontSize: 10, color: C.muted, marginTop: 3, fontWeight: "600", textTransform: "uppercase" },
-
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: C.text, marginBottom: 12 },
-  sectionHeader: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12,
-  },
-  seeAll: { fontSize: 13, color: C.primary, fontWeight: "600" },
-
-  actionsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 },
-  actionCard: {
-    width: "47%", borderRadius: 16, padding: 18,
-    elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6,
-  },
-  actionIconCircle: {
-    width: 46, height: 46, borderRadius: 23,
-    alignItems: "center", justifyContent: "center", marginBottom: 10,
-  },
-  actionLabel: { fontSize: 13, fontWeight: "700" },
-
-  reportsCard: {
-    backgroundColor: C.card, borderRadius: 16, overflow: "hidden",
-    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8,
-  },
-  reportRow: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 16, paddingVertical: 13,
-    borderBottomWidth: 1, borderBottomColor: "#F8FAFC", gap: 12,
-  },
-  reportIconBox: {
-    width: 40, height: 40, borderRadius: 11,
+  ctaLeft:    { flex: 1 },
+  ctaTitle:   { color: "#fff", fontSize: 18, fontWeight: "800" },
+  ctaSub:     { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
+  ctaIconBox: {
+    width: 52, height: 52, borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center", justifyContent: "center",
   },
-  reportBody: { flex: 1 },
-  reportTitle: { fontSize: 14, fontWeight: "600", color: C.text, marginBottom: 2 },
-  reportTime: { fontSize: 12, color: C.muted },
-  statusPill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 },
-  statusPillText: { fontSize: 11, fontWeight: "700" },
+
+  sectionHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14,
+  },
+  sectionTitle: { fontSize: 17, fontWeight: "800", color: C.ink },
+  seeAll:       { fontSize: 13, color: C.primary, fontWeight: "600" },
+
+  // Near you cards
+  nearCard: {
+    backgroundColor: C.card, borderRadius: 18, marginBottom: 12,
+    overflow: "hidden",
+    borderWidth: 1, borderColor: C.border,
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+  },
+  photoPlaceholder: {
+    height: 130, backgroundColor: "#EEF1F8",
+    alignItems: "center", justifyContent: "center",
+    position: "relative",
+  },
+  photoIcon: {
+    width: 64, height: 64, borderRadius: 18,
+    alignItems: "center", justifyContent: "center",
+  },
+  statusBadge: {
+    position: "absolute", top: 12, left: 12,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+  },
+  statusBadgeText: { fontSize: 12, fontWeight: "700" },
+  nearCardBody: { padding: 14 },
+  nearCardTitle: { fontSize: 15, fontWeight: "700", color: C.ink, marginBottom: 5, lineHeight: 21 },
+  nearCardMeta:  { fontSize: 12, color: C.muted },
+
+  // Announcements
+  announcementCard: {
+    backgroundColor: C.card, borderRadius: 16, padding: 14, marginBottom: 10,
+    flexDirection: "row", alignItems: "center", gap: 12,
+    borderWidth: 1, borderColor: C.border,
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+  },
+  annIconBox: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: "#E7EEFF",
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  annBody:  { flex: 1 },
+  annTitle: { fontSize: 14, fontWeight: "600", color: C.ink, lineHeight: 20, marginBottom: 3 },
+  annTime:  { fontSize: 12, color: C.mutedLight },
 
   emptyCard: {
-    backgroundColor: C.card, borderRadius: 16, padding: 32,
-    alignItems: "center", elevation: 1,
+    backgroundColor: C.card, borderRadius: 18, padding: 36,
+    alignItems: "center",
+    borderWidth: 1, borderColor: C.border,
   },
-  emptyIcon: { fontSize: 42, marginBottom: 10 },
-  emptyTitle: { fontSize: 15, fontWeight: "700", color: C.text, marginBottom: 6 },
-  emptyBody: { fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 19 },
+  emptyIconBox: {
+    width: 84, height: 84, borderRadius: 24,
+    backgroundColor: "#F3F5FA",
+    alignItems: "center", justifyContent: "center", marginBottom: 18,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: "700", color: C.ink, marginBottom: 6 },
+  emptyBody:  { fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 },
 });

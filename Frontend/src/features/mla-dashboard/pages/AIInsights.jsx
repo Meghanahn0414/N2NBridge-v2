@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/AIInsights.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
+import ExportButton from '../../../components/ExportButton';
 
 const formatNumber = (value) => {
   if (value == null || value === '') return '-';
@@ -14,76 +15,22 @@ const formatNumber = (value) => {
 export default function AIInsights() {
   const navigate = useNavigate();
   const { dashboard } = useMlaDashboard();
+  const pageRef = useRef(null);
 
   const handleTakeAction = () => navigate(ROUTES.mlaCommunications);
   const handleViewComplaintForecast = () => navigate(ROUTES.mlaComplaintsDashboard);
   const handleViewEventForecast = () => navigate(ROUTES.mlaEvents);
   const handleViewSentimentForecast = () => navigate(ROUTES.mlaCitizenSentiment);
   const handleViewDetailedAnalysis = () => navigate(ROUTES.mlaConstituencyStatus);
-  const handleExportReport = () => window.alert('Exporting AI insights report...');
   const handleScheduleReview = () => navigate(ROUTES.mlaEvents);
 
-  const alertsTrend = dashboard?.metrics?.alerts?.trend || 0;
+  // recommendations and riskScores are now computed server-side
+  // (DashboardService.get_ai_recommendations / get_risk_scores in dashboard/service.py)
+  const recommendations = dashboard?.recommendations || [];
+  const riskScores      = dashboard?.riskScores      || [];
+
   const grievancesTrend = dashboard?.metrics?.grievances?.trend || 0;
-  const eventTrend = dashboard?.metrics?.events?.trend || 0;
-  const totalEvents = dashboard?.metrics?.events?.totalEvents || 0;
-
-  const getRecommendations = () => {
-    const items = [];
-
-    if (dashboard?.metrics?.alerts) {
-      items.push({
-        id: 'alerts',
-        title: alertsTrend >= 0
-          ? `Alert Volume Up ${alertsTrend}%`
-          : `Alert Volume Down ${Math.abs(alertsTrend)}%`,
-        description: "Prioritize response in high-alert wards",
-        action: "Coordinate with response teams",
-        priority: alertsTrend >= 10 ? 'high' : 'medium',
-      });
-    }
-
-    if (dashboard?.metrics?.grievances) {
-      items.push({
-        id: 'grievances',
-        title: `Complaint Trend: ${grievancesTrend}%`,
-        description: "Review service delivery in affected areas",
-        action: "Initiate citizen outreach campaigns",
-        priority: Math.abs(grievancesTrend) > 5 ? 'medium' : 'low',
-      });
-    }
-
-    if (dashboard?.metrics?.events) {
-      items.push({
-        id: 'events',
-        title: totalEvents > 0 ? `Managing ${totalEvents} Active Events` : "No Active Events Data",
-        description: "Use event participation to boost engagement",
-        action: "Review event performance metrics",
-        priority: totalEvents > 0 ? 'low' : 'medium',
-      });
-    }
-
-    if (!items.length) {
-      items.push({
-        id: 'none',
-        title: "No Insights Yet",
-        description: "Dashboard data is loading or unavailable",
-        action: "Check back after data sync",
-        priority: 'low',
-      });
-    }
-
-    return items;
-  };
-
-  const recommendations = getRecommendations();
-
-  const riskScores = [
-    { category: "Alert Analytics",      score: Math.min(100, (dashboard?.summary?.criticalAlerts || 0) * 5),  color: '#ef4444' },
-    { category: "Complaint Analytics",  score: Math.min(100, (dashboard?.summary?.openComplaints || 0) * 2), color: '#f59e0b' },
-    { category: "Citizen Satisfaction", score: Math.min(100, (dashboard?.summary?.citizenSatisfaction || 0) * 20), color: '#10b981' },
-    { category: "Health Score",         score: parseFloat(dashboard?.summary?.healthScore) || 0, color: '#3b82f6' },
-  ];
+  const eventTrend      = dashboard?.metrics?.events?.trend     || 0;
 
   const sentimentInsight = dashboard?.summary?.citizenSatisfaction
     ? (dashboard.summary.citizenSatisfaction >= 3 ? "Positive sentiment trend" : "Neutral sentiment trend")
@@ -92,7 +39,7 @@ export default function AIInsights() {
   return (
     <div>
       <PageHeader subtitle="AI-powered insights and recommendations" />
-      <div className="mla-container">
+      <div className="mla-container" ref={pageRef}>
 
       <div className="mla-section">
         <h2>⭐ AI Recommendations</h2>
@@ -162,7 +109,17 @@ export default function AIInsights() {
       <div className="mla-section">
         <div className="detail-buttons">
           <button type="button" className="btn-primary" onClick={handleViewDetailedAnalysis}>View Detailed Analysis</button>
-          <button type="button" className="btn-primary" onClick={handleExportReport}>Export AI Report</button>
+          <ExportButton
+            filename="ai-insights"
+            pdfRef={pageRef}
+            data={recommendations}
+            columns={[
+              { key: 'title',       label: 'Title' },
+              { key: 'priority',    label: 'Priority' },
+              { key: 'description', label: 'Description' },
+              { key: 'action',      label: 'Recommended Action' },
+            ]}
+          />
           <button type="button" className="btn-primary" onClick={handleScheduleReview}>Schedule AI Review</button>
         </div>
       </div>

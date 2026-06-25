@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
@@ -6,6 +6,7 @@ import '../../../styles/mla-dashboard/GeographicHeatMap.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import { getGrievanceCategories } from '../../../shared/services/lookupService';
 import PageHeader from '../../../components/PageHeader';
+import ExportButton from '../../../components/ExportButton';
 
 function normalizeWardLabel(value) {
   if (!value) return '';
@@ -36,6 +37,7 @@ function formatWardName(name) {
 
 export default function GeographicHeatMap() {
   const navigate = useNavigate();
+  const pageRef = useRef(null);
   const [selectedWard, setSelectedWard] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [dateRange, setDateRange] = useState('week');
@@ -57,49 +59,38 @@ export default function GeographicHeatMap() {
   }, []);
 
   useEffect(() => {
-    const wardNames = [
-      ...(dashboard?.recentComplaints || []).map((complaint) => normalizeWardLabel(complaint.wardId || complaint.location)),
-      ...(dashboard?.recentAlerts || []).map((alert) => normalizeWardLabel(alert.wardId || alert.location)),
-    ]
+    // Ward list comes from backend wardStats — no need to derive from recentComplaints
+    const wardNames = (dashboard?.wardStats || [])
+      .map((w) => normalizeWardLabel(w.wardId || w.name))
       .filter(Boolean)
       .filter((name, index, self) => self.indexOf(name) === index);
 
     setAvailableWards(wardNames);
   }, [dashboard]);
 
-  const filteredComplaints = (dashboard?.recentComplaints || []).filter((complaint) => {
-    const wardName = normalizeWardLabel(complaint.wardId || complaint.location);
-    const matchesWard = selectedWard === 'all' || wardName === selectedWard;
-    const matchesCategory = selectedCategory === 'all' || complaint.categoryId?.toLowerCase().includes(selectedCategory.toLowerCase());
-    return matchesWard && matchesCategory;
-  });
-
-  const wardMap = new Map();
-  filteredComplaints.forEach((complaint) => {
-    const normalized = normalizeWardLabel(complaint.wardId || complaint.location) || 'Unnamed Ward';
-    const existing = wardMap.get(normalized) || {
-      id: normalized,
-      name: normalized,
-      status: 'normal',
-      issues: 0,
-    };
-
-    existing.issues += 1;
-    const priority = complaint.priority?.toLowerCase();
-    if (priority === 'critical' || (priority === 'high' && existing.status !== 'critical')) {
-      existing.status = priority;
-    }
-
-    wardMap.set(normalized, existing);
-  });
-
-  const wards = Array.from(wardMap.values());
+  // Ward priority data is now consumed directly from the backend wardStats
+  // (computed in DashboardService.get_mla_dashboard → wardStats).
+  // Previously the frontend re-derived this from recentComplaints.
+  const wards = (dashboard?.wardStats || [])
+    .filter((w) => {
+      const name = normalizeWardLabel(w.wardId || w.name);
+      return selectedWard === 'all' || name === selectedWard;
+    })
+    .map((w) => {
+      const priority = (w.highestPriority || 'LOW').toLowerCase();
+      return {
+        id:     String(w.wardId || w.name),
+        name:   String(w.wardId || w.name),
+        status: priority === 'critical' ? 'critical' : priority === 'high' ? 'high' : 'normal',
+        issues: w.count || 0,
+      };
+    });
   const handleViewWardDetails = () => navigate(ROUTES.mlaComplaintsDashboard);
 
   return (
     <div>
       <PageHeader subtitle="View issues and alerts by ward and location" />
-      <div className="mla-container">
+      <div className="mla-container" ref={pageRef}>
 
       {/* Filters */}
       <div className="mla-section">
@@ -200,6 +191,22 @@ export default function GeographicHeatMap() {
             <input type="checkbox" />
             <span>🚨 Emergency Alerts</span>
           </label>
+        </div>
+      </div>
+
+      {/* Export */}
+      <div className="mla-section">
+        <div className="detail-buttons">
+          <ExportButton
+            filename="ward-heatmap"
+            pdfRef={pageRef}
+            data={wards}
+            columns={[
+              { key: 'name',   label: 'Ward' },
+              { key: 'issues', label: 'Issues' },
+              { key: 'status', label: 'Status' },
+            ]}
+          />
         </div>
       </div>
     </div>

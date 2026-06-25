@@ -10,13 +10,14 @@ import { changeLanguage, getCurrentLanguage, initLanguage, clearTranslationCache
 import { useT } from "../../i18n/useT";
 
 const C = {
-  primary: "#1D4ED8",
-  primaryDark: "#1E3A8A",
-  bg: "#F0F4FF",
-  card: "#FFFFFF",
-  text: "#1E293B",
-  muted: "#64748B",
-  border: "#F1F5F9",
+  primary:     "#2B5BD7",
+  primaryDark: "#1B3C8F",
+  bg:          "#F3F5FA",
+  card:        "#FFFFFF",
+  text:        "#16233C",
+  muted:       "#5A6678",
+  mutedLight:  "#9AA3B5",
+  border:      "#EDF0F6",
 };
 
 export default function SettingsScreen() {
@@ -75,9 +76,10 @@ export default function SettingsScreen() {
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color={C.text} />
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>{tr('settings.title')}</Text>
+        <Text style={s.headerTitle}>{tr("settings.title")}</Text>
+        <View style={{ width: 38 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -96,8 +98,8 @@ export default function SettingsScreen() {
             <Switch
               value={notif.statusUpdates}
               onValueChange={(v) => setNotif((n) => ({ ...n, statusUpdates: v }))}
-              trackColor={{ false: "#E2E8F0", true: "#BFDBFE" }}
-              thumbColor={notif.statusUpdates ? C.primary : "#CBD5E1"}
+              trackColor={{ false: "#EDF0F6", true: "#93B5F5" }}
+              thumbColor={notif.statusUpdates ? C.primary : "#C2CADA"}
             />
           </View>
 
@@ -111,8 +113,8 @@ export default function SettingsScreen() {
             <Switch
               value={notif.announcements}
               onValueChange={(v) => setNotif((n) => ({ ...n, announcements: v }))}
-              trackColor={{ false: "#E2E8F0", true: "#BFDBFE" }}
-              thumbColor={notif.announcements ? C.primary : "#CBD5E1"}
+              trackColor={{ false: "#EDF0F6", true: "#93B5F5" }}
+              thumbColor={notif.announcements ? C.primary : "#C2CADA"}
             />
           </View>
 
@@ -126,8 +128,8 @@ export default function SettingsScreen() {
             <Switch
               value={notif.polls}
               onValueChange={(v) => setNotif((n) => ({ ...n, polls: v }))}
-              trackColor={{ false: "#E2E8F0", true: "#BFDBFE" }}
-              thumbColor={notif.polls ? C.primary : "#CBD5E1"}
+              trackColor={{ false: "#EDF0F6", true: "#93B5F5" }}
+              thumbColor={notif.polls ? C.primary : "#C2CADA"}
             />
           </View>
         </View>
@@ -257,27 +259,27 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
 
   header: {
-    flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: C.card,
-    paddingTop: 52, paddingBottom: 16, paddingHorizontal: 16,
-    borderBottomWidth: 1, borderBottomColor: C.border,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: C.primaryDark,
+    paddingTop: 54, paddingBottom: 16, paddingHorizontal: 18,
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "#F1F5F9",
+    width: 38, height: 38, borderRadius: 19,
     alignItems: "center", justifyContent: "center",
   },
-  headerTitle: { fontSize: 22, fontWeight: "700", color: C.text },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: "#fff" },
 
   card: {
     backgroundColor: C.card,
     marginHorizontal: 16, marginTop: 16,
     borderRadius: 16, overflow: "hidden",
-    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8,
+    borderWidth: 1, borderColor: C.border,
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
   },
   groupLabel: {
-    fontSize: 11, fontWeight: "700", color: C.muted,
-    letterSpacing: 0.8, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10,
+    fontSize: 11, fontWeight: "700", color: C.mutedLight,
+    letterSpacing: 0.7, textTransform: "uppercase",
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10,
   },
 
   toggleRow: {
@@ -289,17 +291,17 @@ const s = StyleSheet.create({
   toggleText: { fontSize: 14, color: C.text, fontWeight: "500" },
 
   iconBox: {
-    width: 32, height: 32, borderRadius: 8,
-    backgroundColor: "#EEF2FF",
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: "#E7EEFF",
     alignItems: "center", justifyContent: "center",
   },
 
   menuRow: {
     flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 16, paddingVertical: 14,
+    paddingHorizontal: 16, paddingVertical: 15,
     borderBottomWidth: 1, borderBottomColor: C.border, gap: 12,
   },
-  menuText: { flex: 1, fontSize: 14, fontWeight: "500", color: C.text },
+  menuText:  { flex: 1, fontSize: 14, fontWeight: "500", color: C.text },
   menuRight: { fontSize: 13, color: C.muted, marginRight: 4 },
 
   signOutRow: {
@@ -307,31 +309,32 @@ const s = StyleSheet.create({
     backgroundColor: C.card, marginHorizontal: 16, marginTop: 16,
     paddingHorizontal: 16, paddingVertical: 16,
     borderRadius: 16,
-    elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6,
+    borderWidth: 1, borderColor: "#FECACA",
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
   },
-  signOutText: { fontSize: 14, fontWeight: "600", color: "#EF4444", flex: 1 },
-  version: { textAlign: "center", color: "#CBD5E1", fontSize: 12, marginTop: 24 },
+  signOutText: { fontSize: 14, fontWeight: "600", color: "#C8453A", flex: 1 },
+  version:     { textAlign: "center", color: C.mutedLight, fontSize: 12, marginTop: 24 },
 
-  langBtns: { flexDirection: "row", gap: 8 },
+  langBtns: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
   langBtn: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 20, borderWidth: 1.5, borderColor: "#E2E8F0",
-    backgroundColor: "#fff",
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 20, borderWidth: 1.5, borderColor: C.border,
+    backgroundColor: "#F3F5FA",
   },
-  langBtnActive: { backgroundColor: C.primary, borderColor: C.primary },
-  langBtnText: { fontSize: 13, fontWeight: "600", color: C.muted },
+  langBtnActive:     { backgroundColor: C.primary, borderColor: C.primary },
+  langBtnText:       { fontSize: 12, fontWeight: "600", color: C.muted },
   langBtnTextActive: { color: "#fff" },
 
   loadingBox: {
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 32,
     alignItems: "center",
     gap: 16,
     elevation: 8,
-    shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 16,
+    shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 6 },
   },
-  loadingText: { fontSize: 15, fontWeight: "600", color: "#1E293B" },
+  loadingText: { fontSize: 15, fontWeight: "600", color: C.ink },
 
   /* Inline confirm dialog */
   overlay: {
@@ -344,7 +347,7 @@ const s = StyleSheet.create({
     backgroundColor: C.card, borderRadius: 20,
     padding: 24, marginHorizontal: 32, width: "85%",
   },
-  dialogTitle: { fontSize: 18, fontWeight: "700", color: C.text, marginBottom: 8 },
+  dialogTitle: { fontSize: 18, fontWeight: "700", color: C.ink, marginBottom: 8 },
   dialogMsg: { fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 20 },
   dialogBtns: { flexDirection: "row", gap: 12 },
   dialogCancel: {

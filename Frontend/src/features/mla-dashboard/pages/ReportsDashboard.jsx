@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import api from "../../../shared/services/api";
 import MIcon from "../../../components/MIcon";
+import ExportButton from "../../../components/ExportButton";
 import {
   RiTimeLine,
   RiSearchLine,
-  RiShareLine,
   RiArrowDownSLine,
   RiInformationLine,
   RiAlarmWarningLine,
@@ -108,6 +108,7 @@ function KpiSkeleton() {
 
 /* ══════════════════════════════════════════ */
 export default function ReportsDashboard() {
+  const pageRef = useRef(null);
   const [stats, setStats]           = useState(null);
   const [grievances, setGrievances] = useState([]);
   const [catMap, setCatMap]         = useState({}); // categoryId → categoryName
@@ -182,37 +183,38 @@ export default function ReportsDashboard() {
 
   const totalImpact = topUnassigned.reduce((s, g) => s + (g.impact || 0), 0).toFixed(1);
 
-  /* ── export to CSV ── */
-  function handleExport() {
-    const rows = filtered.map(g => {
-      const meta = resolveCatMeta(g.category || g.categoryId, catMap);
-      return [
-        g.complaintNumber || "",
-        (g.description || "").replace(/"/g, '""'),
-        meta.label,
-        (g.address || "").replace(/"/g, '""'),
-        g.wardId || "",
-        g.status || "",
-        g.priority || "",
-        g.assignedOfficerId || "Unassigned",
-        g.createdAt ? new Date(g.createdAt).toLocaleDateString() : "",
-      ].map(v => `"${v}"`).join(",");
-    });
+  /* ── Export column definitions — used by ExportButton ── */
+  const exportColumns = [
+    { key: "complaintNumber",    label: "Complaint #" },
+    { key: "description",        label: "Description" },
+    { key: "_categoryLabel",     label: "Category" },
+    { key: "address",            label: "Address" },
+    { key: "wardId",             label: "Ward" },
+    { key: "status",             label: "Status" },
+    { key: "priority",           label: "Priority" },
+    { key: "_assignedOfficer",   label: "Assigned To" },
+    { key: "_reportedOn",        label: "Reported On" },
+  ];
 
-    const header = ["Complaint #", "Description", "Category", "Address", "Ward", "Status", "Priority", "Assigned To", "Reported On"].join(",");
-    const csv = [header, ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `reports-${activeTab.toLowerCase().replace(/\s/g, "-")}-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  // Enrich filtered rows with derived fields so ExportButton can use flat keys
+  const exportData = filtered.map((g) => {
+    const meta = resolveCatMeta(g.category || g.categoryId, catMap);
+    // Prefer the resolved name; fall back to "Assigned" if only an ID exists, else "Unassigned"
+    const assignedOfficer = g.assignedOfficerName
+      || g.officerName
+      || g.assignedOfficer?.name
+      || (g.assignedOfficerId ? "Assigned" : "Unassigned");
+    return {
+      ...g,
+      _categoryLabel:    meta.label,
+      _reportedOn:       g.createdAt ? new Date(g.createdAt).toLocaleDateString() : "",
+      _assignedOfficer:  assignedOfficer,
+    };
+  });
 
   /* ── render ── */
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#F3F5FA", overflowY: "auto" }}>
+    <div ref={pageRef} style={{ flex: 1, display: "flex", flexDirection: "column", background: "#F3F5FA", overflowY: "auto" }}>
 
       {/* ── Header ── */}
       <header style={{
@@ -242,10 +244,14 @@ export default function ReportsDashboard() {
             />
           </div>
           {/* Export */}
-          <button onClick={handleExport} disabled={loading || filtered.length === 0} style={{ height: 44, background: "#fff", border: "1px solid #E1E6F0", borderRadius: 13, display: "flex", alignItems: "center", gap: 8, padding: "0 15px", cursor: loading || filtered.length === 0 ? "not-allowed" : "pointer", opacity: loading || filtered.length === 0 ? 0.5 : 1 }}>
-            <RiShareLine style={{ fontSize: 19, color: "#5A6678" }} />
-            <span style={{ fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600, fontSize: 14, color: "#16233C" }}>Export</span>
-          </button>
+          <ExportButton
+            filename={`reports-${activeTab.toLowerCase().replace(/\s/g, "-")}`}
+            pdfRef={pageRef}
+            pdfOrientation="portrait"
+            data={exportData}
+            columns={exportColumns}
+            disabled={loading || filtered.length === 0}
+          />
         </div>
       </header>
 

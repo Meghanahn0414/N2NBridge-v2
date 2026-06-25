@@ -1,158 +1,426 @@
+import { useEffect, useState, useCallback } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  StatusBar, TextInput, BackHandler,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+import api from "../../../services/api";
 import { useAuthStore } from "../../../store/authStore";
 import { useT } from "../../../i18n/useT";
 
-export default function ServicesScreen() {
+const C = {
+  primary:     "#2B5BD7",
+  primaryDark: "#1B3C8F",
+  bg:          "#F3F5FA",
+  card:        "#FFFFFF",
+  ink:         "#16233C",
+  muted:       "#5A6678",
+  mutedLight:  "#9AA3B5",
+  border:      "#EDF0F6",
+};
+
+type Category = {
+  key: string;
+  keywords: string[];   // substrings matched against API categoryId/category
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  bg: string;
+};
+
+type Complaint = {
+  id: string; title?: string; description?: string;
+  status: string; category?: string; createdAt?: string;
+};
+
+const CATEGORIES: Category[] = [
+  { key: "road",  keywords: ["road"],          label: "Roads",    icon: "construct-outline",   color: "#C9871F", bg: "#FEF3C7" },
+  { key: "light", keywords: ["light"],         label: "Lighting", icon: "flash-outline",       color: "#6B4FD8", bg: "#EDEAFB" },
+  { key: "garb",  keywords: ["garb", "sanit"], label: "Garbage",  icon: "trash-outline",       color: "#1E8A5B", bg: "#E6F4EC" },
+  { key: "water", keywords: ["water"],         label: "Water",    icon: "water-outline",       color: "#2B5BD7", bg: "#E7EEFF" },
+  { key: "noise", keywords: ["noise"],         label: "Noise",    icon: "volume-high-outline", color: "#C8453A", bg: "#FEF2F2" },
+];
+
+const catMatches = (apiCat: string, cat: Category) =>
+  cat.keywords.some((kw) => apiCat.includes(kw));
+
+const statusMeta = (st: string) => {
+  switch ((st || "").toUpperCase()) {
+    case "OPEN": case "NEW":                              return { color: "#2B5BD7", bg: "#E7EEFF", label: "Open" };
+    case "IN_PROGRESS": case "ASSIGNED": case "ON_HOLD": return { color: "#C9871F", bg: "#FEF3C7", label: "In progress" };
+    case "RESOLVED": case "CLOSED":                      return { color: "#1E8A5B", bg: "#E6F4EC", label: "Resolved" };
+    default: return { color: C.muted, bg: "#F3F5FA", label: (st || "").replace(/_/g, " ") };
+  }
+};
+
+export default function ExploreScreen() {
   const tr = useT();
   const router = useRouter();
   const { user } = useAuthStore();
-  // SERVICES array defined inside component so tr() picks up current language on re-render
-  const SERVICES = [
-    {
-      icon: "📝",
-      title: tr('services.fileComplaint'),
-      subtitle: tr('services.fileComplaintSub'),
-      color: "#1D4ED8",
-      bg: "#EFF6FF",
-      route: "/citizen/new-complaint",
-    },
-    {
-      icon: "📋",
-      title: tr('services.myComplaints'),
-      subtitle: tr('services.myComplaintsSub'),
-      color: "#7C3AED",
-      bg: "#F5F3FF",
-      route: "/citizen/complaints",
-    },
-    {
-      icon: "📢",
-      title: tr('services.campaigns'),
-      subtitle: tr('services.campaignsSub'),
-      color: "#0891B2",
-      bg: "#ECFEFF",
-      route: "/citizen/campaigns",
-    },
-    {
-      icon: "⭐",
-      title: tr('services.feedback'),
-      subtitle: tr('services.feedbackSub'),
-      color: "#D97706",
-      bg: "#FFFBEB",
-      route: "/citizen/feedback",
-    },
-    {
-      icon: "🚨",
-      title: tr('services.emergency'),
-      subtitle: tr('services.emergencySub'),
-      color: "#DC2626",
-      bg: "#FEF2F2",
-      route: "/citizen/sos",
-    },
-    {
-      icon: "👤",
-      title: tr('services.myProfile'),
-      subtitle: tr('services.myProfileSub'),
-      color: "#059669",
-      bg: "#ECFDF5",
-      route: "/citizen/profile",
-    },
-    {
-      icon: "🏛️",
-      title: "My Representative",
-      subtitle: "View your MLA's profile & performance",
-      color: "#7C3AED",
-      bg: "#F5F3FF",
-      route: "/citizen/mla-profile",
-    },
-  ];
+  const [search, setSearch]     = useState("");
+  const [counts, setCounts]     = useState<Record<string, number>>({});
+  const [trending, setTrending] = useState<Array<{ id: string; title: string; count: number }>>([]);
+  const [allComplaints, setAllComplaints] = useState<Complaint[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      // Fetch only this citizen's own complaints
+      const { data } = await api.get(`/api/grievances/citizen/${user?.id}?page=1`).catch(() => ({ data: [] }));
+      // Handle all common nesting: [], { items }, { data: [] }, { data: { items } }
+      const raw  = data?.data ?? data;
+      const list: any[] = Array.isArray(raw) ? raw
+        : Array.isArray(raw?.items)   ? raw.items
+        : Array.isArray(raw?.results) ? raw.results
+        : [];
+      const ct: Record<string, number> = {};
+      list.forEach((g: any) => {
+        const cat = ([g.categoryId, g.categoryName, g.category_name, g.category]
+          .map((v) => (typeof v === "string" ? v : ""))
+          .find((v) => v && !v.match(/^[a-f\d]{24}$/i)) ?? "").toLowerCase();
+        const st  = (g.status || "").toUpperCase();
+        const isOpen = ["NEW", "OPEN", "IN_PROGRESS", "ASSIGNED", "ON_HOLD"].includes(st);
+        if (!isOpen) return;
+        CATEGORIES.forEach((c) => {
+          if (catMatches(cat, c)) ct[c.key] = (ct[c.key] ?? 0) + 1;
+        });
+      });
+      setCounts(ct);
+      const top = list
+        .filter((g: any) => g.title && ["NEW", "OPEN", "IN_PROGRESS"].includes((g.status || "").toUpperCase()))
+        .slice(0, 3)
+        .map((g: any) => ({ id: g._id || g.id, title: g.title, count: g.supportCount || g.upvoteCount || 0 }));
+      setTrending(top);
+      // Cache all complaints for search
+      // g.categoryId is the readable label ("ROAD_ISSUE"); g.category may be a MongoDB ObjectId
+      setAllComplaints(list.map((g: any) => ({
+        id: g._id || g.id,
+        title: g.title,
+        description: g.description,
+        status: g.status || "NEW",
+        category: [g.categoryId, g.categoryName, g.category_name, g.category]
+          .map((v) => (typeof v === "string" ? v : ""))
+          .find((v) => v && !v.match(/^[a-f\d]{24}$/i)) ?? "",
+        createdAt: g.createdAt || g.created_at,
+      })));
+    } catch { /* silent */ }
+  }, [user?.id]);
+
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  // Intercept hardware back button — clear search instead of leaving tab
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (search.trim().length > 0) {
+          setSearch("");
+          return true; // consumed — don't navigate away
+        }
+        return false; // let default back behaviour run
+      });
+      return () => sub.remove();
+    }, [search]),
+  );
+
+  // Search results: filter locally by title/description/category
+  const searchResults: Complaint[] = search.trim().length >= 1
+    ? allComplaints.filter((c) => {
+        const q    = search.toLowerCase();
+        const cat  = (c.category || "").toLowerCase();
+        // Direct text match
+        if (c.title?.toLowerCase().includes(q))       return true;
+        if (c.description?.toLowerCase().includes(q)) return true;
+        if (cat.includes(q))                           return true;
+        // Label→keywords match: "Garbage" → keywords ["garb","sanit"] → matches "GARBAGE_COLLECTION" or "SANITATION"
+        const matchedCat = CATEGORIES.find((ca) => ca.label.toLowerCase().includes(q));
+        if (matchedCat && catMatches(cat, matchedCat)) return true;
+        return false;
+      })
+    : [];
+
+  const isSearching = search.trim().length > 0;
+  const filteredCategories = CATEGORIES.filter((cat) =>
+    cat.label.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const clearSearch = () => setSearch("");
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{tr('services.title')}</Text>
-        <Text style={styles.headerSub}>{tr('services.subtitle')}</Text>
-      </View>
+    <View style={s.root}>
+      <StatusBar backgroundColor={C.card} barStyle="dark-content" />
 
-      <View style={styles.welcomeStrip}>
-        <Text style={styles.welcomeText}>
-          👋  {tr('services.welcomeHello')} {(user?.name || "Citizen").split(" ")[0]}
-        </Text>
-        <Text style={styles.welcomeSub}>{tr('services.welcomeQuestion')}</Text>
-      </View>
-
-      <View style={styles.grid}>
-        {SERVICES.map((s) => (
-          <TouchableOpacity
-            key={s.route}
-            style={[styles.card, { backgroundColor: s.bg }]}
-            onPress={() => router.push(s.route as any)}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: s.color + "20" }]}>
-              <Text style={styles.icon}>{s.icon}</Text>
+      {/* ── Header ── */}
+      <View style={s.header}>
+        {isSearching ? (
+          <View style={s.searchHeader}>
+            <TouchableOpacity
+              style={s.backArrow}
+              onPress={clearSearch}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="arrow-back" size={22} color={C.ink} />
+            </TouchableOpacity>
+            <View style={[s.searchBar, { flex: 1 }]}>
+              <Ionicons name="search-outline" size={18} color={C.mutedLight} />
+              <TextInput
+                style={s.searchInput}
+                placeholder="Search reports, streets, topics"
+                placeholderTextColor={C.mutedLight}
+                value={search}
+                onChangeText={setSearch}
+                returnKeyType="search"
+                autoCorrect={false}
+                autoFocus
+              />
+              <TouchableOpacity onPress={clearSearch} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={18} color={C.mutedLight} />
+              </TouchableOpacity>
             </View>
-            <Text style={[styles.cardTitle, { color: s.color }]}>{s.title}</Text>
-            <Text style={styles.cardSub}>{s.subtitle}</Text>
-          </TouchableOpacity>
-        ))}
+          </View>
+        ) : (
+          <>
+            <Text style={s.headerTitle}>Explore</Text>
+            <View style={s.searchBar}>
+              <Ionicons name="search-outline" size={18} color={C.mutedLight} />
+              <TextInput
+                style={s.searchInput}
+                placeholder="Search reports, streets, topics"
+                placeholderTextColor={C.mutedLight}
+                value={search}
+                onChangeText={setSearch}
+                returnKeyType="search"
+                autoCorrect={false}
+              />
+            </View>
+          </>
+        )}
       </View>
 
-      <View style={styles.helpCard}>
-        <Text style={styles.helpTitle}>{tr('services.needHelp')}</Text>
-        <Text style={styles.helpText}>{tr('services.needHelpText')}</Text>
-      </View>
-    </ScrollView>
+      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+
+        {/* ── Search results mode ── */}
+        {isSearching ? (
+          <>
+            <Text style={s.sectionLabel}>
+              {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for "{search}"
+            </Text>
+
+            {searchResults.length === 0 ? (
+              <View style={s.noResults}>
+                <Ionicons name="document-text-outline" size={44} color={C.mutedLight} />
+                <Text style={s.noResultsTitle}>0 complaints found</Text>
+                <Text style={s.noResultsText}>No complaints match "{search}". Try a different keyword.</Text>
+              </View>
+            ) : (
+              <View style={s.resultsList}>
+                {searchResults.map((c, idx) => {
+                  const sm = statusMeta(c.status);
+                  const isLast = idx === searchResults.length - 1;
+                  return (
+                    <TouchableOpacity
+                      key={c.id}
+                      style={[s.resultRow, isLast && { borderBottomWidth: 0 }]}
+                      onPress={() => router.push(`/citizen/complaint-detail?id=${c.id}` as any)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={s.resultBody}>
+                        <Text style={s.resultTitle} numberOfLines={2}>
+                          {c.title || c.description || "Complaint"}
+                        </Text>
+                        {c.category && (
+                          <Text style={s.resultMeta}>{c.category}</Text>
+                        )}
+                      </View>
+                      <View style={[s.pill, { backgroundColor: sm.bg }]}>
+                        <Text style={[s.pillText, { color: sm.color }]}>{sm.label}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={C.mutedLight} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            {/* ── Categories ── */}
+            <Text style={s.sectionLabel}>Categories</Text>
+            <View style={s.grid}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat.key}
+                  style={s.catCard}
+                  onPress={() => setSearch(cat.label)}
+                  activeOpacity={0.75}
+                >
+                  <View style={[s.catIconBox, { backgroundColor: cat.bg }]}>
+                    <Ionicons name={cat.icon} size={22} color={cat.color} />
+                  </View>
+                  <Text style={s.catLabel}>{cat.label}</Text>
+                  {counts[cat.key] ? <Text style={s.catCount}>{counts[cat.key]} open</Text> : null}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* ── Trending ── */}
+            {trending.length > 0 && (
+              <>
+                <Text style={s.sectionLabel}>Trending</Text>
+                <View style={s.trendCard}>
+                  {trending.map((item, idx) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[s.trendRow, idx === trending.length - 1 && { borderBottomWidth: 0 }]}
+                      onPress={() => router.push(`/citizen/complaint-detail?id=${item.id}` as any)}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={s.trendNum}>0{idx + 1}</Text>
+                      <View style={s.trendBody}>
+                        <Text style={s.trendTitle} numberOfLines={2}>{item.title}</Text>
+                        {item.count > 0 && <Text style={s.trendSubs}>{item.count} supporters</Text>}
+                      </View>
+                      <Ionicons name="trending-up-outline" size={18} color={C.primary} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* ── Services ── */}
+            <Text style={s.sectionLabel}>Services</Text>
+            <View style={s.linkList}>
+              {[
+                { icon: "document-text-outline" as const, label: "File a complaint",    route: "/citizen/new-complaint", color: C.primary, bg: "#E7EEFF" },
+                { icon: "megaphone-outline"     as const, label: "Campaigns & updates", route: "/citizen/campaigns",     color: "#6B4FD8", bg: "#EDEAFB" },
+                { icon: "star-outline"          as const, label: "Rate a service",      route: "/citizen/feedback",      color: "#C9871F", bg: "#FEF3C7" },
+                { icon: "people-outline"        as const, label: "My representative",   route: "/citizen/mla-profile",   color: "#1E8A5B", bg: "#E6F4EC" },
+                { icon: "warning-outline"       as const, label: "Emergency SOS",       route: "/citizen/sos",           color: "#C8453A", bg: "#FEF2F2" },
+              ].map((item, idx, arr) => (
+                <TouchableOpacity
+                  key={item.route}
+                  style={[s.linkRow, idx === arr.length - 1 && { borderBottomWidth: 0 }]}
+                  onPress={() => router.push(item.route as any)}
+                  activeOpacity={0.75}
+                >
+                  <View style={[s.linkIcon, { backgroundColor: item.bg }]}>
+                    <Ionicons name={item.icon} size={19} color={item.color} />
+                  </View>
+                  <Text style={s.linkLabel}>{item.label}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={C.mutedLight} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F0F4FF" },
+const s = StyleSheet.create({
+  root:    { flex: 1, backgroundColor: C.bg },
+  scroll:  { flex: 1 },
   content: { paddingBottom: 32 },
 
   header: {
-    backgroundColor: "#1D4ED8",
-    paddingTop: 56,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
+    backgroundColor: C.card,
+    paddingTop: 56, paddingBottom: 16, paddingHorizontal: 18,
+    borderBottomWidth: 1, borderBottomColor: C.border,
   },
-  headerTitle: { color: "#fff", fontSize: 26, fontWeight: "800" },
-  headerSub: { color: "#BFDBFE", fontSize: 13, marginTop: 4 },
-
-  welcomeStrip: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16, marginTop: 16,
-    borderRadius: 14, padding: 16,
-    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+  headerTitle: { fontSize: 28, fontWeight: "800", color: C.ink, marginBottom: 14 },
+  searchHeader: {
+    flexDirection: "row", alignItems: "center", gap: 10,
   },
-  welcomeText: { fontSize: 16, fontWeight: "700", color: "#1E3A8A" },
-  welcomeSub: { fontSize: 12, color: "#6B7280", marginTop: 3 },
-
-  grid: {
-    flexDirection: "row", flexWrap: "wrap",
-    paddingHorizontal: 12, marginTop: 12, gap: 10,
-  },
-  card: {
-    width: "47%",
-    borderRadius: 16, padding: 18,
-    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
-  },
-  iconCircle: {
-    width: 44, height: 44, borderRadius: 22,
+  backArrow: {
+    width: 38, height: 38, borderRadius: 12,
     alignItems: "center", justifyContent: "center",
-    marginBottom: 12,
+    backgroundColor: C.bg, borderWidth: 1, borderColor: C.border,
   },
-  icon: { fontSize: 22 },
-  cardTitle: { fontSize: 14, fontWeight: "700", marginBottom: 3 },
-  cardSub: { fontSize: 11, color: "#6B7280", lineHeight: 16 },
+  searchBar: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: C.bg, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 11,
+    borderWidth: 1, borderColor: C.border,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: C.ink, padding: 0, outlineStyle: "none" } as any,
 
-  helpCard: {
-    backgroundColor: "#1D4ED8",
-    marginHorizontal: 16, marginTop: 16,
-    borderRadius: 16, padding: 20,
+  sectionLabel: {
+    fontSize: 12, fontWeight: "700", color: C.mutedLight,
+    textTransform: "uppercase", letterSpacing: 0.7,
+    marginHorizontal: 18, marginTop: 24, marginBottom: 14,
   },
-  helpTitle: { color: "#fff", fontSize: 15, fontWeight: "700", marginBottom: 8 },
-  helpText: { color: "#BFDBFE", fontSize: 13, lineHeight: 20 },
+
+  // Categories
+  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 14, gap: 10 },
+  catCard: {
+    width: "47%", backgroundColor: C.card,
+    borderRadius: 16, padding: 18,
+    borderWidth: 1, borderColor: C.border,
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+  },
+  catIconBox: {
+    width: 48, height: 48, borderRadius: 14,
+    alignItems: "center", justifyContent: "center", marginBottom: 12,
+  },
+  catLabel: { fontSize: 14, fontWeight: "700", color: C.ink, marginBottom: 3 },
+  catCount: { fontSize: 12, color: C.muted },
+
+  // Trending
+  trendCard: {
+    backgroundColor: C.card, marginHorizontal: 18, borderRadius: 16,
+    borderWidth: 1, borderColor: C.border, overflow: "hidden",
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+  },
+  trendRow: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: C.border,
+  },
+  trendNum:   { fontSize: 20, fontWeight: "800", color: C.primary, width: 28 },
+  trendBody:  { flex: 1 },
+  trendTitle: { fontSize: 14, fontWeight: "600", color: C.ink, lineHeight: 20 },
+  trendSubs:  { fontSize: 12, color: C.muted, marginTop: 2 },
+
+  // Services
+  linkList: {
+    backgroundColor: C.card, marginHorizontal: 18, borderRadius: 16,
+    borderWidth: 1, borderColor: C.border, overflow: "hidden",
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+  },
+  linkRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: 16, paddingVertical: 15,
+    borderBottomWidth: 1, borderBottomColor: C.border,
+  },
+  linkIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: "center", justifyContent: "center",
+  },
+  linkLabel: { flex: 1, fontSize: 14, fontWeight: "500", color: C.ink },
+
+  // Search results
+  resultsList: {
+    backgroundColor: C.card, marginHorizontal: 18, borderRadius: 16,
+    borderWidth: 1, borderColor: C.border, overflow: "hidden",
+    elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+  },
+  resultRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: C.border,
+  },
+  resultBody:  { flex: 1 },
+  resultTitle: { fontSize: 14, fontWeight: "600", color: C.ink, lineHeight: 20, marginBottom: 2 },
+  resultMeta:  { fontSize: 12, color: C.muted },
+  pill:        { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 },
+  pillText:    { fontSize: 11, fontWeight: "700" },
+
+  // No results
+  noResults: { alignItems: "center", paddingHorizontal: 18, paddingTop: 32 },
+  noResultsTitle: { fontSize: 17, fontWeight: "700", color: C.ink, marginTop: 14, marginBottom: 6 },
+  noResultsText:  { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 21 },
 });

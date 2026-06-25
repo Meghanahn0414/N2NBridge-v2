@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, StatusBar, Image, FlatList, Dimensions,
+  ActivityIndicator, StatusBar, Image, FlatList, Dimensions, Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -81,7 +81,7 @@ function statusRank(s: string) {
   return STATUS_ORDER.indexOf((s || "NEW").toUpperCase());
 }
 
-function buildTimeline(g: any): TimelineItem[] {
+function buildTimeline(g: any, tr: (key: string) => string): TimelineItem[] {
   const currentRank = statusRank(g.status || "NEW");
 
   const historyMap: Record<string, any> = {};
@@ -137,7 +137,7 @@ export default function ComplaintDetailScreen() {
           address: g.address,
           wardId: g.wardId,
           createdAt: g.createdAt || g.created_at,
-          timeline: buildTimeline(g),
+          timeline: buildTimeline(g, tr),
           photos: extractPhotos(g),
         });
         if (g.feedback?.rating) setRating(g.feedback.rating);
@@ -162,6 +162,18 @@ export default function ComplaintDetailScreen() {
   const formatDate = (dt?: string) => {
     if (!dt) return "";
     return new Date(dt).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  };
+
+  const handleShare = async () => {
+    const refNum = complaint?.complaintNumber || `RD-${(complaint?.id || "").slice(-6).toUpperCase()}`;
+    const title  = complaint?.title || complaint?.description || "Complaint";
+    const status = getStatusLabel((complaint?.status || "NEW").toUpperCase());
+    try {
+      await Share.share({
+        title: `Complaint #${refNum}`,
+        message: `Jana Seva CRM\nComplaint: ${title}\nRef: #${refNum}\nStatus: ${status}${complaint?.address ? `\nLocation: ${complaint.address}` : ""}`,
+      });
+    } catch { /* user cancelled */ }
   };
 
   const handleRate = async (star: number) => {
@@ -217,7 +229,7 @@ export default function ComplaintDetailScreen() {
         <TouchableOpacity style={s.topBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color="#1E293B" />
         </TouchableOpacity>
-        <TouchableOpacity style={s.topBtn}>
+        <TouchableOpacity style={s.topBtn} onPress={handleShare}>
           <Ionicons name="share-outline" size={20} color="#1E293B" />
         </TouchableOpacity>
       </View>

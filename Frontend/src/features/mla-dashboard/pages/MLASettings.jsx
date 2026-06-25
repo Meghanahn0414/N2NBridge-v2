@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import api from "../../../shared/services/api";
-import { updateAuthUser } from "../../../services/authStorage";
+import { updateAuthUser, clearAuth, getAuthUser } from "../../../services/authStorage";
 import MIcon from "../../../components/MIcon";
 
 const MS = ({ children, style }) => <MIcon name={children} style={style} />;
@@ -35,10 +35,9 @@ function SaveToast({ msg, isError }) {
 
 const NAV = [
   { id:"profile",    icon:"person",        label:"Profile" },
-  { id:"contact",    icon:"call",          label:"Contact & hours" },
+  { id:"contact",    icon:"call",          label:"Contact" },
   { id:"broadcasts", icon:"campaign",      label:"Broadcast defaults" },
   { id:"notifs",     icon:"notifications", label:"Notifications" },
-  { id:"team",       icon:"group",         label:"Team & access" },
   { id:"security",   icon:"shield",        label:"Account & security" },
 ];
 
@@ -73,12 +72,15 @@ export default function MLASettings() {
     broadcastStats: false, weeklyDigest: false,
   });
 
+
   // ── Security ──
-  const [twoFA,     setTwoFA]     = useState(false);
-  const [currentPw, setCurrentPw] = useState("");
-  const [newPw,     setNewPw]     = useState("");
-  const [confirmPw, setConfirmPw] = useState("");
-  const [pwError,   setPwError]   = useState("");
+  const [currentPw,       setCurrentPw]       = useState("");
+  const [newPw,           setNewPw]           = useState("");
+  const [confirmPw,       setConfirmPw]       = useState("");
+  const [pwError,         setPwError]         = useState("");
+  const [showSessions,    setShowSessions]    = useState(false);
+  const [showDeactivate,  setShowDeactivate]  = useState(false);
+  const [deactivating,    setDeactivating]    = useState(false);
 
   // ── Load profile (no skeleton — form always visible) ──
   useEffect(() => {
@@ -172,6 +174,28 @@ export default function MLASettings() {
       setPwError(err?.response?.data?.detail || "Failed to update password");
     } finally {
       setSaving(false);
+    }
+  };
+
+
+  const handleSignOutAll = () => {
+    clearAuth();
+    window.location.href = "/admin-login";
+  };
+
+  const handleDeactivate = async () => {
+    setDeactivating(true);
+    try {
+      await api.put("/api/users/me", { status: "INACTIVE" });
+      showToast("Account deactivated");
+      setTimeout(() => {
+        clearAuth();
+        window.location.href = "/admin-login";
+      }, 1500);
+    } catch (err) {
+      showToast(err?.response?.data?.detail || "Failed to deactivate account", true);
+      setDeactivating(false);
+      setShowDeactivate(false);
     }
   };
 
@@ -335,7 +359,7 @@ export default function MLASettings() {
           {/* ── CONTACT ── */}
           {activeSection === "contact" && (
             <section style={card}>
-              <SectionTitle>Contact &amp; hours</SectionTitle>
+              <SectionTitle>Contact</SectionTitle>
               <ErrorBanner />
 
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
@@ -430,25 +454,6 @@ export default function MLASettings() {
             </section>
           )}
 
-          {/* ── TEAM ── */}
-          {activeSection === "team" && (
-            <section style={card}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
-                <SectionTitle>Team &amp; access</SectionTitle>
-                <button style={{ height:38, padding:"0 16px", border:"none", borderRadius:10,
-                  background:"#2B5BD7", color:"#fff", font:"700 13px 'Hanken Grotesk'",
-                  cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
-                  <MS style={{ fontSize:16, color:"#fff" }}>person_add</MS>Invite
-                </button>
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", alignItems:"center",
-                justifyContent:"center", padding:"40px 0", gap:10 }}>
-                <MS style={{ fontSize:40, color:"#D8DEEA" }}>group</MS>
-                <div style={{ font:"600 14px 'Hanken Grotesk'", color:"#C0C7D4" }}>No team members yet</div>
-                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#D8DEEA" }}>Invite members to collaborate</div>
-              </div>
-            </section>
-          )}
 
           {/* ── SECURITY ── */}
           {activeSection === "security" && (
@@ -485,18 +490,6 @@ export default function MLASettings() {
 
               <div style={{ height:1, background:"#F0F2F7", margin:"22px 0" }} />
 
-              {/* 2FA */}
-              <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:22 }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ font:"700 14px 'Hanken Grotesk'", color:"#16233C" }}>
-                    Two-factor authentication
-                  </div>
-                  <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginTop:3 }}>
-                    Add an extra layer of security to your account
-                  </div>
-                </div>
-                <Toggle on={twoFA} onChange={setTwoFA} />
-              </div>
 
               {/* Active sessions */}
               <div style={{ display:"flex", alignItems:"center", gap:14, background:"#F9FAFC",
@@ -506,7 +499,8 @@ export default function MLASettings() {
                   <div style={{ font:"600 14px 'Hanken Grotesk'", color:"#16233C" }}>Active sessions</div>
                   <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>Last active just now</div>
                 </div>
-                <button style={{ height:38, padding:"0 14px", border:"1.5px solid #E1E6F0",
+                <button onClick={() => setShowSessions(true)}
+                  style={{ height:38, padding:"0 14px", border:"1.5px solid #E1E6F0",
                   borderRadius:10, background:"#fff", color:"#16233C",
                   font:"600 13px 'Hanken Grotesk'", cursor:"pointer" }}>
                   Manage
@@ -523,12 +517,89 @@ export default function MLASettings() {
                     Your public profile and broadcasts will be hidden.
                   </div>
                 </div>
-                <button style={{ height:40, padding:"0 16px", border:"1.5px solid #E2A8A1",
+                <button onClick={() => setShowDeactivate(true)}
+                  style={{ height:40, padding:"0 16px", border:"1.5px solid #E2A8A1",
                   borderRadius:11, background:"#fff", color:"#C8453A",
                   font:"700 13px 'Hanken Grotesk'", cursor:"pointer" }}>
                   Deactivate
                 </button>
               </div>
+
+              {/* Sessions modal */}
+              {showSessions && (
+                <div style={{ position:"fixed", inset:0, background:"rgba(20,35,60,.45)",
+                  display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}
+                  onClick={() => setShowSessions(false)}>
+                  <div style={{ background:"#fff", borderRadius:20, padding:32, width:"100%", maxWidth:420,
+                    boxShadow:"0 24px 48px -12px rgba(20,35,60,.3)" }}
+                    onClick={e => e.stopPropagation()}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
+                      <div style={{ font:"700 17px 'Hanken Grotesk'", color:"#16233C" }}>Active sessions</div>
+                      <button onClick={() => setShowSessions(false)}
+                        style={{ border:"none", background:"none", cursor:"pointer", fontSize:20, color:"#8590A6" }}>✕</button>
+                    </div>
+                    {/* Current session */}
+                    <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px",
+                      borderRadius:12, background:"#F0F4FF", border:"1px solid #D4DCFA", marginBottom:20 }}>
+                      <MS style={{ fontSize:24, color:"#2B5BD7" }}>laptop_mac</MS>
+                      <div style={{ flex:1 }}>
+                        <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#16233C" }}>
+                          {navigator.platform || "This device"}
+                        </div>
+                        <div style={{ font:"400 12px 'Hanken Grotesk'", color:"#8590A6" }}>
+                          Current session · Active now
+                        </div>
+                      </div>
+                      <div style={{ font:"600 11px 'Hanken Grotesk'", color:"#1E8A5B",
+                        background:"#DCFCE7", borderRadius:6, padding:"3px 10px" }}>Active</div>
+                    </div>
+                    <button onClick={handleSignOutAll}
+                      style={{ width:"100%", height:44, borderRadius:12, border:"1.5px solid #E2A8A1",
+                        background:"#FEF2F2", color:"#C8453A", font:"700 14px 'Hanken Grotesk'",
+                        cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                      <MS style={{ fontSize:18, color:"#C8453A" }}>logout</MS>
+                      Sign out all devices
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Deactivate confirmation modal */}
+              {showDeactivate && (
+                <div style={{ position:"fixed", inset:0, background:"rgba(20,35,60,.45)",
+                  display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }}
+                  onClick={() => !deactivating && setShowDeactivate(false)}>
+                  <div style={{ background:"#fff", borderRadius:20, padding:32, width:"100%", maxWidth:400,
+                    boxShadow:"0 24px 48px -12px rgba(20,35,60,.3)", textAlign:"center" }}
+                    onClick={e => e.stopPropagation()}>
+                    <div style={{ width:52, height:52, borderRadius:"50%", background:"#FEE2E2",
+                      display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                      <MS style={{ fontSize:28, color:"#C8453A" }}>warning</MS>
+                    </div>
+                    <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C", marginBottom:8 }}>
+                      Deactivate account?
+                    </div>
+                    <div style={{ font:"400 13px 'Hanken Grotesk'", color:"#8590A6", marginBottom:24, lineHeight:1.6 }}>
+                      Your public profile and broadcasts will be hidden. You can reactivate by contacting support.
+                    </div>
+                    <div style={{ display:"flex", gap:10 }}>
+                      <button onClick={() => setShowDeactivate(false)} disabled={deactivating}
+                        style={{ flex:1, height:44, borderRadius:12, border:"1.5px solid #E1E6F0",
+                          background:"#fff", font:"600 14px 'Hanken Grotesk'", color:"#5A6678",
+                          cursor: deactivating ? "not-allowed" : "pointer" }}>
+                        Cancel
+                      </button>
+                      <button onClick={handleDeactivate} disabled={deactivating}
+                        style={{ flex:1, height:44, borderRadius:12, border:"none",
+                          background: deactivating ? "#F9A8A4" : "#C8453A",
+                          font:"700 14px 'Hanken Grotesk'", color:"#fff",
+                          cursor: deactivating ? "not-allowed" : "pointer" }}>
+                        {deactivating ? "Deactivating…" : "Yes, deactivate"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 

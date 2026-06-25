@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import api from "../../../shared/services/api";
 import MLAPageHeader from "../components/MLAPageHeader";
 import MIcon from "../../../components/MIcon";
+import ExportButton from "../../../components/ExportButton";
 
 function MS({ children, style }) {
   return <MIcon name={children} style={style} />;
@@ -355,34 +356,62 @@ function ElectionScenarios({ strong, comp, atRisk }) {
   );
 }
 
-// ── Road to 2027 ───────────────────────────────────────────────
-function RoadTo2027() {
-  const milestones = [
-    { label: "Mid-term review",   sub: "Now · performance tracked",  done: true  },
-    { label: "Budget cycle vote", sub: "Q4 2026",                    done: false },
-    { label: "Campaign opens",    sub: "Q1 2027",                    done: false },
-    { label: "Election day",      sub: "Nov 2027",                   done: false, last: true },
-  ];
+// ── Grievance status breakdown ─────────────────────────────────
+function GrievanceStatusCard({ byStatus }) {
+  const rows = [
+    { key: "NEW",         label: "New",         color: "#2B5BD7", bg: "#EEF2FF" },
+    { key: "ASSIGNED",    label: "Assigned",     color: "#C9871F", bg: "#FEF3C7" },
+    { key: "IN_PROGRESS", label: "In progress",  color: "#6B4FD8", bg: "#EDEAFB" },
+    { key: "ON_HOLD",     label: "On hold",      color: "#8590A6", bg: "#F3F5FA" },
+    { key: "RESOLVED",    label: "Resolved",     color: "#1E8A5B", bg: "#E6F4EC" },
+    { key: "CLOSED",      label: "Closed",       color: "#1E8A5B", bg: "#E6F4EC" },
+    { key: "REJECTED",    label: "Rejected",     color: "#C8453A", bg: "#FEF2F2" },
+  ].map(r => ({ ...r, count: byStatus?.[r.key] ?? 0 }))
+   .filter(r => r.count > 0);
+
+  const total = rows.reduce((s, r) => s + r.count, 0);
+
   return (
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 18 }}>Road to 2027</div>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        {milestones.map((m) => (
-          <div key={m.label} style={{ display: "flex", gap: 13 }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{
-                width: 13, height: 13, borderRadius: "50%", flexShrink: 0,
-                background: m.done ? "#2B5BD7" : "#fff",
-                border: m.done ? "none" : "2px solid #C2CADA",
-              }} />
-              {!m.last && <span style={{ width: 2, flex: 1, minHeight: 18, background: m.done ? "#2B5BD7" : "#E1E6F0" }} />}
+      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 4 }}>Complaint pipeline</div>
+      <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginBottom: 16 }}>
+        {total > 0 ? `${total} total grievances by status` : "No grievance data"}
+      </div>
+
+      {/* Stacked bar */}
+      {total > 0 && (
+        <div style={{ display: "flex", height: 8, borderRadius: 6, overflow: "hidden", marginBottom: 18, gap: 1 }}>
+          {rows.map(r => (
+            <div key={r.key} style={{ flex: r.count, background: r.color, minWidth: 2 }} />
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+        {rows.length > 0 ? rows.map(r => (
+          <div key={r.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: r.color, flexShrink: 0 }} />
+              <span style={{ font: "500 13px 'Hanken Grotesk',sans-serif", color: "#3A4760" }}>{r.label}</span>
             </div>
-            <div style={{ paddingBottom: m.last ? 0 : 16 }}>
-              <div style={{ font: "700 13px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>{m.label}</div>
-              <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6" }}>{m.sub}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ font: "600 12px 'Hanken Grotesk',sans-serif", color: "#9AA3B5" }}>
+                {total > 0 ? `${Math.round((r.count / total) * 100)}%` : ""}
+              </span>
+              <span style={{
+                minWidth: 28, textAlign: "center",
+                font: "700 13px 'Hanken Grotesk',sans-serif",
+                color: r.color,
+                background: r.bg,
+                borderRadius: 7, padding: "2px 8px",
+              }}>{r.count}</span>
             </div>
           </div>
-        ))}
+        )) : (
+          <div style={{ font: "500 13px 'Hanken Grotesk',sans-serif", color: "#C0C7D4", textAlign: "center", padding: "12px 0" }}>
+            No grievances found
+          </div>
+        )}
       </div>
     </div>
   );
@@ -472,7 +501,6 @@ function formatElectionLabel(isoDate) {
 export default function CareerOutlook() {
   const { data, loading, error } = useCareerData();
   const contentRef  = useRef(null);
-  const [exporting, setExporting] = useState(false);
 
   const ELECTION_DATE  = getElectionDate();
   const electionLabel  = formatElectionLabel(ELECTION_DATE);
@@ -481,15 +509,6 @@ export default function CareerOutlook() {
   // Derive odds from real approval pct
   const odds = data ? deriveElectionOdds(data.approvalPct) : {};
 
-  // Field position string
-  const peers      = data?.peers;
-  const rankLabel  = peers?.rank && peers?.total
-    ? `#${peers.rank} of ${peers.total}`
-    : peers?.position || "—";
-  const posLabel   = peers?.rank <= Math.ceil((peers?.total || 4) / 4)
-    ? "Front-runner" : peers?.rank <= Math.ceil((peers?.total || 4) / 2)
-    ? "Strong position" : "Mid-field";
-
   // Momentum: compare first and last trend points
   const trend = data?.trendPoints || [];
   const momentum = trend.length >= 2
@@ -497,50 +516,6 @@ export default function CareerOutlook() {
                  (trend[0].approvalPct ?? trend[0].positivePct ?? 0))
     : null;
 
-  // ── PDF export ─────────────────────────────────────────────────
-  async function handleExport() {
-    if (!contentRef.current || exporting) return;
-    setExporting(true);
-    try {
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-
-      const canvas = await html2canvas(contentRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#F4F6FA",
-        logging: false,
-      });
-
-      const imgW  = 210;                              // A4 width in mm
-      const imgH  = (canvas.height * imgW) / canvas.width;
-      const pdf   = new jsPDF({ orientation: imgH > 297 ? "p" : "p", unit: "mm", format: "a4" });
-
-      let yOffset = 0;
-      const pageH = 297;
-      while (yOffset < imgH) {
-        if (yOffset > 0) pdf.addPage();
-        pdf.addImage(
-          canvas.toDataURL("image/png"),
-          "PNG",
-          0, -yOffset,
-          imgW, imgH
-        );
-        yOffset += pageH;
-      }
-
-      const rep  = (() => { try { return JSON.parse(sessionStorage.getItem("user") || localStorage.getItem("user") || "{}"); } catch { return {}; } })();
-      const name = (rep?.fullName || rep?.name || "Career").replace(/\s+/g, "_");
-      pdf.save(`${name}_Career_Outlook_${new Date().toISOString().slice(0, 10)}.pdf`);
-    } catch (err) {
-      console.error("PDF export failed:", err);
-      window.print();   // graceful fallback
-    } finally {
-      setExporting(false);
-    }
-  }
 
   return (
     <>
@@ -548,18 +523,25 @@ export default function CareerOutlook() {
 
       <MLAPageHeader subtitle={`Your trajectory toward the ${new Date(ELECTION_DATE).getFullYear()} election`} title="Career outlook">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ height: 44, background: "#fff", border: "1px solid #E1E6F0", borderRadius: 13, display: "flex", alignItems: "center", gap: 9, padding: "0 15px" }}>
-            <MS style={{ fontSize: 19, color: "#2B5BD7" }}>flag</MS>
-            <span style={{ font: "600 14px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>Election · {electionLabel}</span>
-          </div>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            style={{ height: 44, background: "#fff", border: "1px solid #E1E6F0", borderRadius: 13, display: "flex", alignItems: "center", gap: 8, padding: "0 15px", cursor: exporting ? "wait" : "pointer", opacity: exporting ? 0.7 : 1 }}
-          >
-            <MS style={{ fontSize: 19, color: "#5A6678" }}>{exporting ? "hourglass_top" : "ios_share"}</MS>
-            <span style={{ font: "600 14px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>{exporting ? "Exporting…" : "Export PDF"}</span>
-          </button>
+          <ExportButton
+            filename="career-outlook"
+            pdfRef={contentRef}
+            data={data ? [
+              { metric: 'Approval Rating',      value: data.approvalPct != null ? `${data.approvalPct}%` : '—' },
+              { metric: 'Approval Momentum',    value: momentum != null ? `${momentum >= 0 ? '+' : ''}${momentum} pts` : '—' },
+              { metric: 'Strong Re-election',   value: odds.strong  != null ? `${odds.strong}%`  : '—' },
+              { metric: 'Competitive Race',     value: odds.comp    != null ? `${odds.comp}%`    : '—' },
+              { metric: 'At Risk',              value: odds.atRisk  != null ? `${odds.atRisk}%`  : '—' },
+              { metric: 'Projected Vote Share', value: odds.voteShare != null ? `${odds.voteShare}%` : '—' },
+              { metric: 'Resolved Grievances',  value: String(data.resolved) },
+              { metric: 'Total Grievances',     value: String(data.total) },
+              { metric: 'Citizens',             value: data.citizens != null ? String(data.citizens) : '—' },
+            ] : []}
+            columns={[
+              { key: 'metric', label: 'Metric' },
+              { key: 'value',  label: 'Value'  },
+            ]}
+          />
         </div>
       </MLAPageHeader>
 
@@ -587,9 +569,13 @@ export default function CareerOutlook() {
             ) : (
               <>
                 <StatCard
-                  iconName="leaderboard" iconBg="#E7EEFF" iconColor="#2B5BD7"
-                  label="Field position" value={posLabel}
-                  sub={rankLabel + (peers?.total ? " · top quartile" : "")}
+                  iconName="thumb_up" iconBg="#E7EEFF" iconColor="#2B5BD7"
+                  label="Approval rating"
+                  value={data?.approvalPct != null ? `${data.approvalPct}%` : "—"}
+                  sub={momentum != null
+                    ? `${momentum >= 0 ? "↑" : "↓"} ${Math.abs(momentum)} pts vs. last period`
+                    : "Based on citizen feedback"}
+                  subColor={momentum != null ? (momentum >= 0 ? "#1E7A50" : "#C8453A") : undefined}
                 />
                 <StatCard
                   iconName="how_to_vote" iconBg="#E6F4EC" iconColor="#1E8A5B"
@@ -623,7 +609,9 @@ export default function CareerOutlook() {
             <ElectionScenarios strong={odds.strong} comp={odds.comp} atRisk={odds.atRisk} />
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <RoadTo2027 />
+            {loading ? <Skeleton h={220} /> : (
+              <GrievanceStatusCard byStatus={data?.byStatus} />
+            )}
             {loading ? <Skeleton h={160} /> : (
               <Levers
                 openRoad={data?.openRoad ?? 0}

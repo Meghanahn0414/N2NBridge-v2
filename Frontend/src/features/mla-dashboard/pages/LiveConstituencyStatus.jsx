@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/mla-dashboard/mla-dashboard.css';
 import '../../../styles/mla-dashboard/LiveConstituencyStatus.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
+import ExportButton from '../../../components/ExportButton';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
 export default function LiveConstituencyStatus() {
   const navigate = useNavigate();
+  const pageRef = useRef(null);
   const { dashboard } = useMlaDashboard();
 
   const handleViewComplaints = () => navigate(ROUTES.mlaComplaintsDashboard);
@@ -39,7 +41,7 @@ export default function LiveConstituencyStatus() {
   return (
     <div>
       <PageHeader subtitle="Real-Time Constituency Status" />
-      <div className="mla-container">
+      <div className="mla-container" ref={pageRef}>
 
       <div className="mla-section">
         <h2>Complaints Status</h2>
@@ -119,6 +121,27 @@ export default function LiveConstituencyStatus() {
           <button type="button" className="btn-primary" onClick={handleViewComplaints}>View All Complaints</button>
           <button type="button" className="btn-primary" onClick={handleViewAlerts}>View All Alerts</button>
           <button type="button" className="btn-primary" onClick={handleViewEvents}>View All Events</button>
+          <ExportButton
+            filename="constituency-status"
+            pdfRef={pageRef}
+            data={[
+              { category: 'Complaints - New',         value: stats.complaints.new },
+              { category: 'Complaints - Assigned',    value: stats.complaints.assigned },
+              { category: 'Complaints - In Progress', value: stats.complaints.inProgress },
+              { category: 'Complaints - Resolved',    value: stats.complaints.resolved },
+              { category: 'Alerts - Critical',        value: stats.alerts.critical },
+              { category: 'Alerts - High',            value: stats.alerts.high },
+              { category: 'Alerts - Medium',          value: stats.alerts.medium },
+              { category: 'Alerts - Low',             value: stats.alerts.low },
+              { category: 'Events - Today',           value: stats.events.today },
+              { category: 'Events - This Week',       value: stats.events.thisWeek },
+              { category: 'Events - Registrations',   value: stats.events.registrations },
+            ]}
+            columns={[
+              { key: 'category', label: 'Category' },
+              { key: 'value',    label: 'Value' },
+            ]}
+          />
         </div>
       </div>
     </div>

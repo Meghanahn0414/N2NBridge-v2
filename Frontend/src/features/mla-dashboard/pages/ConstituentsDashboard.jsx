@@ -5,6 +5,7 @@ import { getAuthUser } from "../../../services/authStorage";
 import { ROUTES } from "../../../app/routes/RouteConstants";
 import "../styles/mla-layout.css";
 import MIcon from "../../../components/MIcon";
+import ExportButton from "../../../components/ExportButton";
 
 function MI({ children, style }) {
   return <MIcon name={children} style={style} />;
@@ -134,6 +135,7 @@ export default function ConstituentsDashboard() {
   const [msgSent, setMsgSent]           = useState(false);
 
   const navigate = useNavigate();
+  const pageRef = useRef(null);
   const user = getAuthUser();
   const ward = user?.ward || user?.constituency || "your constituency";
 
@@ -240,7 +242,7 @@ export default function ConstituentsDashboard() {
   const growthPct    = hasBaseline ? Math.round((growthTotal / priorTotal) * 100) : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+    <div ref={pageRef} style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
 
       {/* ── Topbar ── */}
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 34px", background: "#F3F5FA", position: "sticky", top: 0, zIndex: 20, borderBottom: "1px solid #E5E9F1", gap: 16, flexWrap: "wrap", minHeight: 72 }}>
@@ -313,6 +315,23 @@ export default function ConstituentsDashboard() {
           >
             <MIcon name="campaign" style={{ fontSize: 18, color: "#fff" }} /> Message a segment
           </button>
+          <ExportButton
+            filename="constituents"
+            pdfRef={pageRef}
+            data={[
+              { metric: 'Total Residents',  value: fmt(total) },
+              { metric: 'Verified',         value: fmt(verified) },
+              { metric: 'Active (30 days)', value: fmt(active30d) },
+              { metric: 'New (30 days)',    value: fmt(new30d) },
+              { metric: 'Engaged',          value: fmt(engaged) },
+              { metric: 'Advocates',        value: fmt(advocates) },
+              ...wards.slice(0, 10).map(w => ({ metric: `Ward: ${w.ward}`, value: String(w.count) })),
+            ]}
+            columns={[
+              { key: 'metric', label: 'Metric' },
+              { key: 'value',  label: 'Value' },
+            ]}
+          />
         </div>
       </header>
 
