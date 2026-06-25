@@ -34,7 +34,7 @@ export default function LandingPage() {
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowLoginOptions(false);
-                  window.open("/citizen/", "_blank");
+                  handleLogin("/citizen-login");
                 }}
               >
                 <div className="login-option-icon notranslate">👤</div>
