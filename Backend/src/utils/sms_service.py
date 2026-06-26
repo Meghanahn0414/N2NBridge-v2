@@ -20,19 +20,34 @@ def send_otp_via_sms(phone_number: str, otp: str, message: str = None) -> bool:
         message = f"Your CRM OTP is: {otp}. Valid for 5 minutes. Do not share."
 
     if _get_env_key("FAST2SMS_API_KEY"):
-        return send_via_fast2sms(phone_number, otp)
-    elif _get_env_key("VONAGE_API_KEY"):
-        return send_via_vonage(phone_number, message)
-    elif _get_env_key("TWOFACTOR_API_KEY"):
-        return send_via_2factor(phone_number, otp)
-    elif settings.TWILIO_ACCOUNT_SID:
-        return send_via_twilio(phone_number, message)
-    elif settings.AWS_ACCESS_KEY_ID:
-        return send_via_aws_sns(phone_number, message)
-    elif settings.SMS_API_URL:
+        if send_via_fast2sms(phone_number, otp):
+            return True
+        print("[SMS] Fast2SMS failed, falling back to next provider", flush=True)
+
+    if _get_env_key("VONAGE_API_KEY"):
+        if send_via_vonage(phone_number, message):
+            return True
+        print("[SMS] Vonage failed, falling back to next provider", flush=True)
+
+    if _get_env_key("TWOFACTOR_API_KEY"):
+        if send_via_2factor(phone_number, otp):
+            return True
+        print("[SMS] 2Factor failed, falling back to next provider", flush=True)
+
+    if settings.TWILIO_ACCOUNT_SID:
+        if send_via_twilio(phone_number, message):
+            return True
+        print("[SMS] Twilio failed, falling back to next provider", flush=True)
+
+    if settings.AWS_ACCESS_KEY_ID:
+        if send_via_aws_sns(phone_number, message):
+            return True
+        print("[SMS] AWS SNS failed, falling back to next provider", flush=True)
+
+    if settings.SMS_API_URL:
         return send_via_http_api(phone_number, message)
-    else:
-        return send_via_console(phone_number, otp)
+
+    return send_via_console(phone_number, otp)
 
 
 def send_via_vonage(phone_number: str, message: str) -> bool:
@@ -50,7 +65,7 @@ def send_via_vonage(phone_number: str, message: str) -> bool:
             data={
                 "api_key": settings.VONAGE_API_KEY,
                 "api_secret": settings.VONAGE_API_SECRET,
-                "from": "JanSevaCRM",
+                "from": "N2NBridge",
                 "to": number,
                 "text": message,
             },
@@ -122,8 +137,8 @@ def send_via_fast2sms(phone_number: str, otp: str) -> bool:
         url = "https://www.fast2sms.com/dev/bulkV2"
         params = {
             "authorization": api_key,
-            "route": "otp",
-            "variables_values": otp,
+            "route": "q",
+            "message": f"Your Jan Seva CRM OTP is {otp}. Valid for 5 minutes. Do not share.",
             "numbers": number,
             "flash": 0,
         }

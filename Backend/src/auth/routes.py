@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from auth.otp_service import OTPService
+from auth.otp_service import OTPService, OTP_STORAGE
 from pymongo import ReturnDocument
 from auth.service import AuthService
 from config.database import MongoDatabase
