@@ -360,7 +360,7 @@ const s = StyleSheet.create({
   footerText: { color: "#64748B", fontSize: 14 },
   footerLink: { color: "#1D4ED8", fontSize: 14, fontWeight: "700" },
 
-  langFloatWrap:       { position: "absolute", top: 16, right: 16, zIndex: 999 },
+  langFloatWrap:       { position: "absolute", top: (StatusBar.currentHeight ?? 24) + 8, right: 16, zIndex: 999 },
   langDropBtn:         { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 24, borderWidth: 1.5, borderColor: "#D1D5DB", backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
   langGlobe:           { fontSize: 15 },
   langDropBtnText:     { fontSize: 14, fontWeight: "600", color: "#374151" },

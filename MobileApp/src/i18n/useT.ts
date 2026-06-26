@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { t, getCurrentLanguage, initLanguage } from './index';
+import { t, getCurrentLanguage, initLanguage, onLanguageChange } from './index';
 import en from './en.json';
 
 // Resolve a dot-key like 'complaints.title' → 'My Complaints'
@@ -36,6 +36,15 @@ export const useT = () => {
 
   useEffect(() => {
     initLanguage().then(() => setLang(getCurrentLanguage()));
+  }, []);
+
+  // Re-render whenever language changes globally (e.g. changed on login screen)
+  useEffect(() => {
+    const unsub = onLanguageChange((newLang) => {
+      cache.current = {}; // clear stale translations for this component
+      setLang(newLang);
+    });
+    return unsub;
   }, []);
 
   const tr = useCallback(

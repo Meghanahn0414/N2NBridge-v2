@@ -101,10 +101,22 @@ export const initLanguage = async (): Promise<void> => {
   }
 };
 
+// ─── Language change listeners ────────────────────────────────────────────────
+
+type LangListener = (lang: Lang) => void;
+const langListeners = new Set<LangListener>();
+
+/** Subscribe to language changes. Returns an unsubscribe function. */
+export const onLanguageChange = (cb: LangListener): (() => void) => {
+  langListeners.add(cb);
+  return () => langListeners.delete(cb);
+};
+
 /** Switch language and persist. */
 export const changeLanguage = async (lang: Lang): Promise<void> => {
   currentLang = lang;
   await storage.setItem('app_language', lang);
+  langListeners.forEach((cb) => cb(lang));
 };
 
 export const getCurrentLanguage = (): Lang => currentLang;

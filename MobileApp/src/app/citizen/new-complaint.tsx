@@ -143,7 +143,7 @@ export default function NewComplaintScreen() {
         router.replace("/citizen/complaints" as any);
       } else {
         Alert.alert("Success", "Complaint filed successfully!", [
-          { text: "View My Reports", onPress: () => router.replace("/citizen/complaints" as any) },
+          { text: "View My Reports", onPress: () => router.replace("/citizen/complaint-list" as any) },
         ]);
       }
     } catch (err: any) {
