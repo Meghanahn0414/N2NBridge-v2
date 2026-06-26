@@ -59,7 +59,7 @@ class UserService:
         db = MongoDatabase.get_db()
         return db.users.find_one({
             "_id": ObjectId(user_id),
-            "isDeleted": False
+            "isDeleted": {"$ne": True}
         })
     
     @staticmethod

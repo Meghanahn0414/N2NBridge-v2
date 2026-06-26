@@ -188,19 +188,16 @@ async def register_for_event(
     try:
         citizen_id = registration_data.citizenId
 
-        # Return existing registration if already registered
+        # Already registered? Return success (idempotent)
         existing = EventRegistrationService.get_registration(event_id, citizen_id)
         if existing:
-            return {"success": True, "message": "Already registered", "data": Helper.convert_mongo_doc(existing)}
+            return {"success": True, "message": "Already registered"}
 
+        # Register
         reg_dict = {"eventId": event_id, "citizenId": citizen_id}
-        EventRegistrationService.register_citizen(reg_dict)
+        new_id = EventRegistrationService.register_citizen(reg_dict)
 
-        registration = EventRegistrationService.get_registration(event_id, citizen_id)
-        if not registration:
-            raise HTTPException(status_code=500, detail="Registration created but could not be retrieved")
-
-        return {"success": True, "message": "Registered successfully", "data": Helper.convert_mongo_doc(registration)}
+        return {"success": True, "message": "Registered successfully", "registrationId": new_id}
     except HTTPException:
         raise
     except Exception as e:

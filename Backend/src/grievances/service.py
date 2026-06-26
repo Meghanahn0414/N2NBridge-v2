@@ -145,6 +145,77 @@ class GrievanceService:
         return grievances
     
     @staticmethod
+    def _notify_citizen_on_status_change(grievance: dict, new_status: str) -> None:
+        """Send status-update notification via citizen's preferred channel."""
+        try:
+            citizen_id = grievance.get("citizenId") or ""
+            if not citizen_id:
+                return
+            db = MongoDatabase.get_db()
+            citizen = db.users.find_one({"_id": ObjectId(citizen_id), "isDeleted": {"$ne": True}})
+            if not citizen:
+                return
+
+            complaint_num = grievance.get("complaintNumber") or grievance.get("_id", "")
+            status_label  = new_status.replace("_", " ").title()
+            title = f"Grievance Update — {complaint_num}"
+            body  = f"Your complaint ({complaint_num}) status has changed to: {status_label}."
+
+            channel = (citizen.get("notifPreferences") or {}).get("channel", "Notifications")
+
+            if channel == "Email":
+                email = citizen.get("email")
+                if email:
+                    try:
+                        import smtplib, os
+                        from email.mime.multipart import MIMEMultipart
+                        from email.mime.text import MIMEText
+                        sender_email    = os.getenv("SMTP_EMAIL", "")
+                        sender_password = os.getenv("SMTP_PASSWORD", "")
+                        smtp_server     = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+                        smtp_port       = int(os.getenv("SMTP_PORT", 587))
+                        msg = MIMEMultipart()
+                        msg["From"]    = sender_email
+                        msg["To"]      = email
+                        msg["Subject"] = title
+                        msg.attach(MIMEText(
+                            f"Hello {citizen.get('fullName', 'Citizen')},\n\n{body}\n\nThank you,\nJan Seva CRM Team",
+                            "plain"
+                        ))
+                        with smtplib.SMTP(smtp_server, smtp_port) as srv:
+                            srv.starttls()
+                            srv.login(sender_email, sender_password)
+                            srv.send_message(msg)
+                    except Exception as e:
+                        logger.warning(f"Grievance email notification failed: {e}")
+
+            elif channel == "SMS":
+                mobile = citizen.get("mobile")
+                if mobile:
+                    try:
+                        from utils.sms_service import send_otp_via_sms
+                        send_otp_via_sms(mobile, "", message=body)
+                    except Exception as e:
+                        logger.warning(f"Grievance SMS notification failed: {e}")
+
+            else:
+                # In-app notification (default)
+                try:
+                    from notifications.service import NotificationService
+                    NotificationService.create_notification({
+                        "userId": citizen_id,
+                        "title":  title,
+                        "body":   body,
+                        "type":   "GRIEVANCE_UPDATE",
+                        "isRead": False,
+                        "createdAt": datetime.utcnow(),
+                    })
+                except Exception as e:
+                    logger.warning(f"Grievance in-app notification failed: {e}")
+        except Exception as e:
+            logger.warning(f"_notify_citizen_on_status_change error (non-fatal): {e}")
+
+    @staticmethod
     def update_grievance_status(
         grievance_id: str,
         new_status: str,
@@ -153,13 +224,13 @@ class GrievanceService:
     ) -> bool:
         """Update grievance status"""
         db = MongoDatabase.get_db()
-        
+
         grievance = GrievanceService.get_grievance_by_id(grievance_id)
         if not grievance:
             return False
-        
+
         old_status = grievance["status"]
-        
+
         # Add history entry
         history_entry = {
             "oldStatus": old_status,
@@ -168,7 +239,7 @@ class GrievanceService:
             "updatedBy": user_id,
             "createdAt": datetime.utcnow()
         }
-        
+
         result = db.grievances.update_one(
             {"_id": ObjectId(grievance_id)},
             {
@@ -180,6 +251,10 @@ class GrievanceService:
                 "$push": {"history": history_entry}
             }
         )
+
+        if result.modified_count > 0 and old_status != new_status:
+            GrievanceService._notify_citizen_on_status_change(grievance, new_status)
+
         return result.modified_count > 0
     
     @staticmethod

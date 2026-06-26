@@ -32,6 +32,7 @@ class UserUpdate(BaseModel):
     fullName: Optional[str] = None
     mobile: Optional[str] = None
     email: Optional[EmailStr] = None
+    age: Optional[int] = None
     address: Optional[str] = None
     profileImage: Optional[str] = None
     constituencyId: Optional[str] = None

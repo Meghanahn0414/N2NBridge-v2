@@ -15,6 +15,7 @@ const C = {
   bg:          "#F3F5FA",
   card:        "#FFFFFF",
   text:        "#16233C",
+  ink:         "#16233C",
   muted:       "#5A6678",
   mutedLight:  "#9AA3B5",
   border:      "#EDF0F6",
@@ -137,30 +138,34 @@ export default function SettingsScreen() {
         {/* Language */}
         <View style={s.card}>
           <Text style={s.groupLabel}>{tr('settings.language')}</Text>
-          <View style={[s.toggleRow, { borderBottomWidth: 0 }]}>
-            <View style={s.toggleLeft}>
-              <View style={s.iconBox}>
-                <Ionicons name="language-outline" size={17} color={C.primary} />
-              </View>
-              <Text style={s.toggleText}>{tr('language.selectLanguage')}</Text>
-            </View>
-            <View style={s.langBtns}>
-              {([
-                { code: 'en', label: 'EN' },
-                { code: 'kn', label: 'ಕನ್ನಡ' },
-                { code: 'hi', label: 'हिंदी' },
-                { code: 'te', label: 'తెలుగు' },
-              ] as const).map(({ code, label }) => (
-                <TouchableOpacity
-                  key={code}
-                  style={[s.langBtn, currentLang === code && s.langBtnActive]}
-                  onPress={() => handleLanguageChange(code)}
-                >
-                  <Text style={[s.langBtnText, currentLang === code && s.langBtnTextActive]}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          <View style={s.langGrid}>
+            {([
+              { code: 'en', native: 'English',  label: 'English' },
+              { code: 'kn', native: 'ಕನ್ನಡ',    label: 'Kannada' },
+              { code: 'hi', native: 'हिंदी',     label: 'Hindi'   },
+              { code: 'te', native: 'తెలుగు',   label: 'Telugu'  },
+            ] as const).map(({ code, native, label }) => (
+              <TouchableOpacity
+                key={code}
+                style={[s.langCard, currentLang === code && s.langCardActive]}
+                onPress={() => handleLanguageChange(code)}
+                activeOpacity={0.75}
+              >
+                <Text style={[s.langNative, currentLang === code && s.langNativeActive]}>
+                  {native}
+                </Text>
+                <Text style={[s.langLabel, currentLang === code && s.langLabelActive]}>
+                  {label}
+                </Text>
+                {currentLang === code && (
+                  <View style={s.langCheck}>
+                    <Ionicons name="checkmark" size={11} color="#fff" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
           </View>
+          <View style={{ height: 4 }} />
         </View>
 
         {/* Account */}
@@ -315,15 +320,28 @@ const s = StyleSheet.create({
   signOutText: { fontSize: 14, fontWeight: "600", color: "#C8453A", flex: 1 },
   version:     { textAlign: "center", color: C.mutedLight, fontSize: 12, marginTop: 24 },
 
-  langBtns: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
-  langBtn: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 1.5, borderColor: C.border,
-    backgroundColor: "#F3F5FA",
+  langGrid: {
+    flexDirection: "row", flexWrap: "wrap",
+    paddingHorizontal: 12, paddingTop: 4, paddingBottom: 12, gap: 10,
   },
-  langBtnActive:     { backgroundColor: C.primary, borderColor: C.primary },
-  langBtnText:       { fontSize: 12, fontWeight: "600", color: C.muted },
-  langBtnTextActive: { color: "#fff" },
+  langCard: {
+    width: "47%", paddingVertical: 14, paddingHorizontal: 12,
+    borderRadius: 14, borderWidth: 1.5, borderColor: C.border,
+    backgroundColor: "#F8FAFD",
+    alignItems: "center",
+    position: "relative",
+  },
+  langCardActive:   { borderColor: C.primary, backgroundColor: "#EEF4FF" },
+  langNative:       { fontSize: 18, fontWeight: "700", color: C.text, marginBottom: 4 },
+  langNativeActive: { color: C.primary },
+  langLabel:        { fontSize: 11, color: C.muted, fontWeight: "500" },
+  langLabelActive:  { color: C.primary },
+  langCheck: {
+    position: "absolute", top: 8, right: 8,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: C.primary,
+    alignItems: "center", justifyContent: "center",
+  },
 
   loadingBox: {
     backgroundColor: "#fff",

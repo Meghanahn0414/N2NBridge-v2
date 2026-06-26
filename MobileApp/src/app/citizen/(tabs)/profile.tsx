@@ -68,15 +68,6 @@ const getCatStyle = (cat?: string) => {
   return { color: C.primary, bg: "#E7EEFF" };
 };
 
-const timeAgo = (dateStr?: string) => {
-  if (!dateStr) return "";
-  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Updated yesterday";
-  if (days < 7)  return `Updated ${days}d ago`;
-  return `Updated ${new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
-};
-
 export default function ProfileScreen() {
   const tr = useT();
   const router = useRouter();
@@ -88,6 +79,16 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing]     = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError]     = useState(false);
+
+  const timeAgo = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+    if (days === 0) return tr("Today");
+    if (days === 1) return tr("Updated yesterday");
+    if (days < 7)  return `${tr("Updated")} ${days}d ${tr("ago")}`;
+    const date = new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    return `${tr("Updated")} ${date}`;
+  };
 
   const loadData = useCallback(async () => {
     if (!user?.id) return;
@@ -154,9 +155,9 @@ export default function ProfileScreen() {
   const initials = (profile?.fullName || user?.name || user?.email || "C")
     .split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
 
-  const wardLabel  = profile?.wardId ? `Ward ${profile.wardId}` : null;
+  const wardLabel  = profile?.wardId ? `${tr("Ward")} ${profile.wardId}` : null;
   const areaLabel  = profile?.address || null;
-  const locationStr = [areaLabel, wardLabel, "Verified resident"].filter(Boolean).join(" · ");
+  const locationStr = [areaLabel, wardLabel, tr("Verified resident")].filter(Boolean).join(" · ");
 
   if (loading) {
     return <View style={s.center}><ActivityIndicator size="large" color={C.primary} /></View>;
@@ -210,7 +211,7 @@ export default function ProfileScreen() {
           ].map((item, i, arr) => (
             <View key={i} style={[s.statItem, i < arr.length - 1 && s.statItemBorder]}>
               <Text style={s.statVal}>{item.val}</Text>
-              <Text style={s.statLbl}>{item.label}</Text>
+              <Text style={s.statLbl}>{tr(item.label)}</Text>
             </View>
           ))}
         </View>
@@ -218,18 +219,18 @@ export default function ProfileScreen() {
         {/* ── Your reports ── */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Your reports</Text>
+            <Text style={s.sectionTitle}>{tr("Your reports")}</Text>
             <TouchableOpacity onPress={() => router.push("/citizen/complaint-list" as any)}>
-              <Text style={s.seeAll}>See all</Text>
+              <Text style={s.seeAll}>{tr("See all")}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={s.card}>
             {recentComplaints.length === 0 ? (
               <View style={s.reportsEmpty}>
-                <Text style={s.reportsEmptyText}>No reports filed yet.</Text>
+                <Text style={s.reportsEmptyText}>{tr("No reports filed yet.")}</Text>
                 <TouchableOpacity onPress={() => router.push("/citizen/new-complaint" as any)}>
-                  <Text style={s.reportsEmptyLink}>File your first complaint →</Text>
+                  <Text style={s.reportsEmptyLink}>{tr("File your first complaint")}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -250,12 +251,12 @@ export default function ProfileScreen() {
                     </View>
                     <View style={s.reportBody}>
                       <Text style={s.reportTitle} numberOfLines={1}>
-                        {c.title || c.description || "Complaint"}
+                        {c.title || c.description || tr("Complaint")}
                       </Text>
                       <Text style={s.reportTime}>{timeAgo(c.createdAt)}</Text>
                     </View>
                     <View style={[s.pill, { backgroundColor: sm.bg }]}>
-                      <Text style={[s.pillText, { color: sm.color }]}>{sm.label}</Text>
+                      <Text style={[s.pillText, { color: sm.color }]}>{tr(sm.label)}</Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -267,9 +268,9 @@ export default function ProfileScreen() {
         {/* ── Account details ── */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Personal details</Text>
+            <Text style={s.sectionTitle}>{tr("Personal details")}</Text>
             <TouchableOpacity onPress={() => router.push("/citizen/edit-profile" as any)}>
-              <Text style={s.seeAll}>Edit</Text>
+              <Text style={s.seeAll}>{tr("Edit")}</Text>
             </TouchableOpacity>
           </View>
           <View style={s.card}>
@@ -278,14 +279,14 @@ export default function ProfileScreen() {
               { icon: "call-outline"     as const, label: "Phone",       value: profile?.mobile || profile?.phone || "—" },
               { icon: "mail-outline"     as const, label: "Email",       value: realEmail(profile?.email) || realEmail(user?.email) || "—" },
               { icon: "location-outline" as const, label: "Address",     value: profile?.address || "—" },
-              { icon: "map-outline"      as const, label: "Ward",        value: profile?.wardId ? `Ward ${profile.wardId}` : "—" },
+              { icon: "map-outline"      as const, label: "Ward",        value: profile?.wardId ? `${tr("Ward")} ${profile.wardId}` : "—" },
             ].map((row, idx, arr) => (
               <View key={row.label} style={[s.detailRow, idx === arr.length - 1 && { borderBottomWidth: 0 }]}>
                 <View style={s.detailIconBox}>
                   <Ionicons name={row.icon} size={15} color={C.primary} />
                 </View>
                 <View style={s.detailBody}>
-                  <Text style={s.detailLabel}>{row.label}</Text>
+                  <Text style={s.detailLabel}>{tr(row.label)}</Text>
                   <Text style={s.detailValue} numberOfLines={1}>{row.value}</Text>
                 </View>
               </View>
@@ -298,7 +299,7 @@ export default function ProfileScreen() {
           <View style={s.settingsIcon}>
             <Ionicons name="settings-outline" size={18} color={C.primary} />
           </View>
-          <Text style={s.settingsText}>Settings & account</Text>
+          <Text style={s.settingsText}>{tr("Settings & account")}</Text>
           <Ionicons name="chevron-forward" size={18} color={C.mutedLight} />
         </TouchableOpacity>
 

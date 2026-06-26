@@ -34,16 +34,16 @@ export default function SOSScreen() {
 
   const handleSOS = async () => {
     if (!selected) {
-      Alert.alert("Select Type", "Please select the type of emergency.");
+      Alert.alert(tr('sosAlert.selectTypeTitle'), tr('sosAlert.selectTypeMsg'));
       return;
     }
     Alert.alert(
-      "Confirm Emergency Alert",
-      `Send an emergency SOS for "${selected}"? This will notify local authorities.`,
+      tr('sosAlert.confirmTitle'),
+      tr('sosAlert.confirmMsg').replace('{type}', selected),
       [
         { text: tr('common.cancel'), style: "cancel" },
         {
-          text: "Send SOS",
+          text: tr('sosAlert.sendSOS'),
           style: "destructive",
           onPress: async () => {
             setSending(true);
@@ -56,11 +56,11 @@ export default function SOSScreen() {
                 wardId: "1",
                 priority: "CRITICAL",
               });
-              Alert.alert("SOS Sent", "Your emergency alert has been sent. Help is on the way.", [
-                { text: "OK", onPress: () => router.back() },
+              Alert.alert(tr('sosAlert.sosSentTitle'), tr('sosAlert.sosSentMsg'), [
+                { text: tr('sosAlert.ok'), onPress: () => router.back() },
               ]);
             } catch {
-              Alert.alert("Error", "Failed to send SOS. Please call emergency numbers directly.");
+              Alert.alert(tr('sosAlert.errTitle'), tr('sosAlert.errMsg'));
             } finally {
               setSending(false);
             }

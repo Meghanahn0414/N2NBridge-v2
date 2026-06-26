@@ -104,22 +104,25 @@ class EventRegistrationService:
     def register_citizen(registration_data: dict) -> str:
         """Register citizen for event"""
         db = MongoDatabase.get_db()
-        
+
         registration_data["qrCode"] = Helper.generate_qr_code(
             registration_data["eventId"],
             registration_data["citizenId"]
         )
         registration_data["attendanceStatus"] = "REGISTERED"
         registration_data["registeredAt"] = datetime.utcnow()
-        
+
         result = db.event_registrations.insert_one(registration_data)
-        
-        # Update registration count
-        db.events.update_one(
-            {"_id": ObjectId(registration_data["eventId"])},
-            {"$inc": {"registrationCount": 1}}
-        )
-        
+
+        # Increment registration count — non-fatal if it fails
+        try:
+            db.events.update_one(
+                {"_id": ObjectId(registration_data["eventId"])},
+                {"$inc": {"registrationCount": 1}}
+            )
+        except Exception as e:
+            logger.warning(f"Could not increment registrationCount for event {registration_data.get('eventId')}: {e}")
+
         return str(result.inserted_id)
     
     @staticmethod

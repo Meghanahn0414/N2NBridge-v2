@@ -7,6 +7,7 @@ from typing import Optional
 from campaigns.model import CampaignCreate, CampaignResponse, CampaignUpdate
 from campaigns.service import CampaignService
 from fastapi import APIRouter, HTTPException, Query, File, UploadFile
+from pydantic import BaseModel
 from utils.helper import Helper
 
 router = APIRouter(prefix="/api/campaigns", tags=["Campaigns"])
@@ -212,6 +213,35 @@ async def delete_campaign(campaign_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="Campaign not found")
     return {"success": True, "message": "Campaign deleted"}
+
+
+class JoinCampaignRequest(BaseModel):
+    citizenId: Optional[str] = None
+
+
+@router.post("/{campaign_id}/join")
+async def join_campaign(campaign_id: str, body: JoinCampaignRequest):
+    """Citizen joins / supports a campaign."""
+    from config.database import MongoDatabase
+    from bson import ObjectId
+    db = MongoDatabase.get_db()
+    try:
+        campaign = db.campaigns.find_one({"_id": ObjectId(campaign_id), "isDeleted": {"$ne": True}})
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        citizen_id = body.citizenId or ""
+        participants = campaign.get("participants", [])
+        if citizen_id and citizen_id in participants:
+            return {"success": True, "alreadyJoined": True, "message": "Already joined"}
+        update: dict = {"$inc": {"reach": 1}}
+        if citizen_id:
+            update["$addToSet"] = {"participants": citizen_id}
+        db.campaigns.update_one({"_id": ObjectId(campaign_id)}, update)
+        return {"success": True, "alreadyJoined": False, "message": "Joined successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/{campaign_id}/cancel", response_model=CampaignResponse)

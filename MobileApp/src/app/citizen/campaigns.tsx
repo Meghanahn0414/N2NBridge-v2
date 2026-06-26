@@ -49,7 +49,13 @@ export default function Campaigns() {
   const fetchCampaigns = useCallback(async () => {
     try {
       const { data } = await api.get('/api/campaigns/?page=1&per_page=20&status=ACTIVE');
-      const list = Array.isArray(data) ? data : (data.items ?? data.results ?? data.campaigns ?? data.data ?? []);
+      const raw = Array.isArray(data) ? data : (data.items ?? data.results ?? data.campaigns ?? data.data ?? []);
+      const now = new Date();
+      // Filter out campaigns whose end date has already passed
+      const list = raw.filter((c: any) => {
+        const end = c.endDate || c.end_date;
+        return !end || new Date(end) >= now;
+      });
       setCampaigns(list.map((c: any) => ({
         id: c._id || c.id,
         name: c.name || c.title,
@@ -80,7 +86,11 @@ export default function Campaigns() {
     const displayTitle = item.name || item.title || 'Untitled Campaign';
 
     return (
-      <View style={s.card}>
+      <TouchableOpacity
+        style={s.card}
+        activeOpacity={0.75}
+        onPress={() => router.push(`/citizen/campaign-detail?id=${item.id}` as any)}
+      >
         <View style={[s.typeStrip, { backgroundColor: color }]} />
         <View style={s.cardBody}>
           <View style={s.cardTop}>
@@ -89,7 +99,7 @@ export default function Campaigns() {
               <View style={s.titleRow}>
                 <Text style={s.cardTitle} numberOfLines={2}>{displayTitle}</Text>
                 {item.status === 'ACTIVE' && (
-                  <View style={s.activeBadge}><Text style={s.activeBadgeText}>ACTIVE</Text></View>
+                  <View style={s.activeBadge}><Text style={s.activeBadgeText}>{tr("Active")}</Text></View>
                 )}
               </View>
               {item.type && (
@@ -106,8 +116,11 @@ export default function Campaigns() {
               {item.endDate ? ` → ${formatDate(item.endDate)}` : ''}
             </Text>
           )}
+          <View style={s.tapHint}>
+            <Text style={s.tapHintText}>{tr("Tap to view & join")} →</Text>
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -176,6 +189,8 @@ const s = StyleSheet.create({
   typeLabel: { fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'uppercase', letterSpacing: 0.4 },
   cardDesc: { fontSize: 13, color: C.textMuted, lineHeight: 19, marginBottom: 8 },
   dateText: { fontSize: 12, color: C.textMuted },
+  tapHint: { marginTop: 8 },
+  tapHintText: { fontSize: 12, color: C.primary, fontWeight: '600' },
   empty: { flex: 1, alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
   emptyIcon: { fontSize: 52, marginBottom: 16 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: C.text, marginBottom: 8 },

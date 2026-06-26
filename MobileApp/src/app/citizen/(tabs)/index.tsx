@@ -147,13 +147,18 @@ export default function CitizenDashboard() {
   };
 
   const timeAgo = (dateStr?: string) => {
-    if (!dateStr) return "Recently";
-    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-    const hrs  = Math.floor((Date.now() - new Date(dateStr).getTime()) / 3600000);
-    if (hrs < 24)  return `${hrs}h ago`;
-    if (days === 1) return "1d ago";
-    if (days < 7)  return `${days}d ago`;
-    return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    if (!dateStr) return tr("Recently");
+    const parseUTC = (dt: string) =>
+      new Date(/Z$|[+-]\d{2}:?\d{2}$/.test(dt) ? dt : dt + "Z");
+    const d = parseUTC(dateStr);
+    const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+    const hrs  = Math.floor((Date.now() - d.getTime()) / 3600000);
+    const ago  = tr("ago");
+    if (hrs < 1)   return tr("Just now");
+    if (hrs < 24)  return `${hrs}h ${ago}`;
+    if (days === 1) return tr("Yesterday");
+    if (days < 7)  return `${days}d ${ago}`;
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   };
 
   const firstName = (user?.name || "Citizen").split(" ")[0];
@@ -209,7 +214,11 @@ export default function CitizenDashboard() {
             onPress={() => router.push("/citizen/notification" as any)}
           >
             <Ionicons name="notifications-outline" size={22} color="rgba(255,255,255,0.85)" />
-            {unreadCount > 0 && <View style={s.notifDot} />}
+            {unreadCount > 0 && (
+              <View style={s.notifBadge}>
+                <Text style={s.notifBadgeText}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             style={s.avatar}
@@ -240,8 +249,8 @@ export default function CitizenDashboard() {
           activeOpacity={0.85}
         >
           <View style={s.ctaLeft}>
-            <Text style={s.ctaTitle}>Report an issue</Text>
-            <Text style={s.ctaSub}>Photo + location in 30 seconds</Text>
+            <Text style={s.ctaTitle}>{tr("Report an issue")}</Text>
+            <Text style={s.ctaSub}>{tr("Photo + location in 30 seconds")}</Text>
           </View>
           <TouchableOpacity style={s.ctaIconBox} onPress={handleCameraPress} activeOpacity={0.75}>
             <Ionicons name="camera-outline" size={26} color="#fff" />
@@ -250,9 +259,9 @@ export default function CitizenDashboard() {
 
         {/* ── Near you ── */}
         <View style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>Near you</Text>
+          <Text style={s.sectionTitle}>{tr("Near you")}</Text>
           <TouchableOpacity onPress={() => router.push("/citizen/complaint-list" as any)}>
-            <Text style={s.seeAll}>See all</Text>
+            <Text style={s.seeAll}>{tr("See all")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -261,8 +270,8 @@ export default function CitizenDashboard() {
             <View style={s.emptyIconBox}>
               <Ionicons name="inbox-outline" size={44} color={C.mutedLight} />
             </View>
-            <Text style={s.emptyTitle}>No reports yet</Text>
-            <Text style={s.emptyBody}>Tap "Report an issue" to submit your first complaint.</Text>
+            <Text style={s.emptyTitle}>{tr("No reports yet")}</Text>
+            <Text style={s.emptyBody}>{tr("Tap 'Report an issue' to submit your first complaint.")}</Text>
           </View>
         ) : (
           recent.map((c) => {
@@ -282,7 +291,7 @@ export default function CitizenDashboard() {
                     <Ionicons name={icon} size={28} color={cat.color} />
                   </View>
                   <View style={[s.statusBadge, { backgroundColor: sm.bg }]}>
-                    <Text style={[s.statusBadgeText, { color: sm.color }]}>{sm.label}</Text>
+                    <Text style={[s.statusBadgeText, { color: sm.color }]}>{tr(sm.label)}</Text>
                   </View>
                 </View>
                 {/* Info */}
@@ -302,7 +311,7 @@ export default function CitizenDashboard() {
         {/* ── Announcements ── */}
         {announcements.length > 0 && (
           <>
-            <Text style={[s.sectionTitle, { marginTop: 24 }]}>Announcements</Text>
+            <Text style={[s.sectionTitle, { marginTop: 24 }]}>{tr("Announcements")}</Text>
             {announcements.map((a) => (
               <View key={a.id} style={s.announcementCard}>
                 <View style={s.annIconBox}>
@@ -345,11 +354,13 @@ const s = StyleSheet.create({
   locationText: { color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "600" },
   headerRight:  { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 4 },
   iconBtn:      { position: "relative", padding: 6 },
-  notifDot: {
-    position: "absolute", top: 6, right: 6,
-    width: 8, height: 8, borderRadius: 4,
+  notifBadge: {
+    position: "absolute", top: 2, right: 2,
+    minWidth: 18, height: 18, borderRadius: 9,
     backgroundColor: "#F59E0B", borderWidth: 1.5, borderColor: C.primaryDark,
+    alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
   },
+  notifBadgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
   avatar: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.18)",
