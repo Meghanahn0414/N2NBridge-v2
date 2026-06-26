@@ -125,7 +125,10 @@ function SectionLabel({ children, collapsed }) {
 export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + "/");
+  const isActive = (path, exact = false) =>
+    exact
+      ? location.pathname === path
+      : location.pathname === path || location.pathname.startsWith(path + "/");
   const [role, setRole] = useState(getAuthRole());
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -172,7 +175,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
     clearAuth();
     const loginPath = (role === "CITIZEN" || role === "citizen")
       ? "/citizen-login"
-      : "/admin-login";
+      : "/login";
     window.location.replace(loginPath);
   };
 
@@ -228,7 +231,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
           {isAdmin && (
             <>
               <SectionLabel collapsed={collapsed}>Overview</SectionLabel>
-              <NavItem icon={RiDashboardLine} label="Dashboard" active={isActive(ROUTES.admin)} onClick={() => go(ROUTES.admin)} collapsed={collapsed} />
+              <NavItem icon={RiDashboardLine} label="Dashboard" active={isActive(ROUTES.admin, true)} onClick={() => go(ROUTES.admin)} collapsed={collapsed} />
 
               <div className="sidebar-section-hr" />
               <SectionLabel collapsed={collapsed}>People</SectionLabel>
@@ -306,7 +309,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
           {isManager && (
             <>
               <SectionLabel collapsed={collapsed}>Overview</SectionLabel>
-              <NavItem icon={RiDashboardLine} label="Dashboard" active={isActive(ROUTES.manager)} onClick={() => go(ROUTES.manager)} collapsed={collapsed} />
+              <NavItem icon={RiDashboardLine} label="Dashboard" active={isActive(ROUTES.manager, true)} onClick={() => go(ROUTES.manager)} collapsed={collapsed} />
 
               <div className="sidebar-section-hr" />
               <SectionLabel collapsed={collapsed}>Team</SectionLabel>
@@ -318,7 +321,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
           {isField && (
             <>
               <SectionLabel collapsed={collapsed}>Overview</SectionLabel>
-              <NavItem icon={RiDashboardLine} label="Dashboard" active={isActive(ROUTES.field)} onClick={() => go(ROUTES.field)} collapsed={collapsed} />
+              <NavItem icon={RiDashboardLine} label="Dashboard" active={isActive(ROUTES.field, true)} onClick={() => go(ROUTES.field)} collapsed={collapsed} />
 
               <div className="sidebar-section-hr" />
               <SectionLabel collapsed={collapsed}>Work</SectionLabel>
@@ -336,7 +339,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, onToggle }) {
           {isCitizen && (
             <>
               <SectionLabel collapsed={collapsed}>Home</SectionLabel>
-              <NavItem icon={RiDashboardLine} label="Dashboard" active={isActive(ROUTES.citizen)} onClick={() => go(ROUTES.citizen)} collapsed={collapsed} />
+              <NavItem icon={RiDashboardLine} label="Dashboard" active={isActive(ROUTES.citizen, true)} onClick={() => go(ROUTES.citizen)} collapsed={collapsed} />
 
               <div className="sidebar-section-hr" />
               <SectionLabel collapsed={collapsed}>Complaints</SectionLabel>

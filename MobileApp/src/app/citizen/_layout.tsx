@@ -13,10 +13,11 @@ export default function CitizenLayout() {
     if (!token) return;
     storage.getItem("onboarding_done").then((val) => {
       if (!val) {
-        router.replace("/citizen/onboarding" as any);
-      } else {
-        setOnboardingChecked(true);
+        // User is already authenticated via OTP — mark onboarding done and proceed.
+        // Don't redirect authenticated users back to onboarding.
+        storage.setItem("onboarding_done", "true");
       }
+      setOnboardingChecked(true);
     });
   }, [token]);
 

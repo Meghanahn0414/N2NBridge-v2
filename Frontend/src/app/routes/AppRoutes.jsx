@@ -5,7 +5,6 @@ import Sidebar from "../../Sidebar";
 import Header from "../../Header";
 import OtpVerify from "../../features/auth/OtpVerify";
 import AdminSignup from "../../features/auth/AdminSignup";
-import AdminLogin from "../../features/auth/AdminLogin";
 import CitizenLogin from "../../features/auth/Login";
 import SurveyManagement from "../../pages/admin/modules/SurveyManagement";
 import FieldDashboard from "../../features/dashboard/pages/FieldDashboard";
@@ -57,6 +56,7 @@ import AIInsights from "../../features/mla-dashboard/pages/AIInsights";
 import DailyBriefing from "../../features/mla-dashboard/pages/DailyBriefing";
 import MLASettings from "../../features/mla-dashboard/pages/MLASettings";
 import ConstituentsDashboard from "../../features/mla-dashboard/pages/ConstituentsDashboard";
+import MLACitizenList from "../../features/mla-dashboard/pages/MLACitizenList";
 import ReportsDashboard from "../../features/mla-dashboard/pages/ReportsDashboard";
 import CareerOutlook from "../../features/mla-dashboard/pages/CareerOutlook";
 import Messages from "../../features/mla-dashboard/pages/Messages";
@@ -75,7 +75,8 @@ function AppRoutesContent() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const isLanding = ["/", ROUTES.login, ROUTES.adminSignup, ROUTES.otp, "/admin-login", "/otp"].includes(location.pathname);
+  const loginPaths = ["/", ROUTES.login, ROUTES.adminSignup, ROUTES.otp, "/otp", "/admin-login", "/rep-login", "/manager-login", "/field-login", "/citizen-login"];
+  const isLanding = loginPaths.includes(location.pathname);
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isRepDashboard = location.pathname === ROUTES.rep || location.pathname === ROUTES.mlaExecutiveDashboard;
   const isRepSubRoute = location.pathname.startsWith("/rep/");
@@ -123,8 +124,12 @@ function AppRoutesContent() {
       >
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path={ROUTES.login} element={<PublicRoute><Navigate to="/admin-login" replace /></PublicRoute>} />
-          <Route path="/admin-login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
+          <Route path={ROUTES.login} element={<PublicRoute><CitizenLogin /></PublicRoute>} />
+          <Route path="/admin-login" element={<PublicRoute><CitizenLogin /></PublicRoute>} />
+          <Route path="/rep-login" element={<PublicRoute><CitizenLogin /></PublicRoute>} />
+          <Route path="/manager-login" element={<PublicRoute><CitizenLogin /></PublicRoute>} />
+          <Route path="/field-login" element={<PublicRoute><CitizenLogin /></PublicRoute>} />
+          <Route path="/citizen-login" element={<PublicRoute><CitizenLogin /></PublicRoute>} />
           <Route path={ROUTES.citizenLogin} element={<PublicRoute><CitizenLogin /></PublicRoute>} />
           <Route path={ROUTES.otp} element={<PublicRoute><OtpVerify /></PublicRoute>} />
           <Route path={ROUTES.adminSignup} element={<PublicRoute><AdminSignup /></PublicRoute>} />
@@ -191,6 +196,7 @@ function AppRoutesContent() {
             <Route path={ROUTES.mlaAIInsights}          element={<AIInsights />} />
             <Route path={ROUTES.mlaDailyBriefing}       element={<DailyBriefing />} />
             <Route path={ROUTES.mlaConstituents}        element={<ConstituentsDashboard />} />
+            <Route path={ROUTES.mlaCitizenList}         element={<MLACitizenList />} />
             <Route path={ROUTES.mlaReports}            element={<ReportsDashboard />} />
             <Route path={ROUTES.mlaCareerOutlook}      element={<CareerOutlook />} />
             <Route path={ROUTES.mlaMessages}           element={<Messages />} />

@@ -82,8 +82,16 @@ class GrievanceService:
         grievance_data.update(Helper.audit_fields(audit_user_id))
         
         result = db.grievances.insert_one(grievance_data)
-        logger.info(f"Grievance created with ID {grievance_data['grievanceId']}: {result.inserted_id}")
-        return str(result.inserted_id)
+        inserted_id = str(result.inserted_id)
+        logger.info(f"Grievance created with ID {grievance_data['grievanceId']}: {inserted_id}")
+
+        # Notify staff roles (non-blocking)
+        try:
+            GrievanceService._notify_staff_on_new_grievance({**grievance_data, "_id": result.inserted_id})
+        except Exception as e:
+            logger.warning(f"Staff notification failed (non-fatal): {e}")
+
+        return inserted_id
     
     @staticmethod
     def get_grievance_by_id(grievance_id: str) -> Optional[dict]:
@@ -144,6 +152,51 @@ class GrievanceService:
 
         return grievances
     
+    @staticmethod
+    def _notify_staff_on_new_grievance(grievance: dict) -> None:
+        """Notify all staff roles when a new grievance is filed."""
+        try:
+            from notifications.service import NotificationService
+            db = MongoDatabase.get_db()
+            complaint_num = grievance.get("complaintNumber") or grievance.get("grievanceId", "")
+            category      = grievance.get("category") or grievance.get("categoryId") or "General"
+            title = f"New Grievance Filed — {complaint_num}"
+            body  = f"A new complaint has been submitted: {category}. Complaint #{complaint_num}."
+            staff_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "MANAGER"]
+            staff_users = list(db.users.find(
+                {"role": {"$in": staff_roles}, "isDeleted": {"$ne": True}, "status": "ACTIVE"},
+                {"_id": 1}
+            ))
+            now = datetime.utcnow()
+            if staff_users:
+                records = [
+                    {"userId": str(u["_id"]), "title": title, "body": body,
+                     "type": "NEW_GRIEVANCE", "isRead": False, "createdAt": now}
+                    for u in staff_users
+                ]
+                db.notifications.insert_many(records)
+                logger.info(f"Notified {len(records)} staff users of new grievance {complaint_num}")
+        except Exception as e:
+            logger.warning(f"_notify_staff_on_new_grievance error (non-fatal): {e}")
+
+    @staticmethod
+    def _notify_officer_on_assignment(grievance: dict, officer_id: str) -> None:
+        """Notify a field officer when a grievance is assigned to them."""
+        try:
+            from notifications.service import NotificationService
+            complaint_num = grievance.get("complaintNumber") or grievance.get("grievanceId", "")
+            category      = grievance.get("category") or grievance.get("categoryId") or "General"
+            NotificationService.create_notification({
+                "userId":    officer_id,
+                "title":     f"New Assignment — {complaint_num}",
+                "body":      f"Grievance {complaint_num} ({category}) has been assigned to you.",
+                "type":      "ASSIGNMENT",
+                "isRead":    False,
+                "createdAt": datetime.utcnow(),
+            })
+        except Exception as e:
+            logger.warning(f"_notify_officer_on_assignment error (non-fatal): {e}")
+
     @staticmethod
     def _notify_citizen_on_status_change(grievance: dict, new_status: str) -> None:
         """Send status-update notification via citizen's preferred channel."""
@@ -266,16 +319,24 @@ class GrievanceService:
     ) -> bool:
         """Assign grievance to officer"""
         db = MongoDatabase.get_db()
-        
-        return GrievanceService.update_grievance_status(
+
+        status_updated = GrievanceService.update_grievance_status(
             grievance_id,
             "ASSIGNED",
             assigned_by,
             f"Assigned to officer. {remarks or ''}"
-        ) and db.grievances.update_one(
+        )
+        officer_updated = db.grievances.update_one(
             {"_id": ObjectId(grievance_id)},
             {"$set": {"assignedOfficerId": officer_id}}
         ).modified_count > 0
+
+        if status_updated and officer_updated:
+            grievance = GrievanceService.get_grievance_by_id(grievance_id)
+            if grievance:
+                GrievanceService._notify_officer_on_assignment(grievance, officer_id)
+
+        return status_updated and officer_updated
     
     @staticmethod
     def add_grievance_feedback(

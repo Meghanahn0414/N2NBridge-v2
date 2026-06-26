@@ -220,31 +220,31 @@ export default function ConstituencyManagement() {
 
   return (
     <div>
-      <PageHeader subtitle="Manage constituency information, wards, and booths" />
-      <div className="module-container">
-      <div className="module-controls">
-        <input
-          type="text"
-          placeholder="Search by name, district, state, code..."
-          value={search}
+      <PageHeader subtitle="Manage constituency information, wards, and booths">
+        <input type="text" placeholder="Search by name, district, state, code..." value={search}
           onChange={(e) => setSearch(e.target.value)}
-        />
-        <button className="btn-primary" onClick={openCreate}>+ Add Constituency</button>
-      </div>
+          style={{ flex: 1, minWidth: 200, padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", outline: "none" }} />
+        <button onClick={openCreate}
+          style={{ padding: "9px 18px", borderRadius: 10, background: "#16233C", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap" }}>
+          + Add Constituency
+        </button>
+      </PageHeader>
+      <div className="module-container">
 
       <div className="module-stats">
-        <div className="stat-card">
-          <span className="stat-label">Total Constituencies</span>
-          <span className="stat-value">{allConstituencies.length}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Total Wards</span>
-          <span className="stat-value">{totalWards}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Filtered Results</span>
-          <span className="stat-value">{filtered.length}</span>
-        </div>
+        {[
+          { label: "Total Constituencies", value: allConstituencies.length, icon: "🗺️", bg: "#EEF2FF" },
+          { label: "Total Wards",          value: totalWards,               icon: "🏘️", bg: "#F0FDF4" },
+          { label: "Filtered Results",     value: filtered.length,          icon: "🔍", bg: "#FFF7ED" },
+        ].map(({ label, value, icon, bg }) => (
+          <div key={label} style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{icon}</div>
+              <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+            </div>
+            <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+          </div>
+        ))}
       </div>
 
       <div className="constituency-table-wrapper">

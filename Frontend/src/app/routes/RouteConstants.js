@@ -53,6 +53,7 @@ export const ROUTES = {
   mlaAIInsights: "/rep/ai-insights",
   mlaDailyBriefing: "/rep/daily-briefing",
   mlaConstituents: "/rep/constituents",
+  mlaCitizenList: "/rep/citizen-list",
   mlaReports: "/rep/reports",
   mlaSettings: "/rep/settings",
   mlaCareerOutlook: "/rep/career-outlook",

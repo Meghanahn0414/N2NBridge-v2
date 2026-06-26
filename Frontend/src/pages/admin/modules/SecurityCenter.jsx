@@ -28,44 +28,40 @@ export default function SecurityCenter() {
 
   return (
     <div>
-      <PageHeader subtitle="Monitor security threats, access logs, and system health" />
-      <div className="module-container">
-      <div className="module-controls">
-        <input type="text" placeholder="Search incidents, users, IPs..." />
-        <select>
+      <PageHeader subtitle="Monitor security threats, access logs, and system health">
+        <input type="text" placeholder="Search incidents, users, IPs..."
+          style={{ flex: 1, minWidth: 200, padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", outline: "none" }} />
+        <select style={{ padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", cursor: "pointer" }}>
           <option value="ALL">All Threats</option>
           <option value="CRITICAL">Critical</option>
           <option value="HIGH">High</option>
           <option value="MEDIUM">Medium</option>
           <option value="LOW">Low</option>
         </select>
-        <button className="btn-primary" onClick={handleRunSecurityScan}>
+        <button onClick={handleRunSecurityScan}
+          style={{ padding: "9px 18px", borderRadius: 10, background: "#16233C", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap" }}>
           🔍 Run Security Scan
         </button>
-      </div>
+      </PageHeader>
+      <div className="module-container">
 
       {/* Security Dashboard Widgets */}
-      <div className="module-stats security-stats">
-        <div className="stat-card alert-critical">
-          <span className="stat-label">🚫 Failed Login Attempts</span>
-          <span className="stat-value">{stats.failedLoginAttempts}</span>
-        </div>
-        <div className="stat-card alert-high">
-          <span className="stat-label">👥 Active Sessions</span>
-          <span className="stat-value">{stats.activeSessions}</span>
-        </div>
-        <div className="stat-card alert-medium">
-          <span className="stat-label">🔒 Locked Accounts</span>
-          <span className="stat-value">{stats.lockedAccounts}</span>
-        </div>
-        <div className="stat-card alert-critical">
-          <span className="stat-label">⚠️ API Errors</span>
-          <span className="stat-value">{stats.apiErrors}</span>
-        </div>
-        <div className="stat-card alert-high">
-          <span className="stat-label">🚨 Suspicious Activities</span>
-          <span className="stat-value">{stats.suspiciousActivities}</span>
-        </div>
+      <div className="module-stats">
+        {[
+          { label: "Failed Logins",          value: stats.failedLoginAttempts  || "—", icon: "🚫", bg: "#FEF2F2" },
+          { label: "Active Sessions",         value: stats.activeSessions        || "—", icon: "👥", bg: "#EEF2FF" },
+          { label: "Locked Accounts",         value: stats.lockedAccounts        || "—", icon: "🔒", bg: "#FFF7ED" },
+          { label: "API Errors",              value: stats.apiErrors             || "—", icon: "⚠️",  bg: "#FFFBEB" },
+          { label: "Suspicious Activities",   value: stats.suspiciousActivities  || "—", icon: "🚨", bg: "#FEF2F2" },
+        ].map(({ label, value, icon, bg }) => (
+          <div key={label} style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{icon}</div>
+              <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+            </div>
+            <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+          </div>
+        ))}
       </div>
 
       {/* Access Logs Table */}

@@ -18,12 +18,14 @@ export default function Integrations() {
 
   return (
     <div>
-      <PageHeader subtitle="Manage third-party service integrations and API credentials" />
+      <PageHeader subtitle="Manage third-party service integrations and API credentials">
+        <input type="text" placeholder="Search integrations..."
+          style={{ flex: 1, minWidth: 200, padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", outline: "none" }} />
+        <button style={{ padding: "9px 18px", borderRadius: 10, background: "#16233C", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap" }}>
+          + Add Integration
+        </button>
+      </PageHeader>
       <div className="module-container">
-      <div className="module-controls">
-        <input type="text" placeholder="Search integrations..." />
-        <button className="btn-primary">+ Add Integration</button>
-      </div>
 
       <div className="integrations-grid">
         {integrations.map((integration, idx) => (

@@ -174,17 +174,12 @@ export default function EventManagement() {
 
   return (
     <div>
-      <PageHeader subtitle="Create, manage, and track events and registrations" />
-      <div className="module-container">
-      <div className="module-controls">
-        <input
-          type="text"
-          placeholder="Search by name, location, type..."
-          value={search}
+      <PageHeader subtitle="Create, manage, and track events and registrations">
+        <input type="text" placeholder="Search by name, location, type..." value={search}
           onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          style={{ flex: 1, minWidth: 200, padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", outline: "none" }} />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", cursor: "pointer" }}>
           <option value="ALL">All Events</option>
           <option value="DRAFT">Draft</option>
           <option value="PUBLISHED">Published</option>
@@ -192,27 +187,28 @@ export default function EventManagement() {
           <option value="COMPLETED">Completed</option>
           <option value="CANCELLED">Cancelled</option>
         </select>
-
-        <button className="btn-primary" onClick={openCreate}>+ Create Event</button>
-      </div>
+        <button onClick={openCreate}
+          style={{ padding: "9px 18px", borderRadius: 10, background: "#16233C", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap" }}>
+          + Create Event
+        </button>
+      </PageHeader>
+      <div className="module-container">
 
       <div className="module-stats">
-        <div className="stat-card">
-          <span className="stat-label">Total Events</span>
-          <span className="stat-value">{stats.total}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Upcoming</span>
-          <span className="stat-value">{stats.upcoming}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Total Registrations</span>
-          <span className="stat-value">{stats.registrations}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Avg Attendance %</span>
-          <span className="stat-value">{stats.attendance}%</span>
-        </div>
+        {[
+          { label: "Total Events",       value: stats.total,        icon: "📅", bg: "#EEF2FF" },
+          { label: "Upcoming",           value: stats.upcoming,     icon: "⏰", bg: "#FFF7ED" },
+          { label: "Total Registrations",value: stats.registrations,icon: "🎫", bg: "#F0FDF4" },
+          { label: "Avg Attendance %",   value: `${stats.attendance}%`, icon: "📊", bg: "#F5F3FF" },
+        ].map(({ label, value, icon, bg }) => (
+          <div key={label} style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{icon}</div>
+              <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+            </div>
+            <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+          </div>
+        ))}
       </div>
 
       <div className="events-table-wrapper">

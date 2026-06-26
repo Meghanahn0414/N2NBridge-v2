@@ -10,7 +10,7 @@ export default function LandingPage() {
       <div className="landing-header">
         <button
           className="sign-in-btn"
-          onClick={() => navigate("/admin-login")}
+          onClick={() => navigate("/login")}
         >
           Sign In
         </button>

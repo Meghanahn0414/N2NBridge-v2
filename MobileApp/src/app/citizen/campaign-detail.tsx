@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, StatusBar, RefreshControl,
+  ActivityIndicator, Alert, StatusBar, RefreshControl, Image,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../../services/api";
+import { API_BASE } from "../../config";
 import { useAuthStore } from "../../store/authStore";
 import { useT } from "../../i18n/useT";
 
@@ -37,6 +38,7 @@ type Campaign = {
   status?: string;
   message?: string;
   description?: string;
+  coverImage?: string;
   startDate?: string;
   endDate?: string;
   reach?: number;
@@ -68,6 +70,7 @@ export default function CampaignDetailScreen() {
         type:        c.type,
         status:      c.status,
         message:     c.message || c.description,
+        coverImage:  c.coverImage,
         startDate:   c.startDate || c.start_date,
         endDate:     c.endDate   || c.end_date,
         reach:       c.reach ?? 0,
@@ -111,6 +114,13 @@ export default function CampaignDetailScreen() {
     } finally {
       setJoining(false);
     }
+  };
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    // Relative path from local storage e.g. "uploads/uuid.jpg"
+    return `${API_BASE}/${url.replace(/^\//, "")}`;
   };
 
   const formatDate = (dateStr?: string) => {
@@ -169,9 +179,17 @@ export default function CampaignDetailScreen() {
       >
         {/* Hero card */}
         <View style={s.heroCard}>
-          <View style={[s.heroIconBox, { backgroundColor: `${color}18` }]}>
-            <Text style={s.heroIcon}>{icon}</Text>
-          </View>
+          {resolveImageUrl(campaign.coverImage) ? (
+            <Image
+              source={{ uri: resolveImageUrl(campaign.coverImage)! }}
+              style={s.heroCoverImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[s.heroIconBox, { backgroundColor: `${color}18` }]}>
+              <Text style={s.heroIcon}>{icon}</Text>
+            </View>
+          )}
           <Text style={s.heroTitle}>{campaign.name || tr("Campaign")}</Text>
           {campaign.type && (
             <View style={[s.typeBadge, { backgroundColor: `${color}18` }]}>
@@ -314,6 +332,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: C.border,
     elevation: 2, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
   },
+  heroCoverImage: { width: "100%", height: 180, borderRadius: 12, marginBottom: 14 },
   heroIconBox: { width: 80, height: 80, borderRadius: 24, alignItems: "center", justifyContent: "center", marginBottom: 14 },
   heroIcon:    { fontSize: 40 },
   heroTitle:   { fontSize: 20, fontWeight: "800", color: C.text, textAlign: "center", marginBottom: 10 },

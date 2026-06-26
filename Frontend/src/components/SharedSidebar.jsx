@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { RiExpandUpDownLine } from "react-icons/ri";
-import { RiSettings4Line } from "react-icons/ri";
 import { clearAuth, getAuthRole } from "../services/authStorage";
+import n2nLogo from "../assets/images/n2n-bridge-logo.png";
 import "../features/mla-dashboard/styles/mla-layout.css";
 
-function NavItem({ icon, label, to, badge, badgeCount }) {
+function NavItem({ icon, label, to, badge, badgeCount, exact = true }) {
   const disabled = !to;
 
   if (disabled) {
@@ -20,7 +20,7 @@ function NavItem({ icon, label, to, badge, badgeCount }) {
   return (
     <NavLink
       to={to}
-      end={false}
+      end={exact}
       className={({ isActive }) => "mla-nav-item" + (isActive ? " active" : "")}
     >
       <span className="mla-nav-icon">{icon}</span>
@@ -51,59 +51,62 @@ export default function SharedSidebar({ user, roleSub = "STAFF", roleLabel = "St
     const loginPath =
       role === "CITIZEN" || role === "citizen"
         ? "/citizen-login"
-        : "/admin-login";
+        : "/login";
     window.location.replace(loginPath);
   }
 
   return (
     <nav className="mla-sidebar">
       <div className="mla-brand">
-        <div className="mla-brand-icon">
-          <RiSettings4Line style={{ fontSize: 20 }} />
+        <div className="mla-brand-icon" style={{ background: "none", padding: 0 }}>
+          <img src={n2nLogo} alt="N2N Bridge" style={{ width: 38, height: 38, borderRadius: 11, display: "block" }} />
         </div>
         <div>
-          <div className="mla-brand-name">CRM Portal</div>
+          <div className="mla-brand-name">N2N Bridge</div>
           <div className="mla-brand-sub">{roleSub}</div>
         </div>
       </div>
 
-      {sections.map((section) => (
-        <div key={section.label}>
-          <div className="mla-nav-label">{section.label}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {section.items.map((item) => (
-              <NavItem key={item.label} {...item} />
-            ))}
+      {/* Scrollable nav body — brand above stays fixed */}
+      <div className="mla-nav-body">
+        {sections.map((section) => (
+          <div key={section.label}>
+            <div className="mla-nav-label">{section.label}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              {section.items.map((item) => (
+                <NavItem key={item.label} {...item} />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
 
-      <div style={{ position: "relative", marginTop: "auto" }}>
-        {showLogout && (
-          <div className="mla-logout-popup">
-            <p className="mla-logout-prompt">Sign out?</p>
-            <p className="mla-logout-sub notranslate" translate="no">{displayName}</p>
-            <div className="mla-logout-btns">
-              <button className="mla-logout-cancel" onClick={() => setShowLogout(false)}>Cancel</button>
-              <button className="mla-logout-confirm" onClick={handleLogout}>Sign out</button>
+        <div style={{ position: "relative", marginTop: "auto" }}>
+          {showLogout && (
+            <div className="mla-logout-popup">
+              <p className="mla-logout-prompt">Sign out?</p>
+              <p className="mla-logout-sub notranslate" translate="no">{displayName}</p>
+              <div className="mla-logout-btns">
+                <button className="mla-logout-cancel" onClick={() => setShowLogout(false)}>Cancel</button>
+                <button className="mla-logout-confirm" onClick={handleLogout}>Sign out</button>
+              </div>
             </div>
-          </div>
-        )}
-        <div className="mla-user-card" onClick={() => setShowLogout((v) => !v)}>
-          <div className="mla-user-avatar notranslate" translate="no">
-            {user?.profilePhoto ? (
-              <img src={user.profilePhoto} alt={displayName} />
-            ) : (
-              initials
-            )}
-          </div>
-          <div className="mla-user-info">
-            <div className="mla-user-name notranslate" translate="no">{displayName}</div>
-            <div className="mla-user-role notranslate" translate="no">
-              {roleLabel}{constituency ? ` · ${constituency}` : ""}
+          )}
+          <div className="mla-user-card" onClick={() => setShowLogout((v) => !v)}>
+            <div className="mla-user-avatar notranslate" translate="no">
+              {user?.profilePhoto ? (
+                <img src={user.profilePhoto} alt={displayName} />
+              ) : (
+                initials
+              )}
             </div>
+            <div className="mla-user-info">
+              <div className="mla-user-name notranslate" translate="no">{displayName}</div>
+              <div className="mla-user-role notranslate" translate="no">
+                {roleLabel}{constituency ? ` · ${constituency}` : ""}
+              </div>
+            </div>
+            <span className="mla-user-expand"><RiExpandUpDownLine /></span>
           </div>
-          <span className="mla-user-expand"><RiExpandUpDownLine /></span>
         </div>
       </div>
     </nav>

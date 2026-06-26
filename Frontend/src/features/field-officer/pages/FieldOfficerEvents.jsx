@@ -64,20 +64,18 @@ export default function FieldOfficerEvents() {
       <div className="field-subpage-inner">
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
           {[
-            { label: 'Upcoming',  value: upcoming,  color: '#2563eb', bg: '#eff6ff',  icon: '🗓️' },
-            { label: 'Ongoing',   value: ongoing,   color: '#059669', bg: '#ecfdf5',  icon: '▶️' },
-            { label: 'Completed', value: completed, color: '#475569', bg: '#f1f5f9',  icon: '✅' },
+            { label: 'Upcoming',  value: upcoming,  icon: '🗓️', bg: '#EEF2FF' },
+            { label: 'Ongoing',   value: ongoing,   icon: '▶️',  bg: '#ECFDF5' },
+            { label: 'Completed', value: completed, icon: '✅', bg: '#F1F5F9' },
           ].map(s => (
-            <div key={s.label} style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
-                {s.icon}
+            <div key={s.label} style={{ background: '#fff', border: '1px solid #EAEDF4', borderRadius: 18, padding: '18px 20px', boxShadow: '0 14px 30px -22px rgba(20,35,60,.3)', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{s.icon}</div>
+                <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: '#8590A6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</span>
               </div>
-              <div>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: s.color, lineHeight: 1 }}>{loading ? '—' : s.value}</div>
-                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '3px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
-              </div>
+              <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: 'clamp(22px,2.5vw,32px)', fontWeight: 400, color: '#16233C', lineHeight: 1.2 }}>{loading ? '—' : s.value}</div>
             </div>
           ))}
         </div>

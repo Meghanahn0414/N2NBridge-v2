@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../../shared/services/api";
+import PageHeader from "../../../components/PageHeader";
 
 const QUESTION_TYPES = ["RATING", "MCQ", "TEXT"];
 
@@ -99,20 +100,16 @@ export default function SurveyManagement() {
   };
 
   return (
-    <div style={{ padding:"28px 32px", maxWidth:900, margin:"0 auto", fontFamily:"'Hanken Grotesk',sans-serif" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:28 }}>
-        <div>
-          <h1 style={{ fontSize:22, fontWeight:700, color:"#16233C", margin:0 }}>Survey Management</h1>
-          <p style={{ fontSize:13, color:"#8590A6", margin:"4px 0 0" }}>Create and manage citizen satisfaction surveys</p>
-        </div>
+    <div style={{ fontFamily:"'Hanken Grotesk',sans-serif" }}>
+      <PageHeader subtitle="Create and manage citizen satisfaction surveys">
         <button
-          style={{ background:"#2B5BD7", color:"#fff", border:"none", borderRadius:10,
-            padding:"10px 20px", fontSize:14, fontWeight:700, cursor:"pointer" }}
+          style={{ padding: "9px 18px", borderRadius: 10, background: "#16233C", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap" }}
           onClick={() => { setCreating(true); setError(""); setSuccess(""); }}
         >
           + New Survey
         </button>
-      </div>
+      </PageHeader>
+      <div style={{ padding:"28px 32px", maxWidth:900, margin:"0 auto" }}>
 
       {error   && <div style={{ background:"#FBEAE8", color:"#C8453A", padding:"12px 16px", borderRadius:10, marginBottom:16, fontSize:13 }}>{error}</div>}
       {success && <div style={{ background:"#E6F4EC", color:"1E8A5B", padding:"12px 16px", borderRadius:10, marginBottom:16, fontSize:13, fontWeight:600 }}>{success}</div>}
@@ -235,6 +232,7 @@ export default function SurveyManagement() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

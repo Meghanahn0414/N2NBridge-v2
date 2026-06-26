@@ -8,7 +8,7 @@ const ORIG = '_orig_'; // English source stored on text node
 const LAST = '_last_'; // last value WE wrote — lets us detect React overwrites
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'CODE', 'PRE', 'INPUT', 'TEXTAREA', 'SELECT']);
 
-let currentLang = localStorage.getItem('app_language') || 'en';
+let currentLang = sessionStorage.getItem('app_language') || 'en';
 let observer = null;
 
 // ─── In-memory + localStorage cache ──────────────────────────────────────────
@@ -132,14 +132,13 @@ const applyTranslations = async (nodes, lang) => {
       delete n[ORIG];
     }
 
-    const raw = n[ORIG] || fromNativeNumerals(currentText);
+    const raw = n[ORIG] || currentText;
     n[ORIG] = raw;
 
     const hit = cacheGet(lang, raw);
     if (hit) {
-      const out = toNativeNumerals(hit, lang);
-      n.textContent = out;
-      n[LAST] = out;
+      n.textContent = hit;
+      n[LAST] = hit;
     } else {
       uncachedTexts.push(raw);
       uncachedNodes.push(n);
@@ -150,9 +149,8 @@ const applyTranslations = async (nodes, lang) => {
 
   const translated = await translateMany(uncachedTexts, lang);
   uncachedNodes.forEach((n, i) => {
-    const out = toNativeNumerals(translated[i], lang);
-    n.textContent = out;
-    n[LAST] = out;
+    n.textContent = translated[i];
+    n[LAST] = translated[i];
   });
 };
 
@@ -239,7 +237,7 @@ const hookNavigation = () => {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export const initLanguage = async () => {
-  const saved = localStorage.getItem('app_language') || 'en';
+  const saved = sessionStorage.getItem('app_language') || 'en';
   currentLang = saved;
   // Wait for React to finish first render
   if (saved !== 'en') {
@@ -252,7 +250,7 @@ export const initLanguage = async () => {
 
 export const changeLanguage = async (lang) => {
   currentLang = lang;
-  localStorage.setItem('app_language', lang);
+  sessionStorage.setItem('app_language', lang);
 
   // Pause observer so it doesn't fight us during bulk translation
   pauseObserver();

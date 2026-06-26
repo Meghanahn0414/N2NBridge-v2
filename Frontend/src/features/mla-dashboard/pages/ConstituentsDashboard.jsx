@@ -548,7 +548,7 @@ export default function ConstituentsDashboard() {
                 <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>Your strongest advocates this quarter</div>
               </div>
               <span
-                onClick={() => navigate(ROUTES.adminUsers)}
+                onClick={() => navigate(ROUTES.mlaCitizenList)}
                 style={{ font: "600 13px 'Hanken Grotesk'", color: "#2B5BD7", cursor: "pointer", textDecoration: "none" }}
                 onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
                 onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}

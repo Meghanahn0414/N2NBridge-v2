@@ -36,7 +36,6 @@ function SaveToast({ msg, isError }) {
 const NAV = [
   { id:"profile",    icon:"person",        label:"Profile" },
   { id:"contact",    icon:"call",          label:"Contact" },
-  { id:"broadcasts", icon:"campaign",      label:"Broadcast defaults" },
   { id:"notifs",     icon:"notifications", label:"Notifications" },
   { id:"security",   icon:"shield",        label:"Account & security" },
 ];
@@ -61,10 +60,6 @@ export default function MLASettings() {
   const [email,         setEmail]         = useState("");
   const [officePhone,   setOfficePhone]   = useState("");
   const [officeAddress, setOfficeAddress] = useState("");
-
-  // ── Broadcast defaults ──
-  const [signature,            setSignature]            = useState("");
-  const [defaultBroadcastType, setDefaultBroadcastType] = useState("update");
 
   // ── Notifications ──
   const [notifs, setNotifs] = useState({
@@ -100,8 +95,6 @@ export default function MLASettings() {
         setEmail(u.email || "");
         setOfficePhone(u.officePhone || "");
         setOfficeAddress(u.officeAddress || "");
-        setSignature(u.broadcastSignature || "");
-        setDefaultBroadcastType(u.defaultBroadcastType || "update");
         if (u.notifPreferences) setNotifs(prev => ({ ...prev, ...u.notifPreferences }));
         const initials = (u.fullName || "")
           .trim().split(/\s+/).filter(Boolean)
@@ -153,11 +146,6 @@ export default function MLASettings() {
     officeAddress: officeAddress.trim() || undefined,
   });
 
-  const handleSaveBroadcasts = () => saveSection({
-    broadcastSignature:   signature.trim() || undefined,
-    defaultBroadcastType: defaultBroadcastType,
-  });
-
   const handleSaveNotifs = () => saveSection({ notifPreferences: notifs });
 
   const handleUpdatePassword = async () => {
@@ -180,7 +168,7 @@ export default function MLASettings() {
 
   const handleSignOutAll = () => {
     clearAuth();
-    window.location.href = "/admin-login";
+    window.location.href = "/login";
   };
 
   const handleDeactivate = async () => {
@@ -190,7 +178,7 @@ export default function MLASettings() {
       showToast("Account deactivated");
       setTimeout(() => {
         clearAuth();
-        window.location.href = "/admin-login";
+        window.location.href = "/login";
       }, 1500);
     } catch (err) {
       showToast(err?.response?.data?.detail || "Failed to deactivate account", true);
@@ -388,40 +376,6 @@ export default function MLASettings() {
               </div>
 
               <SaveBtn onClick={handleSaveContact} />
-            </section>
-          )}
-
-          {/* ── BROADCASTS ── */}
-          {activeSection === "broadcasts" && (
-            <section style={card}>
-              <SectionTitle>Broadcast defaults</SectionTitle>
-
-              <div style={{ marginBottom:20 }}>
-                <label style={lbl}>Default broadcast type</label>
-                <div style={{ display:"flex", gap:10 }}>
-                  {["event","achievement","update"].map(t => (
-                    <button key={t} onClick={() => setDefaultBroadcastType(t)}
-                      style={{ flex:1, height:40,
-                        border: defaultBroadcastType===t ? "2px solid #2B5BD7" : "1.5px solid #E1E6F0",
-                        borderRadius:11,
-                        background: defaultBroadcastType===t ? "#EEF2FF" : "#fff",
-                        color: defaultBroadcastType===t ? "#2B5BD7" : "#5A6678",
-                        font:`${defaultBroadcastType===t?"700":"600"} 13px 'Hanken Grotesk'`,
-                        cursor:"pointer" }}>
-                      {t.charAt(0).toUpperCase()+t.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginBottom:22 }}>
-                <label style={lbl}>Message signature</label>
-                <textarea value={signature} onChange={e => setSignature(e.target.value)} rows={3}
-                  placeholder="e.g. — Your Name, City Councilor"
-                  style={{ ...inp, height:"auto", padding:"12px 14px", resize:"vertical" }} />
-              </div>
-
-              <SaveBtn onClick={handleSaveBroadcasts} label="Save defaults" />
             </section>
           )}
 
