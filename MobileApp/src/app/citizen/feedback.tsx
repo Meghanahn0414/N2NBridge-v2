@@ -10,7 +10,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useT } from "../../i18n/useT";
 
 interface Complaint {
-  id: string; title: string; status: string; closedAt?: string;
+  id: string; title: string; description?: string; status: string; closedAt?: string;
   feedback?: { rating: number };
 }
 
@@ -28,13 +28,16 @@ export default function Feedback() {
     if (!user) return;
     try {
       const { data } = await api.get(
-        `/api/grievances/?citizen_id=${user.id}&per_page=100`
+        `/api/grievances/citizen/${user.id}?page=1&per_page=100`
       );
-      const items: any[] = data.items ?? data;
+      const items: any[] = Array.isArray(data)
+        ? data
+        : (data.items ?? data.results ?? data.data ?? []);
       const resolved = items.filter((c) => ["RESOLVED", "CLOSED"].includes(c.status));
       const mapped: Complaint[] = resolved.map((c: any) => ({
         id: c._id || c.id,
-        title: c.title,
+        title: c.title || c.subject || c.heading || "",
+        description: c.description || "",
         status: c.status,
         closedAt: c.closed_at || c.closedAt,
         feedback: c.feedback,
@@ -63,7 +66,7 @@ export default function Feedback() {
 
   async function submitRating(id: string) {
     const rating = ratings[id];
-    if (!rating) { Alert.alert("Please select a star rating first"); return; }
+    if (!rating) { Alert.alert(tr("Please select a star rating first")); return; }
     try {
       await api.post(`/api/grievances/${id}/feedback`, {
         rating,
@@ -71,7 +74,7 @@ export default function Feedback() {
         submittedAt: new Date().toISOString(),
       });
       setSubmitted((prev) => ({ ...prev, [id]: true }));
-      Alert.alert("Thank you!", "Your feedback has been submitted.");
+      Alert.alert(tr("Thank you!"), tr("Your feedback has been submitted."));
     } catch (e: any) {
       Alert.alert("Error", e?.response?.data?.detail ?? "Failed to submit feedback");
     }
@@ -108,7 +111,7 @@ export default function Feedback() {
           complaints.map((c) => (
             <View key={c.id} style={styles.card}>
               <Text style={styles.cardTitle} numberOfLines={2}>
-                {c.title || (c as any).description || "Untitled Complaint"}
+                {c.title || c.description || tr("Complaint")}
               </Text>
               <View style={styles.statusRow}>
                 <View style={styles.badge}>

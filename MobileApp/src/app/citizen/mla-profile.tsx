@@ -8,6 +8,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
 import { API_BASE } from "../../config";
+import { useT } from "../../i18n/useT";
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const C = {
@@ -71,7 +72,7 @@ const row = StyleSheet.create({
 });
 
 // ─── Approval gauge (simple arc using View) ──────────────────────────────────
-function ApprovalGauge({ pct }: { pct: number }) {
+function ApprovalGauge({ pct, approvalLabel }: { pct: number; approvalLabel: string }) {
   const color = approvalColor(pct);
   return (
     <View style={gauge.wrap}>
@@ -85,7 +86,7 @@ function ApprovalGauge({ pct }: { pct: number }) {
       {/* Center text */}
       <View style={gauge.center}>
         <Text style={[gauge.pct, { color }]}>{Math.round(pct)}%</Text>
-        <Text style={gauge.label}>Approval</Text>
+        <Text style={gauge.label}>{approvalLabel}</Text>
       </View>
     </View>
   );
@@ -127,6 +128,7 @@ type MlaProfile = {
 };
 
 export default function MlaProfileScreen() {
+  const tr = useT();
   const router = useRouter();
   const { user } = useAuthStore();
   const [mla, setMla] = useState<MlaProfile | null>(null);
@@ -146,7 +148,7 @@ export default function MlaProfileScreen() {
       // Response is a plain array (not wrapped in success_response)
       const list: any[] = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
       if (!list.length) {
-        setErrorMsg("No representative registered in the system yet.");
+        setErrorMsg(tr('mlaProfile.noRepresentativeRegistered'));
         return;
       }
 
@@ -226,22 +228,22 @@ export default function MlaProfileScreen() {
       <View style={s.center}>
         <StatusBar backgroundColor={C.primaryDark} barStyle="light-content" />
         <Ionicons name="person-remove-outline" size={52} color="#CBD5E1" />
-        <Text style={s.noDataTitle}>No representative found</Text>
+        <Text style={s.noDataTitle}>{tr('mlaProfile.noRepresentativeFound')}</Text>
         {errorMsg ? (
           <Text style={[s.noDataSub, { color: "#DC2626", fontSize: 12, fontFamily: "monospace" }]}>
             {errorMsg}
           </Text>
         ) : (
-          <Text style={s.noDataSub}>Your constituency doesn't have an assigned representative yet.</Text>
+          <Text style={s.noDataSub}>{tr('mlaProfile.noRepresentativeMsg')}</Text>
         )}
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-          <Text style={s.backBtnText}>Go back</Text>
+          <Text style={s.backBtnText}>{tr('mlaProfile.goBack')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.backBtn, { backgroundColor: "#6B7280", marginTop: 8 }]}
           onPress={() => { setLoading(true); load(); }}
         >
-          <Text style={s.backBtnText}>Retry</Text>
+          <Text style={s.backBtnText}>{tr('mlaProfile.retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -292,7 +294,7 @@ export default function MlaProfileScreen() {
             )}
           </View>
 
-          <Text style={s.repName}>{mla.fullName || "Your Representative"}</Text>
+          <Text style={s.repName}>{mla.fullName || tr('mlaProfile.yourRepresentative')}</Text>
           <Text style={s.repTitle}>{mla.title || "MLA"}</Text>
 
           {mla.constituencyName && (
@@ -305,7 +307,7 @@ export default function MlaProfileScreen() {
           {/* "Your Representative" chip */}
           <View style={s.verifiedBadge}>
             <Ionicons name="shield-checkmark" size={12} color="#BFDBFE" />
-            <Text style={s.verifiedText}>Your Representative</Text>
+            <Text style={s.verifiedText}>{tr('mlaProfile.yourRepresentative')}</Text>
           </View>
         </View>
 
@@ -313,7 +315,7 @@ export default function MlaProfileScreen() {
         {mla.bio ? (
           <View style={s.card}>
             <View style={s.cardHeader}>
-              <Text style={s.cardTitle}>About</Text>
+              <Text style={s.cardTitle}>{tr('mlaProfile.about')}</Text>
             </View>
             <Text style={s.bioText}>{mla.bio}</Text>
           </View>
@@ -323,17 +325,17 @@ export default function MlaProfileScreen() {
         {hasStats && (
           <View style={s.card}>
             <View style={s.cardHeader}>
-              <Text style={s.cardTitle}>Performance</Text>
+              <Text style={s.cardTitle}>{tr('mlaProfile.performance')}</Text>
             </View>
             {(mla.approvalPct == null && mla.resolvedCount == null) ? (
               <Text style={{ padding: 20, color: C.muted, fontSize: 13, textAlign: "center" }}>
-                Performance data will appear once citizen feedback is collected.
+                {tr('mlaProfile.performanceDataPending')}
               </Text>
             ) : (
               <View style={s.statsRow}>
                 {mla.showApprovalRating && mla.approvalPct != null && (
                   <View style={s.statBox}>
-                    <ApprovalGauge pct={mla.approvalPct} />
+                    <ApprovalGauge pct={mla.approvalPct} approvalLabel={tr('mlaProfile.approval')} />
                   </View>
                 )}
                 {mla.showResolvedCount && mla.resolvedCount != null && (
@@ -344,7 +346,7 @@ export default function MlaProfileScreen() {
                     <Text style={s.resolvedCount}>
                       {mla.resolvedCount.toLocaleString("en-IN")}
                     </Text>
-                    <Text style={s.resolvedLabel}>Complaints{"\n"}Resolved</Text>
+                    <Text style={s.resolvedLabel}>{tr('mlaProfile.complaintsResolved')}</Text>
                   </View>
                 )}
               </View>
@@ -355,22 +357,22 @@ export default function MlaProfileScreen() {
         {/* ── Contact ─────────────────────────────────────────────────────── */}
         <View style={s.card}>
           <View style={s.cardHeader}>
-            <Text style={s.cardTitle}>Contact</Text>
+            <Text style={s.cardTitle}>{tr('mlaProfile.contact')}</Text>
           </View>
           <InfoRow
             icon="mail-outline"
-            label="Email"
-            value={mla.email || "Not provided"}
+            label={tr('mlaProfile.email')}
+            value={mla.email || tr('mlaProfile.notProvided')}
           />
           <InfoRow
             icon="call-outline"
-            label="Office Phone"
-            value={mla.officePhone || "Not provided"}
+            label={tr('mlaProfile.officePhone')}
+            value={mla.officePhone || tr('mlaProfile.notProvided')}
           />
           <InfoRow
             icon="business-outline"
-            label="Office Address"
-            value={mla.officeAddress || "Not provided"}
+            label={tr('mlaProfile.officeAddress')}
+            value={mla.officeAddress || tr('mlaProfile.notProvided')}
             isLast
           />
           {mla.officePhone && (
@@ -379,7 +381,7 @@ export default function MlaProfileScreen() {
               onPress={() => Linking.openURL(`tel:${mla.officePhone}`)}
             >
               <Ionicons name="call" size={16} color={C.primary} />
-              <Text style={s.callBtnText}>Call Office</Text>
+              <Text style={s.callBtnText}>{tr('mlaProfile.callOffice')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -390,7 +392,7 @@ export default function MlaProfileScreen() {
           onPress={() => router.push("/citizen/new-complaint" as any)}
         >
           <Ionicons name="document-text-outline" size={18} color="#fff" />
-          <Text style={s.ctaBtnText}>File a Complaint</Text>
+          <Text style={s.ctaBtnText}>{tr('mlaProfile.fileComplaint')}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />

@@ -73,7 +73,7 @@ export default function Events() {
 
   const handleRegister = async (eventId: string) => {
     if (!user?.id) {
-      Alert.alert("Error", "Please log in again to register.");
+      Alert.alert(tr("Error"), tr("Please log in again to register."));
       return;
     }
     setRegistering(eventId);
@@ -83,12 +83,13 @@ export default function Events() {
       // Mark as registered so the button disables
       setRegisteredIds((prev) => new Set(prev).add(eventId));
       Alert.alert(
-        alreadyHad ? "Already Registered" : "Registered!",
-        alreadyHad ? "You have already registered for this event." : "You have successfully registered for this event.",
+        alreadyHad ? tr("Already Registered") : tr("Registered!"),
+        alreadyHad ? tr("You have already registered for this event.") : tr("You have successfully registered for this event."),
       );
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || "Failed to register. Try again.";
-      Alert.alert("Error", String(msg));
+      const d = err?.response?.data;
+      const msg = d?.detail || d?.message || tr("Failed to register. Try again.");
+      Alert.alert(tr("Error"), String(msg));
     } finally {
       setRegistering(null);
     }
@@ -143,10 +144,10 @@ export default function Events() {
             >
               <Text style={s.registerBtnText}>
                 {registering === item.id
-                  ? 'Registering…'
+                  ? tr('Registering…')
                   : registeredIds.has(item.id)
-                  ? '✓ Registered'
-                  : 'Register'}
+                  ? `✓ ${tr('Registered')}`
+                  : tr('Register')}
               </Text>
             </TouchableOpacity>
           )}

@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/authStore";
+import { useT } from "../../i18n/useT";
 
 const C = {
   primary:     "#2B5BD7",
@@ -65,6 +66,7 @@ const getCatColor = (cat?: string) => {
 };
 
 export default function ComplaintListScreen() {
+  const tr = useT();
   const router = useRouter();
   const { user } = useAuthStore();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -77,6 +79,15 @@ export default function ComplaintListScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const FILTERS = ["All", "Open", "In Progress", "Resolved"];
+
+  const timeAgo = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+    if (days === 0) return tr("Today");
+    if (days === 1) return tr("Yesterday");
+    if (days < 7)  return `${days}d ${tr("ago")}`;
+    return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  };
 
   const fetchComplaints = useCallback(async (pageNum = 1, refresh = false) => {
     try {
@@ -111,15 +122,6 @@ export default function ComplaintListScreen() {
     );
   }, [complaints, activeFilter]);
 
-  const timeAgo = (dateStr?: string) => {
-    if (!dateStr) return "";
-    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-    if (days === 0) return "Today";
-    if (days === 1) return "Yesterday";
-    if (days < 7)  return `${days}d ago`;
-    return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-  };
-
   const renderItem = ({ item }: { item: Complaint }) => {
     const sm  = statusMeta(item.status);
     const cat = getCatColor(item.categoryId || item.category);
@@ -134,14 +136,14 @@ export default function ComplaintListScreen() {
         </View>
         <View style={s.cardBody}>
           <Text style={s.cardTitle} numberOfLines={1}>
-            {item.title || item.description || "Complaint"}
+            {item.title || item.description || tr("Complaint")}
           </Text>
           <Text style={s.cardMeta}>
             {[item.category, timeAgo(item.createdAt)].filter(Boolean).join(" · ")}
           </Text>
         </View>
         <View style={[s.pill, { backgroundColor: sm.bg }]}>
-          <Text style={[s.pillText, { color: sm.color }]}>{sm.label}</Text>
+          <Text style={[s.pillText, { color: sm.color }]}>{tr(sm.label)}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -156,7 +158,7 @@ export default function ComplaintListScreen() {
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>My Reports</Text>
+        <Text style={s.headerTitle}>{tr("My Reports")}</Text>
         <TouchableOpacity
           style={s.newBtn}
           onPress={() => router.push("/citizen/new-complaint" as any)}
@@ -179,7 +181,7 @@ export default function ComplaintListScreen() {
               onPress={() => setActiveFilter(f)}
             >
               <Text style={[s.filterText, active && s.filterTextActive]}>
-                {f}{count > 0 ? ` · ${count}` : ""}
+                {tr(f)}{count > 0 ? ` · ${count}` : ""}
               </Text>
             </TouchableOpacity>
           );
@@ -220,11 +222,11 @@ export default function ComplaintListScreen() {
               <View style={s.emptyIconBox}>
                 <Ionicons name="inbox-outline" size={48} color={C.mutedLight} />
               </View>
-              <Text style={s.emptyTitle}>No reports found</Text>
+              <Text style={s.emptyTitle}>{tr("No reports found")}</Text>
               <Text style={s.emptyText}>
                 {activeFilter === "All"
-                  ? "You haven't filed any complaints yet."
-                  : `No ${activeFilter.toLowerCase()} complaints.`}
+                  ? tr("You haven't filed any complaints yet.")
+                  : `${tr("No")} ${tr(activeFilter.toLowerCase())} ${tr("complaints.")}`}
               </Text>
               {activeFilter === "All" && (
                 <TouchableOpacity
@@ -232,7 +234,7 @@ export default function ComplaintListScreen() {
                   onPress={() => router.push("/citizen/new-complaint" as any)}
                 >
                   <Ionicons name="add" size={18} color="#fff" />
-                  <Text style={s.emptyBtnText}>File a complaint</Text>
+                  <Text style={s.emptyBtnText}>{tr("File a complaint")}</Text>
                 </TouchableOpacity>
               )}
             </View>

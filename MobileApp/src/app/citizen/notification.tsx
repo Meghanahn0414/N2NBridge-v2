@@ -60,33 +60,47 @@ export default function NotificationsScreen() {
 
   useEffect(() => { fetchNotifs(); }, [fetchNotifs]);
 
+  // Normalize timestamp: backend sends UTC without 'Z', JS treats it as local → wrong time
+  const parseUTC = (dt: string) =>
+    new Date(/Z$|[+-]\d{2}:?\d{2}$/.test(dt) ? dt : dt + "Z");
+
   const formatTime = (dt?: string) => {
     if (!dt) return "";
-    const d = new Date(dt);
+    const d = parseUTC(dt);
     const diffMins = Math.floor((Date.now() - d.getTime()) / 60000);
-    if (diffMins < 60)  return `${diffMins}m ago`;
+    if (diffMins < 1)   return tr("Just now");
+    if (diffMins < 60)  return `${diffMins}m ${tr("ago")}`;
     const diffHrs = Math.floor(diffMins / 60);
-    if (diffHrs < 24) return `${diffHrs}h ago`;
+    if (diffHrs < 24)  return `${diffHrs}h ${tr("ago")}`;
     const diffDays = Math.floor(diffHrs / 24);
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7)  return `${diffDays} days ago`;
+    if (diffDays === 1) return tr("Yesterday");
+    if (diffDays < 7)  return `${diffDays}d ${tr("ago")}`;
     return d.toLocaleDateString("en-IN");
   };
 
-  // Split into Today vs Earlier
+  // Split into Today vs Earlier (use parseUTC so timezone is handled correctly)
   const today = notifs.filter((n) => {
     if (!n.createdAt) return false;
-    return Math.floor((Date.now() - new Date(n.createdAt).getTime()) / 86400000) < 1;
+    return Math.floor((Date.now() - parseUTC(n.createdAt).getTime()) / 86400000) < 1;
   });
   const earlier = notifs.filter((n) => {
     if (!n.createdAt) return true;
-    return Math.floor((Date.now() - new Date(n.createdAt).getTime()) / 86400000) >= 1;
+    return Math.floor((Date.now() - parseUTC(n.createdAt).getTime()) / 86400000) >= 1;
   });
+
+  const markOneRead = async (id: string) => {
+    setNotifs((prev) => prev.filter((n) => n.id !== id));
+    api.post(`/api/notifications/${id}/mark-read`).catch(() => {});
+  };
 
   const renderItem = ({ item }: { item: Notif }) => {
     const meta = TYPE_META[item.type?.toUpperCase() ?? ""] ?? DEFAULT_META;
     return (
-      <View style={[s.card, !item.isRead && s.cardUnread]}>
+      <TouchableOpacity
+        style={[s.card, !item.isRead && s.cardUnread]}
+        activeOpacity={0.75}
+        onPress={() => { if (!item.isRead) markOneRead(item.id); }}
+      >
         <View style={[s.iconBox, { backgroundColor: meta.bg }]}>
           <Ionicons name={meta.icon} size={20} color={meta.color} />
         </View>
@@ -96,7 +110,7 @@ export default function NotificationsScreen() {
           <Text style={s.cardTime}>{formatTime(item.createdAt)}</Text>
         </View>
         {!item.isRead && <View style={s.unreadDot} />}
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -121,7 +135,7 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
         <Text style={s.headerTitle}>{tr("notifications.title")}</Text>
         <TouchableOpacity onPress={() => fetchNotifs()}>
-          <Text style={s.markRead}>Refresh</Text>
+          <Text style={s.markRead}>{tr("Refresh")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -133,7 +147,7 @@ export default function NotificationsScreen() {
             <Ionicons name="notifications-off-outline" size={48} color={C.mutedLight} />
           </View>
           <Text style={s.emptyTitle}>{tr("notifications.noNotifications")}</Text>
-          <Text style={s.emptyText}>You're all caught up — no new notifications.</Text>
+          <Text style={s.emptyText}>{tr("You're all caught up — no new notifications.")}</Text>
         </View>
       ) : (
         <FlatList
@@ -146,8 +160,8 @@ export default function NotificationsScreen() {
           }
           ListHeaderComponent={
             <View style={s.list}>
-              <Section label="Today" data={today} />
-              <Section label="Earlier" data={earlier} />
+              <Section label={tr("Today")} data={today} />
+              <Section label={tr("Earlier")} data={earlier} />
             </View>
           }
         />

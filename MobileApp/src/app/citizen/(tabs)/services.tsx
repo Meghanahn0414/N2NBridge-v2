@@ -37,8 +37,8 @@ type Complaint = {
 
 const CATEGORIES: Category[] = [
   { key: "road",  keywords: ["road"],          label: "Roads",    icon: "construct-outline",   color: "#C9871F", bg: "#FEF3C7" },
-  { key: "light", keywords: ["light"],         label: "Lighting", icon: "flash-outline",       color: "#6B4FD8", bg: "#EDEAFB" },
-  { key: "garb",  keywords: ["garb", "sanit"], label: "Garbage",  icon: "trash-outline",       color: "#1E8A5B", bg: "#E6F4EC" },
+  { key: "light", keywords: ["light", "power", "electr"], label: "Power",   icon: "flash-outline",       color: "#6B4FD8", bg: "#EDEAFB" },
+  { key: "garb",  keywords: ["garb", "sanit", "waste"],  label: "Waste",   icon: "trash-outline",       color: "#1E8A5B", bg: "#E6F4EC" },
   { key: "water", keywords: ["water"],         label: "Water",    icon: "water-outline",       color: "#2B5BD7", bg: "#E7EEFF" },
   { key: "noise", keywords: ["noise"],         label: "Noise",    icon: "volume-high-outline", color: "#C8453A", bg: "#FEF2F2" },
 ];
@@ -166,7 +166,7 @@ export default function ExploreScreen() {
               <Ionicons name="search-outline" size={18} color={C.mutedLight} />
               <TextInput
                 style={s.searchInput}
-                placeholder="Search reports, streets, topics"
+                placeholder={tr("Search reports, streets, topics")}
                 placeholderTextColor={C.mutedLight}
                 value={search}
                 onChangeText={setSearch}
@@ -181,12 +181,12 @@ export default function ExploreScreen() {
           </View>
         ) : (
           <>
-            <Text style={s.headerTitle}>Explore</Text>
+            <Text style={s.headerTitle}>{tr("Explore")}</Text>
             <View style={s.searchBar}>
               <Ionicons name="search-outline" size={18} color={C.mutedLight} />
               <TextInput
                 style={s.searchInput}
-                placeholder="Search reports, streets, topics"
+                placeholder={tr("Search reports, streets, topics")}
                 placeholderTextColor={C.mutedLight}
                 value={search}
                 onChangeText={setSearch}
@@ -204,14 +204,14 @@ export default function ExploreScreen() {
         {isSearching ? (
           <>
             <Text style={s.sectionLabel}>
-              {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for "{search}"
+              {searchResults.length} {tr(searchResults.length !== 1 ? "results" : "result")} {tr("for")} "{search}"
             </Text>
 
             {searchResults.length === 0 ? (
               <View style={s.noResults}>
                 <Ionicons name="document-text-outline" size={44} color={C.mutedLight} />
-                <Text style={s.noResultsTitle}>0 complaints found</Text>
-                <Text style={s.noResultsText}>No complaints match "{search}". Try a different keyword.</Text>
+                <Text style={s.noResultsTitle}>{tr("0 complaints found")}</Text>
+                <Text style={s.noResultsText}>{tr("No complaints match")} "{search}". {tr("Try a different keyword.")}</Text>
               </View>
             ) : (
               <View style={s.resultsList}>
@@ -227,14 +227,14 @@ export default function ExploreScreen() {
                     >
                       <View style={s.resultBody}>
                         <Text style={s.resultTitle} numberOfLines={2}>
-                          {c.title || c.description || "Complaint"}
+                          {c.title || c.description || tr("Complaint")}
                         </Text>
                         {c.category && (
                           <Text style={s.resultMeta}>{c.category}</Text>
                         )}
                       </View>
                       <View style={[s.pill, { backgroundColor: sm.bg }]}>
-                        <Text style={[s.pillText, { color: sm.color }]}>{sm.label}</Text>
+                        <Text style={[s.pillText, { color: sm.color }]}>{tr(sm.label)}</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={16} color={C.mutedLight} />
                     </TouchableOpacity>
@@ -246,7 +246,7 @@ export default function ExploreScreen() {
         ) : (
           <>
             {/* ── Categories ── */}
-            <Text style={s.sectionLabel}>Categories</Text>
+            <Text style={s.sectionLabel}>{tr("Categories")}</Text>
             <View style={s.grid}>
               {CATEGORIES.map((cat) => (
                 <TouchableOpacity
@@ -258,8 +258,8 @@ export default function ExploreScreen() {
                   <View style={[s.catIconBox, { backgroundColor: cat.bg }]}>
                     <Ionicons name={cat.icon} size={22} color={cat.color} />
                   </View>
-                  <Text style={s.catLabel}>{cat.label}</Text>
-                  {counts[cat.key] ? <Text style={s.catCount}>{counts[cat.key]} open</Text> : null}
+                  <Text style={s.catLabel}>{tr(cat.label)}</Text>
+                  {counts[cat.key] ? <Text style={s.catCount}>{counts[cat.key]} {tr("open")}</Text> : null}
                 </TouchableOpacity>
               ))}
             </View>
@@ -267,7 +267,7 @@ export default function ExploreScreen() {
             {/* ── Trending ── */}
             {trending.length > 0 && (
               <>
-                <Text style={s.sectionLabel}>Trending</Text>
+                <Text style={s.sectionLabel}>{tr("Trending")}</Text>
                 <View style={s.trendCard}>
                   {trending.map((item, idx) => (
                     <TouchableOpacity
@@ -279,7 +279,7 @@ export default function ExploreScreen() {
                       <Text style={s.trendNum}>0{idx + 1}</Text>
                       <View style={s.trendBody}>
                         <Text style={s.trendTitle} numberOfLines={2}>{item.title}</Text>
-                        {item.count > 0 && <Text style={s.trendSubs}>{item.count} supporters</Text>}
+                        {item.count > 0 && <Text style={s.trendSubs}>{item.count} {tr("supporters")}</Text>}
                       </View>
                       <Ionicons name="trending-up-outline" size={18} color={C.primary} />
                     </TouchableOpacity>
@@ -289,7 +289,7 @@ export default function ExploreScreen() {
             )}
 
             {/* ── Services ── */}
-            <Text style={s.sectionLabel}>Services</Text>
+            <Text style={s.sectionLabel}>{tr("Services")}</Text>
             <View style={s.linkList}>
               {[
                 { icon: "document-text-outline" as const, label: "File a complaint",    route: "/citizen/new-complaint", color: C.primary, bg: "#E7EEFF" },
@@ -307,7 +307,7 @@ export default function ExploreScreen() {
                   <View style={[s.linkIcon, { backgroundColor: item.bg }]}>
                     <Ionicons name={item.icon} size={19} color={item.color} />
                   </View>
-                  <Text style={s.linkLabel}>{item.label}</Text>
+                  <Text style={s.linkLabel}>{tr(item.label)}</Text>
                   <Ionicons name="chevron-forward" size={16} color={C.mutedLight} />
                 </TouchableOpacity>
               ))}

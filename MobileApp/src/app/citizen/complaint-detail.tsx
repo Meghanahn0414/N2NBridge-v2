@@ -166,12 +166,12 @@ export default function ComplaintDetailScreen() {
 
   const handleShare = async () => {
     const refNum = complaint?.complaintNumber || `RD-${(complaint?.id || "").slice(-6).toUpperCase()}`;
-    const title  = complaint?.title || complaint?.description || "Complaint";
+    const title  = complaint?.title || complaint?.description || tr('complaintDetail.defaultTitle');
     const status = getStatusLabel((complaint?.status || "NEW").toUpperCase());
     try {
       await Share.share({
-        title: `Complaint #${refNum}`,
-        message: `Jana Seva CRM\nComplaint: ${title}\nRef: #${refNum}\nStatus: ${status}${complaint?.address ? `\nLocation: ${complaint.address}` : ""}`,
+        title: `${tr('complaintDetail.defaultTitle')} #${refNum}`,
+        message: `Jana Seva CRM\n${tr('complaintDetail.defaultTitle')}: ${title}\n${tr('complaintDetail.refPrefix')}${refNum}\nStatus: ${status}${complaint?.address ? `\nLocation: ${complaint.address}` : ""}`,
       });
     } catch { /* user cancelled */ }
   };
@@ -274,11 +274,11 @@ export default function ComplaintDetailScreen() {
             <View style={[s.statusDot, { backgroundColor: sc }]} />
             <Text style={[s.statusChipText, { color: sc }]}>{statusText}</Text>
           </View>
-          <Text style={s.refText}>Ref #{refNum}</Text>
+          <Text style={s.refText}>{tr('complaintDetail.refPrefix')}{refNum}</Text>
         </View>
 
         {/* Title */}
-        <Text style={s.title}>{complaint.title || complaint.description || "Complaint"}</Text>
+        <Text style={s.title}>{complaint.title || complaint.description || tr('complaintDetail.defaultTitle')}</Text>
 
         {/* Location row */}
         {metaParts.length > 0 && (
@@ -301,7 +301,7 @@ export default function ComplaintDetailScreen() {
             const tColor    = isPending ? "#CBD5E1" : (STATUS_COLOR[item.status] ?? "#3B82F6");
             const isLast    = i === timeline.length - 1;
             const date      = item.timestamp;
-            const title     = item.label || item.status?.replace(/_/g, " ") || "Update";
+            const title     = item.label || item.status?.replace(/_/g, " ") || tr('complaintDetail.defaultUpdate');
             const desc      = item.note;
 
             return (

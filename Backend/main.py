@@ -180,12 +180,20 @@ app.include_router(surveys_router)
 
 
 # ── Global exception handler ───────────────────────────────────────────────────
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.exception_handlers import http_exception_handler as _default_http_handler
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Re-delegate HTTPException to FastAPI's default handler so detail is preserved."""
+    return await _default_http_handler(request, exc)
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"success": False, "message": "Internal server error", "statusCode": 500},
+        content={"detail": "Internal server error", "success": False, "statusCode": 500},
     )
 
 
