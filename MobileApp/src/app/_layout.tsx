@@ -1,3 +1,4 @@
+import "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
