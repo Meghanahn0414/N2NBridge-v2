@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 20.2.0",
+    "version": ">= 20.3.0",
     "appVersionSource": "remote"
   },
   "build": {
@@ -9,11 +9,7 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "node": "20.18.0",
-      "env": {
-        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
-      }
+      "distribution": "internal"
     },
     "production": {
       "autoIncrement": true

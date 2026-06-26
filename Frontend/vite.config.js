@@ -23,14 +23,15 @@ export default defineConfig({
         secure: false,
       },
 
-      // ── Citizen Mobile App (Expo web on port 19006) ────────────────────
+      // ── Citizen Mobile App (Expo web on port 8081) ────────────────────
       // Access at: http://localhost:3000/citizen/
+      // NO rewrite — Expo Router reads window.location.pathname (the browser URL),
+      // not the proxied HTTP path.  They must match, so forward /citizen/... as-is.
       '/citizen': {
         target: 'http://127.0.0.1:8081',
         changeOrigin: true,
         secure: false,
         ws: true,                        // forward WebSocket (Expo HMR)
-        rewrite: (path) => path.replace(/^\/citizen/, ''),
       },
       // Expo static assets (fonts, images)
       '/assets': {

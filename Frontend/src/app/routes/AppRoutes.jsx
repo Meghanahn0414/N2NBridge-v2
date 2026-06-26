@@ -16,8 +16,6 @@ import PublicRoute from "./PublicRoute";
 import RoleRoute from "./RoleRoute";
 import { ROUTES } from "./RouteConstants";
 import LandingPage from "../../landing/LandingPage";
-import CitizenDashboard from "../../pages/citizen/CitizenDashboard";
-import ProfileCreation from "../../pages/citizen/ProfileCreation";
 // Admin page imports
 import CitizenListPage from "../../pages/admin/CitizenList";
 import EventListPage from "../../features/events/pages/EventList";
@@ -130,9 +128,7 @@ function AppRoutesContent() {
           <Route path={ROUTES.citizenLogin} element={<PublicRoute><CitizenLogin /></PublicRoute>} />
           <Route path={ROUTES.otp} element={<PublicRoute><OtpVerify /></PublicRoute>} />
           <Route path={ROUTES.adminSignup} element={<PublicRoute><AdminSignup /></PublicRoute>} />
-          <Route path="/profile-creation" element={<ProfileCreation />} />
-          <Route path={ROUTES.citizen} element={<RoleRoute allowedRoles={["CITIZEN"]}><CitizenDashboard /></RoleRoute>} />
-          
+
           {/* Field Officer Routes — new unified layout */}
           <Route element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldLayout /></RoleRoute>}>
             <Route path={ROUTES.field}           element={<FieldDashboard />} />

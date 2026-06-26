@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "4cc26f3f-d873-4e21-a933-d414579a4634"
+      }
+    },
+    "android": {
+      "package": "neta.to_neta"
+    }
+  }
+}

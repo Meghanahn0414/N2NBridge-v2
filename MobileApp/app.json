@@ -17,8 +17,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "package":"com.fatima237.mobileapp"
+      "package": "com.swaghrafatima.mobileapp"
     },
     "web": {
       "output": "single",
@@ -28,7 +27,15 @@
     },
     "plugins": [
       "expo-router",
-      [ 
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
@@ -48,7 +55,13 @@
       "checkAutomatically": "NEVER"
     },
     "extra": {
-      "router": {}
-    }
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "a1147e85-5597-4ae5-9bb0-37fcdab01ccb"
+      }
+    },
+    "owner": "swaghrafatima"
   }
 }
