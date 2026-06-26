@@ -66,9 +66,11 @@ class OTPService:
                     else:
                         print(f"[OTP] SMS failed for {normalized_value}", flush=True)
                         logger.warning(f"SMS delivery failed for {value}")
+                        return False
                 except Exception as sms_err:
                     print(f"[OTP] SMS exception: {sms_err}", flush=True)
                     logger.error(f"SMS exception: {sms_err}", exc_info=True)
+                    return False
             else:
                 print(f"🔐 DEBUG OTP sent to email {value}: {otp}", flush=True)
                 logger.info(f"OTP for email {value}: {otp}")

@@ -64,12 +64,6 @@ export default function LoginScreen() {
       // Slow path: rehydrate from storage (first load or after page refresh)
       await useAuthStore.persist.rehydrate();
 
-      const done = await storage.getItem("onboarding_done");
-      if (!done) {
-        router.replace("/onboarding");
-        return;
-      }
-
       // Check persisted auth (written by Zustand persist middleware)
       const fresh = useAuthStore.getState();
       if (fresh.token && fresh.user?.role) {

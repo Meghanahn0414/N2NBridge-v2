@@ -8,16 +8,23 @@ if _src_path not in sys.path:
 from config.settings import settings  # noqa: E402
 
 
+def _get_env_key(key: str) -> str:
+    """Read a key fresh from .env file — bypasses cached settings on running server."""
+    from dotenv import dotenv_values
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.env')
+    return dotenv_values(env_path).get(key) or getattr(settings, key, None)
+
+
 def send_otp_via_sms(phone_number: str, otp: str, message: str = None) -> bool:
     if not message:
         message = f"Your CRM OTP is: {otp}. Valid for 5 minutes. Do not share."
 
-    if settings.VONAGE_API_KEY:
-        return send_via_vonage(phone_number, message)
-    elif settings.TWOFACTOR_API_KEY:
-        return send_via_2factor(phone_number, otp)
-    elif settings.FAST2SMS_API_KEY:
+    if _get_env_key("FAST2SMS_API_KEY"):
         return send_via_fast2sms(phone_number, otp)
+    elif _get_env_key("VONAGE_API_KEY"):
+        return send_via_vonage(phone_number, message)
+    elif _get_env_key("TWOFACTOR_API_KEY"):
+        return send_via_2factor(phone_number, otp)
     elif settings.TWILIO_ACCOUNT_SID:
         return send_via_twilio(phone_number, message)
     elif settings.AWS_ACCESS_KEY_ID:
@@ -94,6 +101,15 @@ def send_via_2factor(phone_number: str, otp: str) -> bool:
 def send_via_fast2sms(phone_number: str, otp: str) -> bool:
     try:
         import requests
+        import os
+        from dotenv import dotenv_values
+
+        # Read key fresh from .env so server restart is not required after .env change
+        env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.env')
+        api_key = dotenv_values(env_path).get("FAST2SMS_API_KEY") or settings.FAST2SMS_API_KEY
+        if not api_key:
+            print("FAIL Fast2SMS key not configured", flush=True)
+            return False
 
         # Strip +91 or any country code — Fast2SMS needs 10-digit Indian number
         number = phone_number.strip()
@@ -105,9 +121,9 @@ def send_via_fast2sms(phone_number: str, otp: str) -> bool:
 
         url = "https://www.fast2sms.com/dev/bulkV2"
         params = {
-            "authorization": settings.FAST2SMS_API_KEY,
-            "route": "q",
-            "message": f"Your Jan Seva CRM OTP is {otp}. Valid for 5 minutes. Do not share.",
+            "authorization": api_key,
+            "route": "otp",
+            "variables_values": otp,
             "numbers": number,
             "flash": 0,
         }

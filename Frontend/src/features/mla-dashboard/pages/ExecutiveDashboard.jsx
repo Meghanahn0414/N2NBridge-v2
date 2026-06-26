@@ -70,10 +70,10 @@ function MS({ children, style }) {
 }
 
 const KPI = [
-  { icon: "task_alt",   iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "People Surveyed",     sparkColor: "#2B5BD7" },
-  { icon: "bolt",       iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Average Time Spent",   sparkColor: "#1E8A5B" },
-  { icon: "groups",     iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: "People Participating", sparkColor: "#6B4FD8" },
-  { icon: "how_to_vote",iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Poll Participation Rate",   sparkColor: "#C9871F" },
+  { icon: "task_alt",   iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "Resolved Complaints",    sparkColor: "#2B5BD7" },
+  { icon: "bolt",       iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Avg. Resolution Time",   sparkColor: "#1E8A5B" },
+  { icon: "groups",     iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: "Registered Citizens",    sparkColor: "#6B4FD8" },
+  { icon: "how_to_vote",iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Event Registrations",    sparkColor: "#C9871F" },
 ];
 
 export default function ExecutiveDashboard() {
