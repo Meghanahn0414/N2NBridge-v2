@@ -303,7 +303,7 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={18} color={C.mutedLight} />
         </TouchableOpacity>
 
-        <Text style={s.version}>Jana Seva CRM v1.0.0</Text>
+        <Text style={s.version}>Neta to Nagarika v1.0.0</Text>
         <View style={{ height: 32 }} />
       </ScrollView>
     </View>

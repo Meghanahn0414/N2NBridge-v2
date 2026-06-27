@@ -109,8 +109,10 @@ export default function CampaignDetailScreen() {
         setCampaign((prev) => prev ? { ...prev, reach: (prev.reach ?? 0) + 1 } : prev);
         Alert.alert(tr("Joined!"), tr("You have successfully joined this campaign."));
       }
-    } catch {
-      Alert.alert(tr("Error"), tr("Failed to join. Please try again."));
+    } catch (err: any) {
+      const d = err?.response?.data;
+      const msg = d?.detail || d?.message || tr("Failed to join. Please try again.");
+      Alert.alert(tr("Error"), String(msg));
     } finally {
       setJoining(false);
     }

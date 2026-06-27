@@ -7,6 +7,7 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { storage } from "../utils/storage";
+import BridgeLogo from "../components/BridgeLogo";
 
 const { width, height } = Dimensions.get("window");
 
@@ -55,9 +56,7 @@ export default function OnboardingScreen() {
         {/* ── SLIDE 1 · Hero ── */}
         <LinearGradient colors={["#1E40AF", "#1D4ED8", "#2563EB"]} style={s.slide}>
           <View style={s.heroTop}>
-            <View style={s.bigIcon}>
-              <Text style={s.bigIconText}>🏛️</Text>
-            </View>
+            <BridgeLogo size={110} />
           </View>
           <View style={s.heroCard}>
             <View style={s.dotRow}>
@@ -80,14 +79,12 @@ export default function OnboardingScreen() {
         <SafeAreaView style={[s.slide, s.white]}>
           {/* App badge row */}
           <View style={s.badgeRow}>
-            <View style={s.appBadge}>
-              <Text style={s.appBadgeIcon}>🏛️</Text>
-            </View>
-            <Text style={s.appBadgeName}>Jana Seva CRM</Text>
+            <BridgeLogo size={38} />
+            <Text style={s.appBadgeName}>Neta to Nagarika</Text>
           </View>
 
           {/* Heading */}
-          <Text style={s.featTitle}>{"Three ways Jana Seva\nCRM works for you"}</Text>
+          <Text style={s.featTitle}>{"Three ways N2N works for you"}</Text>
 
           {/* Feature list */}
           <View style={s.featList}>

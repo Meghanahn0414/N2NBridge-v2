@@ -171,7 +171,7 @@ export default function ComplaintDetailScreen() {
     try {
       await Share.share({
         title: `${tr('complaintDetail.defaultTitle')} #${refNum}`,
-        message: `Jana Seva CRM\n${tr('complaintDetail.defaultTitle')}: ${title}\n${tr('complaintDetail.refPrefix')}${refNum}\nStatus: ${status}${complaint?.address ? `\nLocation: ${complaint.address}` : ""}`,
+        message: `Neta to Nagarika\n${tr('complaintDetail.defaultTitle')}: ${title}\n${tr('complaintDetail.refPrefix')}${refNum}\nStatus: ${status}${complaint?.address ? `\nLocation: ${complaint.address}` : ""}`,
       });
     } catch { /* user cancelled */ }
   };

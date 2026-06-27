@@ -11,6 +11,7 @@ import { useAuthStore } from "../store/authStore";
 import { changeLanguage, getCurrentLanguage, initLanguage } from "../i18n";
 import { useT } from "../i18n/useT";
 import { API_BASE } from "../config";
+import BridgeLogo from "../components/BridgeLogo";
 
 const ROLE_ROUTES: Record<string, string> = {
   CITIZEN:               "/citizen/",
@@ -206,6 +207,10 @@ export default function LoginScreen() {
             <Text style={s.backArrow}>←</Text>
           </TouchableOpacity>
         )}
+
+        <View style={{ alignItems: "center", marginBottom: 24 }}>
+          <BridgeLogo size={72} />
+        </View>
 
         <Text style={s.welcome}>
           {step === "input" ? tr('auth.welcomeBack') : tr('auth.enterOtp')}

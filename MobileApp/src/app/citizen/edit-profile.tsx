@@ -103,7 +103,7 @@ export default function EditProfileScreen() {
           fullName: user?.name || "",
           email:    realEmail(user?.email) || "",
           mobile:   "",
-          age:      "",
+          age:      user?.age != null ? String(user.age) : "",
           address:  "",
           wardId:   "",
         });
@@ -186,7 +186,8 @@ export default function EditProfileScreen() {
         throw e;
       });
       setProfileComplete(true);
-      if (form.fullName.trim()) updateUser({ name: form.fullName.trim() });
+      const savedAge = form.age.trim() ? Number(form.age.trim()) : undefined;
+      updateUser({ name: form.fullName.trim(), ...(savedAge != null && { age: savedAge }) });
       if (isRequired) {
         router.replace("/citizen/" as any);
       } else {

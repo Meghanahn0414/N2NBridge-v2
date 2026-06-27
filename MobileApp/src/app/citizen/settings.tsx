@@ -57,7 +57,7 @@ export default function SettingsScreen() {
   const handleSignOut = () => {
     if (Platform.OS === "web") {
       // @ts-ignore
-      const ok = typeof window !== "undefined" && window.confirm("Sign out of Jana Seva CRM?");
+      const ok = typeof window !== "undefined" && window.confirm("Sign out of Neta to Nagarika?");
       if (ok) { logout(); router.replace("/" as any); }
     } else {
       setShowConfirm(true);
@@ -225,7 +225,7 @@ export default function SettingsScreen() {
           <Text style={s.signOutText}>{tr('settings.signOut')}</Text>
         </TouchableOpacity>
 
-        <Text style={s.version}>Jana Seva CRM v1.0.0</Text>
+        <Text style={s.version}>Neta to Nagarika v1.0.0</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
 
