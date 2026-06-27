@@ -375,12 +375,15 @@ export default function Login() {
 
             </div>
           ) : (
-            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 16 }} autoComplete="off">
+              {/* Hidden honeypot inputs — tricks browsers into autofilling these instead of the real fields */}
+              <input type="text"     name="username_fake" style={{ display: "none" }} readOnly tabIndex={-1} aria-hidden="true" />
+              <input type="password" name="password_fake" style={{ display: "none" }} readOnly tabIndex={-1} aria-hidden="true" />
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>{role.idLabel}</label>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "0 14px", background: "#fff" }}>
                   <span style={{ fontSize: 15, color: "#94a3b8" }}>✉️</span>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={role.idPlaceholder} style={{ flex: 1, padding: "12px 0", fontSize: 14, color: "#0f172a", border: "none", outline: "none", background: "transparent" }} />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={role.idPlaceholder} autoComplete="off" name="email_field" style={{ flex: 1, padding: "12px 0", fontSize: 14, color: "#0f172a", border: "none", outline: "none", background: "transparent" }} />
                 </div>
               </div>
               <div>
@@ -390,7 +393,7 @@ export default function Login() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "0 14px", background: "#fff" }}>
                   <span style={{ fontSize: 15, color: "#94a3b8" }}>🔒</span>
-                  <input type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" style={{ flex: 1, padding: "12px 0", fontSize: 14, color: "#0f172a", border: "none", outline: "none", background: "transparent" }} />
+                  <input type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" autoComplete="new-password" name="password_field" style={{ flex: 1, padding: "12px 0", fontSize: 14, color: "#0f172a", border: "none", outline: "none", background: "transparent" }} />
                   <button type="button" onClick={() => setShowPass((s) => !s)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#94a3b8", padding: 0 }}>
                     {showPass ? "🙈" : "👁️"}
                   </button>
