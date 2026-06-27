@@ -149,9 +149,9 @@ export default function AdminSignup() {
         <FlagStrip />
         <div style={{ textAlign: "center" }}>
           <div style={{ color: "#1e3a8a", fontWeight: 700, fontSize: 15, letterSpacing: "0.05em" }}>
-            Citizen &amp; MLA Connect
+            N2N
           </div>
-          <div style={{ color: "#64748b", fontSize: 11 }}>Government Portal — Admin Registration</div>
+          <div style={{ color: "#64748b", fontSize: 11 }}>Admin Registration</div>
         </div>
         <FlagStrip />
       </div>
@@ -165,19 +165,9 @@ export default function AdminSignup() {
             Admin Registration
           </h2>
           <p style={{ color: "#bfdbfe", fontSize: 12, marginBottom: 12 }}>
-            Manage the Citizen–MLA portal
+            Manage N2N Portal
           </p>
-          <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-            <span style={styles.badgeSecure}>🔒 Secure Portal</span>
-            <span style={styles.badgeWarn}>⚠️ Restricted</span>
-          </div>
         </div>
-
-        {/* Warning bar */}
-        <div style={styles.warningBar}>
-          ⚠️ Authorized government administrators only
-        </div>
-
         {/* Form */}
         <form onSubmit={handleSubmit} style={styles.formBody}>
 
@@ -214,7 +204,7 @@ export default function AdminSignup() {
             />
           </Field>
 
-          <Field label="Phone Number" error={errors.phone}>
+          <Field label="Mobile Number" error={errors.phone}>
             <div style={{ display: "flex", gap: 8 }}>
               <select
                 value={form.countryCode}
@@ -328,10 +318,6 @@ export default function AdminSignup() {
           </p>
         </form>
       </div>
-
-      <p style={{ color: "#94a3b8", fontSize: 11, marginTop: 20, textAlign: "center" }}>
-        © 2026 Citizen &amp; MLA Connect · Government of India Initiative
-      </p>
     </div>
   );
 }
@@ -384,7 +370,7 @@ function PasswordInput({ placeholder, value, show, error, onChange, onToggle, bo
         }}
         aria-label={show ? "Hide" : "Show"}
       >
-        {show ? "🙈" : "👁"}
+        {show ? "🙈" : "👁️"}
       </button>
     </div>
   );

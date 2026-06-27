@@ -3,9 +3,21 @@ import { useNavigate } from "react-router-dom";
 import api from "../../shared/services/api";
 import { getUserRoles } from "../../shared/services/lookupService";
 import { ROUTES } from "../../app/routes/RouteConstants";
-import { normalizePhone } from "../../utils/phoneUtils";
 import "./NewMLA.css";
 import PageHeader from "../../components/PageHeader";
+
+const COUNTRIES = [
+  { flag: "🇮🇳", code: "IN", dial: "+91" },
+  { flag: "🇺🇸", code: "US", dial: "+1" },
+  { flag: "🇬🇧", code: "GB", dial: "+44" },
+  { flag: "🇦🇺", code: "AU", dial: "+61" },
+  { flag: "🇨🇦", code: "CA", dial: "+1" },
+  { flag: "🇦🇪", code: "AE", dial: "+971" },
+  { flag: "🇸🇬", code: "SG", dial: "+65" },
+  { flag: "🇲🇾", code: "MY", dial: "+60" },
+  { flag: "🇵🇰", code: "PK", dial: "+92" },
+  { flag: "🇧🇩", code: "BD", dial: "+880" },
+];
 
 const initialFormState = {
   fullName: "",
@@ -34,7 +46,21 @@ export default function RegistrationPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const countryRef = useRef(null);
+
+  // Close country dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (countryRef.current && !countryRef.current.contains(e.target)) {
+        setCountryOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   // Photo upload states
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
@@ -84,14 +110,11 @@ export default function RegistrationPage() {
     if (!formData.fullName.trim()) return "Name is required.";
     if (!formData.email.trim()) return "Email is required.";
     if (!formData.mobile.trim()) return "Mobile number is required.";
+    if (!/^\d{10}$/.test(formData.mobile.trim())) return "Mobile number must be exactly 10 digits.";
     if (!formData.password) return "Password is required.";
     if (!formData.confirmPassword) return "Confirm password is required.";
     if (formData.password !== formData.confirmPassword) return "Passwords do not match.";
     if (!/^\S+@\S+\.\S+$/.test(formData.email)) return "Please enter a valid email address.";
-    const normalized = normalizePhone(formData.mobile);
-    if (!/^\+?\d{7,15}$/.test(normalized.replace(/\s+/g, ""))) {
-      return "Please enter a valid phone number.";
-    }
 
     if (role === "CONSTITUENCY_MANAGER") {
       // Department, Office Location, and Manager Code are now optional
@@ -142,7 +165,7 @@ export default function RegistrationPage() {
       const payload = {
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
-        mobile: normalizePhone(formData.mobile),
+        mobile: selectedCountry.dial + formData.mobile.trim(),
         address: formData.address.trim() || null,
         password: formData.password,
         role,
@@ -200,6 +223,7 @@ export default function RegistrationPage() {
       setPhotoFile(null);
       setPhotoPreview("");
       setRole("");
+      setSelectedCountry(COUNTRIES[0]);
 
       navigate(ROUTES.rolePermissions, { state: { selectedRole: role } });
     } catch (err) {
@@ -252,14 +276,49 @@ export default function RegistrationPage() {
 
           <div className="new-mla-group">
             <label className="new-mla-label">Mobile Number *</label>
-            <input
-              type="tel"
-              name="mobile"
-              value={formData.mobile}
-              onChange={handleInputChange}
-              placeholder="Enter mobile number"
-              className="new-mla-input"
-            />
+            <div className="new-mla-phone-field" style={{ position: "relative" }} ref={countryRef}>
+              <button
+                type="button"
+                className="new-mla-country-button"
+                onClick={() => setCountryOpen((o) => !o)}
+                style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                <span className="new-mla-country-flag">{selectedCountry.flag}</span>
+                <span>{selectedCountry.dial}</span>
+                <span className="new-mla-country-arrow">▾</span>
+              </button>
+
+              {countryOpen && (
+                <div className="new-mla-country-dropdown">
+                  <ul className="new-mla-country-list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                    {COUNTRIES.map((c) => (
+                      <li
+                        key={c.code + c.dial}
+                        className="new-mla-country-item"
+                        onClick={() => { setSelectedCountry(c); setCountryOpen(false); }}
+                      >
+                        <span>{c.flag} {c.code}</span>
+                        <span className="new-mla-country-dial">{c.dial}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <input
+                type="tel"
+                name="mobile"
+                value={formData.mobile}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  setFormData((prev) => ({ ...prev, mobile: digits }));
+                }}
+                placeholder="10-digit number"
+                className="new-mla-input"
+                maxLength={10}
+                inputMode="numeric"
+              />
+            </div>
           </div>
 
           <div className="new-mla-group">

@@ -82,6 +82,11 @@
   display: flex;
   gap: 12px;
   align-items: center;
+  position: relative;
+}
+
+.new-mla-phone-field .new-mla-input {
+  flex: 1;
 }
 
 .new-mla-country-button {
