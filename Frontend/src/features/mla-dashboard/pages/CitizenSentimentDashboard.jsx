@@ -149,7 +149,7 @@ export default function CitizenSentimentDashboard() {
       {/* Topbar */}
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 34px", background: "#F3F5FA", position: "sticky", top: 0, zIndex: 10, borderBottom: "1px solid #E5E9F1", gap: 16, flexWrap: "wrap", minHeight: 72 }}>
         <div style={{ flex: 1, minWidth: 0, maxWidth: "60%" }}>
-          <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>How residents feel about your work</div>
+          <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>How Residents feel about your work</div>
           <h1 style={{ fontFamily: "'Newsreader','Noto Sans Kannada',serif", fontSize: "clamp(16px,2.2vw,26px)", fontWeight: 400, color: "#16233C", margin: 0, letterSpacing: "-.01em", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Popularity</h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -190,7 +190,7 @@ export default function CitizenSentimentDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
-                <div style={{ font: "600 13px 'Hanken Grotesk'", color: "#8590A6", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8 }}>Overall Approval Rating</div>
+                <div style={{font: "700 16px 'Hanken Grotesk'", color: "#16233C",marginBottom: 8}}>Overall Approval Rating</div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 13 }}>
                   <span style={{ font: "400 52px 'Newsreader'", color: "#16233C", lineHeight: .9, letterSpacing: "-.02em" }}>
                     {curApproval != null ? `${curApproval}%` : "—"}

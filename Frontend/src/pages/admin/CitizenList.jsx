@@ -77,7 +77,7 @@ export default function CitizenList() {
           <div style={styles.cardHeader}>
             <h3 style={styles.cardTitle}>Citizens</h3>
             {!loading && !error && (
-              <span style={styles.badge}>{users.length} total</span>
+              <span style={styles.badge}>{users.length} Total</span>
             )}
           </div>
 

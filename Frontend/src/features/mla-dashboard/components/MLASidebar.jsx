@@ -12,6 +12,7 @@ import {
   RiMessage3Line,
   RiSettings4Line,
   RiExpandUpDownLine,
+  RiAlertLine,
 } from "react-icons/ri";
 import { ROUTES } from "../../../app/routes/RouteConstants";
 import "../styles/mla-layout.css";
@@ -98,11 +99,12 @@ export default function MLASidebar({ user, openComplaints = 0 }) {
         <div className="mla-nav-label">ENGAGE</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {[
-            { label: "Citizens",   icon: <RiUserLine />,       to: ROUTES.mlaCitizenList },
-            { label: "Broadcasts", icon: <RiMegaphoneLine />,   to: ROUTES.mlaCommunications },
-            { label: "Reports",    icon: <RiFileWarningLine />,  to: ROUTES.mlaReports },
-            { label: "Messages",   icon: <RiMessage3Line />,     to: ROUTES.mlaMessages },
-            { label: "Settings",   icon: <RiSettings4Line />,    to: ROUTES.mlaSettings },
+            { label: "Citizens",    icon: <RiUserLine />,       to: ROUTES.mlaCitizenList },
+            { label: "Grievances",  icon: <RiAlertLine />,       to: ROUTES.mlaGrievances },
+            { label: "Broadcasts",  icon: <RiMegaphoneLine />,   to: ROUTES.mlaCommunications },
+            { label: "Reports",     icon: <RiFileWarningLine />,  to: ROUTES.mlaReports },
+            { label: "Messages",    icon: <RiMessage3Line />,     to: ROUTES.mlaMessages },
+            { label: "Settings",    icon: <RiSettings4Line />,    to: ROUTES.mlaSettings },
           ].map((item) => (
             <NavItem key={item.label} {...item} badgeCount={item.badge ? openComplaints : 0} />
           ))}

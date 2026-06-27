@@ -290,7 +290,7 @@ export default function NewMLA() {
 
           {/* Phone Number */}
           <div className="new-mla-group" ref={countryDropdownRef}>
-            <label className="new-mla-label">Phone Number *</label>
+            <label className="new-mla-label">Mobile Number *</label>
             <div className="new-mla-phone-field">
               <button
                 type="button"

@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getDashboardForRole } from "../../../shared/services/dashboardService";
 import { getAuthUser } from "../../../services/authStorage";
 import { ROUTES } from "../../../app/routes/RouteConstants";
+import { notificationService } from "../../../shared/services/notification";
 import "../../../styles/field-officer.css";
 
 const STATUS_META = {
@@ -37,6 +38,62 @@ export default function FieldDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const user = getAuthUser();
+
+  // ── Notification bell state ───────────────────────────────────────────────
+  const [notifOpen, setNotifOpen]   = useState(false);
+  const [notifList, setNotifList]   = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const notifRef = useRef(null);
+
+  const fetchNotifCount = async () => {
+    try {
+      const items = await notificationService.getUnread();
+      setUnreadCount(Array.isArray(items) ? items.length : 0);
+    } catch { /* silent */ }
+  };
+
+  const openNotifPanel = async () => {
+    setNotifOpen(v => !v);
+    if (!notifOpen) {
+      try {
+        setNotifLoading(true);
+        const items = await notificationService.getAll(1, 20);
+        setNotifList(Array.isArray(items) ? items : []);
+      } catch { setNotifList([]); }
+      finally { setNotifLoading(false); }
+    }
+  };
+
+  const markAllRead = async () => {
+    try {
+      await notificationService.markAllRead();
+      setUnreadCount(0);
+      setNotifList(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch { /* silent */ }
+  };
+
+  const markOneRead = async (id) => {
+    try {
+      await notificationService.markRead(id);
+      setNotifList(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch { /* silent */ }
+  };
+
+  // close panel on outside click
+  useEffect(() => {
+    const handler = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // initial count + 30s poll
+  useEffect(() => {
+    fetchNotifCount();
+    const id = setInterval(fetchNotifCount, 30_000);
+    return () => clearInterval(id);
+  }, []);
   const officerName = user?.fullName || user?.name || "Officer";
   const firstName = officerName.split(" ")[0];
   const hour = new Date().getHours();
@@ -84,6 +141,76 @@ export default function FieldDashboard() {
             <span style={{ fontSize: 13, fontWeight: 600, color: open > 0 ? "#C8453A" : "#1E8A5B", fontFamily: "'Hanken Grotesk', system-ui" }}>
               {loading ? "Loading…" : open > 0 ? `${open} open grievance${open > 1 ? "s" : ""} awaiting action` : "All grievances up to date"}
             </span>
+          </div>
+
+          {/* ── Notification Bell ── */}
+          <div ref={notifRef} style={{ position: "relative" }}>
+            <button
+              onClick={openNotifPanel}
+              style={{ position: "relative", width: 44, height: 44, borderRadius: 13, background: "#fff", border: "1px solid #E1E6F0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+              title="Notifications"
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#16233C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              {unreadCount > 0 && (
+                <span style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, borderRadius: "50%", background: "#E53E3E", border: "2px solid #F3F5FA" }} />
+              )}
+            </button>
+
+            {/* Dropdown panel */}
+            {notifOpen && (
+              <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 340, background: "#fff", border: "1px solid #E5E9F1", borderRadius: 16, boxShadow: "0 12px 32px -8px rgba(20,35,60,.18)", zIndex: 200, overflow: "hidden" }}>
+                {/* Panel header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid #F1F5F9" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ font: "700 14px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>Notifications</span>
+                    {unreadCount > 0 && (
+                      <span style={{ background: "#E53E3E", color: "#fff", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 20 }}>{unreadCount}</span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead} style={{ font: "600 11px 'Hanken Grotesk',sans-serif", color: "#4F46E5", background: "none", border: "none", cursor: "pointer" }}>
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+
+                {/* List */}
+                <div style={{ maxHeight: 360, overflowY: "auto" }}>
+                  {notifLoading && (
+                    <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Loading…</div>
+                  )}
+                  {!notifLoading && notifList.length === 0 && (
+                    <div style={{ padding: 32, textAlign: "center" }}>
+                      <div style={{ fontSize: 28 }}>🔔</div>
+                      <p style={{ margin: "8px 0 0", fontSize: 13, color: "#94a3b8" }}>No notifications yet</p>
+                    </div>
+                  )}
+                  {!notifLoading && notifList.map((n) => {
+                    const id = n._id || n.id;
+                    const unread = !n.isRead;
+                    return (
+                      <div
+                        key={id}
+                        onClick={() => unread && markOneRead(id)}
+                        style={{ display: "flex", gap: 10, padding: "11px 16px", borderBottom: "1px solid #F8FAFC", cursor: unread ? "pointer" : "default", background: unread ? "#F8F9FF" : "#fff", transition: "background 0.1s" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "#F0F4FF"}
+                        onMouseLeave={e => e.currentTarget.style.background = unread ? "#F8F9FF" : "#fff"}
+                      >
+                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: unread ? "#4F46E5" : "transparent", flexShrink: 0, marginTop: 5 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, font: "600 12px 'Hanken Grotesk',sans-serif", color: "#16233C", lineHeight: 1.4 }}>{n.title || "Notification"}</p>
+                          {n.body && <p style={{ margin: "2px 0 0", font: "400 11px 'Hanken Grotesk',sans-serif", color: "#64748b", lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{n.body}</p>}
+                          {n.createdAt && <p style={{ margin: "3px 0 0", font: "400 10px 'Hanken Grotesk',sans-serif", color: "#94a3b8" }}>{new Date(n.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>

@@ -289,7 +289,7 @@ export default function CommunicationCenter() {
     <div style={{ minHeight: "100vh", background: "#F3F5FA", fontFamily: "'Hanken Grotesk', sans-serif" }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 34px", background: "#F3F5FA", position: "sticky", top: 0, zIndex: 10, borderBottom: "1px solid #E5E9F1", gap: 16, flexWrap: "wrap", minHeight: 72 }}>
         <div style={{ flex: 1, minWidth: 0, maxWidth: "60%" }}>
-          <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Reach your community directly</div>
+          <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Reach your Community directly</div>
           <h1 style={{ fontFamily: "'Newsreader','Noto Sans Kannada',serif", fontSize: "clamp(16px,2.2vw,26px)", fontWeight: 400, color: "#16233C", margin: 0, letterSpacing: "-.01em", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Broadcasts</h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -327,7 +327,7 @@ export default function CommunicationCenter() {
               cursor: "pointer",
             }}
           >
-            <MS style={{ fontSize: 21, color: showNotifications ? "#2B5BD7" : "#16233C" }}>notifications</MS>
+            <MS style={{ fontSize: 21, color: showNotifications ? "#2B5BD7" : "#16233C" }}>Notifications</MS>
           </button>
         </div>
       </header>
@@ -398,7 +398,7 @@ export default function CommunicationCenter() {
       <div style={{ padding: "28px 34px 40px", display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 24, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "28px 30px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font: "700 18px 'Hanken Grotesk'", color: "#16233C", marginBottom: 20 }}>Create a broadcast</div>
+            <div style={{ font: "700 18px 'Hanken Grotesk'", color: "#16233C", marginBottom: 20 }}>Create a Broadcast</div>
             <div style={{ display: "flex", gap: 8, background: "#F1F4F9", borderRadius: 14, padding: 5, marginBottom: 22 }}>
               {TYPES.map((type) => {
                 const active = broadcastType === type.key;
@@ -412,7 +412,7 @@ export default function CommunicationCenter() {
             </div>
             <label style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C", display: "block", marginBottom: 8 }}>Title</label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Broadcast title…" style={{ width: "100%", height: 52, border: "1.5px solid #E1E6F0", borderRadius: 13, padding: "0 16px", font: "600 15px 'Hanken Grotesk'", color: "#16233C", outline: "none", boxSizing: "border-box", marginBottom: 18, background: "#FAFBFD" }} />
-            <label style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C", display: "block", marginBottom: 8 }}>Cover image</label>
+            <label style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C", display: "block", marginBottom: 8 }}>Cover Image</label>
             <div
               role="button"
               onClick={handleUploadAreaClick}
@@ -441,9 +441,9 @@ export default function CommunicationCenter() {
               ) : null}
               <div style={{ position: coverImagePreview ? "relative" : "static", zIndex: 1, textAlign: "center" }}>
                 <MS style={{ fontSize: 30, color: "#9AA7BD" }}>add_photo_alternate</MS>
-                <span style={{ font: "600 13px 'Hanken Grotesk'", color: "#8590A6" }}>Drop an image or browse</span>
+                <span style={{ font: "600 13px 'Hanken Grotesk'", color: "#8590A6" }}>Drop an Image or Browse</span>
                 <span style={{ font: "500 11px 'Hanken Grotesk'", color: "#A9B2C4" }}>Recommended 1200 × 630</span>
-                {uploadingImage && <div style={{ marginTop: 8, color: "#2B5BD7", font: "600 12px 'Hanken Grotesk'" }}>Uploading image…</div>}
+                {uploadingImage && <div style={{ marginTop: 8, color: "#2B5BD7", font: "600 12px 'Hanken Grotesk'" }}>Uploading Image…</div>}
                 {uploadError && <div style={{ marginTop: 8, color: "#c2410c", font: "600 12px 'Hanken Grotesk'" }}>{uploadError}</div>}
               </div>
               <input
@@ -459,7 +459,7 @@ export default function CommunicationCenter() {
                 <div>
                   <label style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C", display: "block", marginBottom: 8 }}>Date & time</label>
                   <div style={{ height: 52, border: "1.5px solid #E1E6F0", borderRadius: 13, display: "flex", alignItems: "center", gap: 10, padding: "0 14px", background: "#FAFBFD" }}>
-                    <MS style={{ fontSize: 19, color: "#2B5BD7" }}>calendar_month</MS>
+                    <MS style={{ fontSize: 19, color: "#2B5BD7" }}>Calendar_Month</MS>
                     <input
                       type="datetime-local"
                       value={dateTime}
@@ -508,7 +508,7 @@ export default function CommunicationCenter() {
               }}
               style={{ width: "100%", height: 48, border: "1.5px solid #E1E6F0", borderRadius: 13, padding: "0 16px", font: "600 14px 'Hanken Grotesk'", color: "#16233C", background: "#FAFBFD", outline: "none", marginBottom: 10, cursor: "pointer" }}
             >
-              <option value="">All constituents</option>
+              <option value="">All Constituents</option>
               {wards.map((w) => (
                 <option key={w._id || w.id} value={w._id || w.id}>{w.name}</option>
               ))}
@@ -519,7 +519,7 @@ export default function CommunicationCenter() {
                 {" "}Notifications will only be sent to citizens registered in this ward.
               </div>
             )}
-            <label style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C", display: "block", marginBottom: 10 }}>Delivery channels</label>
+            <label style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C", display: "block", marginBottom: 10 }}>Delivery Channels</label>
             <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
               {CHANNEL_OPTIONS.map((channel) => {
                 const active = selectedChannels.includes(channel.key);
@@ -594,7 +594,7 @@ export default function CommunicationCenter() {
                   marginLeft: "auto",
                 }}
               >
-                Save draft
+                Save Draft
               </button>
             </div>
           </div>
@@ -602,7 +602,7 @@ export default function CommunicationCenter() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
                 <div style={{ font: "700 18px 'Hanken Grotesk'", color: "#16233C" }}>Recently published</div>
-                <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 3 }}>How your broadcasts performed</div>
+                <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 3 }}>How your Broadcasts Performed</div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 {["All", "Events", "Achievements", "Updates"].map((label) => {
@@ -634,7 +634,7 @@ export default function CommunicationCenter() {
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 0", gap: 10, marginTop: 8 }}>
                 <MS style={{ fontSize: 40, color: "#D8DEEA" }}>campaign</MS>
                 <div style={{ font: "600 14px 'Hanken Grotesk'", color: "#C0C7D4" }}>No broadcasts yet</div>
-                <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#D8DEEA" }}>Published broadcasts will appear here</div>
+                <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#D8DEEA" }}>Published Broadcasts will appear here</div>
               </div>
             ) : (
               <div style={{ display: "grid", gap: 18, marginTop: 10 }}>
@@ -733,7 +733,7 @@ export default function CommunicationCenter() {
             {scheduledCampaigns.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 0", gap: 8 }}>
                 <MS style={{ fontSize: 32, color: "#D8DEEA" }}>schedule_send</MS>
-                <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#C0C7D4" }}>No scheduled broadcasts</div>
+                <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#C0C7D4" }}>No Scheduled Broadcasts</div>
               </div>
             ) : showAllScheduled ? (
               <div style={{ display: "grid", gap: 10 }}>

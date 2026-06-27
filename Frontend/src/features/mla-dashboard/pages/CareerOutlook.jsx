@@ -242,7 +242,7 @@ function TrajectoryChart({ points, approvalPct }) {
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
         <div>
-          <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>Approval trajectory</div>
+          <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>Approval Trajectory</div>
           <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginTop: 2 }}>
             Sentiment trend to date · projected to the 2027 election · dashed line = 50% win line
           </div>
@@ -331,7 +331,7 @@ function ElectionScenarios({ strong, comp, atRisk }) {
 
   return (
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 3 }}>Election scenarios</div>
+      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 3 }}>Election Scenarios</div>
       <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginBottom: 18 }}>
         Modeled from current sentiment & complaint resolution rates
       </div>
@@ -380,7 +380,7 @@ function GrievanceStatusCard({ byStatus }) {
 
   return (
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 4 }}>Complaint pipeline</div>
+      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 4 }}>Complaint Pipeline</div>
       <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginBottom: 16 }}>
         {total > 0 ? `${total} total grievances by status` : "No grievance data"}
       </div>
@@ -528,7 +528,7 @@ export default function CareerOutlook() {
     <>
       <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
 
-      <MLAPageHeader subtitle={`Your trajectory toward the ${new Date(ELECTION_DATE).getFullYear()} election`} title="Career outlook">
+      <MLAPageHeader subtitle={`Your trajectory toward the ${new Date(ELECTION_DATE).getFullYear()} election`} title="Career Outlook">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <ExportButton
             filename="career-outlook"
@@ -577,7 +577,7 @@ export default function CareerOutlook() {
               <>
                 <StatCard
                   iconName="thumb_up" iconBg="#E7EEFF" iconColor="#2B5BD7"
-                  label="Approval rating"
+                  label="Approval Rating"
                   value={data?.approvalPct != null ? `${data.approvalPct}%` : "—"}
                   sub={momentum != null
                     ? `${momentum >= 0 ? "↑" : "↓"} ${Math.abs(momentum)} pts vs. last period`
@@ -586,18 +586,18 @@ export default function CareerOutlook() {
                 />
                 <StatCard
                   iconName="how_to_vote" iconBg="#E6F4EC" iconColor="#1E8A5B"
-                  label="Registered citizens" value={data?.citizens != null ? data.citizens.toLocaleString() : "—"}
+                  label="Registered Citizens" value={data?.citizens != null ? data.citizens.toLocaleString() : "—"}
                   sub="Constituent base" subColor="#1E7A50"
                 />
                 <StatCard
                   iconName="task_alt" iconBg="#FCF1E0" iconColor="#C9871F"
-                  label="Complaints closed"
+                  label="Complaints Closed"
                   value={data?.resolved != null ? `${data.resolved}/${data.total}` : "—"}
                   sub={data?.total > 0 ? `${Math.round((data.resolved / data.total) * 100)}% resolution rate` : "No data"}
                 />
                 <StatCard
                   iconName="campaign" iconBg="#EDEAFB" iconColor="#6B4FD8"
-                  label="Event registrations" value={data?.totalReg != null ? data.totalReg.toLocaleString() : "—"}
+                  label="Event Registrations" value={data?.totalReg != null ? data.totalReg.toLocaleString() : "—"}
                   sub="Constituent engagement" subColor="#1E7A50"
                 />
               </>

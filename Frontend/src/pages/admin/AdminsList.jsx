@@ -31,7 +31,7 @@ export default function AdminsList(){
       <div className="new-mla-card">
         <div className="new-mla-header">
           <h1 className="new-mla-title">Admins</h1>
-          <p className="new-mla-subtitle">All registered admins in the system</p>
+          <p className="new-mla-subtitle">All Registered Admins in the System</p>
         </div>
         <div style={{ padding: 30 }}>
           {loading && <div>Loading...</div>}

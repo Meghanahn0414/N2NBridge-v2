@@ -1,10 +1,4 @@
 import React from 'react';
-
-/**
- * Simple Prev / Next pagination.
- * hasMore = true  → fetched exactly PAGE_SIZE records, likely more exist.
- * hasMore = false → fetched fewer than PAGE_SIZE, we are on the last page.
- */
 export default function Pagination({ page, hasMore, onPrev, onNext, loading, pageSize = 100 }) {
   if (page === 1 && !hasMore) return null;
 

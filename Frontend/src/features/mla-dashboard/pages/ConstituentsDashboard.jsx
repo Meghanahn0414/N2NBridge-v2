@@ -529,7 +529,7 @@ export default function ConstituentsDashboard() {
           {/* Engagement funnel */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Resident Engagement Journey</div>
-            <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>How residents move from signed-up to advocate</div>
+            <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>How Residents move from signed-up to advocate</div>
             {loading
               ? <div style={{ height: 180, background: "#F3F5FA", borderRadius: 10 }} />
               : (
@@ -575,7 +575,7 @@ export default function ConstituentsDashboard() {
                     </div>
                     {i === 0 && (
                       <span className="notranslate" translate="no" style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#FCF1E0", color: "#B5781A", font: "700 11px 'Hanken Grotesk'", padding: "4px 10px", borderRadius: 20, flexShrink: 0 }}>
-                        🔥 Top advocate
+                        🔥 Top Advocate
                       </span>
                     )}
                     {i > 0 && (

@@ -19,7 +19,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="hero">
          <div className="hero-content">
-          <pre><b><h1 className="hero-title">    Neta to Nagiraka</h1></b></pre>
+          <pre><b><h1 className="hero-title">Neta to Nagiraka</h1></b></pre>
           <pre className="hero-subtitle">
 Welcome to the Neta to Nagiraka Platform. Efficiently manage citizen records and more with our intuitive platform.
           </pre>

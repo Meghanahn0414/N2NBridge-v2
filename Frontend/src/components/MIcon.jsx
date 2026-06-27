@@ -1,11 +1,3 @@
-/**
- * MIcon — drop-in replacement for Material Symbols text-ligature icons.
- *
- * Uses React Icons (SVG) instead of font ligatures so Google Translate
- * cannot break them by inserting <font> elements around the text content.
- *
- * Usage:  <MIcon name="task_alt" style={{ fontSize: 21, color: "#2B5BD7" }} />
- */
 import {
   FaCheckCircle, FaBolt, FaUsers, FaVoteYea, FaCalendarAlt,
   FaChevronDown, FaChevronUp, FaShareAlt, FaHourglassHalf, FaBell,

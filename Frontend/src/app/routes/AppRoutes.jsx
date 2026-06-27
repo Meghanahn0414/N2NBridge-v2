@@ -199,6 +199,7 @@ function AppRoutesContent() {
             <Route path={ROUTES.mlaReports}            element={<ReportsDashboard />} />
             <Route path={ROUTES.mlaCareerOutlook}      element={<CareerOutlook />} />
             <Route path={ROUTES.mlaMessages}           element={<Messages />} />
+            <Route path={ROUTES.mlaGrievances}         element={<ComplaintManagement />} />
           </Route>
           
           <Route path="*" element={<Navigate to={ROUTES.login} replace />} />

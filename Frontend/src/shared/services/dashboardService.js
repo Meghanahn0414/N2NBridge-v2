@@ -44,6 +44,7 @@ function transformAnalyticsData(analyticsData, role) {
       pendingAlerts: data.pendingAlerts || 0,
       tasks: data.tasks || [],
       grievances: data.grievances || [],
+      alerts: data.alerts || [],
       metrics: metrics,
     };
   }
