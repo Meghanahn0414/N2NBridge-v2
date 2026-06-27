@@ -8,11 +8,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler as _default_http_handler
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # sys.path must be set before importing local modules
 _src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src')
@@ -128,16 +130,10 @@ async def log_requests(request: Request, call_next):
             },
         )
 
-    if request.url.path.startswith("/api/"):
-        auth_header = request.headers.get("authorization")
-        if auth_header:
-            logger.info(f"[MIDDLEWARE] {request.method} {request.url.path} - Auth: {auth_header[:30]}...")
-        else:
-            logger.warning(f"[MIDDLEWARE] {request.method} {request.url.path} - NO Authorization header")
-
     response = await call_next(request)
     duration = (datetime.now(timezone.utc) - start_time).total_seconds()
-    logger.info(f"{request.method} {request.url.path} - {response.status_code} - {duration:.3f}s")
+    if duration > 2.0 or response.status_code >= 500:
+        logger.warning(f"SLOW {request.method} {request.url.path} - {response.status_code} - {duration:.3f}s")
     return response
 
 
@@ -180,9 +176,6 @@ app.include_router(surveys_router)
 
 
 # ── Global exception handler ───────────────────────────────────────────────────
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.exception_handlers import http_exception_handler as _default_http_handler
-
 @app.exception_handler(StarletteHTTPException)
 async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Re-delegate HTTPException to FastAPI's default handler so detail is preserved."""
