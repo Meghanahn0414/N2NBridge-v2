@@ -69,15 +69,18 @@ export default function FieldOfficerAlerts() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
         {[
-          { label: 'Active', count: alerts.filter(a => a.status === 'ACTIVE').length, color: '#ef4444' },
-          { label: 'Acknowledged', count: alerts.filter(a => a.status === 'ACKNOWLEDGED').length, color: '#f59e0b' },
-          { label: 'Resolved', count: alerts.filter(a => a.status === 'RESOLVED').length, color: '#10b981' },
+          { label: 'Active',       count: alerts.filter(a => a.status === 'ACTIVE').length,       icon: '🚨', bg: '#FEE2E2' },
+          { label: 'Acknowledged', count: alerts.filter(a => a.status === 'ACKNOWLEDGED').length, icon: '👁️',  bg: '#FEF3C7' },
+          { label: 'Resolved',     count: alerts.filter(a => a.status === 'RESOLVED').length,     icon: '✅', bg: '#D1FAE5' },
         ].map(s => (
-          <div key={s.label} style={{ background: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', padding: '16px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
-            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '5px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{s.label}</div>
+          <div key={s.label} style={{ background: '#fff', border: '1px solid #EAEDF4', borderRadius: 18, padding: '18px 20px', boxShadow: '0 14px 30px -22px rgba(20,35,60,.3)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{s.icon}</div>
+              <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: '#8590A6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</span>
+            </div>
+            <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: 'clamp(22px,2.5vw,32px)', fontWeight: 400, color: '#16233C', lineHeight: 1.2 }}>{s.count}</div>
           </div>
         ))}
       </div>

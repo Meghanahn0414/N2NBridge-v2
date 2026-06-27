@@ -293,19 +293,26 @@ export default function CommandCenter({ title = "Dashboard", subtitle }) {
           </div>
         )}
 
-        <section className="grid gap-4 sm:grid-cols-4 xl:grid-cols-4">
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, fontFamily: "'Hanken Grotesk',system-ui,sans-serif" }}>
           {summaryCards.map((card) => {
             const Icon = card.icon;
+            const accentMap = {
+              "bg-emerald-50": { bg: "#F0FDF4", color: "#16A34A" },
+              "bg-rose-50":    { bg: "#FEF2F2", color: "#DC2626" },
+              "bg-sky-50":     { bg: "#F0F9FF", color: "#0284C7" },
+              "bg-indigo-50":  { bg: "#EEF2FF", color: "#4F46E5" },
+            };
+            const ac = accentMap[card.accent] || { bg: "#EEF2FF", color: "#4F46E5" };
             return (
-              <div key={card.label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-500">{card.label}</p>
-                    <p className="mt-4 text-3xl font-semibold text-slate-900">{card.value}</p>
+              <div key={card.label} style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: ac.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Icon style={{ fontSize: 18, color: ac.color }} />
                   </div>
-                  <div className={`inline-flex h-12 w-12 items-center justify-center rounded-3xl ${card.accent} text-slate-900`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
+                  <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6" }}>{card.label}</span>
+                </div>
+                <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>
+                  {loading ? "—" : card.value}
                 </div>
               </div>
             );

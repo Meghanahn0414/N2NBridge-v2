@@ -175,7 +175,7 @@ export default function Header({ onMobileMenuClick }) {
     // Full page reload so Google Translate's DOM state is fully cleared on the login page.
     const loginPath = (role === 'CITIZEN' || role === 'citizen')
       ? '/citizen-login'
-      : '/admin-login';
+      : '/login';
     window.location.href = loginPath;
   };
 

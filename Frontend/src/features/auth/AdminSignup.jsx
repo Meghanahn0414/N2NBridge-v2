@@ -132,7 +132,7 @@ export default function AdminSignup() {
             Your admin account request has been submitted. You will receive a confirmation email once approved.
           </p>
           <button
-            onClick={() => navigate("/admin-login")}
+            onClick={() => navigate("/login")}
             style={{ ...styles.submitBtn, marginTop: 24 }}
           >
             Go to Login
@@ -320,7 +320,7 @@ export default function AdminSignup() {
             Already registered?{" "}
             <button
               type="button"
-              onClick={() => navigate("/admin-login")}
+              onClick={() => navigate("/login")}
               style={{ color: "#2563eb", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}
             >
               Login to portal

@@ -69,6 +69,129 @@ function MS({ children, style }) {
   return <MIcon name={children} style={style} />;
 }
 
+/* ── Notification Bell ───────────────────────────────────────── */
+function NotificationBell() {
+  const [open, setOpen]         = useState(false);
+  const [notifs, setNotifs]     = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const ref = useRef(null);
+
+  const unread = notifs.filter(n => !n.isRead).length;
+
+  const fetchNotifs = () => {
+    setLoading(true);
+    api.get("/api/notifications/unread")
+      .then(r => setNotifs(r?.data?.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchNotifs();
+    const id = setInterval(fetchNotifs, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const markOne = (id) => {
+    api.put(`/api/notifications/${id}/read`).catch(() => {});
+    setNotifs(prev => prev.map(n => n._id === id || n.id === id ? { ...n, isRead: true } : n));
+  };
+
+  const markAll = () => {
+    api.post("/api/notifications/mark-all-read").catch(() => {});
+    setNotifs(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const typeIcon = (type) => {
+    const t = (type || "").toUpperCase();
+    if (t.includes("GRIEVANCE") || t.includes("COMPLAINT")) return "report";
+    if (t.includes("ALERT"))   return "warning";
+    if (t.includes("EVENT"))   return "event";
+    if (t.includes("MESSAGE")) return "chat";
+    return "notifications";
+  };
+
+  const timeAgo = (iso) => {
+    if (!iso) return "";
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => { setOpen(o => !o); if (!open) fetchNotifs(); }}
+        style={{ width:44, height:44, background:"#fff", border:`1px solid ${open ? "#2B5BD7" : "#E1E6F0"}`, borderRadius:13, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", cursor:"pointer", outline:"none", flexShrink:0 }}
+      >
+        <MS style={{ fontSize:21, color: open ? "#2B5BD7" : "#16233C" }}>notifications</MS>
+        {unread > 0 && (
+          <span style={{ position:"absolute", top:7, right:7, minWidth:16, height:16, borderRadius:8, background:"#C8453A", border:"2px solid #F3F5FA", display:"flex", alignItems:"center", justifyContent:"center", font:"700 9px 'Hanken Grotesk'", color:"#fff", padding:"0 3px" }}>
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{ position:"absolute", top:52, right:0, width:360, background:"#fff", border:"1px solid #E1E6F0", borderRadius:18, boxShadow:"0 16px 40px -12px rgba(20,35,60,.22)", zIndex:200, overflow:"hidden" }}>
+          {/* Header */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 18px 10px", borderBottom:"1px solid #F0F2F7" }}>
+            <div style={{ font:"700 14px 'Hanken Grotesk'", color:"#16233C" }}>
+              Notifications {unread > 0 && <span style={{ marginLeft:6, background:"#EEF2FF", color:"#2B5BD7", font:"700 11px 'Hanken Grotesk'", padding:"2px 7px", borderRadius:8 }}>{unread} new</span>}
+            </div>
+            {unread > 0 && (
+              <button onClick={markAll} style={{ font:"600 12px 'Hanken Grotesk'", color:"#2B5BD7", background:"none", border:"none", cursor:"pointer", padding:0 }}>
+                Mark all read
+              </button>
+            )}
+          </div>
+
+          {/* List */}
+          <div style={{ maxHeight:380, overflowY:"auto" }}>
+            {loading && notifs.length === 0 ? (
+              <div style={{ padding:"32px 18px", textAlign:"center", font:"500 13px 'Hanken Grotesk'", color:"#8590A6" }}>Loading…</div>
+            ) : notifs.length === 0 ? (
+              <div style={{ padding:"36px 18px", textAlign:"center" }}>
+                <MS style={{ fontSize:32, color:"#C5CEDE" }}>notifications_none</MS>
+                <div style={{ font:"500 13px 'Hanken Grotesk'", color:"#8590A6", marginTop:8 }}>No notifications yet</div>
+              </div>
+            ) : notifs.map((n, i) => {
+              const id = n._id || n.id;
+              const read = n.isRead || n.is_read;
+              return (
+                <div key={id || i}
+                  onClick={() => !read && markOne(id)}
+                  style={{ display:"flex", alignItems:"flex-start", gap:12, padding:"13px 18px", borderBottom: i < notifs.length-1 ? "1px solid #F7F8FB" : "none", background: read ? "#fff" : "#F5F8FF", cursor: read ? "default" : "pointer", transition:"background 0.15s" }}
+                >
+                  <div style={{ width:34, height:34, borderRadius:10, background: read ? "#F0F2F7" : "#EEF2FF", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <MS style={{ fontSize:17, color: read ? "#8590A6" : "#2B5BD7" }}>{typeIcon(n.type)}</MS>
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ font:`${read ? "500" : "700"} 13px 'Hanken Grotesk'`, color:"#16233C", marginBottom:2, lineHeight:1.4 }}>{n.title || "Notification"}</div>
+                    {n.body && <div style={{ font:"400 12px 'Hanken Grotesk'", color:"#8590A6", lineHeight:1.4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.body}</div>}
+                    <div style={{ font:"500 11px 'Hanken Grotesk'", color:"#B0B9CC", marginTop:3 }}>{timeAgo(n.createdAt || n.created_at)}</div>
+                  </div>
+                  {!read && <span style={{ width:7, height:7, borderRadius:"50%", background:"#2B5BD7", flexShrink:0, marginTop:5 }} />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const KPI = [
   { icon: "task_alt",   iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "Resolved Complaints",    sparkColor: "#2B5BD7" },
   { icon: "bolt",       iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Avg. Resolution Time",   sparkColor: "#1E8A5B" },
@@ -204,14 +327,7 @@ export default function ExecutiveDashboard() {
             ]}
           />
 
-          {/* Notifications button */}
-          <button onClick={() => navigate("/rep/daily-briefing")}
-            style={{ width:44, height:44, background:"#fff", border:"1px solid #E1E6F0", borderRadius:13, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", cursor:"pointer", outline:"none" }}>
-            <MS style={{ fontSize:21, color:"#16233C" }}>notifications</MS>
-            {(analytics?.alerts?.unread ?? 0) > 0 && (
-              <span style={{ position:"absolute", top:10, right:11, width:8, height:8, borderRadius:"50%", background:"#C8453A", border:"1.5px solid #fff" }} />
-            )}
-          </button>
+          <NotificationBell />
 
         </div>
       </header>

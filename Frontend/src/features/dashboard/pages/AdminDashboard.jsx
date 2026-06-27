@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { useNavigate } from "react-router-dom";
 import { getDashboardForRole } from "../../../shared/services/dashboardService";
 import { getAuthRole } from "../../../services/authStorage";
@@ -21,37 +22,61 @@ import {
   FaChartLine,
   FaBroadcastTower,
   FaCog,
-  FaDatabase,
-  FaServer,
-  FaCheck,
-  FaTimes,
-  FaHdd,
 } from "react-icons/fa";
 import "../../../styles/AdminDashboard.css";
 import { getAuthUser } from '../../../services/authStorage';
 
-const StatCard = ({ label, value, trend, icon: Icon, color, trendLabel }) => {
+const ICON_STYLES = {
+  blue:   { bg: "#EEF2FF", color: "#4F46E5" },
+  orange: { bg: "#FFF7ED", color: "#EA580C" },
+  red:    { bg: "#FEF2F2", color: "#DC2626" },
+  pink:   { bg: "#FEF2F2", color: "#DC2626" },
+  purple: { bg: "#F5F3FF", color: "#7C3AED" },
+  green:  { bg: "#F0FDF4", color: "#16A34A" },
+  teal:   { bg: "#F0FDFA", color: "#0D9488" },
+};
+
+const StatCard = ({ label, value, trend, icon: Icon, color, trendLabel, subtitle }) => {
   const formatValue = (val) => {
     if (typeof val === 'string') return val;
     if (typeof val === 'number') return val.toLocaleString();
     return val || "0";
   };
+  const ic = ICON_STYLES[color] || ICON_STYLES.blue;
+  const hasTrend = trend !== null && trend !== undefined && trend !== 0;
+  const subText = hasTrend ? `${trend >= 0 ? '+' : ''}${trend}% ${trendLabel || 'vs last month'}` : subtitle;
+  const subGreen = hasTrend && trend > 0;
 
   return (
-    <div className={`stat-card stat-${color}`}>
-      <div className="stat-card-header">
-        <div className="stat-info">
-          <p className="stat-label">{label}</p>
-          <p className="stat-value">{formatValue(value)}</p>
+    <div style={{
+      background: "#fff",
+      border: "1px solid #EAEDF4",
+      borderRadius: 18,
+      padding: "18px 20px",
+      boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 0,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 10,
+          background: ic.bg,
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}>
+          <Icon style={{ fontSize: 18, color: ic.color }} />
         </div>
-        <div className={`stat-icon ${color}`}>
-          <Icon />
-        </div>
+        <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {label}
+        </span>
       </div>
-      {trend !== null && trend !== undefined && trend !== 0 && (
-        <p className={`stat-trend ${trend >= 0 ? 'positive' : 'negative'}`}>
-          {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}% {trendLabel}
-        </p>
+      <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2, marginBottom: 4 }}>
+        {formatValue(value)}
+      </div>
+      {subText && (
+        <div style={{ font: "500 12px 'Hanken Grotesk',system-ui,sans-serif", color: subGreen ? "#1E7A50" : "#8590A6", marginTop: 2 }}>
+          {subText}
+        </div>
       )}
     </div>
   );
@@ -130,37 +155,42 @@ export default function AdminDashboard() {
 
   const stats = dashboard ? [
     {
-      label: "TOTAL CITIZENS",
+      label: "Total Citizens",
       value: dashboard?.metrics?.users?.total || 0,
       trend: dashboard?.metrics?.users?.trend || 0,
+      subtitle: "Registered on platform",
       icon: FaUsers,
       color: "blue",
     },
     {
-      label: "TOTAL COMPLAINTS",
+      label: "Total Complaints",
       value: dashboard?.metrics?.grievances?.total || 0,
       trend: dashboard?.metrics?.grievances?.trend || 0,
+      subtitle: "All time submissions",
       icon: FaClipboardList,
       color: "orange",
     },
     {
-      label: "OPEN COMPLAINTS",
+      label: "Open Complaints",
       value: (dashboard?.metrics?.grievances?.byStatus?.NEW || 0) + (dashboard?.metrics?.grievances?.byStatus?.ASSIGNED || 0),
       trend: 0,
+      subtitle: "Awaiting resolution",
       icon: FaBell,
       color: "red",
     },
     {
-      label: "CRITICAL ALERTS",
+      label: "Critical Alerts",
       value: dashboard?.metrics?.alerts?.byPriority?.CRITICAL || 0,
       trend: dashboard?.metrics?.alerts?.trend || 0,
+      subtitle: "Needs immediate action",
       icon: FaExclamationTriangle,
       color: "pink",
     },
     {
-      label: "EVENTS SCHEDULED",
+      label: "Events Scheduled",
       value: dashboard?.metrics?.events?.totalEvents || 0,
       trend: dashboard?.metrics?.events?.trend || 0,
+      subtitle: "Upcoming events",
       icon: FaCalendarAlt,
       color: "purple",
     },
@@ -180,7 +210,6 @@ export default function AdminDashboard() {
   const trendCounts = Object.values(grievanceTrends);
   const maxTrend = Math.max(...trendCounts, 25);
 
-  const teamData = dashboard?.teamPerformance || [];
   const recentActivity = dashboard?.recentActivity || [];
 
   if (isMobile) {
@@ -201,18 +230,18 @@ export default function AdminDashboard() {
             label={stat.label}
             value={stat.value}
             trend={stat.trend}
-            trendLabel="vs last 30 days"
+            trendLabel="vs last month"
+            subtitle={stat.subtitle}
             icon={stat.icon}
             color={stat.color}
           />
         ))}
       </div>
 
-      <div className="charts-row">
+      {/* Row 2 — Activity + Categories + Status: 3 equal columns */}
+      <div className="ad-grid-3">
         <div className="dashboard-card">
-          <div className="card-header-flex">
-            <b><h2 className="card-title">Real-Time Activity Feed</h2></b>
-          </div>
+          <h2 className="card-title">Real-Time Activity Feed</h2>
           <div className="activity-feed">
             {recentActivity && recentActivity.length > 0 ? (
               recentActivity.map((item, idx) => (
@@ -222,7 +251,7 @@ export default function AdminDashboard() {
                     {item.type === 'COMPLAINT' && <FaClipboardList />}
                     {item.type === 'ALERT' && <FaExclamationTriangle />}
                     {item.type === 'EVENT' && <FaCalendarAlt />}
-                    {!item.type && (idx % 3 === 0 && <FaClipboardList />) || (idx % 3 === 1 && <FaExclamationTriangle />) || (idx % 3 === 2 && <FaCalendarAlt />)}
+                    {!item.type && (idx % 3 === 0 ? <FaClipboardList /> : idx % 3 === 1 ? <FaExclamationTriangle /> : <FaCalendarAlt />)}
                   </div>
                   <p className="activity-message">{item.message}</p>
                 </div>
@@ -237,94 +266,52 @@ export default function AdminDashboard() {
 
         <div className="dashboard-card">
           <h2 className="card-title">Top Complaint Categories</h2>
-          <div className="pie-chart-container">
-            {Object.keys(dashboard?.metrics?.grievances?.byCategory || {}).length > 0 ? (
-              <>
-                <div className="pie-chart">
-                  {(() => {
-                    const categories = dashboard?.metrics?.grievances?.byCategory || {};
-                    const total = Object.values(categories).reduce((a, b) => a + b, 0);
-                    return Object.entries(categories).map((entry, idx) => {
-                      const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
-                      const percentage = total > 0 ? (entry[1] / total * 100) : 0;
-                      return (
-                        <div
-                          key={idx}
-                          className="pie-item"
-                          style={{ background: colors[idx % colors.length], width: `${percentage}%` }}
-                          title={`${entry[0]}: ${entry[1]} (${percentage.toFixed(1)}%)`}
-                        ></div>
-                      );
-                    });
-                  })()}
-                </div>
-                <div className="pie-legend">
-                  {(() => {
-                    const categories = dashboard?.metrics?.grievances?.byCategory || {};
-                    const total = Object.values(categories).reduce((a, b) => a + b, 0);
-                    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
-                    return Object.entries(categories).map((entry, idx) => {
-                      const percentage = total > 0 ? (entry[1] / total * 100) : 0;
-                      return (
-                        <div key={idx} className="legend-item">
-                          <span className="legend-box" style={{background: colors[idx % colors.length]}}></span>
-                          {entry[0]} - {percentage.toFixed(0)}% ({entry[1]})
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </>
-            ) : (
-              <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                <p>No complaint data available</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="dashboard-card">
-          <div className="card-header-flex">
-            <h2 className="card-title">Team Performance This Month</h2>
-          </div>
-          <table className="team-table">
-            <thead>
-              <tr>
-                <th>Officer</th>
-                <th>Assigned</th>
-                <th>Completed</th>
-                <th>Resolution Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teamData && teamData.length > 0 ? (
-                teamData.map((member, idx) => (
-                  <tr key={idx}>
-                    <td>
-                      <div className="member-cell">
-                        <div className="member-avatar">{member.name ? member.name.charAt(0) : '?'}</div>
-                        <div className="member-info">
-                          <p className="member-name">{member.name || 'Unknown'}</p>
-                          <p className="member-role">{member.role || 'Officer'}</p>
-                        </div>
+          {(() => {
+            const PIE_COLORS = ['#4F46E5','#0891B2','#F59E0B','#EF4444','#8B5CF6','#EC4899','#10B981'];
+            const fmtKey = k => k.split('_').map(w => w[0] + w.slice(1).toLowerCase()).join(' ');
+            const categories = dashboard?.metrics?.grievances?.byCategory || {};
+            const total = Object.values(categories).reduce((a, b) => a + b, 0);
+            const data = Object.entries(categories).map(([name, value]) => ({ name: fmtKey(name), value }));
+            if (!data.length) return <div style={{ padding: 20, textAlign: 'center', color: '#8590A6', fontSize: 13 }}>No complaint data available</div>;
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, paddingTop: 8 }}>
+                <ResponsiveContainer width={160} height={160}>
+                  <PieChart>
+                    <Pie
+                      data={data}
+                      cx="50%" cy="50%"
+                      innerRadius={46} outerRadius={72}
+                      paddingAngle={3}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {data.map((_, idx) => (
+                        <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(val) => [`${val} (${total ? (val/total*100).toFixed(1) : 0}%)`, 'Count']}
+                      contentStyle={{ borderRadius: 10, border: '1px solid #EAEDF4', fontSize: 12, fontFamily: "'Hanken Grotesk',sans-serif" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {data.map((entry, idx) => {
+                    const pct = total ? (entry.value / total * 100).toFixed(0) : 0;
+                    return (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 3, background: PIE_COLORS[idx % PIE_COLORS.length], flexShrink: 0, display: 'inline-block' }} />
+                        <span style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: '#16233C', flex: 1 }}>{entry.name}</span>
+                        <span style={{ font: "600 12px 'Hanken Grotesk',sans-serif", color: '#8590A6' }}>{pct}% ({entry.value})</span>
                       </div>
-                    </td>
-                    <td>{member.assigned || 0}</td>
-                    <td>{member.completed || 0}</td>
-                    <td>{member.time || '0 days'}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '20px 0' }}>No team data available</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
-      </div>
 
-      <div className="charts-row">
         <div className="dashboard-card">
           <h2 className="card-title">Complaint Status Distribution</h2>
           <div className="status-breakdown">
@@ -346,7 +333,7 @@ export default function AdminDashboard() {
                           <span className="status-count">{count}</span>
                         </div>
                         <div className="status-bar-bg">
-                          <div className="status-bar" style={{ width: `${percentage}%`, backgroundColor: statusColors[status] || '#9CA3AF' }}></div>
+                          <div className="status-bar" style={{ width: `${percentage}%`, backgroundColor: statusColors[status] || '#9CA3AF' }} />
                         </div>
                         <span className="status-percentage">{percentage.toFixed(0)}%</span>
                       </div>
@@ -361,43 +348,10 @@ export default function AdminDashboard() {
             })()}
           </div>
         </div>
+      </div>
 
-        <div className="dashboard-card">
-          <h2 className="card-title">Alert Priority Distribution</h2>
-          <div className="status-breakdown">
-            {(() => {
-              const priorities = dashboard?.metrics?.alerts?.byPriority || {};
-              const total = Object.values(priorities).reduce((a, b) => a + b, 0);
-              const priorityColors = {
-                CRITICAL: '#EF4444', HIGH: '#F59E0B', MEDIUM: '#FBBF24', LOW: '#10B981',
-              };
-              return Object.entries(priorities).length > 0 ? (
-                <div className="status-list">
-                  {Object.entries(priorities).map(([priority, count], idx) => {
-                    const percentage = total > 0 ? (count / total * 100) : 0;
-                    return (
-                      <div key={idx} className="status-item">
-                        <div className="status-info">
-                          <span className="status-name">{priority}</span>
-                          <span className="status-count">{count}</span>
-                        </div>
-                        <div className="status-bar-bg">
-                          <div className="status-bar" style={{ width: `${percentage}%`, backgroundColor: priorityColors[priority] || '#9CA3AF' }}></div>
-                        </div>
-                        <span className="status-percentage">{percentage.toFixed(0)}%</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-                  <p>No alert data available</p>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-
+      {/* Row 3 — Staff by Role + Complaint Trend: 2 equal columns */}
+      <div className="ad-grid-2">
         <div className="dashboard-card">
           <h2 className="card-title">Staff by Role</h2>
           <div className="status-breakdown">
@@ -420,7 +374,7 @@ export default function AdminDashboard() {
                           <span className="status-count">{count}</span>
                         </div>
                         <div className="status-bar-bg">
-                          <div className="status-bar" style={{ width: `${percentage}%`, backgroundColor: roleColors[r] || '#9CA3AF' }}></div>
+                          <div className="status-bar" style={{ width: `${percentage}%`, backgroundColor: roleColors[r] || '#9CA3AF' }} />
                         </div>
                         <span className="status-percentage">{percentage.toFixed(0)}%</span>
                       </div>
@@ -435,9 +389,7 @@ export default function AdminDashboard() {
             })()}
           </div>
         </div>
-      </div>
 
-      <div className="charts-row">
         <div className="dashboard-card">
           <h2 className="card-title">Complaint Trend (Last 7 Days)</h2>
           <div className="chart-container">
@@ -445,7 +397,7 @@ export default function AdminDashboard() {
               <div className="simple-chart">
                 {trendDays.map((day, idx) => (
                   <div key={idx} className="chart-bar">
-                    <div className="bar" style={{ height: `${maxTrend > 0 ? (trendCounts[idx] / maxTrend) * 100 : 0}%` }}></div>
+                    <div className="bar" style={{ height: `${maxTrend > 0 ? (trendCounts[idx] / maxTrend) * 100 : 0}%` }} />
                     <span className="bar-label">{day}</span>
                   </div>
                 ))}
@@ -457,48 +409,15 @@ export default function AdminDashboard() {
             )}
           </div>
         </div>
-
-        <div className="dashboard-card">
-          <h2 className="card-title">System Status</h2>
-          <div className="system-status-grid">
-            <SystemStatusItem label="Server Status" statusLabel="Online"      healthy={true} icon={FaServer} />
-            <SystemStatusItem label="Database"      statusLabel="Healthy"     healthy={true} icon={FaDatabase} />
-            <SystemStatusItem label="API Services"  statusLabel="Up to Date"  healthy={true} icon={FaCheck} />
-            <SystemStatusItem label="Data Backup"   statusLabel="Healthy"     healthy={true} icon={FaHdd} />
-          </div>
-        </div>
-
-        <div className="dashboard-card">
-          <h2 className="card-title">Resolution Metrics</h2>
-          <div className="metrics-list">
-            <div className="metric-item">
-              <span className="metric-label">Avg. Resolution Time</span>
-              <span className="metric-value">{dashboard?.metrics?.resolutionTime?.avgResolutionTime ? (dashboard.metrics.resolutionTime.avgResolutionTime / (1000 * 60 * 60 * 24)).toFixed(1) : '--'} days</span>
-            </div>
-            <div className="metric-item">
-              <span className="metric-label">Min Resolution Time</span>
-              <span className="metric-value">{dashboard?.metrics?.resolutionTime?.minResolutionTime ? (dashboard.metrics.resolutionTime.minResolutionTime / (1000 * 60 * 60 * 24)).toFixed(1) : '--'} days</span>
-            </div>
-            <div className="metric-item">
-              <span className="metric-label">Max Resolution Time</span>
-              <span className="metric-value">{dashboard?.metrics?.resolutionTime?.maxResolutionTime ? (dashboard.metrics.resolutionTime.maxResolutionTime / (1000 * 60 * 60 * 24)).toFixed(1) : '--'} days</span>
-            </div>
-            <div className="metric-item">
-              <span className="metric-label">Resolved Complaints</span>
-              <span className="metric-value">{dashboard?.metrics?.grievances?.byStatus?.RESOLVED || 0}</span>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <div className="actions-row-2">
-        <div className="dashboard-card">
-          <h2 className="card-title">Quick Actions</h2>
-          <div className="quick-actions-grid">
-            {quickActions.map((action) => (
-              <QuickActionBtn key={action.label} label={action.label} icon={action.icon} onClick={action.onClick} />
-            ))}
-          </div>
+      {/* Row 4 — Quick Actions: full width */}
+      <div className="dashboard-card">
+        <h2 className="card-title">Quick Actions</h2>
+        <div className="quick-actions-grid">
+          {quickActions.map((action) => (
+            <QuickActionBtn key={action.label} label={action.label} icon={action.icon} onClick={action.onClick} />
+          ))}
         </div>
       </div>
 

@@ -127,57 +127,48 @@ export default function TeamManagement() {
 
   return (
     <div>
-      <PageHeader subtitle="Manage staff performance, tasks, and team assignments" />
-      <div className="module-container">
-      <div className="module-controls">
-        <input
-          type="text"
-          placeholder="Search team members..."
-          value={searchTerm}
+      <PageHeader subtitle="Manage staff performance, tasks, and team assignments">
+        <input type="text" placeholder="Search team members..." value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-        />
-        <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+          style={{ flex: 1, minWidth: 180, padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", outline: "none" }} />
+        <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
+          style={{ padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", cursor: "pointer" }}>
           <option value="ALL">All Roles</option>
           <option value="MANAGER">Managers</option>
           <option value="CONSTITUENCY_MANAGER">Constituency Managers</option>
           <option value="FIELD_OFFICER">Field Officers</option>
         </select>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-          <button
-            className={`btn-secondary ${viewType === 'kpi' ? 'active' : ''}`}
-            onClick={() => setViewType('kpi')}
-          >
-            <FaChartBar style={{marginRight:5,verticalAlign:'middle'}} /> KPI View
-          </button>
-          <button
-            className={`btn-secondary ${viewType === 'kanban' ? 'active' : ''}`}
-            onClick={() => setViewType('kanban')}
-          >
-            <FaClipboardList style={{marginRight:5,verticalAlign:'middle'}} /> Kanban View
-          </button>
-        </div>
-      </div>
+        <button onClick={() => setViewType('kpi')}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 10, border: "1px solid #EAEDF4", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap",
+            background: viewType === 'kpi' ? "#16233C" : "#F8F9FC", color: viewType === 'kpi' ? "#fff" : "#16233C" }}>
+          <FaChartBar /> KPI View
+        </button>
+        <button onClick={() => setViewType('kanban')}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 10, border: "1px solid #EAEDF4", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap",
+            background: viewType === 'kanban' ? "#16233C" : "#F8F9FC", color: viewType === 'kanban' ? "#fff" : "#16233C" }}>
+          <FaClipboardList /> Kanban View
+        </button>
+      </PageHeader>
+      <div className="module-container">
 
       {viewType === 'kpi' ? (
         <>
           {/* Top summary stats */}
           <div className="module-stats" style={{ marginBottom: '32px' }}>
-            <div className="stat-card">
-              <span className="stat-label">Active Team Members</span>
-              <span className="stat-value">{activeMembers}</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">Avg Team Rating</span>
-              <span className="stat-value">{avgRating}/5 <FaCheckCircle style={{color:'#f59e0b',verticalAlign:'middle',fontSize:14}} /></span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">Total Grievances</span>
-              <span className="stat-value">{totalTasks}</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">Completion Rate</span>
-              <span className="stat-value">{completionRate}%</span>
-            </div>
+            {[
+              { label: "Active Team Members", value: activeMembers,       icon: "👥", bg: "#EEF2FF" },
+              { label: "Avg Team Rating",     value: `${avgRating}/5`,    icon: "⭐", bg: "#FFFBEB" },
+              { label: "Total Grievances",    value: totalTasks,           icon: "📝", bg: "#FFF7ED" },
+              { label: "Completion Rate",     value: `${completionRate}%`, icon: "✅", bg: "#F0FDF4" },
+            ].map(({ label, value, icon, bg }) => (
+              <div key={label} style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{icon}</div>
+                  <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+                </div>
+                <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+              </div>
+            ))}
           </div>
 
           {/* KPI Cards Grid */}

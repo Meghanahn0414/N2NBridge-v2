@@ -44,19 +44,31 @@
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow-y: auto;
-  scrollbar-width: none;
+  overflow: hidden;
   z-index: 50;
 }
-.mla-sidebar::-webkit-scrollbar { display: none; }
 
 /* brand */
 .mla-brand {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 0 8px 26px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 4px;
+  flex-shrink: 0;
 }
+
+/* nav body — scrolls while brand stays fixed above */
+.mla-nav-body {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.mla-nav-body::-webkit-scrollbar { display: none; }
 .mla-brand-icon {
   width: 38px;
   height: 38px;
@@ -86,10 +98,7 @@
   color: #55617E;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 18px 10px 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 18px 4px 8px;
 }
 .mla-nav-label:first-of-type {
   padding-top: 0;

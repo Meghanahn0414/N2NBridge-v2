@@ -120,44 +120,42 @@ export default function AlertManagement() {
 
   return (
     <div>
-      <PageHeader subtitle="Monitor and manage emergency alerts in real-time" />
-      <div className="module-container">
-      <div className="module-controls">
-        <input type="text" placeholder="Search alerts by location, type, reporter..." />
-        
-        <select value={filters.priority} onChange={(e) => setFilters({...filters, priority: e.target.value})}>
+      <PageHeader subtitle="Monitor and manage emergency alerts in real-time">
+        <input type="text" placeholder="Search alerts by location, type, reporter…"
+          style={{ flex: 1, minWidth: 200, padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", outline: "none" }} />
+        <select value={filters.priority} onChange={(e) => setFilters({...filters, priority: e.target.value})}
+          style={{ padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", cursor: "pointer" }}>
           <option value="ALL">All Priority</option>
           {priorities.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
-
-        <select value={filters.status} onChange={(e) => setFilters({...filters, status: e.target.value})}>
+        <select value={filters.status} onChange={(e) => setFilters({...filters, status: e.target.value})}
+          style={{ padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", cursor: "pointer" }}>
           <option value="ALL">All Status</option>
           {statuses.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-
-        <button className="btn-primary" onClick={() => setShowBroadcast(true)}>
+        <button onClick={() => setShowBroadcast(true)}
+          style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 18px", borderRadius: 10, background: "#16233C", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap" }}>
           🔊 Broadcast Alert
         </button>
-      </div>
+      </PageHeader>
+      <div className="module-container">
 
       {/* Real-Time Alert Board Statistics */}
       <div className="module-stats alert-board-stats">
-        <div className="stat-card alert-critical">
-          <span className="stat-label">🔴 Critical Alerts</span>
-          <span className="stat-value">{alertBoard.critical}</span>
-        </div>
-        <div className="stat-card alert-high">
-          <span className="stat-label">🟠 High Priority</span>
-          <span className="stat-value">{alertBoard.high}</span>
-        </div>
-        <div className="stat-card alert-medium">
-          <span className="stat-label">🟡 Medium Priority</span>
-          <span className="stat-value">{alertBoard.medium}</span>
-        </div>
-        <div className="stat-card alert-low">
-          <span className="stat-label">🟢 Low Priority</span>
-          <span className="stat-value">{alertBoard.low}</span>
-        </div>
+        {[
+          { label: "Critical Alerts",  value: alertBoard.critical,  icon: "🚨", bg: "#FEF2F2" },
+          { label: "High Priority",    value: alertBoard.high,      icon: "🔥", bg: "#FFF7ED" },
+          { label: "Medium Priority",  value: alertBoard.medium,    icon: "⚠️",  bg: "#FFFBEB" },
+          { label: "Low Priority",     value: alertBoard.low,       icon: "✅", bg: "#F0FDF4" },
+        ].map(({ label, value, icon, bg }) => (
+          <div key={label} style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{icon}</div>
+              <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+            </div>
+            <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+          </div>
+        ))}
       </div>
 
       {/* Alerts Table */}

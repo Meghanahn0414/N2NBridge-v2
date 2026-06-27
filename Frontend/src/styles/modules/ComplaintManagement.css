@@ -14,21 +14,7 @@
   margin-bottom: 32px;
 }
 
-.stat-card.alert-critical {
-  border-left: 4px solid #ef4444;
-}
-
-.stat-card.alert-high {
-  border-left: 4px solid #f59e0b;
-}
-
-.stat-card.alert-medium {
-  border-left: 4px solid #eab308;
-}
-
-.stat-card.alert-low {
-  border-left: 4px solid #10b981;
-}
+/* Colored borders removed — unified KpiCard style via ModulePageTemplate.css */
 
 .complaints-table {
   background: white;

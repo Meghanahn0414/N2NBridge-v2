@@ -87,45 +87,44 @@ export default function AnalyticsReports() {
 
   return (
     <div>
-      <PageHeader subtitle="Generate and view detailed platform analytics and reports" />
-      <div className="module-container">
-      <div className="module-controls">
-        <select value={reportType} onChange={(e) => setReportType(e.target.value)}>
+      <PageHeader subtitle="Generate and view detailed platform analytics and reports">
+        <select value={reportType} onChange={(e) => setReportType(e.target.value)}
+          style={{ padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", cursor: "pointer" }}>
           <option value="COMPLAINTS">Complaint Analytics</option>
           <option value="ALERTS">Alert Analytics</option>
           <option value="EVENTS">Event Analytics</option>
           <option value="COMMUNICATION">Communication Analytics</option>
         </select>
-
-        <select value={dateRange} onChange={(e) => setDateRange(e.target.value)}>
+        <select value={dateRange} onChange={(e) => setDateRange(e.target.value)}
+          style={{ padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", cursor: "pointer" }}>
           <option value="WEEK">Last Week</option>
           <option value="MONTH">Last Month</option>
           <option value="QUARTER">Last Quarter</option>
           <option value="YEAR">Last Year</option>
           <option value="CUSTOM">Custom Range</option>
         </select>
-
-        <button className="btn-primary"><FaDownload style={{marginRight:5,verticalAlign:'middle'}} /> Download Report</button>
-      </div>
+        <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 10, background: "#16233C", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap" }}>
+          <FaDownload /> Download Report
+        </button>
+      </PageHeader>
+      <div className="module-container">
 
       {/* Summary Stats */}
       <div className="module-stats">
-        <div className="stat-card">
-          <span className="stat-label">Total Records</span>
-          <span className="stat-value">{stats?.total || 0}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Trend</span>
-          <span className="stat-value">{stats?.trend ? `${stats.trend}%` : 'N/A'}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Categories</span>
-          <span className="stat-value">{stats?.byCategory ? Object.keys(stats.byCategory).length : 0}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Status Breakdown</span>
-          <span className="stat-value">{stats?.byStatus ? Object.keys(stats.byStatus).length : 0}</span>
-        </div>
+        {[
+          { label: "Total Records",    value: stats?.total || 0,                                              icon: "📋", bg: "#EEF2FF" },
+          { label: "Trend",            value: stats?.trend ? `${stats.trend}%` : 'N/A',                      icon: "📈", bg: "#F0FDF4" },
+          { label: "Categories",       value: stats?.byCategory ? Object.keys(stats.byCategory).length : 0,  icon: "🏷️", bg: "#FFF7ED" },
+          { label: "Status Breakdown", value: stats?.byStatus ? Object.keys(stats.byStatus).length : 0,      icon: "📊", bg: "#F5F3FF" },
+        ].map(({ label, value, icon, bg }) => (
+          <div key={label} style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{icon}</div>
+              <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+            </div>
+            <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+          </div>
+        ))}
       </div>
 
       {/* Analytics Charts Grid */}

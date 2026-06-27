@@ -7,12 +7,15 @@ export default function AIServices() {
 
   return (
     <div>
-      <PageHeader subtitle="Manage AI-powered features and automation" />
+      <PageHeader subtitle="Manage AI-powered features and automation">
+        <button style={{ padding: "9px 18px", borderRadius: 10, background: "#16233C", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap" }}>
+          ⚙️ Configure AI Services
+        </button>
+        <button style={{ padding: "9px 18px", borderRadius: 10, background: "#F8F9FC", color: "#16233C", border: "1px solid #EAEDF4", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap" }}>
+          🧪 Test Model
+        </button>
+      </PageHeader>
       <div className="module-container">
-      <div className="module-controls">
-        <button className="btn-primary">⚙️ Configure AI Services</button>
-        <button className="btn-secondary">🧪 Test Model</button>
-      </div>
 
       <div className="ai-services">
         <div className="service-card">

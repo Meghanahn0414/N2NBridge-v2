@@ -60,10 +60,10 @@ export default function FieldDashboard() {
   const recentGrievances = grievances.slice(0, 8);
 
   const stats = [
-    { label: "Total Assigned", value: total,       icon: "📋", gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", sub: "Grievances",   route: ROUTES.fieldGrievances },
-    { label: "In Progress",    value: inProgress,  icon: "⚙️",  gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)", sub: "Active",       route: ROUTES.fieldGrievances },
-    { label: "Resolved",       value: resolved,    icon: "✅",  gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)", sub: "Closed",       route: ROUTES.fieldGrievances },
-    { label: "Alerts",         value: pendingAlerts, icon: "🚨", gradient: pendingAlerts > 0 ? "linear-gradient(135deg, #fa709a 0%, #fee140 100%)" : "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)", sub: pendingAlerts > 0 ? "Pending" : "All clear", route: ROUTES.fieldAlerts },
+    { label: "Total Assigned", value: total,         icon: "📋", iconBg: "#EEF2FF", sub: "Grievances assigned to you",  route: ROUTES.fieldGrievances },
+    { label: "In Progress",    value: inProgress,    icon: "⚙️",  iconBg: "#FDF4FF", sub: "Actively being worked on",    route: ROUTES.fieldGrievances },
+    { label: "Resolved",       value: resolved,      icon: "✅",  iconBg: "#F0FDF4", sub: "Successfully closed",          route: ROUTES.fieldGrievances },
+    { label: "Active Alerts",  value: pendingAlerts, icon: "🚨",  iconBg: "#FEF2F2", sub: pendingAlerts > 0 ? "Require immediate attention" : "All clear", route: ROUTES.fieldAlerts },
   ];
 
   return (
@@ -88,25 +88,34 @@ export default function FieldDashboard() {
         </div>
       </header>
 
-      {/* ── Stat Cards (compact row) ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", padding: "12px 32px 0", flexShrink: 0 }}>
+      {/* ── Stat Cards ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", padding: "16px 32px 0", flexShrink: 0 }}>
         {stats.map(s => (
           <div
             key={s.label}
             onClick={() => navigate(s.route)}
-            style={{ borderRadius: "10px", background: s.gradient, padding: "12px 16px", color: "#fff", boxShadow: "0 3px 10px rgba(0,0,0,0.14)", cursor: "pointer", position: "relative", overflow: "hidden", transition: "transform 0.12s" }}
-            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-            onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+            style={{
+              background: "#fff",
+              border: "1px solid #EAEDF4",
+              borderRadius: 18,
+              padding: "18px 20px",
+              boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)",
+              cursor: "pointer",
+              transition: "transform 0.12s, box-shadow 0.12s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 18px 36px -18px rgba(20,35,60,.36)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 14px 30px -22px rgba(20,35,60,.3)"; }}
           >
-            <div style={{ position: "absolute", top: -12, right: -12, width: 60, height: 60, borderRadius: "50%", background: "rgba(255,255,255,0.1)" }} />
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ fontSize: "18px" }}>{s.icon}</span>
-              <div>
-                <div style={{ fontSize: "22px", fontWeight: 700, lineHeight: 1 }}>{loading ? "—" : s.value}</div>
-                <div style={{ fontSize: "12px", fontWeight: 600, marginTop: "2px" }}>{s.label}</div>
-                <div style={{ fontSize: "10px", opacity: 0.8, marginTop: "1px" }}>{s.sub}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: s.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>
+                {s.icon}
               </div>
+              <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6" }}>{s.label}</span>
             </div>
+            <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2, marginBottom: 4 }}>
+              {loading ? "—" : s.value}
+            </div>
+            <div style={{ font: "500 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6" }}>{s.sub}</div>
           </div>
         ))}
       </div>

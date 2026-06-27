@@ -366,10 +366,16 @@ export default function CommunicationCenter() {
                     No saved drafts. Click "Save draft" to save your work.
                   </div>
                 ) : drafts.map((d) => (
-                  <div key={d._id || d.id} style={{ padding: 18, borderRadius: 18, background: "#F8FAFF", border: "1px solid #E6EDFF" }}>
-                    <div style={{ font: "600 14px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>{d.name || "Untitled draft"}</div>
-                    <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 6 }}>{d.type || "Update"} · saved {new Date(d.updatedAt || d.createdAt).toLocaleDateString()}</div>
-                    {d.message && <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#6B7280" }}>{d.message.slice(0, 80)}{d.message.length > 80 ? "…" : ""}</div>}
+                  <div key={d._id || d.id} style={{ borderRadius: 18, background: "#F8FAFF", border: "1px solid #E6EDFF", overflow: "hidden" }}>
+                    {d.coverImage && (
+                      <img src={d.coverImage} alt={d.name || "Cover"} style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }}
+                        onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                    )}
+                    <div style={{ padding: 18 }}>
+                      <div style={{ font: "600 14px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>{d.name || "Untitled draft"}</div>
+                      <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 6 }}>{d.type || "Update"} · saved {new Date(d.updatedAt || d.createdAt).toLocaleDateString()}</div>
+                      {d.message && <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#6B7280" }}>{d.message.slice(0, 80)}{d.message.length > 80 ? "…" : ""}</div>}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -633,19 +639,37 @@ export default function CommunicationCenter() {
             ) : (
               <div style={{ display: "grid", gap: 18, marginTop: 10 }}>
                 {recentCampaigns.map((campaign) => (
-                  <div key={campaign.id || campaign._id} style={{ padding: "20px 22px", borderRadius: 20, background: "#fff", border: "1px solid #EAEDF4", boxShadow: "0 10px 20px -12px rgba(20,35,60,.2)" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                      <div>
-                        <div className="notranslate" translate="no" style={{ font: "600 15px 'Hanken Grotesk'", color: "#16233C" }}>{campaign.name || campaign.title || "Untitled broadcast"}</div>
-                        <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6" }}>{campaign.status || "ACTIVE"}</div>
+                  <div key={campaign.id || campaign._id} style={{ borderRadius: 20, background: "#fff", border: "1px solid #EAEDF4", boxShadow: "0 10px 20px -12px rgba(20,35,60,.2)", overflow: "hidden" }}>
+                    {/* Cover image */}
+                    {campaign.coverImage && (
+                      <div style={{ width: "100%", height: 160, overflow: "hidden", position: "relative" }}>
+                        <img
+                          src={campaign.coverImage}
+                          alt={campaign.name || "Cover"}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                          onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
+                        />
+                        <span style={{ position: "absolute", top: 10, right: 10, font: "600 11px 'Hanken Grotesk'", color: "#2B5BD7", background: "rgba(255,255,255,0.92)", padding: "5px 10px", borderRadius: 12, backdropFilter: "blur(4px)" }}>
+                          {campaign.type || "Awareness"}
+                        </span>
                       </div>
-                      <span style={{ font: "600 11px 'Hanken Grotesk'", color: "#2B5BD7", background: "#EEF4FF", padding: "8px 10px", borderRadius: 16 }}>{campaign.type || "Awareness"}</span>
-                    </div>
-                    <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#4B576F", marginBottom: 14, minHeight: 44 }}>{campaign.message || campaign.description || "No description available."}</div>
-                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>
-                      <span>{(campaign.reach || 0).toLocaleString()} reached</span>
-                      <span>Engagement {campaign.engagement ? `${Math.round(campaign.engagement)}%` : "—"}</span>
-                      <span>ROI {campaign.roi ? `${campaign.roi.toFixed(1)}%` : "—"}</span>
+                    )}
+                    <div style={{ padding: "20px 22px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <div>
+                          <div className="notranslate" translate="no" style={{ font: "600 15px 'Hanken Grotesk'", color: "#16233C" }}>{campaign.name || campaign.title || "Untitled broadcast"}</div>
+                          <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6" }}>{campaign.status || "ACTIVE"}</div>
+                        </div>
+                        {!campaign.coverImage && (
+                          <span style={{ font: "600 11px 'Hanken Grotesk'", color: "#2B5BD7", background: "#EEF4FF", padding: "8px 10px", borderRadius: 16 }}>{campaign.type || "Awareness"}</span>
+                        )}
+                      </div>
+                      <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#4B576F", marginBottom: 14, minHeight: 44 }}>{campaign.message || campaign.description || "No description available."}</div>
+                      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>
+                        <span>{(campaign.reach || 0).toLocaleString()} reached</span>
+                        <span>Engagement {campaign.engagement ? `${Math.round(campaign.engagement)}%` : "—"}</span>
+                        <span>ROI {campaign.roi ? `${campaign.roi.toFixed(1)}%` : "—"}</span>
+                      </div>
                     </div>
                   </div>
                 ))}

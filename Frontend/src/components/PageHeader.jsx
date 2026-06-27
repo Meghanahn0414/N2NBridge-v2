@@ -31,7 +31,7 @@ const GREETINGS = {
   good_evening: "Good evening",
 };
 
-export default function PageHeader({ title, subtitle }) {
+export default function PageHeader({ title, subtitle, children }) {
   const user = getAuthUser();
   const name = user?.fullName || user?.name || "User";
   const firstName = name.split(" ")[0];
@@ -95,10 +95,6 @@ export default function PageHeader({ title, subtitle }) {
 
   return (
     <header style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: "22px 34px",
       background: "#F3F5FA",
       position: "sticky",
       top: 0,
@@ -106,25 +102,31 @@ export default function PageHeader({ title, subtitle }) {
       borderBottom: "1px solid #E5E9F1",
       fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
     }}>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 500, color: "#8590A6", marginBottom: 3 }}>
-          {today}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "22px 34px",
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: "#8590A6", marginBottom: 3 }}>
+            {today}
+          </div>
+          <h1 style={{
+            margin: 0,
+            font: "400 28px 'Newsreader', Georgia, serif",
+            color: "#16233C",
+            letterSpacing: "-.01em",
+            lineHeight: 1.2,
+          }}>
+            {title || `${GREETINGS[greetingKey]}, ${firstName}`}
+          </h1>
+          {subtitle && (
+            <p style={{ margin: "3px 0 0", fontSize: 13, color: "#8590A6" }}>{subtitle}</p>
+          )}
         </div>
-        <h1 style={{
-          margin: 0,
-          font: "400 28px 'Newsreader', Georgia, serif",
-          color: "#16233C",
-          letterSpacing: "-.01em",
-          lineHeight: 1.2,
-        }}>
-          {title || `${GREETINGS[greetingKey]}, ${firstName}`}
-        </h1>
-        {subtitle && (
-          <p style={{ margin: "3px 0 0", fontSize: 13, color: "#8590A6" }}>{subtitle}</p>
-        )}
-      </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ position: "relative" }} ref={notifRef}>
           <button
             onClick={() => setShowNotifications(s => !s)}
@@ -232,7 +234,22 @@ export default function PageHeader({ title, subtitle }) {
             </div>
           )}
         </div>
-      </div>
+        </div>{/* /right actions */}
+      </div>{/* /top row */}
+
+      {children && (
+        <div style={{
+          padding: "0 34px 16px",
+          borderTop: "1px solid #E5E9F1",
+          paddingTop: 14,
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}>
+          {children}
+        </div>
+      )}
     </header>
   );
 }

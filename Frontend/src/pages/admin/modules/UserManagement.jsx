@@ -141,42 +141,36 @@ export default function UserManagement() {
 
   return (
     <div>
-      <PageHeader subtitle="Manage citizens, staff members, and system users" />
+      <PageHeader subtitle="Manage citizens, staff members, and system users">
+        <input type="text" placeholder="Search by name, mobile, email..." value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ flex: 1, minWidth: 200, padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", outline: "none" }} />
+        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}
+          style={{ padding: "9px 14px", border: "1px solid #EAEDF4", borderRadius: 10, fontSize: 13, fontFamily: "'Hanken Grotesk',sans-serif", background: "#F8F9FC", color: "#16233C", cursor: "pointer" }}>
+          <option value="ALL">All Roles</option>
+          <option value="CITIZEN">Citizen</option>
+          <option value="FIELD_OFFICER">Field Officer</option>
+          <option value="MANAGER">Manager</option>
+          <option value="REPRESENTATIVE">Representative</option>
+          <option value="ADMIN">Admin</option>
+        </select>
+      </PageHeader>
       <div className="module-container">
-      <div className="module-controls">
-        <div className="search-bar">
-          <input
-            type="text"
-            placeholder="Search by name, mobile, email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="filters">
-          <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-            <option value="ALL">All Roles</option>
-            <option value="CITIZEN">Citizen</option>
-            <option value="FIELD_OFFICER">Field Officer</option>
-            <option value="MANAGER">Manager</option>
-            <option value="REPRESENTATIVE">Representative</option>
-            <option value="ADMIN">Admin</option>
-          </select>
-        </div>
-      </div>
 
       <div className="module-stats">
-        <div className="stat-card">
-          <span className="stat-label">Total Users</span>
-          <span className="stat-value">{totalUsers}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Active</span>
-          <span className="stat-value">{allUsers.filter(u => u.status !== 'BLOCKED').length}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Blocked</span>
-          <span className="stat-value">{allUsers.filter(u => u.status === 'BLOCKED').length}</span>
-        </div>
+        {[
+          { label: "Total Users", value: totalUsers,                                         icon: "👥", bg: "#EEF2FF" },
+          { label: "Active",      value: allUsers.filter(u => u.status !== 'BLOCKED').length, icon: "✅", bg: "#F0FDF4" },
+          { label: "Blocked",     value: allUsers.filter(u => u.status === 'BLOCKED').length, icon: "🚫", bg: "#FEF2F2" },
+        ].map(({ label, value, icon, bg }) => (
+          <div key={label} style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{icon}</div>
+              <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+            </div>
+            <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+          </div>
+        ))}
       </div>
 
       {loading ? (

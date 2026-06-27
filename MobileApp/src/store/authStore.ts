@@ -25,7 +25,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       profileComplete: false,
-      setAuth: (token, user) => set({ token, user }),
+      setAuth: (token, user) => set({ token, user, profileComplete: false }),
       setProfileComplete: (profileComplete) => set({ profileComplete }),
       updateUser: (partial) => set((s) => ({ user: s.user ? { ...s.user, ...partial } : s.user })),
       logout: () => {

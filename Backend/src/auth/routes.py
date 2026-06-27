@@ -98,47 +98,9 @@ async def login(request: Request, login_data: UserLoginRequest):
 
 @router.post("/login-admin", response_model=TokenResponse)
 @limiter.limit("10/minute")
-async def login_admin(request: Request):
+async def login_admin(request: Request, login_data: UserLoginRequest):
     """Admin/Staff login using email/password (ADMIN, REPRESENTATIVE, CONSTITUENCY_MANAGER, FIELD_OFFICER)"""
-    try:
-        raw = await request.body()
-        logger.debug(f"/login-admin raw body: {raw}")
-    except Exception as e:
-        logger.error(f"Failed reading raw body: {e}")
-
-    data = None
-    try:
-        data = await request.json()
-    except Exception as e:
-        logger.error(f"JSON parse error in /login-admin: {e}")
-        # Fallback: try to parse urlencoded form data from raw body
-        try:
-            raw_text = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else str(raw)
-            from urllib.parse import parse_qs
-            parsed = parse_qs(raw_text)
-            # parse_qs returns lists for each key
-            data = {k: v[0] for k, v in parsed.items()}
-            logger.debug(f"Parsed urlencoded body for /login-admin: {data}")
-        except Exception as e2:
-            logger.error(f"Fallback parse error in /login-admin: {e2}")
-            raise HTTPException(status_code=422, detail=f"Invalid JSON and fallback parse failed: {e}")
-
-    # Validate required fields
-    email = data.get("email")
-    password = data.get("password")
-
-    if not email or not password:
-        raise HTTPException(status_code=422, detail="'email' and 'password' are required")
-
-    # Create a simple object compatible with AuthService.login
-    class SimpleLogin:
-        def __init__(self, email, password):
-            self.email = email
-            self.password = password
-
-    login_obj = SimpleLogin(email, password)
-
-    result = AuthService.login(login_obj)
+    result = AuthService.login(login_data)
 
     if not result:
         raise HTTPException(
@@ -146,18 +108,14 @@ async def login_admin(request: Request):
             detail="Invalid email or password"
         )
 
-    # Ensure the user has an allowed role (not a citizen)
-    user_role = None
-    try:
-        user_role = result.user.role if hasattr(result, 'user') and result.user else None
-    except Exception:
-        user_role = None
-
-    # Allow staff roles (admin, representative/MLA, manager, field officer) but not citizens
-    # Note: Support both "MANAGER" (legacy) and "CONSTITUENCY_MANAGER" (new standard)
+    # Block citizens — they must use OTP login
     allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER", "MANAGER"]
+    user_role = result.user.role if result.user else None
     if user_role not in allowed_roles:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized. Citizens must use citizen login.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized. Citizens must use citizen login."
+        )
 
     return result
 

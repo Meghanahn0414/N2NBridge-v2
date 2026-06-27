@@ -49,43 +49,40 @@ export default function CommunicationHub() {
 
   return (
     <div>
-      <PageHeader subtitle="Send messages through multiple channels" />
-      <div className="module-container">
-      <div className="module-controls">
-        <div className="channel-tabs">
+      <PageHeader subtitle="Send messages through multiple channels">
+        <div style={{ display: "flex", gap: 4, background: "#F0F2F8", borderRadius: 10, padding: 4 }}>
           {channels.map(channel => (
-            <button
-              key={channel}
-              className={`tab-btn ${activeChannel === channel ? 'active' : ''}`}
-              onClick={() => setActiveChannel(channel)}
-            >
+            <button key={channel} onClick={() => setActiveChannel(channel)}
+              style={{ padding: "7px 14px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", cursor: "pointer", whiteSpace: "nowrap",
+                background: activeChannel === channel ? "#fff" : "transparent",
+                color: activeChannel === channel ? "#16233C" : "#8590A6",
+                boxShadow: activeChannel === channel ? "0 1px 4px rgba(20,35,60,.1)" : "none" }}>
               {channel}
             </button>
           ))}
         </div>
-
-        <button className="btn-primary" onClick={() => setShowComposer(true)}>
+        <button onClick={() => setShowComposer(true)}
+          style={{ marginLeft: "auto", padding: "9px 18px", borderRadius: 10, background: "#16233C", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif", whiteSpace: "nowrap" }}>
           ✉️ Compose Message
         </button>
-      </div>
+      </PageHeader>
+      <div className="module-container">
 
       <div className="module-stats">
-        <div className="stat-card">
-          <span className="stat-label">Messages Sent</span>
-          <span className="stat-value">{stats.sent}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Delivery Rate</span>
-          <span className="stat-value">{stats.sent > 0 ? Math.round((stats.delivered / stats.sent) * 100) : 0}%</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Read Rate</span>
-          <span className="stat-value">{stats.sent > 0 ? Math.round((stats.read / stats.sent) * 100) : 0}%</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Click Rate</span>
-          <span className="stat-value">{stats.sent > 0 ? Math.round((stats.clicked / stats.sent) * 100) : 0}%</span>
-        </div>
+        {[
+          { label: "Messages Sent",  value: stats.sent,                                                                     icon: "📨", bg: "#EEF2FF" },
+          { label: "Delivery Rate",  value: `${stats.sent > 0 ? Math.round((stats.delivered / stats.sent) * 100) : 0}%`,  icon: "📬", bg: "#F0FDF4" },
+          { label: "Read Rate",      value: `${stats.sent > 0 ? Math.round((stats.read / stats.sent) * 100) : 0}%`,       icon: "👁️",  bg: "#F0FDFA" },
+          { label: "Click Rate",     value: `${stats.sent > 0 ? Math.round((stats.clicked / stats.sent) * 100) : 0}%`,    icon: "👆", bg: "#FFF7ED" },
+        ].map(({ label, value, icon, bg }) => (
+          <div key={label} style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{icon}</div>
+              <span style={{ font: "600 12px 'Hanken Grotesk',system-ui,sans-serif", color: "#8590A6", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+            </div>
+            <div style={{ fontFamily: "'Newsreader','Georgia',serif", fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+          </div>
+        ))}
       </div>
 
       <div className="messages-list">

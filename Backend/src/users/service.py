@@ -129,7 +129,7 @@ class UserService:
             update_data["mobile"] = UserService.normalize_mobile(update_data["mobile"])
 
         # Generate citizenId for CITIZEN users who don't have one yet
-        existing = db.users.find_one({"_id": ObjectId(user_id), "isDeleted": False}, {"role": 1, "citizenId": 1})
+        existing = db.users.find_one({"_id": ObjectId(user_id), "isDeleted": {"$ne": True}}, {"role": 1, "citizenId": 1})
         if existing and existing.get("role") == "CITIZEN" and not existing.get("citizenId"):
             update_data["citizenId"] = IDGenerator.generate_citizen_id()
             logger.info(f"Generated citizenId for existing citizen {user_id}: {update_data['citizenId']}")
@@ -137,7 +137,7 @@ class UserService:
         update_data.update(Helper.audit_fields(updated_by, is_update=True))
 
         result = db.users.update_one(
-            {"_id": ObjectId(user_id), "isDeleted": False},
+            {"_id": ObjectId(user_id), "isDeleted": {"$ne": True}},
             {"$set": update_data}
         )
         return result.matched_count > 0
