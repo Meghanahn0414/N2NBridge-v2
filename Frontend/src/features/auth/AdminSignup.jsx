@@ -194,7 +194,7 @@ export default function AdminSignup() {
             </Field>
           </div>
 
-          <Field label="Official Email" error={errors.email}>
+          <Field label="Email Address" error={errors.email}>
             <input
               type="email"
               placeholder="admin@gov.in"
@@ -225,57 +225,7 @@ export default function AdminSignup() {
               />
             </div>
           </Field>
-
-          <SectionLabel title="Official Details" />
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label="State" error={errors.state}>
-              <select
-                value={form.state}
-                onChange={(e) => update("state", e.target.value)}
-                style={inputStyle(errors.state)}
-              >
-                <option value="">Select state</option>
-                {INDIAN_STATES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="District" error={errors.district}>
-              <input
-                type="text"
-                placeholder="Enter district"
-                value={form.district}
-                onChange={(e) => update("district", e.target.value)}
-                style={inputStyle(errors.district)}
-              />
-            </Field>
-          </div>
-
           <SectionLabel title="Security" />
-
-          {/* Secret key */}
-          <div style={styles.secretKeyBox}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: "#1e40af", display: "block", marginBottom: 6 }}>
-              🔑 Admin Secret Key <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <PasswordInput
-              placeholder="Enter portal access key"
-              value={form.secretKey}
-              show={show.secretKey}
-              error={errors.secretKey}
-              onChange={(v) => update("secretKey", v)}
-              onToggle={() => toggleShow("secretKey")}
-              borderColor={errors.secretKey ? "#f87171" : "#93c5fd"}
-            />
-            {errors.secretKey && (
-              <p style={{ color: "#ef4444", fontSize: 11, marginTop: 4 }}>{errors.secretKey}</p>
-            )}
-            <p style={{ fontSize: 11, color: "#2563eb", marginTop: 6 }}>
-              Contact your system administrator for this key
-            </p>
-          </div>
-
           <Field label="Password" error={errors.password}>
             <PasswordInput
               placeholder="Create strong password (min 8 chars)"
