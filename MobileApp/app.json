@@ -4,24 +4,19 @@
     "slug": "MobileApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./src/assets/images/n2n-logo.jpeg",
     "scheme": "mobileapp",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "icon": "./assets/expo.icon"
-    },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./src/assets/images/n2n-logo.jpeg",
+        "backgroundColor": "#0f1629"
       },
       "package": "com.fatimakonnur1234567.mobileapp"
     },
     "web": {
       "output": "single",
-      "favicon": "./assets/images/favicon.png",
+      "favicon": "./src/assets/images/n2n-logo.jpeg",
       "bundler": "metro",
       "baseUrl": "/citizen"
     },
@@ -38,9 +33,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0f1629",
           "android": {
-            "image": "./assets/images/splash-icon.png",
+            "image": "./src/assets/images/n2n-logo.jpeg",
             "imageWidth": 76
           }
         }
