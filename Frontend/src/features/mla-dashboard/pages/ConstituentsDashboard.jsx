@@ -115,8 +115,9 @@ function KpiCard({ iconBg, iconColor, iconEl, label, value, sub, subGreen }) {
 
 /* ══════════════════════════════════════════════════════════ */
 export default function ConstituentsDashboard() {
-  const [stats, setStats]     = useState(null);
-  const [loading, setLoading] = useState(true);
+  const _cachedConstituents = (() => { try { const v = sessionStorage.getItem("mla_constituents_cache"); return v ? JSON.parse(v) : null; } catch { return null; } })();
+  const [stats, setStats]     = useState(_cachedConstituents);
+  const [loading, setLoading] = useState(!_cachedConstituents);
   const [error, setError]     = useState(null);
 
   /* ── Search state ── */
@@ -140,14 +141,16 @@ export default function ConstituentsDashboard() {
   const ward = user?.ward || user?.constituency || "your constituency";
 
   const load = () => {
-    setLoading(true);
     setError(null);
     api.get("/api/campaigns/constituents/stats")
-      .then((r) => setStats(r.data))
+      .then((r) => {
+        const fresh = r.data;
+        if (fresh) { try { sessionStorage.setItem("mla_constituents_cache", JSON.stringify(fresh)); } catch {} }
+        setStats(fresh);
+      })
       .catch((e) => {
         console.error("[Constituents] stats fetch failed:", e);
         setError("Could not load data. Check that the backend is running.");
-        setStats(null);
       })
       .finally(() => setLoading(false));
   };
@@ -420,26 +423,26 @@ export default function ConstituentsDashboard() {
           <KpiCard
             iconBg="#E7EEFF" iconColor="#2B5BD7" iconEl={<MIcon name="groups" style={{ fontSize: 20, color: "#2B5BD7" }} />}
             label="Total Registered Residents"
-            value={loading ? "—" : fmt(total)}
+            value={stats ? fmt(total) : "—"}
             sub={`${pct(verified, total)}% profile complete`}
           />
           <KpiCard
             iconBg="#E6F4EC" iconColor="#1E8A5B" iconEl={<MIcon name="check_circle" style={{ fontSize: 20, color: "#1E8A5B" }} />}
             label="Verified Residents"
-            value={loading ? "—" : fmt(verified)}
+            value={stats ? fmt(verified) : "—"}
             sub="Address-confirmed citizens"
           />
           <KpiCard
             iconBg="#EDEAFB" iconColor="#6B4FD8" iconEl={<MIcon name="bolt" style={{ fontSize: 20, color: "#6B4FD8" }} />}
             label="Active Residents·30d"
-            value={loading ? "—" : fmt(active30d)}
+            value={stats ? fmt(active30d) : "—"}
             sub={`${pct(active30d, total)}% of registered`}
             subGreen
           />
           <KpiCard
             iconBg="#FCF1E0" iconColor="#C9871F" iconEl={<MIcon name="person_add" style={{ fontSize: 20, color: "#C9871F" }} />}
             label="New Residents·30d"
-            value={loading ? "—" : `${fmt(new30d)}`}
+            value={stats ? `${fmt(new30d)}` : "—"}
             sub={newPct >= 0 ? `+${newPct}% vs. previous month` : `${newPct}% vs. previous month`}
             subGreen={newPct >= 0}
           />
@@ -460,7 +463,7 @@ export default function ConstituentsDashboard() {
               <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#9AA3B5" }}>Size · Share</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {loading
+              {!stats
                 ? [1, 2, 3].map((i) => <div key={i} style={{ height: 42, background: "#F3F5FA", borderRadius: 10 }} />)
                 : segments.map((s) => <SegmentRow key={s.label} {...s} />)
               }

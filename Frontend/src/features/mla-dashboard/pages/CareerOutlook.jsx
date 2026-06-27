@@ -35,13 +35,71 @@ function monthsUntil(targetDate) {
 }
 
 // ── Data hook ──────────────────────────────────────────────────
+const CAREER_CACHE_KEY = "mla_career_cache";
+
+// Pure derivation — takes raw API payloads, returns the shape CareerOutlook needs
+function deriveCareerData(insights, analytics, grievances = []) {
+  const sentiment   = insights?.publicSentiment || null;
+  const sentDist    = analytics?.sentimentDistribution || null;
+  const approvalPct = (sentiment?.hasData && sentiment?.positive?.pct != null)
+    ? sentiment.positive.pct
+    : (sentDist?.total > 0 ? (sentDist.positivePct ?? null) : null);
+
+  const peerRanking = insights?.peerRanking || null;
+  const myWard      = peerRanking?.wards?.[0] || null;
+  const peers       = peerRanking
+    ? { rank: myWard?.rank ?? null, total: peerRanking.totalWards ?? null, wardName: myWard?.wardName ?? null }
+    : null;
+
+  const byStatus    = analytics?.grievances?.byStatus || {};
+  const resolved    = byStatus.RESOLVED ?? 0;
+  const total       = analytics?.grievances?.total    ?? 0;
+
+  const openRoad = grievances.filter(g =>
+    ["NEW", "OPEN", "ASSIGNED"].includes(g.status) &&
+    (g.categoryId || g.category || "").toUpperCase().includes("ROAD")
+  ).length;
+  const openTransit = grievances.filter(g =>
+    ["NEW", "OPEN", "ASSIGNED"].includes(g.status) &&
+    (g.categoryId || g.category || "").toUpperCase().includes("TRANSIT")
+  ).length;
+
+  const trendPoints = Array.isArray(insights?.sentimentTrend?.points)
+    ? insights.sentimentTrend.points : [];
+
+  const citizens = analytics?.users?.byRole?.CITIZEN ?? null;
+  const totalReg = analytics?.events?.totalRegistrations ?? null;
+
+  return { approvalPct, peers, resolved, total, openRoad, openTransit, trendPoints, citizens, totalReg, byStatus };
+}
+
+function readCareerCache() {
+  try {
+    // Own cache (stores fully derived data)
+    const own = sessionStorage.getItem(CAREER_CACHE_KEY);
+    if (own) return JSON.parse(own);
+    // Fall back to Executive Dashboard raw caches (same endpoints, already fetched)
+    const insRaw = sessionStorage.getItem("mla_insights_cache");
+    const anRaw  = sessionStorage.getItem("mla_analytics_cache");
+    if (insRaw || anRaw) {
+      const ins = insRaw ? JSON.parse(insRaw) : null;
+      const an  = anRaw  ? JSON.parse(anRaw)  : null;
+      return deriveCareerData(ins, an, []);
+    }
+    return null;
+  } catch { return null; }
+}
+function writeCareerCache(value) {
+  try { sessionStorage.setItem(CAREER_CACHE_KEY, JSON.stringify(value)); } catch {}
+}
+
 function useCareerData() {
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cached = readCareerCache();
+  const [data,    setData]    = useState(cached);
+  const [loading, setLoading] = useState(!cached);
   const [error,   setError]   = useState(false);
 
   useEffect(() => {
-    setLoading(true);
     setError(false);
     Promise.all([
       api.get("/api/mla/insights", { params: { days: 365 } }),
@@ -49,63 +107,12 @@ function useCareerData() {
       api.get("/api/grievances/", { params: { page: 1, per_page: 100 } }).catch(() => null),
     ])
       .then(([insRes, anRes, grRes]) => {
-        // Both mla/insights and analytics/dashboard wrap in success_response → .data.data
         const insights   = insRes?.data?.data  || insRes?.data  || null;
         const analytics  = anRes?.data?.data   || anRes?.data   || null;
-        // grievances list is returned as a plain array (no success_response wrapper)
         const grievances = Array.isArray(grRes?.data) ? grRes.data : [];
-
-        // ── Approval % from public sentiment (VADER NLP) ──────────────
-        const sentiment = insights?.publicSentiment || null;
-        const sentDist  = analytics?.sentimentDistribution || null;
-        // Prefer NLP-based positive pct; fall back to rating-based positivePct
-        const approvalPct = (sentiment?.hasData && sentiment?.positive?.pct != null)
-          ? sentiment.positive.pct
-          : (sentDist?.total > 0 ? (sentDist.positivePct ?? null) : null);
-
-        // ── Peer ranking ──────────────────────────────────────────────
-        // peerRanking = { wards: [{wardId, wardName, approvalPct, rank}], totalWards, hasData }
-        const peerRanking = insights?.peerRanking || null;
-        const myWard      = peerRanking?.wards?.[0] || null;  // rank 1 = top ward
-        const peers       = peerRanking
-          ? { rank: myWard?.rank ?? null, total: peerRanking.totalWards ?? null, wardName: myWard?.wardName ?? null }
-          : null;
-
-        // ── Grievance stats from analytics dashboard ──────────────────
-        const byStatus = analytics?.grievances?.byStatus || {};
-        const resolved = byStatus.RESOLVED ?? 0;
-        const total    = analytics?.grievances?.total    ?? 0;
-
-        // ── Category breakdown from live grievance list ───────────────
-        const openRoad = grievances.filter(g =>
-          ["NEW", "OPEN", "ASSIGNED"].includes(g.status) &&
-          (g.categoryId || g.category || "").toUpperCase().includes("ROAD")
-        ).length;
-        const openTransit = grievances.filter(g =>
-          ["NEW", "OPEN", "ASSIGNED"].includes(g.status) &&
-          (g.categoryId || g.category || "").toUpperCase().includes("TRANSIT")
-        ).length;
-
-        // ── Trend points ──────────────────────────────────────────────
-        // sentimentTrend = { points: [{month, approvalPct, positivePct, ...}], hasData }
-        const trendPoints = Array.isArray(insights?.sentimentTrend?.points)
-          ? insights.sentimentTrend.points
-          : [];
-
-        // ── Users & events ────────────────────────────────────────────
-        const citizens = analytics?.users?.byRole?.CITIZEN ?? null;
-        const totalReg = analytics?.events?.totalRegistrations ?? null;
-
-        setData({
-          approvalPct,
-          peers,
-          resolved, total,
-          openRoad, openTransit,
-          trendPoints,
-          citizens,
-          totalReg,
-          byStatus,
-        });
+        const freshData  = deriveCareerData(insights, analytics, grievances);
+        writeCareerCache(freshData);
+        setData(freshData);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -555,7 +562,7 @@ export default function CareerOutlook() {
 
         {/* Row 1: gauge + stat cards */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.55fr", gap: 20 }}>
-          {loading ? <Skeleton h={340} /> : (
+          {!data ? <Skeleton h={340} /> : (
             <ReelectionGauge
               pct={odds.strong}
               voteShare={odds.voteShare}
@@ -564,7 +571,7 @@ export default function CareerOutlook() {
             />
           )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 16 }}>
-            {loading ? (
+            {!data ? (
               <><Skeleton /><Skeleton /><Skeleton /><Skeleton /></>
             ) : (
               <>
@@ -599,20 +606,20 @@ export default function CareerOutlook() {
         </div>
 
         {/* Row 2: trajectory chart */}
-        {loading ? <Skeleton h={340} /> : (
+        {!data ? <Skeleton h={340} /> : (
           <TrajectoryChart points={data?.trendPoints} approvalPct={data?.approvalPct} />
         )}
 
         {/* Row 3: scenarios + road + levers */}
         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20 }}>
-          {loading ? <Skeleton h={380} /> : (
+          {!data ? <Skeleton h={380} /> : (
             <ElectionScenarios strong={odds.strong} comp={odds.comp} atRisk={odds.atRisk} />
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {loading ? <Skeleton h={220} /> : (
+            {!data ? <Skeleton h={220} /> : (
               <GrievanceStatusCard byStatus={data?.byStatus} />
             )}
-            {loading ? <Skeleton h={160} /> : (
+            {!data ? <Skeleton h={160} /> : (
               <Levers
                 openRoad={data?.openRoad ?? 0}
                 openTransit={data?.openTransit ?? 0}

@@ -109,24 +109,26 @@ function KpiSkeleton() {
 /* ══════════════════════════════════════════ */
 export default function ReportsDashboard() {
   const pageRef = useRef(null);
-  const [stats, setStats]           = useState(null);
+  const _cachedReportStats = (() => { try { const v = sessionStorage.getItem("mla_reports_stats_cache"); return v ? JSON.parse(v) : null; } catch { return null; } })();
+  const [stats, setStats]           = useState(_cachedReportStats);
   const [grievances, setGrievances] = useState([]);
   const [catMap, setCatMap]         = useState({}); // categoryId → categoryName
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading]       = useState(!_cachedReportStats);
   const [activeTab, setActiveTab]   = useState("All");
   const [searchQ, setSearchQ]       = useState("");
   const [catFilter, setCatFilter]   = useState("All categories");
   const [sortMode, setSortMode]     = useState("Most urgent");
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const [statsRes, listRes, catsRes] = await Promise.all([
         api.get("/api/grievances/reports/stats"),
         api.get("/api/grievances/", { params: { per_page: 100 } }),
         api.get("/api/grievances/categories"),
       ]);
-      setStats(statsRes.data);
+      const freshStats = statsRes.data;
+      if (freshStats) { try { sessionStorage.setItem("mla_reports_stats_cache", JSON.stringify(freshStats)); } catch {} }
+      setStats(freshStats);
       // Handle both plain array and paginated wrapper { items: [...] }
       const rawList = listRes.data;
       const gList = Array.isArray(rawList)
@@ -258,7 +260,7 @@ export default function ReportsDashboard() {
       <div style={{ padding: "28px 34px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
 
         {/* ── KPI Strip ── */}
-        {loading ? <KpiSkeleton /> : (
+        {!stats ? <KpiSkeleton /> : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20 }}>
 
             {/* Needs attention */}
@@ -458,7 +460,7 @@ export default function ReportsDashboard() {
 
           {/* Rows */}
           <div style={{ display: "flex", flexDirection: "column" }}>
-            {loading ? (
+            {loading && grievances.length === 0 ? (
               [...Array(5)].map((_, i) => (
                 <div key={i} style={{ height: 80, borderBottom: "1px solid #F4F6FA", background: i % 2 ? "#FAFBFD" : "#fff", opacity: 0.4 }} />
               ))

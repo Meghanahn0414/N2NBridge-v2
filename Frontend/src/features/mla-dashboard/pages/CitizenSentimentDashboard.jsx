@@ -9,14 +9,27 @@ function MS({ children, style }) {
 
 const PERIOD_DAYS = { "3M": 90, "6M": 180, "12M": 365, "All": 730 };
 
+const POPULARITY_CACHE_KEY = "mla_popularity_cache";
+function readPopularityCache() {
+  try {
+    // Own cache first, then fall back to Executive Dashboard's shared insights cache
+    const v = sessionStorage.getItem(POPULARITY_CACHE_KEY) || sessionStorage.getItem("mla_insights_cache");
+    return v ? JSON.parse(v) : null;
+  } catch { return null; }
+}
+
 function usePopularityData(days) {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cached = readPopularityCache();
+  const [data, setData]       = useState(cached);
+  const [loading, setLoading] = useState(!cached);
   useEffect(() => {
-    setLoading(true);
     api.get("/api/mla/insights", { params: { days } })
-      .then(r => setData(r?.data?.data || r?.data || null))
-      .catch(() => setData(null))
+      .then(r => {
+        const fresh = r?.data?.data || r?.data || null;
+        if (fresh) { try { sessionStorage.setItem(POPULARITY_CACHE_KEY, JSON.stringify(fresh)); } catch {} }
+        setData(fresh);
+      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [days]);
   return { data, loading };
