@@ -27,13 +27,15 @@ EVENT_TYPES = [
 ]
 
 ROLE_LABELS = {
-    UserRole.ADMIN.value: "Admin",
     UserRole.MANAGER.value: "Manager",
     UserRole.FIELD_OFFICER.value: "Field Officer",
     UserRole.REPRESENTATIVE.value: "Representative",
     UserRole.VOLUNTEER.value: "Volunteer",
     UserRole.CITIZEN.value: "Citizen",
 }
+
+# Roles excluded from the staff registration dropdown
+_EXCLUDED_ROLES = {UserRole.ADMIN.value}
 
 STATUS_LABELS = {
     UserStatus.ACTIVE.value: "Active",
@@ -104,7 +106,10 @@ def get_countries():
 
 
 def get_user_roles():
-    return enum_to_options(UserRole, ROLE_LABELS)
+    return [
+        opt for opt in enum_to_options(UserRole, ROLE_LABELS)
+        if opt["value"] not in _EXCLUDED_ROLES
+    ]
 
 
 def get_user_statuses():
