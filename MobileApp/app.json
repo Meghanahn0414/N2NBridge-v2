@@ -4,19 +4,19 @@
     "slug": "MobileApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/images/n2n-logo.jpeg",
+    "icon": "./src/assets/images/n2n-logo-icon.png",
     "scheme": "mobileapp",
     "userInterfaceStyle": "automatic",
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/n2n-logo.jpeg",
+        "foregroundImage": "./src/assets/images/n2n-logo-icon.png",
         "backgroundColor": "#0f1629"
       },
       "package": "com.fatimakonnur1234567.mobileapp"
     },
     "web": {
       "output": "single",
-      "favicon": "./src/assets/images/n2n-logo.jpeg",
+      "favicon": "./src/assets/images/n2n-logo-icon.png",
       "bundler": "metro",
       "baseUrl": "/citizen"
     },
@@ -35,7 +35,7 @@
         {
           "backgroundColor": "#0f1629",
           "android": {
-            "image": "./src/assets/images/n2n-logo.jpeg",
+            "image": "./src/assets/images/n2n-logo-icon.png",
             "imageWidth": 76
           }
         }
