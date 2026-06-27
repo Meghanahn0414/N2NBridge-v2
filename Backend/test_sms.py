@@ -16,7 +16,7 @@ twilio_number = env.get("TWILIO_PHONE_NUMBER")
 phone = sys.argv[1] if len(sys.argv) > 1 else "9999999999"
 otp = "123456"
 
-print(f"\n=== SMS Diagnostic Tool ===")
+print("\n=== SMS Diagnostic Tool ===")
 print(f"Target number : {phone}")
 print(f"Fast2SMS key  : {'SET (' + api_key[:8] + '...)' if api_key else 'NOT SET'}")
 print(f"Twilio SID    : {'SET (' + twilio_sid[:8] + '...)' if twilio_sid else 'NOT SET'}")
@@ -25,8 +25,10 @@ print(f"Twilio SID    : {'SET (' + twilio_sid[:8] + '...)' if twilio_sid else 'N
 if api_key:
     print("\n[1] Testing Fast2SMS OTP route...")
     number = phone.strip()
-    if number.startswith("+91"): number = number[3:]
-    elif number.startswith("91") and len(number) == 12: number = number[2:]
+    if number.startswith("+91"):
+        number = number[3:]
+    elif number.startswith("91") and len(number) == 12:
+        number = number[2:]
     number = number[-10:]
 
     resp = requests.get("https://www.fast2sms.com/dev/bulkV2", params={

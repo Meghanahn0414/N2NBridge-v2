@@ -14,7 +14,6 @@ from config.rate_limit import limiter
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from users.model import (
     OtpResponse,
-    SendOtpRequest,
     TokenResponse,
     UserCreate,
     UserLoginRequest,
