@@ -20,6 +20,17 @@ class UserBase(BaseModel):
     boothNumber: Optional[str] = None
     address: Optional[str] = None
     profileImage: Optional[str] = None
+    # Representative-specific fields
+    district: Optional[str] = None
+    partyName: Optional[str] = None
+    # Manager-specific fields
+    department: Optional[str] = None
+    officeLocation: Optional[str] = None
+    managerCode: Optional[str] = None
+    # Field Officer-specific fields
+    assignedArea: Optional[str] = None
+    managerId: Optional[str] = None
+    fieldOfficerId: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -78,6 +89,15 @@ class UserResponse(BaseModel):
     lastLoginAt: Optional[datetime] = None
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
+    # Role-specific fields returned in list/detail views
+    district: Optional[str] = None
+    partyName: Optional[str] = None
+    department: Optional[str] = None
+    officeLocation: Optional[str] = None
+    managerCode: Optional[str] = None
+    assignedArea: Optional[str] = None
+    managerId: Optional[str] = None
+    fieldOfficerId: Optional[str] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
