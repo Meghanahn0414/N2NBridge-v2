@@ -54,10 +54,33 @@ export default function EventManagement() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchEvents(targetPage, PAGE_SIZE, {});
-      setAllEvents(data);
-      setHasMore(data.length >= PAGE_SIZE);
-      calculateStats(data);
+      const [eventsData, campaignsRes] = await Promise.all([
+        fetchEvents(targetPage, PAGE_SIZE, {}),
+        import('../../../shared/services/api').then(m => m.default.get('/api/campaigns/?per_page=1000')).catch(() => null),
+      ]);
+
+      // Map campaigns to the same shape as events
+      const campaigns = campaignsRes?.data ?? [];
+      const campaignList = (Array.isArray(campaigns) ? campaigns : campaigns.items ?? campaigns.results ?? [])
+        .map(c => ({
+          _id:               c._id || c.id,
+          id:                c._id || c.id,
+          eventName:         c.name,
+          description:       c.message || c.description || '',
+          eventDate:         c.startDate || c.createdAt,
+          venue:             '',
+          wardId:            c.wardId || '',
+          eventType:         c.type || 'Campaign',
+          status:            c.status === 'ACTIVE' ? 'PUBLISHED' : (c.status || 'DRAFT'),
+          registrationCount: c.reach || 0,
+          capacity:          0,
+          _source:           'campaign',
+        }));
+
+      const merged = [...eventsData, ...campaignList];
+      setAllEvents(merged);
+      setHasMore(eventsData.length >= PAGE_SIZE);
+      calculateStats(merged);
     } catch (err) {
       setError(err.message || 'Failed to load events');
     } finally {
@@ -257,17 +280,23 @@ export default function EventManagement() {
                   <td className="center">{event.capacity || 0}</td>
                   <td>
                     <div className="action-btns">
-                      {event.status === 'DRAFT' && (
-                        <button className="action-btn publish" title="Publish event" onClick={() => handlePublish(event)}><FaRocket /></button>
+                      {event._source === 'campaign' ? (
+                        <span style={{ fontSize: 11, background: '#EEF2FF', color: '#4F46E5', borderRadius: 6, padding: '3px 8px', fontWeight: 600 }}>Campaign</span>
+                      ) : (
+                        <>
+                          {event.status === 'DRAFT' && (
+                            <button className="action-btn publish" title="Publish event" onClick={() => handlePublish(event)}><FaRocket /></button>
+                          )}
+                          {event.status !== 'CANCELLED' && event.status !== 'COMPLETED' && (
+                            <button className="action-btn" title="Cancel event" onClick={() => setCancellingEvent(event)}
+                              style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 14 }}>
+                              <FaBan />
+                            </button>
+                          )}
+                          <button className="action-btn edit" title="Edit event" onClick={() => openEdit(event)}><FaEdit /></button>
+                          <button className="action-btn delete" title="Delete event" onClick={() => setDeletingEvent(event)}><FaTrashAlt /></button>
+                        </>
                       )}
-                      {event.status !== 'CANCELLED' && event.status !== 'COMPLETED' && (
-                        <button className="action-btn" title="Cancel event" onClick={() => setCancellingEvent(event)}
-                          style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 14 }}>
-                          <FaBan />
-                        </button>
-                      )}
-                      <button className="action-btn edit" title="Edit event" onClick={() => openEdit(event)}><FaEdit /></button>
-                      <button className="action-btn delete" title="Delete event" onClick={() => setDeletingEvent(event)}><FaTrashAlt /></button>
                     </div>
                   </td>
                 </tr>
