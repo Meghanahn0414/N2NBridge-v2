@@ -400,6 +400,18 @@ export default function Login() {
               <button type="submit" disabled={loading} style={{ padding: "14px", borderRadius: 12, border: "none", background: role.color, color: "#fff", fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, transition: "opacity 0.15s" }}>
                 {loading ? "Signing in…" : role.cta}
               </button>
+              {role.key === "ADMIN" && (
+                <p style={{ textAlign: "center", fontSize: 13, color: "#64748b", margin: 0 }}>
+                  New admin?{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/admin-signup")}
+                    style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer", fontSize: 13, padding: 0 }}
+                  >
+                    Create an account
+                  </button>
+                </p>
+              )}
             </form>
           )}
         </div>
