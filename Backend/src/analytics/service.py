@@ -133,18 +133,20 @@ class AnalyticsService:
         """Get user statistics"""
         db = MongoDatabase.get_db()
 
-        total = db.users.count_documents({"isDeleted": False})
+        citizen_filter = {"isDeleted": False, "role": "CITIZEN"}
+
+        total = db.users.count_documents(citizen_filter)
 
         now            = datetime.utcnow()
         thirty_days_ago = now - timedelta(days=30)
         sixty_days_ago  = now - timedelta(days=60)
 
         current_count  = db.users.count_documents({
-            "isDeleted": False,
+            **citizen_filter,
             "createdAt": {"$gte": thirty_days_ago}
         })
         previous_count = db.users.count_documents({
-            "isDeleted": False,
+            **citizen_filter,
             "createdAt": {"$gte": sixty_days_ago, "$lt": thirty_days_ago}
         })
         trend = AnalyticsService.calculate_trend(current_count, previous_count)
