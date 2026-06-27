@@ -6,9 +6,10 @@ from datetime import datetime
 
 from bson import ObjectId
 from dashboard.service import DashboardService
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from utils.response import success_response
+from auth.routes import get_current_user
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 logger = logging.getLogger(__name__)
@@ -63,10 +64,10 @@ async def get_mla_dashboard():
         )
 
 @router.get("/officer")
-async def get_officer_dashboard():
+async def get_officer_dashboard(current_user: dict = Depends(get_current_user)):
     """Get officer dashboard"""
     try:
-        dashboard = DashboardService.get_officer_dashboard(None)
+        dashboard = DashboardService.get_officer_dashboard(current_user["user_id"])
         dashboard = serialize_for_json(dashboard)
         return success_response(dashboard, "Officer dashboard retrieved")
     except Exception as e:

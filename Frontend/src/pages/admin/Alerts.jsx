@@ -116,7 +116,7 @@ export default function Alerts() {
     <div className="module-container">
       <div className="module-header">
         <h1>🚨 Alert Management</h1>
-        <p>Monitor and manage active alerts and notifications</p>
+        <p>Monitor and Manage Active Alerts and Notifications</p>
       </div>
 
       {/* Dashboard Stats */}

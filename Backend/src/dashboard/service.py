@@ -547,11 +547,10 @@ class DashboardService:
             "status": {"$ne": "COMPLETED"}
         }).limit(10)]
         
-        # Get assigned grievances
+        # Get assigned grievances (all statuses so frontend can count RESOLVED separately)
         grievances = [Helper.convert_mongo_doc(grievance) for grievance in db.grievances.find({
             "assignedOfficerId": officer_id,
-            "status": {"$ne": "RESOLVED"}
-        }).limit(10)]
+        }).sort("createdAt", -1).limit(50)]
         
         # Get pending alerts
         alerts = [Helper.convert_mongo_doc(alert) for alert in db.alerts.find({

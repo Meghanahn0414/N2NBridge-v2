@@ -184,7 +184,7 @@ export default function ComplaintManagement() {
       <div style={{ padding: "28px 32px 0" }}>
         <p style={{ margin: 0, font: "500 13px 'Hanken Grotesk',sans-serif", color: "#8590A6" }}>Complaint Management</p>
         <h1 style={{ margin: "4px 0 2px", font: "400 30px 'Newsreader','Georgia',serif", color: "#16233C" }}>Grievance Overview</h1>
-        <p style={{ margin: 0, font: "500 13px 'Hanken Grotesk',sans-serif", color: "#8590A6" }}>Monitor, manage, and resolve citizen complaints</p>
+        <p style={{ margin: 0, font: "500 13px 'Hanken Grotesk',sans-serif", color: "#8590A6" }}>Monitor, Manage, and Resolve Citizen Complaints</p>
       </div>
 
       {/* KPI Cards */}

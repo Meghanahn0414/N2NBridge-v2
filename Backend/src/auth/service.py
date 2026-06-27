@@ -17,45 +17,67 @@ class AuthService:
     @staticmethod
     def login(login_data: UserLoginRequest) -> Optional[TokenResponse]:
         """User login"""
-        # Get user by email
-        user = UserService.get_user_by_email(login_data.email)
-        if not user:
-            logger.warning(f"Login attempt with non-existent email: {login_data.email}")
-            return None
-        
-        # Verify password
-        if not SecurityManager.verify_password(login_data.password, user["passwordHash"]):
-            logger.warning(f"Failed login attempt for user: {user['_id']}")
-            return None
-        
-        # Update last login
-        UserService.update_last_login(str(user["_id"]))
-        
-        # Create token
-        token = TokenManager.create_token(str(user["_id"]), user["role"])
-        
-        # Build response
-        user_response = UserResponse(
-            _id=str(user["_id"]),
-            fullName=user["fullName"],
-            mobile=user["mobile"],
-            email=user["email"],
-            role=user["role"],
-            constituencyId=user.get("constituencyId"),
-            wardId=user.get("wardId"),
-            boothNumber=user.get("boothNumber"),
-            address=user.get("address"),
-            profileImage=user.get("profileImage"),
-            status=user["status"],
-            lastLoginAt=user.get("lastLoginAt"),
-            createdAt=user["createdAt"],
-            updatedAt=user["updatedAt"]
-        )
-        
-        return TokenResponse(
-            accessToken=token,
-            user=user_response
-        )
+        try:
+            # Get user by email
+            user = UserService.get_user_by_email(login_data.email)
+            if not user:
+                logger.warning(f"Login attempt with non-existent email: {login_data.email}")
+                return None
+
+            # Verify password — .get() guards against missing passwordHash field
+            password_hash = user.get("passwordHash", "")
+            if not SecurityManager.verify_password(login_data.password, password_hash):
+                logger.warning(f"Failed login attempt for user: {user.get('_id')}")
+                return None
+
+            user_id = str(user["_id"])
+
+            # Update last login (non-fatal)
+            try:
+                UserService.update_last_login(user_id)
+            except Exception as e:
+                logger.warning(f"Could not update lastLoginAt for {user_id}: {e}")
+
+            # Create token
+            token = TokenManager.create_token(user_id, user.get("role", ""))
+
+            # Build response — use .get() for every field so missing keys never raise KeyError
+            user_response = UserResponse(
+                _id=user_id,
+                fullName=user.get("fullName"),
+                mobile=user.get("mobile"),
+                email=user.get("email"),
+                role=user.get("role"),
+                constituencyId=str(user["constituencyId"]) if user.get("constituencyId") else None,
+                wardId=str(user["wardId"]) if user.get("wardId") else None,
+                boothNumber=user.get("boothNumber"),
+                address=user.get("address"),
+                profileImage=user.get("profileImage"),
+                status=user.get("status", "ACTIVE"),
+                lastLoginAt=user.get("lastLoginAt"),
+                createdAt=user.get("createdAt"),
+                updatedAt=user.get("updatedAt"),
+                citizenId=user.get("citizenId"),
+                age=user.get("age"),
+                gender=user.get("gender"),
+                title=user.get("title"),
+                bio=user.get("bio"),
+                officePhone=user.get("officePhone"),
+                officeAddress=user.get("officeAddress"),
+                showApprovalRating=user.get("showApprovalRating"),
+                showResolvedCount=user.get("showResolvedCount"),
+                notifPreferences=user.get("notifPreferences"),
+                broadcastSignature=user.get("broadcastSignature"),
+                defaultBroadcastType=user.get("defaultBroadcastType"),
+            )
+
+            return TokenResponse(
+                accessToken=token,
+                user=user_response
+            )
+        except Exception as e:
+            logger.error(f"Login error for {login_data.email}: {e}", exc_info=True)
+            raise
     
     @staticmethod
     def verify_token(token: str) -> Optional[dict]:

@@ -16,6 +16,7 @@ export default function NotificationProvider({ children }) {
   const knownIds = useRef(new Set());
   const timers = useRef({});
   const initialized = useRef(false);
+  const lastToken = useRef(null);
   const navigate = useNavigate();
 
   const dismiss = useCallback((toastId) => {
@@ -52,22 +53,37 @@ export default function NotificationProvider({ children }) {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) return;
 
+      // Reset when the logged-in user changes (e.g. different role in same tab)
+      if (token !== lastToken.current) {
+        lastToken.current = token;
+        knownIds.current.clear();
+        initialized.current = false;
+      }
+
       try {
         const unread = await notificationService.getUnread();
         if (!initialized.current) {
+          // Seed known IDs on first successful poll — don't show existing items as toasts
           unread.forEach((n) => {
             const id = n._id || n.id;
             if (id) knownIds.current.add(id);
           });
           initialized.current = true;
+          // Refresh bell badge with current unread count
+          window.dispatchEvent(new Event('app-notification-updated'));
           return;
         }
+
+        let hasNew = false;
         unread.forEach((n) => {
           const id = n._id || n.id;
           if (!id || knownIds.current.has(id)) return;
           knownIds.current.add(id);
           addToast(n);
+          hasNew = true;
         });
+        // Tell PageHeader / any bell to refresh its badge
+        if (hasNew) window.dispatchEvent(new Event('app-notification-updated'));
       } catch {
         // Auth not ready or network error — skip silently
       }

@@ -54,7 +54,7 @@ export default function ManagerList() {
         <div style={styles.card}>
           <div style={styles.cardHeader}>
             <h3 style={styles.cardTitle}>Managers</h3>
-            {!loading && !error && <span style={styles.badge}>{users.length} total</span>}
+            {!loading && !error && <span style={styles.badge}>{users.length} Total</span>}
           </div>
 
           {loading && <div style={styles.loading}>Loading...</div>}

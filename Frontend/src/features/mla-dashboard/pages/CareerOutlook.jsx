@@ -35,13 +35,71 @@ function monthsUntil(targetDate) {
 }
 
 // ── Data hook ──────────────────────────────────────────────────
+const CAREER_CACHE_KEY = "mla_career_cache";
+
+// Pure derivation — takes raw API payloads, returns the shape CareerOutlook needs
+function deriveCareerData(insights, analytics, grievances = []) {
+  const sentiment   = insights?.publicSentiment || null;
+  const sentDist    = analytics?.sentimentDistribution || null;
+  const approvalPct = (sentiment?.hasData && sentiment?.positive?.pct != null)
+    ? sentiment.positive.pct
+    : (sentDist?.total > 0 ? (sentDist.positivePct ?? null) : null);
+
+  const peerRanking = insights?.peerRanking || null;
+  const myWard      = peerRanking?.wards?.[0] || null;
+  const peers       = peerRanking
+    ? { rank: myWard?.rank ?? null, total: peerRanking.totalWards ?? null, wardName: myWard?.wardName ?? null }
+    : null;
+
+  const byStatus    = analytics?.grievances?.byStatus || {};
+  const resolved    = byStatus.RESOLVED ?? 0;
+  const total       = analytics?.grievances?.total    ?? 0;
+
+  const openRoad = grievances.filter(g =>
+    ["NEW", "OPEN", "ASSIGNED"].includes(g.status) &&
+    (g.categoryId || g.category || "").toUpperCase().includes("ROAD")
+  ).length;
+  const openTransit = grievances.filter(g =>
+    ["NEW", "OPEN", "ASSIGNED"].includes(g.status) &&
+    (g.categoryId || g.category || "").toUpperCase().includes("TRANSIT")
+  ).length;
+
+  const trendPoints = Array.isArray(insights?.sentimentTrend?.points)
+    ? insights.sentimentTrend.points : [];
+
+  const citizens = analytics?.users?.byRole?.CITIZEN ?? null;
+  const totalReg = analytics?.events?.totalRegistrations ?? null;
+
+  return { approvalPct, peers, resolved, total, openRoad, openTransit, trendPoints, citizens, totalReg, byStatus };
+}
+
+function readCareerCache() {
+  try {
+    // Own cache (stores fully derived data)
+    const own = sessionStorage.getItem(CAREER_CACHE_KEY);
+    if (own) return JSON.parse(own);
+    // Fall back to Executive Dashboard raw caches (same endpoints, already fetched)
+    const insRaw = sessionStorage.getItem("mla_insights_cache");
+    const anRaw  = sessionStorage.getItem("mla_analytics_cache");
+    if (insRaw || anRaw) {
+      const ins = insRaw ? JSON.parse(insRaw) : null;
+      const an  = anRaw  ? JSON.parse(anRaw)  : null;
+      return deriveCareerData(ins, an, []);
+    }
+    return null;
+  } catch { return null; }
+}
+function writeCareerCache(value) {
+  try { sessionStorage.setItem(CAREER_CACHE_KEY, JSON.stringify(value)); } catch {}
+}
+
 function useCareerData() {
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cached = readCareerCache();
+  const [data,    setData]    = useState(cached);
+  const [loading, setLoading] = useState(!cached);
   const [error,   setError]   = useState(false);
 
   useEffect(() => {
-    setLoading(true);
     setError(false);
     Promise.all([
       api.get("/api/mla/insights", { params: { days: 365 } }),
@@ -49,63 +107,12 @@ function useCareerData() {
       api.get("/api/grievances/", { params: { page: 1, per_page: 100 } }).catch(() => null),
     ])
       .then(([insRes, anRes, grRes]) => {
-        // Both mla/insights and analytics/dashboard wrap in success_response → .data.data
         const insights   = insRes?.data?.data  || insRes?.data  || null;
         const analytics  = anRes?.data?.data   || anRes?.data   || null;
-        // grievances list is returned as a plain array (no success_response wrapper)
         const grievances = Array.isArray(grRes?.data) ? grRes.data : [];
-
-        // ── Approval % from public sentiment (VADER NLP) ──────────────
-        const sentiment = insights?.publicSentiment || null;
-        const sentDist  = analytics?.sentimentDistribution || null;
-        // Prefer NLP-based positive pct; fall back to rating-based positivePct
-        const approvalPct = (sentiment?.hasData && sentiment?.positive?.pct != null)
-          ? sentiment.positive.pct
-          : (sentDist?.total > 0 ? (sentDist.positivePct ?? null) : null);
-
-        // ── Peer ranking ──────────────────────────────────────────────
-        // peerRanking = { wards: [{wardId, wardName, approvalPct, rank}], totalWards, hasData }
-        const peerRanking = insights?.peerRanking || null;
-        const myWard      = peerRanking?.wards?.[0] || null;  // rank 1 = top ward
-        const peers       = peerRanking
-          ? { rank: myWard?.rank ?? null, total: peerRanking.totalWards ?? null, wardName: myWard?.wardName ?? null }
-          : null;
-
-        // ── Grievance stats from analytics dashboard ──────────────────
-        const byStatus = analytics?.grievances?.byStatus || {};
-        const resolved = byStatus.RESOLVED ?? 0;
-        const total    = analytics?.grievances?.total    ?? 0;
-
-        // ── Category breakdown from live grievance list ───────────────
-        const openRoad = grievances.filter(g =>
-          ["NEW", "OPEN", "ASSIGNED"].includes(g.status) &&
-          (g.categoryId || g.category || "").toUpperCase().includes("ROAD")
-        ).length;
-        const openTransit = grievances.filter(g =>
-          ["NEW", "OPEN", "ASSIGNED"].includes(g.status) &&
-          (g.categoryId || g.category || "").toUpperCase().includes("TRANSIT")
-        ).length;
-
-        // ── Trend points ──────────────────────────────────────────────
-        // sentimentTrend = { points: [{month, approvalPct, positivePct, ...}], hasData }
-        const trendPoints = Array.isArray(insights?.sentimentTrend?.points)
-          ? insights.sentimentTrend.points
-          : [];
-
-        // ── Users & events ────────────────────────────────────────────
-        const citizens = analytics?.users?.byRole?.CITIZEN ?? null;
-        const totalReg = analytics?.events?.totalRegistrations ?? null;
-
-        setData({
-          approvalPct,
-          peers,
-          resolved, total,
-          openRoad, openTransit,
-          trendPoints,
-          citizens,
-          totalReg,
-          byStatus,
-        });
+        const freshData  = deriveCareerData(insights, analytics, grievances);
+        writeCareerCache(freshData);
+        setData(freshData);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -235,7 +242,7 @@ function TrajectoryChart({ points, approvalPct }) {
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
         <div>
-          <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>Approval trajectory</div>
+          <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>Approval Trajectory</div>
           <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginTop: 2 }}>
             Sentiment trend to date · projected to the 2027 election · dashed line = 50% win line
           </div>
@@ -324,7 +331,7 @@ function ElectionScenarios({ strong, comp, atRisk }) {
 
   return (
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 3 }}>Election scenarios</div>
+      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 3 }}>Election Scenarios</div>
       <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginBottom: 18 }}>
         Modeled from current sentiment & complaint resolution rates
       </div>
@@ -373,7 +380,7 @@ function GrievanceStatusCard({ byStatus }) {
 
   return (
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 4 }}>Complaint pipeline</div>
+      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 4 }}>Complaint Pipeline</div>
       <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginBottom: 16 }}>
         {total > 0 ? `${total} total grievances by status` : "No grievance data"}
       </div>
@@ -521,7 +528,7 @@ export default function CareerOutlook() {
     <>
       <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
 
-      <MLAPageHeader subtitle={`Your trajectory toward the ${new Date(ELECTION_DATE).getFullYear()} election`} title="Career outlook">
+      <MLAPageHeader subtitle={`Your trajectory toward the ${new Date(ELECTION_DATE).getFullYear()} election`} title="Career Outlook">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <ExportButton
             filename="career-outlook"
@@ -555,7 +562,7 @@ export default function CareerOutlook() {
 
         {/* Row 1: gauge + stat cards */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.55fr", gap: 20 }}>
-          {loading ? <Skeleton h={340} /> : (
+          {!data ? <Skeleton h={340} /> : (
             <ReelectionGauge
               pct={odds.strong}
               voteShare={odds.voteShare}
@@ -564,13 +571,13 @@ export default function CareerOutlook() {
             />
           )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 16 }}>
-            {loading ? (
+            {!data ? (
               <><Skeleton /><Skeleton /><Skeleton /><Skeleton /></>
             ) : (
               <>
                 <StatCard
                   iconName="thumb_up" iconBg="#E7EEFF" iconColor="#2B5BD7"
-                  label="Approval rating"
+                  label="Approval Rating"
                   value={data?.approvalPct != null ? `${data.approvalPct}%` : "—"}
                   sub={momentum != null
                     ? `${momentum >= 0 ? "↑" : "↓"} ${Math.abs(momentum)} pts vs. last period`
@@ -579,18 +586,18 @@ export default function CareerOutlook() {
                 />
                 <StatCard
                   iconName="how_to_vote" iconBg="#E6F4EC" iconColor="#1E8A5B"
-                  label="Registered citizens" value={data?.citizens != null ? data.citizens.toLocaleString() : "—"}
+                  label="Registered Citizens" value={data?.citizens != null ? data.citizens.toLocaleString() : "—"}
                   sub="Constituent base" subColor="#1E7A50"
                 />
                 <StatCard
                   iconName="task_alt" iconBg="#FCF1E0" iconColor="#C9871F"
-                  label="Complaints closed"
+                  label="Complaints Closed"
                   value={data?.resolved != null ? `${data.resolved}/${data.total}` : "—"}
                   sub={data?.total > 0 ? `${Math.round((data.resolved / data.total) * 100)}% resolution rate` : "No data"}
                 />
                 <StatCard
                   iconName="campaign" iconBg="#EDEAFB" iconColor="#6B4FD8"
-                  label="Event registrations" value={data?.totalReg != null ? data.totalReg.toLocaleString() : "—"}
+                  label="Event Registrations" value={data?.totalReg != null ? data.totalReg.toLocaleString() : "—"}
                   sub="Constituent engagement" subColor="#1E7A50"
                 />
               </>
@@ -599,20 +606,20 @@ export default function CareerOutlook() {
         </div>
 
         {/* Row 2: trajectory chart */}
-        {loading ? <Skeleton h={340} /> : (
+        {!data ? <Skeleton h={340} /> : (
           <TrajectoryChart points={data?.trendPoints} approvalPct={data?.approvalPct} />
         )}
 
         {/* Row 3: scenarios + road + levers */}
         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20 }}>
-          {loading ? <Skeleton h={380} /> : (
+          {!data ? <Skeleton h={380} /> : (
             <ElectionScenarios strong={odds.strong} comp={odds.comp} atRisk={odds.atRisk} />
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {loading ? <Skeleton h={220} /> : (
+            {!data ? <Skeleton h={220} /> : (
               <GrievanceStatusCard byStatus={data?.byStatus} />
             )}
-            {loading ? <Skeleton h={160} /> : (
+            {!data ? <Skeleton h={160} /> : (
               <Levers
                 openRoad={data?.openRoad ?? 0}
                 openTransit={data?.openTransit ?? 0}

@@ -1,30 +1,3 @@
-/**
- * ExportButton — unified PDF / CSV / Excel export component.
- *
- * Import once, use everywhere:
- *   import ExportButton from "../../../components/ExportButton";
- *
- * Props:
- *   filename        (string)            Base filename without extension.   Default: "export"
- *   label           (string)            Button text.                        Default: "Export"
- *   disabled        (bool)              Globally disable the button.
- *   style           (object)            Extra styles on the wrapper div.
- *
- *   // --- PDF ---
- *   pdfRef          (React ref)         Ref to the DOM element to screenshot.
- *   pdfOrientation  ("portrait"|"landscape")  Default: "portrait"
- *
- *   // --- CSV / Excel ---
- *   data            (array of objects)  Rows to export.
- *   columns         (array)             [{ key: string, label: string }, ...]
- *
- * Behaviour:
- *   - PDF  option is enabled only when pdfRef is provided.
- *   - CSV / Excel options are enabled only when data + columns are provided.
- *   - Excel export requires the `xlsx` package (npm install xlsx).
- *     If the package is missing it silently falls back to CSV.
- */
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   RiShareLine,

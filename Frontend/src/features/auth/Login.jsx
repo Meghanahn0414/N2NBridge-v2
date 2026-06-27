@@ -31,7 +31,7 @@ const ROLES = [
     blurb: "Manage wards, roles, and routing rules, and keep every surface of the platform running smoothly.",
     points: ["Manage users, roles & wards", "Configure case routing rules", "Audit activity across the platform"],
     idLabel: "Email",
-    idPlaceholder: "admin@gov.in",
+    idPlaceholder: "Enter Email Address",
     cta: "Sign in",
     note: "Admin sign-in requires two-factor authentication. Have your device ready.",
   },
@@ -45,7 +45,7 @@ const ROLES = [
     blurb: "Oversee field officers, track ward performance, and manage escalations across your constituency.",
     points: ["Oversee field officers & tasks", "Track ward-level performance", "Manage and escalate grievances"],
     idLabel: "Email",
-    idPlaceholder: "manager@gov.in",
+    idPlaceholder: "Enter Email Address",
     cta: "Sign in",
     note: "",
   },
@@ -59,7 +59,7 @@ const ROLES = [
     blurb: "Pick up assigned work, update status from the site, and log proof of resolution while you're out in the ward.",
     points: ["See cases assigned to you nearby", "Update status from the field", "Attach photos as proof of work"],
     idLabel: "Email",
-    idPlaceholder: "officer@gov.in",
+    idPlaceholder: "Enter Email Address",
     cta: "Sign in",
     note: "",
   },
@@ -73,7 +73,7 @@ const ROLES = [
     blurb: "See what your constituents need, track your team's progress, and close the loop with everyone who reached out.",
     points: ["Review your ward's priority queue", "Assign and reassign cases to staff", "Reply to constituents in one thread"],
     idLabel: "Email",
-    idPlaceholder: "name@council.gov.in",
+    idPlaceholder: "Enter Email Address",
     cta: "Sign in",
     note: "",
   },
@@ -273,7 +273,7 @@ export default function Login() {
 
         <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
           <span>🔒</span>
-          <span>Secure government access · Your data stays protected</span>
+          <span>Your data stays protected</span>
         </div>
       </div>
 
@@ -294,7 +294,7 @@ export default function Login() {
             {ROLES.map((r, i) => {
               const on = i === selIdx;
               return (
-                <button key={r.key} type="button" onClick={() => { setSelIdx(i); setError(""); navigate(ROLE_PATH[r.key], { replace: true }); }}
+                <button key={r.key} type="button" onClick={() => { setSelIdx(i); setError(""); setEmail(""); setPassword(""); navigate(ROLE_PATH[r.key], { replace: true }); }}
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 4px 10px", cursor: "pointer", background: "#fff", border: on ? `2px solid ${r.color}` : "1.5px solid #e2e8f0", borderRadius: 12, boxShadow: on ? "0 4px 14px rgba(0,0,0,0.1)" : "0 1px 3px rgba(0,0,0,0.04)", transition: "all 0.15s ease", outline: "none" }}>
                   <span style={{ width: 36, height: 36, borderRadius: 10, marginBottom: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, background: on ? `${r.color}18` : "#f1f5f9", transition: "background 0.15s" }}>{r.icon}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, textAlign: "center", lineHeight: 1.2, color: on ? r.color : "#64748b", transition: "color 0.15s" }}>{r.name}</span>
@@ -373,10 +373,6 @@ export default function Login() {
                 </>
               )}
 
-              <p style={{ textAlign: "center", fontSize: 14, color: "#64748b", margin: 0 }}>
-                New to N2N Bridge?{" "}
-                <a href="/citizen/onboarding" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "none" }}>Create account</a>
-              </p>
             </div>
           ) : (
             <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -404,12 +400,6 @@ export default function Login() {
               <button type="submit" disabled={loading} style={{ padding: "14px", borderRadius: 12, border: "none", background: role.color, color: "#fff", fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, transition: "opacity 0.15s" }}>
                 {loading ? "Signing in…" : role.cta}
               </button>
-              {role.key === "ADMIN" && (
-                <p style={{ textAlign: "center", fontSize: 14, color: "#64748b", margin: 0 }}>
-                  New to N2N Bridge?{" "}
-                  <a href="/citizen/onboarding" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "none" }}>Create account</a>
-                </p>
-              )}
             </form>
           )}
         </div>

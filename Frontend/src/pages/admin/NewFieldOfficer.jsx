@@ -44,15 +44,15 @@ export default function NewFieldOfficer() {
         <form className="new-mla-form" onSubmit={handleSubmit}>
           {message && <div className="new-mla-alert">{message}</div>}
           <div className="new-mla-group">
-            <label className="new-mla-label">Full name</label>
+            <label className="new-mla-label">Full Name</label>
             <input className="new-mla-input" value={name} onChange={(e)=>setName(e.target.value)} />
           </div>
           <div className="new-mla-group">
-            <label className="new-mla-label">Email</label>
+            <label className="new-mla-label">Email Address *</label>
             <input className="new-mla-input" value={email} onChange={(e)=>setEmail(e.target.value)} />
           </div>
           <div className="new-mla-group">
-            <label className="new-mla-label">Mobile</label>
+            <label className="new-mla-label">Mobile Number *</label>
             <input className="new-mla-input" value={mobile} onChange={(e)=>setMobile(e.target.value)} />
           </div>
           <button className="new-mla-submit" disabled={loading}>{loading? 'Creating...':'Create Field Officer'}</button>

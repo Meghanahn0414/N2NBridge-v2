@@ -14,7 +14,6 @@ import AdminDashboard from "../../features/dashboard/pages/AdminDashboard";
 import PublicRoute from "./PublicRoute";
 import RoleRoute from "./RoleRoute";
 import { ROUTES } from "./RouteConstants";
-import LandingPage from "../../landing/LandingPage";
 // Admin page imports
 import CitizenListPage from "../../pages/admin/CitizenList";
 import EventListPage from "../../features/events/pages/EventList";
@@ -123,7 +122,7 @@ function AppRoutesContent() {
         className={`${isLanding ? 'app-main--landing' : isRepRoute || isFieldRoute || isManagerRoute || isAdminRoute ? 'app-main--rep' : 'app-main'}`}
       >
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<Navigate to={ROUTES.login} replace />} />
           <Route path={ROUTES.login} element={<PublicRoute><CitizenLogin /></PublicRoute>} />
           <Route path="/admin-login" element={<PublicRoute><CitizenLogin /></PublicRoute>} />
           <Route path="/rep-login" element={<PublicRoute><CitizenLogin /></PublicRoute>} />
@@ -200,6 +199,7 @@ function AppRoutesContent() {
             <Route path={ROUTES.mlaReports}            element={<ReportsDashboard />} />
             <Route path={ROUTES.mlaCareerOutlook}      element={<CareerOutlook />} />
             <Route path={ROUTES.mlaMessages}           element={<Messages />} />
+            <Route path={ROUTES.mlaGrievances}         element={<ComplaintManagement />} />
           </Route>
           
           <Route path="*" element={<Navigate to={ROUTES.login} replace />} />

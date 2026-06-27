@@ -57,6 +57,12 @@ export default function PageHeader({ title, subtitle, children }) {
 
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
+  // Poll every 30 s so the badge stays current even without toast interactions
+  useEffect(() => {
+    const id = setInterval(fetchNotifications, 30_000);
+    return () => clearInterval(id);
+  }, [fetchNotifications]);
+
   useEffect(() => {
     const handler = () => fetchNotifications();
     window.addEventListener('app-notification-updated', handler);

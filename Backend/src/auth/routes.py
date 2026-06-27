@@ -100,7 +100,14 @@ async def login(request: Request, login_data: UserLoginRequest):
 @limiter.limit("10/minute")
 async def login_admin(request: Request, login_data: UserLoginRequest):
     """Admin/Staff login using email/password (ADMIN, REPRESENTATIVE, CONSTITUENCY_MANAGER, FIELD_OFFICER)"""
-    result = AuthService.login(login_data)
+    try:
+        result = AuthService.login(login_data)
+    except Exception as e:
+        logger.error(f"[login_admin] Unexpected error during login for {login_data.email}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login failed due to an internal error: {str(e)}"
+        )
 
     if not result:
         raise HTTPException(
