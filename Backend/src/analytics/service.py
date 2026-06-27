@@ -166,6 +166,14 @@ class AnalyticsService:
         total_events        = db.events.count_documents({})
         total_registrations = db.event_registrations.count_documents({})
 
+        # Also count citizens who joined campaigns (reach field is incremented on each join)
+        campaign_reach_result = list(db.campaigns.aggregate([
+            {"$match": {"isDeleted": {"$ne": True}}},
+            {"$group": {"_id": None, "total": {"$sum": "$reach"}}},
+        ]))
+        campaign_registrations = campaign_reach_result[0]["total"] if campaign_reach_result else 0
+        total_registrations += campaign_registrations
+
         now            = datetime.utcnow()
         thirty_days_ago = now - timedelta(days=30)
         sixty_days_ago  = now - timedelta(days=60)
