@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ROUTES } from "./app/routes/RouteConstants";
 import { getAuthRole, getAuthUser, clearAuth } from "./services/authStorage";
 import api from "./shared/services/api";
-import "./styles/sidebar.css";
+import "./styles/Sidebar.css";
 
 import {
   RiDashboardLine,
