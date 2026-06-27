@@ -18,18 +18,17 @@ class MongoDatabase:
     def connect(cls, connection_string: str, db_name: str):
         """Initialize MongoDB connection with production-grade pool settings."""
         try:
+            import os
+            is_production = os.getenv("ENV", "development") == "production"
             cls._client = MongoClient(
                 connection_string,
                 serverSelectionTimeoutMS=5000,
                 connectTimeoutMS=10000,
                 socketTimeoutMS=30000,
-                # Pool: enough headroom for 100K concurrent users across Gunicorn workers.
-                # Each worker gets its own pool; set per-worker pool size in gunicorn.conf.py.
-                maxPoolSize=200,
-                minPoolSize=10,
+                maxPoolSize=50 if is_production else 10,
+                minPoolSize=2,
                 maxIdleTimeMS=60000,
                 waitQueueTimeoutMS=5000,
-                # Retry transient failures automatically
                 retryWrites=True,
                 retryReads=True,
             )
