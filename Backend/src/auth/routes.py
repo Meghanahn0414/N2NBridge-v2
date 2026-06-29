@@ -6,12 +6,12 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from auth.otp_service import OTPService, OTP_STORAGE
-from pymongo import ReturnDocument
+from auth.otp_service import OTP_STORAGE, OTPService
 from auth.service import AuthService
 from config.database import MongoDatabase
 from config.rate_limit import limiter
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from pymongo import ReturnDocument
 from users.model import (
     OtpResponse,
     TokenResponse,
@@ -240,8 +240,13 @@ async def verify_otp(request: VerifyOtpRequest):
         normalized_mobile = UserService.normalize_mobile(normalized_value)
         is_mobile = bool(normalized_mobile) and not is_email
 
+        if is_mobile:
+            otp_key = OTPService.normalize_contact("phone", normalized_value)
+        else:
+            otp_key = OTPService.normalize_contact("email", normalized_value)
+
         # Verify OTP using normalized identifiers
-        if not OTPService.verify_otp(normalized_value, request.otp):
+        if not OTPService.verify_otp(otp_key, request.otp):
             raise HTTPException(status_code=401, detail="Invalid or expired OTP")
         
         # Get or create user — atomic upsert prevents race-condition duplicates

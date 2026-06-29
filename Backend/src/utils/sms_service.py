@@ -158,7 +158,7 @@ def send_via_fast2sms(phone_number: str, otp: str) -> bool:
         params = {
             "authorization": api_key,
             "route": "q",
-            "message": f"Your Jan Seva CRM OTP is {otp}. Valid for 5 minutes. Do not share.",
+            "message": f"Your N2N Bridge OTP is {otp}. Valid for 5 minutes. Do not share.",
             "numbers": number,
             "flash": 0,
         }
@@ -195,14 +195,16 @@ def send_via_twilio(phone_number: str, message: str) -> bool:
         if not phone_number.startswith("+"):
             phone_number = "+91" + phone_number
 
-        message_obj = client.messages.create(
-            body=message,
+        message = client.messages.create(
+            body=f"Your OTP is {message}",
             from_=from_number,
             to=phone_number
         )
 
+        print(message.sid)
+        print(message.status)
         print(f"OK SMS sent via Twilio to {phone_number}", flush=True)
-        print(f"   Message ID: {message_obj.sid}", flush=True)
+        print(f"   Message ID: {message.sid}", flush=True)
         return True
 
     except Exception as e:

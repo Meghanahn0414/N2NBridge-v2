@@ -38,7 +38,10 @@ class OTPService:
     @staticmethod
     def normalize_contact(type_: str, value: str) -> str:
         if type_ == "phone":
-            return re.sub(r"\D", "", (value or ""))
+            cleaned = re.sub(r"\D", "", (value or ""))
+            if cleaned.startswith("91") and len(cleaned) > 10:
+                cleaned = cleaned[2:]
+            return cleaned
         if type_ == "email":
             return (value or "").strip().lower()
         return value or ""
