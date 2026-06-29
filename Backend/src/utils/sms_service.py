@@ -158,7 +158,7 @@ def send_via_fast2sms(phone_number: str, otp: str) -> bool:
         params = {
             "authorization": api_key,
             "route": "q",
-            "message": f"Your Jan Seva CRM OTP is {otp}. Valid for 5 minutes. Do not share.",
+            "message": f"Your N2N OTP is {otp}. Valid for 5 minutes. Do not share.",
             "numbers": number,
             "flash": 0,
         }

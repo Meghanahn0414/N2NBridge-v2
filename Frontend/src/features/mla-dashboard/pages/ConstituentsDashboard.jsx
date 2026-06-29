@@ -11,6 +11,49 @@ function MI({ children, style }) {
   return <MIcon name={children} style={style} />;
 }
 
+function InfoTip({ text, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "0 8px", minWidth: 24, minHeight: 24 }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen(o => !o)}
+      tabIndex={0}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      aria-label={text}
+    >
+      {children}
+      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, opacity: open ? 1 : 0, transition: "opacity .12s ease" }}>
+        ?
+      </span>
+      {open && (
+        <div style={{
+          position: "absolute",
+          top: "calc(100% + 8px)",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 20,
+          padding: "10px 12px",
+          width: 260,
+          background: "#ffffff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 12,
+          boxShadow: "0 16px 32px rgba(15,23,42,0.12)",
+          font: "500 12px 'Hanken Grotesk'",
+          color: "#475569",
+          lineHeight: 1.4,
+          textAlign: "left",
+          whiteSpace: "normal",
+        }}>
+          {text}
+        </div>
+      )}
+    </span>
+  );
+}
+
 /* ── helpers ─────────────────────────────────────────────── */
 function fmt(n) {
   if (n == null) return "—";
@@ -67,10 +110,14 @@ function SegmentRow({ icon, label, count, engPct, color = "#2B5BD7", bg = "#E7EE
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-          <span style={{ font: "700 14px 'Hanken Grotesk'", color: "#16233C" }}>{label}</span>
-          <span style={{ font: "600 13px 'Hanken Grotesk'", color: "#5A6678" }}>
-            {fmt(count)} · <span style={{ color: engPct >= 60 ? "#1E7A50" : "#B5781A" }}>{engPct}%</span>
-          </span>
+          <InfoTip text={`Residents in ${label} ward with ${engPct}% segment share.`}>
+            <span style={{ font: "700 14px 'Hanken Grotesk'", color: "#16233C" }}>{label}</span>
+          </InfoTip>
+          <InfoTip text={`${fmt(count)} residents in ${label} district, representing ${engPct}% of the total.`}>
+            <span style={{ font: "600 13px 'Hanken Grotesk'", color: "#5A6678" }}>
+              {fmt(count)} · <span style={{ color: engPct >= 60 ? "#1E7A50" : "#B5781A" }}>{engPct}%</span>
+            </span>
+          </InfoTip>
         </div>
         <div style={{ height: 7, borderRadius: 5, background: "#EEF1F7" }}>
           <div style={{ width: `${engPct}%`, height: "100%", borderRadius: 5, background: color }} />
@@ -86,18 +133,24 @@ function FunnelBar({ label, value, total, widthPct, bg, textDark }) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-        <span style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C" }}>{label}</span>
-        <span style={{ font: "700 13px 'Hanken Grotesk'", color: "#16233C" }}>{fmt(value)}</span>
+        <InfoTip text={`Out of ${fmt(total)} registered residents, ${fmt(value)} are in the ${label} stage.`}>
+          <span style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C" }}>{label}</span>
+        </InfoTip>
+        <InfoTip text={`${displayPct}% of the total resident base is in this stage.`}>
+          <span style={{ font: "700 13px 'Hanken Grotesk'", color: "#16233C" }}>{fmt(value)}</span>
+        </InfoTip>
       </div>
       <div style={{ height: 38, width: `${widthPct}%`, borderRadius: 10, background: bg, display: "flex", alignItems: "center", padding: "0 14px" }}>
-        <span style={{ font: "700 12px 'Hanken Grotesk'", color: textDark ? "#16233C" : "#fff" }}>{displayPct}%</span>
+        <InfoTip text={`${displayPct}% of total residents are in ${label}.`}>
+          <span style={{ font: "700 12px 'Hanken Grotesk'", color: textDark ? "#16233C" : "#fff" }}>{displayPct}%</span>
+        </InfoTip>
       </div>
     </div>
   );
 }
 
 /* ── KPI card ────────────────────────────────────────────── */
-function KpiCard({ iconBg, iconColor, iconEl, label, value, sub, subGreen }) {
+function KpiCard({ iconBg, iconColor, iconEl, label, value, sub, subGreen, labelTooltip, valueTooltip, subTooltip }) {
   return (
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
@@ -105,10 +158,16 @@ function KpiCard({ iconBg, iconColor, iconEl, label, value, sub, subGreen }) {
           {/* notranslate prevents GT from wrapping the emoji in <font> and duplicating it */}
           <span className="notranslate" translate="no" style={{ fontSize: 20, color: iconColor, lineHeight: 1, display: "block" }}>{iconEl}</span>
         </div>
-        <span style={{ font: "600 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <InfoTip text={labelTooltip || label}>
+          <span style={{ font: "600 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        </InfoTip>
       </div>
-      <div style={{ fontFamily: "'Newsreader','Noto Sans Kannada',serif", fontSize: "clamp(20px,2.5vw,30px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
-      <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: subGreen ? "#1E7A50" : "#8590A6", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>
+      <InfoTip text={valueTooltip || `${label} value`}>
+        <div style={{ fontFamily: "'Newsreader','Noto Sans Kannada',serif", fontSize: "clamp(20px,2.5vw,30px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+      </InfoTip>
+      <InfoTip text={subTooltip || sub}>
+        <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: subGreen ? "#1E7A50" : "#8590A6", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>
+      </InfoTip>
     </div>
   );
 }
@@ -423,27 +482,38 @@ export default function ConstituentsDashboard() {
           <KpiCard
             iconBg="#E7EEFF" iconColor="#2B5BD7" iconEl={<MIcon name="groups" style={{ fontSize: 20, color: "#2B5BD7" }} />}
             label="Total Registered Residents"
+            labelTooltip="Total registered residents in your constituency, including verified and unverified profiles."
             value={stats ? fmt(total) : "—"}
+            valueTooltip={stats ? `${fmt(total)} total residents` : "No data"}
             sub={`${pct(verified, total)}% profile complete`}
+            subTooltip="Portion of registered residents who have completed profile verification."
           />
           <KpiCard
             iconBg="#E6F4EC" iconColor="#1E8A5B" iconEl={<MIcon name="check_circle" style={{ fontSize: 20, color: "#1E8A5B" }} />}
             label="Verified Residents"
+            labelTooltip="Residents whose identity and address have been confirmed."
             value={stats ? fmt(verified) : "—"}
+            valueTooltip={stats ? `${fmt(verified)} verified residents` : "No data"}
             sub="Address-confirmed citizens"
           />
           <KpiCard
             iconBg="#EDEAFB" iconColor="#6B4FD8" iconEl={<MIcon name="bolt" style={{ fontSize: 20, color: "#6B4FD8" }} />}
             label="Active Residents·30d"
+            labelTooltip="Residents who have engaged with services or filed reports in the last 30 days."
             value={stats ? fmt(active30d) : "—"}
+            valueTooltip={stats ? `${fmt(active30d)} active residents in 30 days` : "No data"}
             sub={`${pct(active30d, total)}% of registered`}
+            subTooltip="Share of the total registered base active in the past month."
             subGreen
           />
           <KpiCard
             iconBg="#FCF1E0" iconColor="#C9871F" iconEl={<MIcon name="person_add" style={{ fontSize: 20, color: "#C9871F" }} />}
             label="New Residents·30d"
+            labelTooltip="Residents registered in the last 30 days."
             value={stats ? `${fmt(new30d)}` : "—"}
+            valueTooltip={stats ? `${fmt(new30d)} new registrations` : "No data"}
             sub={newPct >= 0 ? `+${newPct}% vs. previous month` : `${newPct}% vs. previous month`}
+            subTooltip="Month-over-month growth rate for recent registrations."
             subGreen={newPct >= 0}
           />
         </div>
@@ -455,12 +525,16 @@ export default function ConstituentsDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
-                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Resident Groups</div>
+                <InfoTip text="Resident Groups shows the number of citizens registered in each ward and their share of the total base.">
+                  <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Resident Groups</div>
+                </InfoTip>
                 <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>
                   {wards.length > 0 ? "Residents grouped by ward" : "Who makes up your base"}
                 </div>
               </div>
-              <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#9AA3B5" }}>Size · Share</span>
+              <InfoTip text="Size is resident count; share is the percentage of total residents represented by each ward.">
+                <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#9AA3B5" }}>Size · Share</span>
+              </InfoTip>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {!stats
@@ -472,7 +546,9 @@ export default function ConstituentsDashboard() {
 
           {/* Registration growth */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Resident Growth Trend</div>
+            <InfoTip text="Resident Growth Trend shows new registrations over the last 12 months and the current total base." >
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Resident Growth Trend</div>
+            </InfoTip>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 6 }}>Residents joining, last 12 months</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 14 }}>
               <span style={{ font: "400 38px 'Newsreader', Georgia, serif", color: "#16233C", lineHeight: .9 }}>{fmt(total)}</span>
@@ -528,7 +604,9 @@ export default function ConstituentsDashboard() {
 
           {/* Engagement funnel */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Resident Engagement Journey</div>
+            <InfoTip text="Resident Engagement Journey visualizes the funnel from all registered residents to active users and advocates." >
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Resident Engagement Journey</div>
+            </InfoTip>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>How Residents move from signed-up to advocate</div>
             {loading
               ? <div style={{ height: 180, background: "#F3F5FA", borderRadius: 10 }} />
@@ -547,7 +625,9 @@ export default function ConstituentsDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
-                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Top Active Residents</div>
+                <InfoTip text="Top Active Residents highlights the most engaged citizens by recent report activity." >
+                  <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Top Active Residents</div>
+                </InfoTip>
                 <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>Your strongest advocates this quarter</div>
               </div>
               <span

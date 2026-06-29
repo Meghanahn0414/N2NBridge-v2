@@ -36,6 +36,152 @@ function usePopularityData(days) {
 }
 
 /* ── Approval Line Chart ──────────────────────────────────────── */
+function InfoTip({ text }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      style={{ position: "relative", display: "inline-flex", alignItems: "center", padding: "0 6px", minWidth: 20, cursor: "pointer" }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen(open => !open)}
+      tabIndex={0}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      aria-label={text}
+    >
+      <span
+        style={{
+          marginLeft: 8,
+          cursor: "help",
+          color: "#2563eb",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 20,
+          height: 20,
+          borderRadius: 999,
+          background: "#eff6ff",
+          fontSize: 12,
+          fontWeight: 700,
+          border: "1px solid #dbeafe",
+          lineHeight: 1,
+          opacity: open ? 1 : 0,
+          transition: "opacity .12s ease",
+        }}
+      >
+        ?
+      </span>
+      {open && (
+        <div style={{
+          position: "absolute",
+          top: "calc(100% + 8px)",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 20,
+          padding: "10px 12px",
+          width: 260,
+          background: "#ffffff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 12,
+          boxShadow: "0 16px 32px rgba(15, 23, 42, 0.12)",
+          font: "500 12px 'Hanken Grotesk'",
+          color: "#475569",
+          lineHeight: 1.4,
+          textAlign: "left",
+        }}>
+          {text}
+        </div>
+      )}
+    </span>
+  );
+}
+
+function SourceTooltipRow({ icon, label, value, tooltip, width }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      style={{ position: "relative", marginBottom: 18 }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen(open => !open)}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7, cursor: "pointer" }}>
+        <MS style={{ fontSize: 18, color: "#2B5BD7" }}>{icon}</MS>
+        <span style={{ flex: 1, font: "600 13px 'Hanken Grotesk'", color: "#16233C" }}>{label}</span>
+        <span style={{ font: "700 13px 'Hanken Grotesk'", color: value != null ? "#16233C" : "#C0C7D4" }}>
+          {value != null ? value.toLocaleString() : "—"}
+        </span>
+      </div>
+      <div style={{ height: 7, borderRadius: 5, background: "#EEF1F7", overflow: "hidden" }}>
+        <div style={{ height: "100%", width: width || "0%", background: "#2B5BD7", borderRadius: 5, opacity: 0.55, transition: "width .4s" }} />
+      </div>
+      {open && tooltip && (
+        <div style={{
+          position: "absolute",
+          top: "100%",
+          left: 0,
+          zIndex: 20,
+          marginTop: 8,
+          padding: "10px 12px",
+          maxWidth: 300,
+          background: "#ffffff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 12,
+          boxShadow: "0 16px 32px rgba(15, 23, 42, 0.12)",
+          font: "500 12px 'Hanken Grotesk'",
+          color: "#475569",
+          lineHeight: 1.4,
+        }}>
+          {tooltip}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AgeGroupBar({ group, tooltip }) {
+  const [open, setOpen] = useState(false);
+  const pct = group.approvalPct;
+  const color = pct != null ? (pct >= 60 ? "#2B5BD7" : pct >= 40 ? "#E3B778" : "#D86C5E") : "#EEF1F7";
+  const height = pct != null ? `${pct}%` : "30%";
+
+  return (
+    <div
+      style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, height: "100%", justifyContent: "flex-end", cursor: "pointer" }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen(open => !open)}
+    >
+      <span style={{ font: "700 14px 'Hanken Grotesk'", color: pct != null ? "#16233C" : "#C0C7D4" }}>
+        {pct != null ? `${pct}%` : "—"}
+      </span>
+      <div style={{ width: "100%", height: height, background: color, borderRadius: "8px 8px 0 0", transition: "height .4s" }} />
+      <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#5A6678" }}>{group.label}</span>
+      {open && tooltip && (
+        <div style={{
+          position: "absolute",
+          bottom: "100%",
+          left: "50%",
+          transform: "translateX(-50%) translateY(-8px)",
+          zIndex: 20,
+          padding: "10px 12px",
+          maxWidth: 260,
+          background: "#ffffff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 12,
+          boxShadow: "0 16px 32px rgba(15, 23, 42, 0.12)",
+          font: "500 12px 'Hanken Grotesk'",
+          color: "#475569",
+          lineHeight: 1.4,
+          textAlign: "center",
+        }}>
+          {tooltip}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ApprovalLineChart({ points }) {
   const pts = (points || []).filter(p => p.approvalPct != null);
   if (pts.length === 0) return (
@@ -52,6 +198,19 @@ function ApprovalLineChart({ points }) {
   const toY  = v  => H - PAD - ((v - minV) / (maxV - minV || 1)) * (H - PAD * 2);
   const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${toX(i)},${toY(p.approvalPct)}`).join(" ");
   const area = `${line} L${toX(pts.length - 1)},${H - PAD} L${toX(0)},${H - PAD} Z`;
+  const markerRef = useRef(null);
+  const [markerOpen, setMarkerOpen] = useState(false);
+  const [markerPos, setMarkerPos] = useState(null);
+
+  function updateMarkerPos() {
+    if (!markerRef.current) return;
+    const r = markerRef.current.getBoundingClientRect();
+    setMarkerPos({ left: Math.round(r.left + r.width / 2), top: Math.round(r.top) });
+  }
+
+  function markerEnter() { updateMarkerPos(); setMarkerOpen(true); }
+  function markerMove() { updateMarkerPos(); }
+  function markerLeave() { setMarkerOpen(false); }
 
   return (
     <div style={{ background: "#F9FAFC", borderRadius: 12, padding: "10px 12px 4px" }}>
@@ -73,9 +232,57 @@ function ApprovalLineChart({ points }) {
           <circle key={i} cx={toX(i)} cy={toY(p.approvalPct)} r="3.5" fill="#fff" stroke="#2B5BD7" strokeWidth="2" />
         ))}
         {/* "Now" marker */}
-        <line x1={toX(pts.length - 1)} x2={toX(pts.length - 1)} y1={PAD} y2={H - PAD}
-          stroke="#2B5BD7" strokeWidth="1.5" strokeDasharray="4 3" />
+        <g ref={markerRef}
+           onMouseEnter={markerEnter}
+           onMouseMove={markerMove}
+           onMouseLeave={markerLeave}
+           onFocus={markerEnter}
+           onBlur={markerLeave}
+           style={{ cursor: 'pointer' }}>
+          <line x1={toX(pts.length - 1)} x2={toX(pts.length - 1)} y1={PAD} y2={H - PAD}
+            stroke="#2B5BD7" strokeWidth="1.5" strokeDasharray="4 3" />
+          <circle cx={toX(pts.length - 1)} cy={PAD} r="6" fill="#fff" stroke="#2B5BD7" strokeWidth="2" />
+        </g>
       </svg>
+      {markerOpen && markerPos && (
+        (() => {
+          const last = pts[pts.length - 1] || null;
+          const month = last ? last.month : null;
+          const approval = last && last.approvalPct != null ? `${last.approvalPct}%` : '—';
+          const total = last && last.total != null ? last.total : 0;
+          const posPct = last && last.positivePct != null ? `${last.positivePct}%` : '—';
+          const neuPct = last && last.neutralPct != null ? `${last.neutralPct}%` : '—';
+          const negPct = last && last.negativePct != null ? `${last.negativePct}%` : '—';
+          const posCount = last && last.total ? Math.round((last.positivePct/100) * last.total) : null;
+          const neuCount = last && last.total ? Math.round((last.neutralPct/100) * last.total) : null;
+          const negCount = last && last.total ? Math.round((last.negativePct/100) * last.total) : null;
+          const content = last ? (
+            `${month}: Approval ${approval} (approval = positive + neutral ÷ total)\n` +
+            `Sample: ${posCount ?? '—'} positive, ${neuCount ?? '—'} neutral, ${negCount ?? '—'} negative — total ${total}`
+          ) : 'Now: most recent data point';
+
+          return (
+            <div style={{
+              whiteSpace: 'pre-wrap',
+              position: 'fixed',
+              left: markerPos.left,
+              top: markerPos.top - 8,
+              transform: 'translateX(-50%) translateY(-100%)',
+              zIndex: 9999,
+              padding: '8px 10px',
+              maxWidth: 320,
+              background: '#ffffff',
+              border: '1px solid #E2E8F0',
+              borderRadius: 10,
+              boxShadow: '0 16px 32px rgba(15,23,42,0.12)',
+              font: "500 12px 'Hanken Grotesk'",
+              color: '#475569',
+            }}>
+              {content}
+            </div>
+          );
+        })()
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", padding: `0 ${PAD}px`, marginTop: 2 }}>
         {pts.map((p, i) => (
           <span key={i} style={{ font: "500 9px 'Hanken Grotesk'", color: i === pts.length - 1 ? "#2B5BD7" : "#B0B8C9", fontWeight: i === pts.length - 1 ? 700 : 500 }}>
@@ -88,6 +295,145 @@ function ApprovalLineChart({ points }) {
 }
 
 /* ── Stacked Bar Chart (sentiment mix) ────────────────────────── */
+function SentimentSegment({ height, color, label, tooltip }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      style={{ position: "relative", width: "100%", height, background: color, cursor: "pointer" }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen(open => !open)}
+      tabIndex={0}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+    >
+      {open && tooltip && (
+        <div style={{
+          position: "absolute",
+          bottom: "100%",
+          left: "50%",
+          transform: "translateX(-50%) translateY(-8px)",
+          zIndex: 20,
+          padding: "10px 12px",
+          maxWidth: 240,
+          background: "#ffffff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 10,
+          boxShadow: "0 16px 32px rgba(15, 23, 42, 0.12)",
+          font: "500 12px 'Hanken Grotesk'",
+          color: "#475569",
+          lineHeight: 1.4,
+          textAlign: "center",
+          whiteSpace: "normal",
+        }}>
+          {tooltip}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DivergingSegment({ width, color, label, tooltip }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+
+  function updatePos() {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    setPos({ left: Math.round(r.left + r.width / 2), top: Math.round(r.top) });
+  }
+
+  function handleEnter() {
+    updatePos();
+    setOpen(true);
+  }
+
+  function handleMove() {
+    updatePos();
+  }
+
+  function handleLeave() {
+    setOpen(false);
+  }
+
+  return (
+    <div
+      ref={ref}
+      role="button"
+      aria-label={tooltip}
+      style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flex: `0 0 ${width}`, minWidth: 10, padding: "0 6px", boxSizing: "border-box", background: color, height: "100%", cursor: "pointer" }}
+      onMouseEnter={handleEnter}
+      onMouseMove={handleMove}
+      onMouseLeave={handleLeave}
+      onClick={() => { updatePos(); setOpen(o => !o); }}
+      tabIndex={0}
+      onFocus={handleEnter}
+      onBlur={handleLeave}
+    >
+      <span style={{ font: "700 12px 'Hanken Grotesk'", color: "#fff", pointerEvents: "none" }}>{label}</span>
+      {open && tooltip && pos && (
+        <div style={{
+          position: "fixed",
+          left: pos.left,
+          top: pos.top - 8,
+          transform: "translateX(-50%) translateY(-100%)",
+          zIndex: 9999,
+          padding: "8px 10px",
+          maxWidth: 260,
+          background: "#ffffff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 10,
+          boxShadow: "0 16px 32px rgba(15,23,42,0.12)",
+          font: "500 12px 'Hanken Grotesk'",
+          color: "#475569",
+          textAlign: "center",
+          pointerEvents: "auto",
+        }}>
+          {tooltip}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LegendSwatch({ color, label, count, pct, tooltip }) {
+  const [open, setOpen] = useState(false);
+  const showPct = pct != null ? `${pct}%` : null;
+  const showCount = count != null ? `${count}` : null;
+  const labelText = `${label}${showCount ? ` ${showCount}` : ""}${showPct ? ` (${showPct})` : ""}`;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", position: "relative" }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen(o => !o)}
+    >
+      <span style={{ width: 11, height: 11, borderRadius: 3, background: color }} />
+      <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#5A6678" }}>{labelText}</span>
+      {open && tooltip && (
+        <div style={{
+          position: "absolute",
+          top: "110%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 30,
+          padding: "8px 10px",
+          maxWidth: 220,
+          background: "#ffffff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 10,
+          boxShadow: "0 12px 24px rgba(15,23,42,0.12)",
+          font: "500 12px 'Hanken Grotesk'",
+          color: "#475569",
+          textAlign: "center",
+        }}>
+          {tooltip}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SentimentMixChart({ points }) {
   const pts = (points || []).filter(p => p.total > 0);
   if (pts.length === 0) return (
@@ -99,10 +445,25 @@ function SentimentMixChart({ points }) {
     <div style={{ background: "#F9FAFC", borderRadius: 12, padding: "12px 12px 6px" }}>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 140 }}>
         {pts.map((p, i) => (
-          <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%", gap: 1 }}>
-            <div style={{ background: "#D86C5E", borderRadius: i === 0 ? "4px 4px 0 0" : "2px 2px 0 0", height: `${p.negativePct ?? 0}%`, minHeight: (p.negativePct ?? 0) > 0 ? 3 : 0 }} />
-            <div style={{ background: "#E3B778", height: `${p.neutralPct ?? 0}%`,  minHeight: (p.neutralPct  ?? 0) > 0 ? 3 : 0 }} />
-            <div style={{ background: "#1E8A5B", height: `${p.positivePct ?? 0}%`, minHeight: (p.positivePct ?? 0) > 0 ? 3 : 0 }} />
+          <div key={i} style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%", gap: 1, borderRadius: 8, overflow: "visible" }}>
+            <SentimentSegment
+              height={`${p.negativePct ?? 0}%`}
+              color="#D86C5E"
+              label="Negative"
+              tooltip={`Negative feedback: ${p.negativePct ?? 0}% of responses for ${p.month}.`}
+            />
+            <SentimentSegment
+              height={`${p.neutralPct ?? 0}%`}
+              color="#E3B778"
+              label="Neutral"
+              tooltip={`Neutral feedback: ${p.neutralPct ?? 0}% of responses for ${p.month}.`}
+            />
+            <SentimentSegment
+              height={`${p.positivePct ?? 0}%`}
+              color="#1E8A5B"
+              label="Positive"
+              tooltip={`Positive feedback: ${p.positivePct ?? 0}% of responses for ${p.month}.`}
+            />
           </div>
         ))}
       </div>
@@ -190,7 +551,10 @@ export default function CitizenSentimentDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
-                <div style={{font: "700 16px 'Hanken Grotesk'", color: "#16233C",marginBottom: 8}}>Overall Approval Rating</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Overall Approval Rating</div>
+              <InfoTip text="Latest approval % from citizen sentiment trend data." />
+            </div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 13 }}>
                   <span style={{ font: "400 52px 'Newsreader'", color: "#16233C", lineHeight: .9, letterSpacing: "-.02em" }}>
                     {curApproval != null ? `${curApproval}%` : "—"}
@@ -224,7 +588,10 @@ export default function CitizenSentimentDashboard() {
 
           {/* Net sentiment score */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Citizen Sentiment Score</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Citizen Sentiment Score</div>
+              <InfoTip text="Net sentiment = positive % minus negative % across citizen feedback." />
+            </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>Positive minus negative</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 6 }}>
               <span style={{ font: "400 56px 'Newsreader'", color: netScore != null ? (netScore >= 0 ? "#1E8A5B" : "#C8453A") : "#C0C7D4", lineHeight: .85 }}>
@@ -236,24 +603,36 @@ export default function CitizenSentimentDashboard() {
                 ? netScore >= 0 ? "More positive than negative" : "More negative than positive"
                 : "No data yet"}
             </div>
-            {/* Diverging bar: positive | neutral | negative */}
-            <div style={{ display: "flex", height: 34, borderRadius: 9, overflow: "hidden", marginBottom: 14 }}>
-              <div style={{ width: `${posPct ?? 0}%`, background: "#1E8A5B", display: "flex", alignItems: "center", paddingLeft: 10, font: "700 12px 'Hanken Grotesk'", color: "#fff" }}>
-                {posPct != null && posPct > 10 ? `${posPct}%` : ""}
-              </div>
-              <div style={{ width: `${neuPct ?? 0}%`, background: "#E3B778", display: "flex", alignItems: "center", justifyContent: "center", font: "700 12px 'Hanken Grotesk'", color: "#fff" }}>
-                {neuPct != null && neuPct > 10 ? `${neuPct}%` : ""}
-              </div>
-              <div style={{ flex: 1, background: "#D86C5E", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 10, font: "700 12px 'Hanken Grotesk'", color: "#fff" }}>
-                {negPct != null && negPct > 10 ? `${negPct}%` : ""}
-              </div>
+            {/* Diverging bar: positive | neutral | negative (interactive) */}
+            <div style={{ display: "flex", height: 34, borderRadius: 9, overflow: "visible", marginBottom: 14 }}>
+              <DivergingSegment
+                width={`${posPct ?? 0}%`}
+                color="#1E8A5B"
+                label={posPct != null && posPct > 10 ? `${posPct}%` : ""}
+                tooltip={`Positive: ${sentiment?.positive?.count ?? 0} / ${sentiment?.total ?? 0} = ${posPct ?? 0}% — share of responses classified as positive over the last ${days} days. (Positive if sentimentScore > 0.08; counts include reports, comments, polls and surveys.)`}
+              />
+              <DivergingSegment
+                width={`${neuPct ?? 0}%`}
+                color="#E3B778"
+                label={neuPct != null && neuPct > 10 ? `${neuPct}%` : ""}
+                tooltip={`Neutral: ${sentiment?.neutral?.count ?? 0} / ${sentiment?.total ?? 0} = ${neuPct ?? 0}% — share of responses classified as neutral over the last ${days} days.`}
+              />
+              <DivergingSegment
+                width={`${negPct ?? 0}%`}
+                color="#D86C5E"
+                label={negPct != null && negPct > 10 ? `${negPct}%` : ""}
+                tooltip={`Negative: ${sentiment?.negative?.count ?? 0} / ${sentiment?.total ?? 0} = ${negPct ?? 0}% — share of responses classified as negative over the last ${days} days. (Negative if sentimentScore < -0.08)`}
+              />
             </div>
             <div style={{ display: "flex", gap: 18, marginTop: "auto" }}>
               {[["#1E8A5B", "Positive", posPct], ["#E3B778", "Neutral", neuPct], ["#D86C5E", "Negative", negPct]].map(([c, l, v]) => (
-                <div key={l} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <span style={{ width: 11, height: 11, borderRadius: 3, background: c }} />
-                  <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#5A6678" }}>{l} {v != null ? `${v}%` : ""}</span>
-                </div>
+                <LegendSwatch
+                  key={l}
+                  color={c}
+                  label={l}
+                  count={sentiment && sentiment[l.toLowerCase()] ? sentiment[l.toLowerCase()].count : null}
+                  pct={sentiment && sentiment[l.toLowerCase()] ? sentiment[l.toLowerCase()].pct : v}
+                  tooltip={`${l}: ${sentiment && sentiment[l.toLowerCase()] ? `${sentiment[l.toLowerCase()].count} / ${sentiment.total} = ${sentiment[l.toLowerCase()].pct}%` : `${v ?? 0}%`} (computed over last ${days} days).`} />
               ))}
             </div>
           </div>
@@ -266,7 +645,10 @@ export default function CitizenSentimentDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
-                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Public Feedback Breakdown</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Public Feedback Breakdown</div>
+                  <InfoTip text="Tone share of citizen feedback in the selected time period." />
+                </div>
                 <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>Share of feedback by tone, {period}</div>
               </div>
               <div style={{ display: "flex", gap: 14 }}>
@@ -283,32 +665,31 @@ export default function CitizenSentimentDashboard() {
 
           {/* Where feedback comes from */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Feedback Sources</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Feedback Sources</div>
+              <InfoTip text="Where citizen signals are coming from: reports, comments, surveys." />
+            </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>
               {sources?.total != null ? `${sources.total.toLocaleString()} signals this period` : "— signals this period"}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {[
-                { icon: "report",      label: "In-app reports",  val: sources?.reports  },
-                { icon: "forum",       label: "Comments",        val: sources?.comments },
-                { icon: "how_to_vote", label: "Poll responses",  val: sources?.polls    },
-                { icon: "assignment",  label: "Surveys",         val: sources?.surveys  },
+                { icon: "report",      label: "In-app reports",  val: sources?.reports,  tooltip: "Counts citizen reports submitted through the mobile app or website." },
+                { icon: "forum",       label: "Comments",        val: sources?.comments, tooltip: "Counts feedback left as comments on posts and updates." },
+                // { icon: "how_to_vote", label: "Poll responses",  val: sources?.polls,    tooltip: "Counts poll responses submitted by residents in citizen engagement exercises." },
+                { icon: "assignment",  label: "Surveys",         val: sources?.surveys,  tooltip: "Counts structured survey responses collected from residents." },
               ].map(s => {
                 const max   = Math.max(sources?.reports || 0, sources?.comments || 0, sources?.polls || 0, sources?.surveys || 0, 1);
                 const width = s.val != null ? `${Math.round((s.val / max) * 100)}%` : "0%";
                 return (
-                  <div key={s.label}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7 }}>
-                      <MS style={{ fontSize: 18, color: "#2B5BD7" }}>{s.icon}</MS>
-                      <span style={{ flex: 1, font: "600 13px 'Hanken Grotesk'", color: "#16233C" }}>{s.label}</span>
-                      <span style={{ font: "700 13px 'Hanken Grotesk'", color: s.val != null ? "#16233C" : "#C0C7D4" }}>
-                        {s.val != null ? s.val.toLocaleString() : "—"}
-                      </span>
-                    </div>
-                    <div style={{ height: 7, borderRadius: 5, background: "#EEF1F7", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width, background: "#2B5BD7", borderRadius: 5, opacity: 0.55, transition: "width .4s" }} />
-                    </div>
-                  </div>
+                  <SourceTooltipRow
+                    key={s.label}
+                    icon={s.icon}
+                    label={s.label}
+                    value={s.val}
+                    tooltip={s.tooltip}
+                    width={width}
+                  />
                 );
               })}
             </div>
@@ -320,22 +701,18 @@ export default function CitizenSentimentDashboard() {
 
           {/* Approval by age group */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Approval by Age Group</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Approval by Age Group</div>
+              <InfoTip text="Approval % broken down by citizen age cohort." />
+            </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 22 }}>Where you connect — and where to grow</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 18, height: 180, padding: "0 6px" }}>
               {(byGroup?.groups || [{ label: "18–29" }, { label: "30–44" }, { label: "45–59" }, { label: "60+" }]).map((g, i) => {
-                const pct    = g.approvalPct;
-                const colors = ["#E3B778", "#2B5BD7", "#2B5BD7", "#5C84E0"];
-                const color  = pct != null ? (pct >= 60 ? "#2B5BD7" : pct >= 40 ? "#E3B778" : "#D86C5E") : "#EEF1F7";
-                const h      = pct != null ? `${pct}%` : "30%";
+                const tooltip = g.approvalPct != null
+                  ? `Based on ${g.total ?? 'survey'} responses from ${g.label} citizens.`
+                  : `Approval data not available for ${g.label}.`;
                 return (
-                  <div key={g.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, height: "100%", justifyContent: "flex-end" }}>
-                    <span style={{ font: "700 14px 'Hanken Grotesk'", color: pct != null ? "#16233C" : "#C0C7D4" }}>
-                      {pct != null ? `${pct}%` : "—"}
-                    </span>
-                    <div style={{ width: "100%", height: h, background: color, borderRadius: "8px 8px 0 0", transition: "height .4s" }} />
-                    <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#5A6678" }}>{g.label}</span>
-                  </div>
+                  <AgeGroupBar key={g.label} group={g} tooltip={tooltip} />
                 );
               })}
             </div>
@@ -349,19 +726,38 @@ export default function CitizenSentimentDashboard() {
 
           {/* What's moving your numbers */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Top Issues Affecting Public Opinion</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Top Issues Affecting Public Opinion</div>
+              <InfoTip text="Most influential issues driving sentiment during this period." />
+            </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 18 }}>Issues with the biggest impact this period</div>
             {moving?.hasData ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
                 {moving.drivers.map((d, i) => {
                   const pos = d.impact >= 0;
+                  const tooltip = (() => {
+                    const curTotal = d.total ?? 0;
+                    const curResolved = d.resolved ?? 0;
+                    const prevTotal = d.prev_total ?? 0;
+                    const prevResolved = d.prev_resolved ?? 0;
+                    const curRate = curTotal ? (curResolved / curTotal) : 0;
+                    const prevRate = prevTotal ? (prevResolved / prevTotal) : 0;
+                    const volumeWeight = Math.min(curTotal / 10, 5);
+                    const formula = `impact = (cur_resolved/cur_total - prev_resolved/prev_total) * 10 * (1 + volume_weight*0.1)`;
+                    return `${d.label}: ${curResolved} resolved / ${curTotal} reports now; previously ${prevResolved} / ${prevTotal}.\n` +
+                      `cur_rate=${(curRate).toFixed(2)}, prev_rate=${(prevRate).toFixed(2)}, volume_weight=${volumeWeight.toFixed(1)}\n${formula}`;
+                  })();
+
                   return (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 11, background: pos ? "#E6F4EC" : "#FBEAE8", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <MS style={{ fontSize: 20, color: pos ? "#1E8A5B" : "#C8453A" }}>{d.icon}</MS>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ font: "700 13px 'Hanken Grotesk'", color: "#16233C", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.label}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ font: "700 13px 'Hanken Grotesk'", color: "#16233C", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.label}</div>
+                          <InfoTip text={tooltip} />
+                        </div>
                         <div style={{ font: "500 11px 'Hanken Grotesk'", color: "#8590A6" }}>{d.sub}</div>
                       </div>
                       <span style={{ font: "700 14px 'Hanken Grotesk'", color: pos ? "#1E8A5B" : "#C8453A", flexShrink: 0 }}>
