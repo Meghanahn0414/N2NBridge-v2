@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from datetime import datetime, timedelta
 
-from bson import ObjectId
+# from bson import ObjectId
 from config.database import MongoDatabase
 from config.security import SecurityManager, UserRole
 from config.settings import settings
@@ -270,7 +270,7 @@ def initialize_database():
         [77.5900, 12.9700]
     ]
     
-    statuses = ["NEW", "ASSIGNED", "IN_PROGRESS", "RESOLVED"]
+    # statuses = ["NEW", "ASSIGNED", "IN_PROGRESS", "RESOLVED"]
     
     for idx, template in enumerate(grievance_templates):
         citizen_idx = idx % len(citizen_ids)
@@ -393,20 +393,16 @@ def initialize_database():
     result = db.notifications.insert_one(notification_data)
     print(f"✓ Notification created: {str(result.inserted_id)}")
     
-    print("\n" + "="*50)
-    print("✅ Database initialization completed successfully!")
-    print("="*50)
-    print("\n📋 Test Credentials:")
-    print(f"  Admin:        admin@crm.com / admin@123")
-    print(f"  Manager:      manager@crm.com / manager@123")
-    print(f"  Field Officer: officer@crm.com / officer@123")
-    print(f"  Citizen:      citizen@crm.com / citizen@123")
-<<<<<<< HEAD
-    print("\n🔗 Access the API at: http://10.62.179.92:8000/api/docs")
-=======
-    print("\n🔗 Access the API at: http://${window.location.hostname}:8000/api/docs")
->>>>>>> 20a18193d3cef22f3d84f679d7fb6d7075fb1c49
-    print("="*50)
+    # print("\n" + "="*50)
+    # print("✅ Database initialization completed successfully!")
+    # print("="*50)
+    # print("\n📋 Test Credentials:")
+    # print(f"  Admin:        admin@crm.com / admin@123")
+    # print(f"  Manager:      manager@crm.com / manager@123")
+    # print(f"  Field Officer: officer@crm.com / officer@123")
+    # print(f"  Citizen:      citizen@crm.com / citizen@123")
+    # print("\n🔗 Access the API at: http://${window.location.hostname}:8000/api/docs")
+    # print("="*50)
     
     MongoDatabase.close()
 

@@ -12,12 +12,28 @@ def _get_env_key(key: str) -> str:
     """Read a key fresh from .env file — bypasses cached settings on running server."""
     from dotenv import dotenv_values
     env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.env')
-    return dotenv_values(env_path).get(key) or getattr(settings, key, None)
+    env_value = dotenv_values(env_path).get(key)
+    if env_value not in (None, ""):
+        return env_value
+    return getattr(settings, key, None)
 
 
 def send_otp_via_sms(phone_number: str, otp: str, message: str = None) -> bool:
     if not message:
         message = f"Your CRM OTP is: {otp}. Valid for 5 minutes. Do not share."
+
+    provider_configured = any([
+        _get_env_key("FAST2SMS_API_KEY"),
+        _get_env_key("VONAGE_API_KEY"),
+        _get_env_key("TWOFACTOR_API_KEY"),
+        _get_env_key("TWILIO_ACCOUNT_SID"),
+        _get_env_key("AWS_ACCESS_KEY_ID"),
+        _get_env_key("SMS_API_URL"),
+    ])
+
+    if not provider_configured:
+        print("[SMS] No SMS provider configured. Falling back to console OTP delivery.", flush=True)
+        return send_via_console(phone_number, otp)
 
     if _get_env_key("FAST2SMS_API_KEY"):
         if send_via_fast2sms(phone_number, otp):
@@ -34,19 +50,22 @@ def send_otp_via_sms(phone_number: str, otp: str, message: str = None) -> bool:
             return True
         print("[SMS] 2Factor failed, falling back to next provider", flush=True)
 
-    if settings.TWILIO_ACCOUNT_SID:
+    if _get_env_key("TWILIO_ACCOUNT_SID"):
         if send_via_twilio(phone_number, message):
             return True
         print("[SMS] Twilio failed, falling back to next provider", flush=True)
 
-    if settings.AWS_ACCESS_KEY_ID:
+    if _get_env_key("AWS_ACCESS_KEY_ID"):
         if send_via_aws_sns(phone_number, message):
             return True
         print("[SMS] AWS SNS failed, falling back to next provider", flush=True)
 
-    if settings.SMS_API_URL:
-        return send_via_http_api(phone_number, message)
+    if _get_env_key("SMS_API_URL"):
+        if send_via_http_api(phone_number, message):
+            return True
+        print("[SMS] HTTP API failed, falling back to console delivery", flush=True)
 
+    print("[SMS] Falling back to console OTP delivery because no provider accepted the request.", flush=True)
     return send_via_console(phone_number, otp)
 
 
@@ -115,8 +134,9 @@ def send_via_2factor(phone_number: str, otp: str) -> bool:
 
 def send_via_fast2sms(phone_number: str, otp: str) -> bool:
     try:
-        import requests
         import os
+
+        import requests
         from dotenv import dotenv_values
 
         # Read key fresh from .env so server restart is not required after .env change
@@ -162,9 +182,9 @@ def send_via_twilio(phone_number: str, message: str) -> bool:
     try:
         from twilio.rest import Client
 
-        account_sid = settings.TWILIO_ACCOUNT_SID
-        auth_token = settings.TWILIO_AUTH_TOKEN
-        from_number = settings.TWILIO_PHONE_NUMBER
+        account_sid = _get_env_key("TWILIO_ACCOUNT_SID")
+        auth_token = _get_env_key("TWILIO_AUTH_TOKEN")
+        from_number = _get_env_key("TWILIO_PHONE_NUMBER")
 
         if not all([account_sid, auth_token, from_number]):
             print("FAIL Twilio credentials not configured", flush=True)

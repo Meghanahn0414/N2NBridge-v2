@@ -332,8 +332,11 @@ export default function Login() {
                       if (!val.trim()) { setCitizenError("Please enter your " + citizenMethod); return; }
                       setCitizenError(""); setCitizenLoading(true);
                       try {
-                        await sendOtp({ type: citizenMethod, value: val });
+                        const res = await sendOtp({ type: citizenMethod, value: val });
                         sessionStorage.setItem("authValue", JSON.stringify({ type: citizenMethod, value: val }));
+                        if (res?.debug_otp) {
+                          sessionStorage.setItem("debugOtp", res.debug_otp);
+                        }
                         setCitizenOtpSent(true);
                       } catch (err) { setCitizenError(err.message || "Failed to send OTP"); }
                       finally { setCitizenLoading(false); }
@@ -348,6 +351,11 @@ export default function Login() {
                     OTP sent to <strong>{citizenValue}</strong>.{" "}
                     <button type="button" onClick={() => { setCitizenOtpSent(false); setCitizenOtp(""); setCitizenError(""); }} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontWeight: 600, fontSize: 13, padding: 0 }}>Change</button>
                   </p>
+                  {sessionStorage.getItem("debugOtp") && (
+                    <div style={{ padding: "10px 14px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, fontSize: 13, color: "#1d4ed8", marginBottom: 16 }}>
+                      Development OTP: <strong>{sessionStorage.getItem("debugOtp")}</strong>
+                    </div>
+                  )}
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Enter OTP</label>
                   <input type="text" value={citizenOtp} onChange={(e) => setCitizenOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="• • • • • •" maxLength={6}
                     style={{ width: "100%", padding: "14px", borderRadius: 10, marginBottom: 20, border: "1.5px solid #e2e8f0", background: "#f8faff", fontSize: 22, fontWeight: 700, letterSpacing: 14, textAlign: "center", outline: "none", boxSizing: "border-box", color: "#0f172a" }} />
