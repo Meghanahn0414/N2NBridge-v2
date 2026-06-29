@@ -386,6 +386,56 @@ CATEGORY_META = {
     "OTHER":           {"label": "Other issues",    "icon": "help_outline"},
 }
 
+CATEGORY_KEY_MAP = {
+    "POWER_OUTAGE": "ELECTRICITY",
+    "ELECTRICITY_SUPPLY": "ELECTRICITY",
+    "POWER": "ELECTRICITY",
+    "ELECTRIC": "ELECTRICITY",
+    "POWER OUTAGE": "ELECTRICITY",
+    "ELECTRICITY ISSUE": "ELECTRICITY",
+    "NOISE": "NOISE_POLLUTION",
+    "NOISE POLLUTION": "NOISE_POLLUTION",
+    "GARBAGE": "GARBAGE",
+    "WASTE": "GARBAGE",
+    "ROAD": "ROAD_ISSUE",
+    "ROADS": "ROAD_ISSUE",
+    "ROAD ISSUE": "ROAD_ISSUE",
+    "WATER": "WATER_SUPPLY",
+    "WATER SUPPLY": "WATER_SUPPLY",
+}
+
+
+def _normalize_category_key(raw_key: Any) -> str:
+    if not raw_key:
+        return "OTHER"
+
+    key = str(raw_key).strip()
+    if not key:
+        return "OTHER"
+
+    if key in CATEGORY_META:
+        return key
+
+    normalized = key.upper().replace("-", " ").replace("_", " ").strip()
+    if normalized in CATEGORY_KEY_MAP:
+        return CATEGORY_KEY_MAP[normalized]
+
+    if normalized in CATEGORY_META:
+        return normalized
+
+    if "NOISE" in normalized or "SOUND" in normalized or "VOLUME" in normalized:
+        return "NOISE_POLLUTION"
+    if "POWER" in normalized or "ELECTRIC" in normalized or "LIGHT" in normalized:
+        return "ELECTRICITY"
+    if "WATER" in normalized:
+        return "WATER_SUPPLY"
+    if "ROAD" in normalized or "POTHOLE" in normalized or "STREET" in normalized:
+        return "ROAD_ISSUE"
+    if "GARB" in normalized or "WASTE" in normalized or "SANIT" in normalized or "TRASH" in normalized:
+        return "GARBAGE"
+
+    return "OTHER"
+
 
 def get_moving_numbers(days: int = 90) -> dict:
     db  = MongoDatabase.get_db()
@@ -418,7 +468,7 @@ def get_moving_numbers(days: int = 90) -> dict:
             if not raw_key:
                 continue
             # Normalise to a known CATEGORY_META key; unknown values map to OTHER
-            cat_key = raw_key if raw_key in CATEGORY_META else "OTHER"
+            cat_key = _normalize_category_key(raw_key)
             existing = result.get(cat_key, {"total": 0, "resolved": 0})
             existing["total"]    += doc["total"]
             existing["resolved"] += doc["resolved"]
@@ -458,12 +508,13 @@ def get_moving_numbers(days: int = 90) -> dict:
             "impact": impact,
             "sub":    sub,
             "total":  cur["total"],
+            "resolved": cur.get("resolved", 0),
+            "prev_total": prv.get("total", 0),
+            "prev_resolved": prv.get("resolved", 0),
         })
 
-    positives = sorted([d for d in drivers if d["impact"] >= 0], key=lambda x: -x["impact"])[:2]
-    negatives = sorted([d for d in drivers if d["impact"] <  0], key=lambda x:  x["impact"])[:2]
-
-    payload = {"drivers": positives + negatives, "hasData": len(drivers) > 0}
+    drivers = sorted(drivers, key=lambda d: abs(d["impact"]), reverse=True)[:4]
+    payload = {"drivers": drivers, "hasData": len(drivers) > 0}
     return payload
 
 

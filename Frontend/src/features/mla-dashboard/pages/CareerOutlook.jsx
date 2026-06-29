@@ -8,6 +8,49 @@ function MS({ children, style }) {
   return <MIcon name={children} style={style} />;
 }
 
+function InfoTip({ text, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "0 8px", minWidth: 24, minHeight: 24 }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen(o => !o)}
+      tabIndex={0}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      aria-label={text}
+    >
+      {children}
+      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, opacity: open ? 1 : 0, transition: "opacity .12s ease" }}>
+        ?
+      </span>
+      {open && (
+        <div style={{
+          position: "absolute",
+          top: "calc(100% + 8px)",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 20,
+          padding: "10px 12px",
+          width: 260,
+          background: "#ffffff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 12,
+          boxShadow: "0 16px 32px rgba(15,23,42,0.12)",
+          font: "500 12px 'Hanken Grotesk'",
+          color: "#475569",
+          lineHeight: 1.4,
+          textAlign: "left",
+          whiteSpace: "normal",
+        }}>
+          {text}
+        </div>
+      )}
+    </span>
+  );
+}
+
 // ── Normal CDF (same as ExecutiveDashboard) ────────────────────
 function Φ(z) {
   const s = z < 0 ? -1 : 1, x = Math.abs(z);
@@ -137,9 +180,11 @@ function ReelectionGauge({ pct, voteShare, moToElection, momentum }) {
       boxShadow: "0 18px 36px -22px rgba(43,91,215,.7)",
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-        <span style={{ font: "600 13px 'Hanken Grotesk',sans-serif", color: "rgba(255,255,255,.82)", textTransform: "uppercase", letterSpacing: ".05em" }}>
-          Re-election outlook
-        </span>
+        <InfoTip text="Re-election outlook converts approval and momentum into a modelled chance of holding your seat for the upcoming election.">
+          <span style={{ font: "600 13px 'Hanken Grotesk',sans-serif", color: "rgba(255,255,255,.82)", textTransform: "uppercase", letterSpacing: ".05em" }}>
+            Re-election outlook
+          </span>
+        </InfoTip>
         <MS style={{ fontSize: 20, color: "rgba(255,255,255,.7)" }}>help</MS>
       </div>
 
@@ -181,14 +226,16 @@ function ReelectionGauge({ pct, voteShare, moToElection, momentum }) {
 }
 
 // ── Stat card ──────────────────────────────────────────────────
-function StatCard({ iconName, iconBg, iconColor, label, value, sub, subColor }) {
+function StatCard({ iconName, iconBg, iconColor, label, value, sub, subColor, tooltip }) {
   return (
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: 20, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <MS style={{ fontSize: 20, color: iconColor }}>{iconName}</MS>
         </div>
-        <span style={{ font: "600 12px 'Hanken Grotesk',sans-serif", color: "#8590A6" }}>{label}</span>
+        <InfoTip text={tooltip || label}>
+          <span style={{ font: "600 12px 'Hanken Grotesk',sans-serif", color: "#8590A6" }}>{label}</span>
+        </InfoTip>
       </div>
       <div style={{ font: "400 28px 'Newsreader',serif", color: "#16233C", lineHeight: 1 }}>{value ?? "—"}</div>
       <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: subColor || "#8590A6", marginTop: 4 }}>{sub}</div>
@@ -242,9 +289,16 @@ function TrajectoryChart({ points, approvalPct }) {
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
         <div>
-          <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>Approval Trajectory</div>
-          <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginTop: 2 }}>
-            Sentiment trend to date · projected to the 2027 election · dashed line = 50% win line
+          <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>
+            <InfoTip text="This chart plots historical approval sentiment and projects a conservative election endpoint based on current momentum and trend." >
+              Approval Trajectory
+            </InfoTip>
+          </div>
+          <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginTop: 2, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span>Sentiment trend to date · projected to the 2027 election · dashed line = 50% win line</span>
+            <InfoTip text="The red dashed line marks the 50% approval threshold used as the election win benchmark on this chart.">
+              <span style={{ font: "600 12px 'Hanken Grotesk',sans-serif", color: "#2B5BD7" }}>Why this matters</span>
+            </InfoTip>
           </div>
         </div>
         <div style={{ display: "flex", gap: 16 }}>
@@ -290,8 +344,21 @@ function TrajectoryChart({ points, approvalPct }) {
             </>
           )}
           {/* Dots */}
-          {histPts.length > 0 && <circle cx={histPts[0].x} cy={histPts[0].y} r="5.5" fill="#2B5BD7" stroke="#fff" strokeWidth="2.5" />}
-          {todayY != null && <circle cx={todayX} cy={todayY} r="6.5" fill="#2B5BD7" stroke="#fff" strokeWidth="3" />}
+          {histPts.length > 0 && (
+            <circle cx={histPts[0].x} cy={histPts[0].y} r="5.5" fill="#2B5BD7" stroke="#fff" strokeWidth="2.5" style={{ cursor: "help" }}>
+              <title>{`First chart point: ${hist[0].label} · ${Math.round(hist[0].pct)}% approval`}</title>
+            </circle>
+          )}
+          {todayY != null && (
+            <circle cx={todayX} cy={todayY} r="6.5" fill="#2B5BD7" stroke="#fff" strokeWidth="3" style={{ cursor: "help" }}>
+              <title>{`Current approval today: ${Math.round(currentPct)}% (latest trend value)`}</title>
+            </circle>
+          )}
+          {projPct != null && (
+            <circle cx={projX} cy={projY} r="6.5" fill="#1E8A5B" stroke="#fff" strokeWidth="3" style={{ cursor: "help" }}>
+              <title>{`Projected election point: ~${projPct}% (current + 4, capped at 95)`}</title>
+            </circle>
+          )}
         </svg>
       ) : (
         <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "#F9FAFC", borderRadius: 12 }}>
@@ -300,9 +367,19 @@ function TrajectoryChart({ points, approvalPct }) {
       )}
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, paddingLeft: PAD_L }}>
-        {hist.length > 0 && <span style={{ font: "600 11px 'Hanken Grotesk',sans-serif", color: "#9AA3B5" }}>{hist[0].label} · {Math.round(hist[0].pct)}%</span>}
-        <span style={{ font: "700 11px 'Hanken Grotesk',sans-serif", color: "#2B5BD7" }}>Today · {currentPct != null ? `${Math.round(currentPct)}%` : "—"}</span>
-        {projPct != null && <span style={{ font: "600 11px 'Hanken Grotesk',sans-serif", color: "#1E7A50" }}>Election '27 · ~{projPct}%</span>}
+        {hist.length > 0 && (
+          <InfoTip text="Earliest data point shown; represents the starting sentiment percentage used to calculate the trajectory.">
+            <span style={{ font: "600 11px 'Hanken Grotesk',sans-serif", color: "#9AA3B5" }}>{hist[0].label} · {Math.round(hist[0].pct)}%</span>
+          </InfoTip>
+        )}
+        <InfoTip text="Current approval level for today, shown as the anchor point for the projection cone.">
+          <span style={{ font: "700 11px 'Hanken Grotesk',sans-serif", color: "#2B5BD7" }}>Today · {currentPct != null ? `${Math.round(currentPct)}%` : "—"}</span>
+        </InfoTip>
+        {projPct != null && (
+          <InfoTip text="Modelled election projection based on current trend and a conservative endpoint adjustment.">
+            <span style={{ font: "600 11px 'Hanken Grotesk',sans-serif", color: "#1E7A50" }}>Election '27 · ~{projPct}%</span>
+          </InfoTip>
+        )}
       </div>
     </div>
   );
@@ -315,23 +392,30 @@ function ElectionScenarios({ strong, comp, atRisk }) {
       icon: "verified", iconColor: "#1E8A5B",
       label: "Strong re-election", pct: strong, barColor: "#2B5BD7",
       desc: "Hold approval momentum, close open reports → strong majority vote share.",
+      tooltip: "Strong re-election uses projected vote share from approval and computes the upper tail probability via a normal CDF model.",
       active: true,
     },
     {
       icon: "balance", iconColor: "#C9871F",
       label: "Competitive race", pct: comp, barColor: "#C9871F",
       desc: "Approval dips; credible challenger emerges from opposition.",
+      tooltip: "Competitive race is the remaining probability after strong and at-risk odds are computed from approval-based vote share.",
     },
     {
       icon: "warning", iconColor: "#C8453A",
       label: "At-risk", pct: atRisk, barColor: "#C8453A",
       desc: "Stalled complaints plus sustained drop in constituent sentiment.",
+      tooltip: "At-risk computes the lower tail probability using vote share derived from approval and a standard deviation model.",
     },
   ];
 
   return (
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 3 }}>Election Scenarios</div>
+      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 3 }}>
+        <InfoTip text="Probabilities are derived from current approval, trend, and complaint handling performance to estimate likely election scenarios.">
+          Election Scenarios
+        </InfoTip>
+      </div>
       <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginBottom: 18 }}>
         Modeled from current sentiment & complaint resolution rates
       </div>
@@ -346,7 +430,9 @@ function ElectionScenarios({ strong, comp, atRisk }) {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 8, font: "700 15px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>
                 <MS style={{ fontSize: 20, color: s.iconColor }}>{s.icon}</MS>
-                {s.label}
+                <InfoTip text={s.tooltip}>
+                  <span>{s.label}</span>
+                </InfoTip>
               </span>
               <span style={{ font: "400 24px 'Newsreader',serif", color: s.barColor }}>
                 {s.pct != null ? `${s.pct}%` : "—"}
@@ -380,7 +466,11 @@ function GrievanceStatusCard({ byStatus }) {
 
   return (
     <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
-      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 4 }}>Complaint Pipeline</div>
+      <div style={{ font: "700 16px 'Hanken Grotesk',sans-serif", color: "#16233C", marginBottom: 4 }}>
+        <InfoTip text="Shows the current grievance workflow by status, helping identify backlog and resolution progress.">
+          Complaint Pipeline
+        </InfoTip>
+      </div>
       <div style={{ font: "500 12px 'Hanken Grotesk',sans-serif", color: "#8590A6", marginBottom: 16 }}>
         {total > 0 ? `${total} total grievances by status` : "No grievance data"}
       </div>
@@ -458,7 +548,9 @@ function Levers({ openRoad, openTransit, resolved, total }) {
     <div style={{ background: "#F5F8FF", border: "1px solid #DCE6FA", borderRadius: 22, padding: "22px 24px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
         <MS style={{ fontSize: 20, color: "#2B5BD7" }}>lightbulb</MS>
-        <span style={{ font: "700 15px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>Levers that move your odds</span>
+        <InfoTip text="Actionable levers highlight which open issues and resolution rates are likely to impact your election outlook.">
+          <span style={{ font: "700 15px 'Hanken Grotesk',sans-serif", color: "#16233C" }}>Levers that move your odds</span>
+        </InfoTip>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {levers.map((l) => (
@@ -578,6 +670,7 @@ export default function CareerOutlook() {
                 <StatCard
                   iconName="thumb_up" iconBg="#E7EEFF" iconColor="#2B5BD7"
                   label="Approval Rating"
+                  tooltip="Latest approval rating from citizen sentiment and analytics; positive sentiment percentage is used when available."
                   value={data?.approvalPct != null ? `${data.approvalPct}%` : "—"}
                   sub={momentum != null
                     ? `${momentum >= 0 ? "↑" : "↓"} ${Math.abs(momentum)} pts vs. last period`
@@ -586,18 +679,23 @@ export default function CareerOutlook() {
                 />
                 <StatCard
                   iconName="how_to_vote" iconBg="#E6F4EC" iconColor="#1E8A5B"
-                  label="Registered Citizens" value={data?.citizens != null ? data.citizens.toLocaleString() : "—"}
+                  label="Registered Citizens"
+                  tooltip="Total registered citizens in your ward, drawn from analytics records."
+                  value={data?.citizens != null ? data.citizens.toLocaleString() : "—"}
                   sub="Constituent base" subColor="#1E7A50"
                 />
                 <StatCard
                   iconName="task_alt" iconBg="#FCF1E0" iconColor="#C9871F"
                   label="Complaints Closed"
+                  tooltip="Resolved grievances out of all reported complaints; resolution rate is a key constituent satisfaction signal."
                   value={data?.resolved != null ? `${data.resolved}/${data.total}` : "—"}
                   sub={data?.total > 0 ? `${Math.round((data.resolved / data.total) * 100)}% resolution rate` : "No data"}
                 />
                 <StatCard
                   iconName="campaign" iconBg="#EDEAFB" iconColor="#6B4FD8"
-                  label="Event Registrations" value={data?.totalReg != null ? data.totalReg.toLocaleString() : "—"}
+                  label="Event Registrations"
+                  tooltip="Recent constituent event sign-ups; higher engagement often correlates with stronger reelection outlook."
+                  value={data?.totalReg != null ? data.totalReg.toLocaleString() : "—"}
                   sub="Constituent engagement" subColor="#1E7A50"
                 />
               </>

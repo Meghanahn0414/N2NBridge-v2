@@ -85,6 +85,49 @@ function MS({ children, style }) {
   return <MIcon name={children} style={style} />;
 }
 
+function InfoTip({ text, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "0 8px", minWidth: 24, minHeight: 24 }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen(o => !o)}
+      tabIndex={0}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      aria-label={text}
+    >
+      {children}
+      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, opacity: open ? 1 : 0, transition: "opacity .12s ease" }}>
+        ?
+      </span>
+      {open && (
+        <div style={{
+          position: "absolute",
+          top: "calc(100% + 8px)",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 20,
+          padding: "10px 12px",
+          width: 260,
+          background: "#ffffff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 12,
+          boxShadow: "0 16px 32px rgba(15,23,42,0.12)",
+          font: "500 12px 'Hanken Grotesk'",
+          color: "#475569",
+          lineHeight: 1.4,
+          textAlign: "left",
+          whiteSpace: "normal",
+        }}>
+          {text}
+        </div>
+      )}
+    </span>
+  );
+}
+
 /* ── Notification Bell ───────────────────────────────────────── */
 function NotificationBell() {
   const [open, setOpen]         = useState(false);
@@ -215,10 +258,10 @@ function NotificationBell() {
 }
 
 const KPI = [
-  { icon: "task_alt",   iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "Resolved Complaints",    sparkColor: "#2B5BD7" },
-  { icon: "bolt",       iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Avg. Resolution Time",   sparkColor: "#1E8A5B" },
-  { icon: "groups",     iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: "Registered Citizens",    sparkColor: "#6B4FD8" },
-  { icon: "how_to_vote",iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Event Registrations",    sparkColor: "#C9871F" },
+  { icon: "task_alt",   iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "Resolved Complaints",    sparkColor: "#2B5BD7", tooltip: "Resolved Complaints = count of grievances with status RESOLVED during the selected date range." },
+  { icon: "bolt",       iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Avg. Resolution Time",   sparkColor: "#1E8A5B", tooltip: "Avg. Resolution Time = mean time from complaint creation to resolution for resolved cases in the selected period." },
+  { icon: "groups",     iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: "Registered Citizens",    sparkColor: "#6B4FD8", tooltip: "Registered Citizens = total number of citizen accounts in the system at the time of reporting." },
+  { icon: "how_to_vote",iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Event Registrations",    sparkColor: "#C9871F", tooltip: "Event Registrations = total citizen event registrations recorded during the selected period." },
 ];
 
 export default function ExecutiveDashboard() {
@@ -376,7 +419,10 @@ export default function ExecutiveDashboard() {
                   <span style={{ font:"600 12px 'Hanken Grotesk'", color:trendColor }}>{trendLabel}</span>
                 </div>
                 <div style={{ fontFamily:"'Newsreader','Noto Sans Kannada',serif", fontSize:"clamp(18px,2vw,28px)", fontWeight:400, color:"#16233C", lineHeight:1.2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{kv.value}</div>
-                <div style={{ font:"500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#8590A6", marginTop:4, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{k.label}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, font:"500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#8590A6", marginTop:4, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                  <span>{k.label}</span>
+                  <InfoTip text={k.tooltip} />
+                </div>
                 {/* Trend bar — width proportional to value, no fake sparkline */}
                 <div style={{ marginTop:12, height:4, borderRadius:3, background:"#F0F2F7", overflow:"hidden" }}>
                   <div style={{
@@ -402,8 +448,12 @@ export default function ExecutiveDashboard() {
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:"26px 28px", boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
               <div>
-                <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Trend Over Time</div>
-                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>Standing projected to the next election</div>
+                <InfoTip text="Trend Over Time = historical approval percentages from sentiment data plus future projections based on current approval and momentum metrics.">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>
+                    <span>Trend Over Time</span>
+                  </div>
+                </InfoTip>
+                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginTop:4 }}>Standing projected to the next election</div>
               </div>
               <span style={{ display:"inline-flex", alignItems:"center", gap:5, background:"#E7EEFF", color:"#2B5BD7", font:"700 12px 'Hanken Grotesk'", padding:"6px 12px", borderRadius:20 }}>
                 {survey?.avgScore != null ? `⭐ ${survey.avgScore}/5 survey` : approvalPct != null ? `${approvalPct}% approval` : "—"}
@@ -461,25 +511,27 @@ export default function ExecutiveDashboard() {
 
               return (
                 <div style={{ background:"#F9FAFC", borderRadius:14, padding:"10px 12px 4px", position:"relative" }}>
-                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width:"100%", height:160, overflow:"visible" }}>
-                    <defs>
-                      <linearGradient id="tGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2B5BD7" stopOpacity="0.18" />
-                        <stop offset="100%" stopColor="#2B5BD7" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    {[0,25,50,75,100].map(v => {
-                      if (v < minV || v > maxV) return null;
-                      return <line key={v} x1={PAD} x2={W-PAD} y1={toY(v)} y2={toY(v)} stroke="#EAEDF4" strokeWidth="1" />;
-                    })}
-                    <path d={areaPath} fill="url(#tGrad)" />
-                    <path d={solidPath} fill="none" stroke="#2B5BD7" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-                    {dashPath && <path d={dashPath} fill="none" stroke="#2B5BD7" strokeWidth="2" strokeDasharray="5 4" strokeOpacity="0.45" strokeLinejoin="round" />}
-                    {timeline.slice(0, todayIdx + 1).map((p, i) => (
-                      <circle key={i} cx={toX(i)} cy={toY(p.val)} r="3.5" fill="#fff" stroke="#2B5BD7" strokeWidth="2" />
-                    ))}
-                    <line x1={toX(todayIdx)} x2={toX(todayIdx)} y1={PAD} y2={H-PAD} stroke="#2B5BD7" strokeWidth="1.5" strokeDasharray="4 3" />
-                  </svg>
+                  <InfoTip text="Trend graph = past data points from sentiment approval history plus projected future values based on current approval and momentum.">
+                    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:"100%", height:160, overflow:"visible" }}>
+                      <defs>
+                        <linearGradient id="tGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#2B5BD7" stopOpacity="0.18" />
+                          <stop offset="100%" stopColor="#2B5BD7" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      {[0,25,50,75,100].map(v => {
+                        if (v < minV || v > maxV) return null;
+                        return <line key={v} x1={PAD} x2={W-PAD} y1={toY(v)} y2={toY(v)} stroke="#EAEDF4" strokeWidth="1" />;
+                      })}
+                      <path d={areaPath} fill="url(#tGrad)" />
+                      <path d={solidPath} fill="none" stroke="#2B5BD7" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                      {dashPath && <path d={dashPath} fill="none" stroke="#2B5BD7" strokeWidth="2" strokeDasharray="5 4" strokeOpacity="0.45" strokeLinejoin="round" />}
+                      {timeline.slice(0, todayIdx + 1).map((p, i) => (
+                        <circle key={i} cx={toX(i)} cy={toY(p.val)} r="3.5" fill="#fff" stroke="#2B5BD7" strokeWidth="2" />
+                      ))}
+                      <line x1={toX(todayIdx)} x2={toX(todayIdx)} y1={PAD} y2={H-PAD} stroke="#2B5BD7" strokeWidth="1.5" strokeDasharray="4 3" />
+                    </svg>
+                  </InfoTip>
                   <div style={{ display:"flex", justifyContent:"space-between", marginTop:2, padding:`0 ${PAD}px` }}>
                     {timeline.map((p, i) => (
                       <span key={i} style={{ font:"500 9px 'Hanken Grotesk'",
@@ -526,19 +578,23 @@ export default function ExecutiveDashboard() {
 
           {/* Election scenarios */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)", display:"flex", flexDirection:"column" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Winning Chances</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Winning Chances</div>
+              <InfoTip text="Winning Chances = election outcome buckets computed from approval percentage, sentiment momentum, and the insights probability model." />
+            </div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Modeled on current momentum</div>
             <div style={{ display:"flex", flexDirection:"column", gap:11, flex:1 }}>
               {[
-                { icon:"verified", iconC:"#1E8A5B", border:"#2B5BD7", bg:"#F5F8FF", label:"Strong Re-election", glow:true,  prob: strongProb, barColor:"#2B5BD7" },
-                { icon:"balance",  iconC:"#C9871F", border:"#EEF1F7", bg:"#fff",    label:"Competitive Race",  glow:false, prob: compProb,   barColor:"#C9871F" },
-                { icon:"warning",  iconC:"#C8453A", border:"#EEF1F7", bg:"#fff",    label:"At Risk",           glow:false, prob: atRiskProb, barColor:"#C8453A" },
+                { icon:"verified", iconC:"#1E8A5B", border:"#2B5BD7", bg:"#F5F8FF", label:"Strong Re-election", glow:true,  prob: strongProb, barColor:"#2B5BD7", tooltip:"Strong Re-election = model probability from insights API indicating high re-election odds based on current approval and sentiment momentum." },
+                { icon:"balance",  iconC:"#C9871F", border:"#EEF1F7", bg:"#fff",    label:"Competitive Race",  glow:false, prob: compProb,   barColor:"#C9871F", tooltip:"Competitive Race = modeled when probability is moderate and the race remains close if momentum stays unchanged." },
+                { icon:"warning",  iconC:"#C8453A", border:"#EEF1F7", bg:"#fff",    label:"At Risk",           glow:false, prob: atRiskProb, barColor:"#C8453A", tooltip:"At Risk = model probability below safe thresholds, suggesting low re-election odds unless performance improves." },
               ].map(s => (
                 <div key={s.label} style={{ border:`${s.glow?"1.5":"1"}px solid ${s.border}`, background:s.bg, borderRadius:15, padding:"15px 16px", ...(s.glow?{boxShadow:"0 0 0 3px rgba(43,91,215,.06)"}:{}) }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
                     <span style={{ display:"flex", alignItems:"center", gap:7, font:"700 14px 'Hanken Grotesk'", color:"#16233C" }}>
                       <MIcon name={s.icon} style={{ fontSize:19, color:s.iconC }} />
                       {s.label}
+                      <InfoTip text={s.tooltip} />
                     </span>
                     <span style={{ font:"400 22px 'Newsreader'", color:s.glow?"#2B5BD7":s.iconC }}>
                       {s.prob != null ? `${s.prob}%` : "—"}
@@ -558,7 +614,10 @@ export default function ExecutiveDashboard() {
 
           {/* Public sentiment */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Public Opinion</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Public Opinion</div>
+              <InfoTip text="Public Opinion = sentiment percentages aggregated from citizen feedback or grievance classification during the selected date range." />
+            </div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:20 }}>
               {effectiveSentiment?._fallback ? "From satisfaction ratings" : "From comments & grievances"}
             </div>
@@ -613,7 +672,10 @@ export default function ExecutiveDashboard() {
 
           {/* Approval by group */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Support by Age Group</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Support by Age Group</div>
+              <InfoTip text="Support by Age Group = approval percent for each age bracket, where approval means positive or neutral responses." />
+            </div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:20 }}>Where your support is strongest</div>
             <div style={{ display:"flex", flexDirection:"column", gap:17 }}>
               {(byGroup?.groups || [
@@ -622,10 +684,16 @@ export default function ExecutiveDashboard() {
                 const pct = g.approvalPct;
                 const hasVal = pct != null;
                 const color = hasVal ? pct >= 65 ? "#2B5BD7" : pct >= 50 ? "#C9871F" : "#C8453A" : null;
+                const tooltip = hasVal
+                  ? `Approval for ${g.label}: ${pct}% of residents in this age group responded positively or neutrally.`
+                  : `Approval data not available for ${g.label}.`;
                 return (
                   <div key={g.label}>
-                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                      <span style={{ font:"600 13px 'Hanken Grotesk'", color:"#16233C" }}>{g.label}</span>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        <span style={{ font:"600 13px 'Hanken Grotesk'", color:"#16233C" }}>{g.label}</span>
+                        <InfoTip text={tooltip} />
+                      </div>
                       <span style={{ font:"700 13px 'Hanken Grotesk'", color: hasVal ? color : "#C0C7D4" }}>
                         {hasVal ? `${pct}%` : "—"}
                       </span>
@@ -641,19 +709,33 @@ export default function ExecutiveDashboard() {
 
           {/* What's moving your numbers */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Top Issues Affecting Public Opinion</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Top Issues Affecting Public Opinion</div>
+              <InfoTip text="Top Issues = complaint categories ranked by impact on sentiment, based on report volume and resolution trends." />
+            </div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Issues with the biggest impact</div>
             {moving?.hasData ? (
               <div style={{ display:"flex", flexDirection:"column", gap:11 }}>
                 {moving.drivers.map((d, i) => {
                   const pos = d.impact >= 0;
+                  const curTotal = d.total ?? 0;
+                  const curResolved = d.resolved ?? 0;
+                  const prevTotal = d.prev_total ?? 0;
+                  const prevResolved = d.prev_resolved ?? 0;
+                  const curRate = curTotal ? (curResolved / curTotal) : 0;
+                  const prevRate = prevTotal ? (prevResolved / prevTotal) : 0;
+                  const tooltip = `${d.label}: ${curResolved} resolved / ${curTotal} reports now; previously ${prevResolved} / ${prevTotal}. ` +
+                    `Current resolution rate ${Math.round(curRate * 100)}%, previous rate ${Math.round(prevRate * 100)}%.`;
                   return (
                     <div key={i} style={{ display:"flex", alignItems:"center", gap:12 }}>
                       <div style={{ width:38, height:38, flexShrink:0, borderRadius:11, background: pos?"#E6F4EC":"#FBEAE8", display:"flex", alignItems:"center", justifyContent:"center" }}>
                         <MS style={{ fontSize:20, color: pos?"#1E8A5B":"#C8453A" }}>{d.icon}</MS>
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ font:"700 13px 'Hanken Grotesk'", color:"#16233C", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{d.label}</div>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                          <div style={{ font:"700 13px 'Hanken Grotesk'", color:"#16233C", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{d.label}</div>
+                          <InfoTip text={tooltip} />
+                        </div>
                         <div style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>{d.sub}</div>
                       </div>
                       <span style={{ font:"700 14px 'Hanken Grotesk'", color: pos?"#1E8A5B":"#C8453A", flexShrink:0 }}>
@@ -676,8 +758,14 @@ export default function ExecutiveDashboard() {
 
           {/* Standing vs. peers */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>Compared to Other Wards</div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Approval rank among wards</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Compared to Other Wards</div>
+              <InfoTip text="Compared to Other Wards = your ward's approval rank among peer wards based on approval percentage." />
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:6, color:"#8590A6", marginBottom:18, font:"500 12px 'Hanken Grotesk'" }}>
+              <span>Approval rank among wards</span>
+              <InfoTip text="Approval rank among wards = your ranking by approval percentage within the current peer ward dataset." />
+            </div>
             {peers?.hasData ? (
               peers.totalWards === 1 ? (
                 <>
@@ -696,10 +784,14 @@ export default function ExecutiveDashboard() {
                   <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                     {peers.wards.slice(0, 4).map((w) => {
                       const barColor = w.rank === 1 ? "#2B5BD7" : w.approvalPct >= 50 ? "#1E8A5B" : "#C9871F";
+                      const tooltip = `Ward ${w.wardName}: ${w.approvalPct}% approval${w.total != null ? `, ${w.total} grievances` : ""}.`;
                       return (
                         <div key={w.wardId}>
-                          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                            <span style={{ font:"600 11px 'Hanken Grotesk'", color:"#16233C" }}>#{w.rank} {w.wardName}</span>
+                          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3, alignItems:"center" }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                              <span style={{ font:"600 11px 'Hanken Grotesk'", color:"#16233C" }}>#{w.rank} {w.wardName}</span>
+                              <InfoTip text={tooltip} />
+                            </div>
                             <span style={{ font:"600 11px 'Hanken Grotesk'", color: barColor }}>{w.approvalPct}%</span>
                           </div>
                           <div style={{ height:5, borderRadius:3, background:"#F0F2F7" }}>
@@ -724,7 +816,10 @@ export default function ExecutiveDashboard() {
           {/* Approval by neighborhood */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Support by Area</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Support by Area</div>
+                <InfoTip text="Support by Area = approval percentage by ward area, plotted from low to high on the gradient." />
+              </div>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                 <span style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>Low</span>
                 <div style={{ width:70, height:8, borderRadius:4, background:"linear-gradient(90deg,#F2D9D5,#C9871F,#2B5BD7,#1B3C8F)" }} />
@@ -741,10 +836,13 @@ export default function ExecutiveDashboard() {
                   const barColor = pct >= 60 ? "#2B5BD7" : pct >= 40 ? "#C9871F" : "#C8453A";
                   return (
                     <div key={w.wardId}>
-                      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                        <span style={{ font:"600 11px 'Hanken Grotesk'", color:"#16233C" }}>
-                          Ward {w.wardName}
-                        </span>
+                      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3, alignItems:"center" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                          <span style={{ font:"600 11px 'Hanken Grotesk'", color:"#16233C" }}>
+                            Ward {w.wardName}
+                          </span>
+                          <InfoTip text={`Ward ${w.wardName}: ${pct}% approval, ${w.total ?? 0} grievances.`} />
+                        </div>
                         <span style={{ font:"700 11px 'Hanken Grotesk'", color: barColor }}>{pct}%</span>
                       </div>
                       <div style={{ height:6, borderRadius:3, background:"#F0F2F7" }}>
@@ -772,7 +870,10 @@ export default function ExecutiveDashboard() {
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:"26px 28px", boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:18 }}>
               <div>
-                <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#8590A6", textTransform:"uppercase", letterSpacing:".05em", marginBottom:10 }}>Your Approval Score</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#8590A6", textTransform:"uppercase", letterSpacing:".05em" }}>Your Approval Score</div>
+                  <InfoTip text="Your Approval Score = percentage of residents with positive sentiment, shown on a 0-100 scale." />
+                </div>
                 <div style={{ display:"flex", alignItems:"flex-end", gap:14 }}>
                   <span style={{ font:"400 60px 'Newsreader'", color:"#16233C", lineHeight:.9, letterSpacing:"-.02em" }}>
                     {approvalPct != null ? `${Math.round(approvalPct)}%` : "—"}
@@ -790,16 +891,25 @@ export default function ExecutiveDashboard() {
                 </div>
               </div>
               <div style={{ textAlign:"right" }}>
-                <div style={{ font:"600 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:4 }}>People's Satisfaction</div>
-                <div style={{ font:"400 26px 'Newsreader'", color:"#2B5BD7" }}>
-                  {approvalPct != null ? `${Math.round(approvalPct / 10)}/10` : "—"}
+                <div style={{ display:"flex", alignItems:"center", gap:6, justifyContent:"flex-end", marginBottom:4 }}>
+                  <div style={{ font:"600 12px 'Hanken Grotesk'", color:"#8590A6" }}>People's Satisfaction</div>
+                    <InfoTip text="People's Satisfaction = approvalPct divided by 10, converting approval percentage into a 0-10 score." />
+                  </div>
+                  <div style={{ font:"400 26px 'Newsreader'", color:"#2B5BD7" }}>
+                    {approvalPct != null ? `${Math.round(approvalPct / 10)}/10` : "—"}
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, justifyContent:"flex-end" }}>
+                    <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>Composite Index</div>
+                    <InfoTip text="Composite Index = a summary metric derived from approval and sentiment measures to reflect overall performance." />
                 </div>
-                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>Composite Index</div>
               </div>
             </div>
             {approvalPct != null ? (
               <div style={{ borderTop:"1px solid #F0F2F7", marginTop:8, paddingTop:18 }}>
-                <div style={{ font:"600 11px 'Hanken Grotesk'", color:"#9AA3B5", marginBottom:10 }}>SENTIMENT BREAKDOWN</div>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
+                  <div style={{ font:"600 11px 'Hanken Grotesk'", color:"#9AA3B5" }}>SENTIMENT BREAKDOWN</div>
+                  <InfoTip text="Sentiment Breakdown = positive, neutral, and negative shares used to compute approvalPct." />
+                </div>
                 <div style={{ display:"flex", height:12, borderRadius:8, overflow:"hidden", marginBottom:8 }}>
                   <div style={{ width:`${effectiveSentiment?.positive?.pct ?? 0}%`, background:"#1E8A5B" }} />
                   <div style={{ width:`${effectiveSentiment?.neutral?.pct  ?? 0}%`, background:"#C9871F" }} />
@@ -824,8 +934,10 @@ export default function ExecutiveDashboard() {
           {/* Re-election Outlook */}
           <div style={{ background:"linear-gradient(165deg,#1B3C8F,#2B5BD7)", borderRadius:22, padding:"26px 28px", color:"#fff", display:"flex", flexDirection:"column", boxShadow:"0 18px 36px -22px rgba(43,91,215,.7)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
-              <span style={{ font:"600 13px 'Hanken Grotesk'", color:"rgba(255,255,255,.82)", textTransform:"uppercase", letterSpacing:".05em" }}>Chance of Re-Election</span>
-              <MS style={{ fontSize:20, color:"rgba(255,255,255,.7)" }}>help</MS>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ font:"600 13px 'Hanken Grotesk'", color:"rgba(255,255,255,.82)", textTransform:"uppercase", letterSpacing:".05em" }}>Chance of Re-Election</span>
+                <InfoTip text="Chance of Re-Election = model probability from insights based on approvalPct, sentiment momentum, and event influence." />
+              </div>
             </div>
             <div style={{ display:"flex", justifyContent:"center", margin:"6px 0 0" }}>
               <GaugeArc pct={approvalPct} />
@@ -859,13 +971,19 @@ export default function ExecutiveDashboard() {
                 <div style={{ font:"400 22px 'Newsreader'", color:"#fff" }}>
                   {analytics?.events?.totalEvents != null ? `${analytics.events.totalEvents} events` : "—"}
                 </div>
-                <div style={{ font:"500 11px 'Hanken Grotesk'", color:"rgba(255,255,255,.78)" }}>Events Held</div>
+                <div style={{ display:"flex", alignItems:"center", gap:6, font:"500 11px 'Hanken Grotesk'", color:"rgba(255,255,255,.78)" }}>
+                  <span>Events Held</span>
+                  <InfoTip text="Events Held = total citizen-facing events recorded in the selected date range." />
+                </div>
               </div>
               <div style={{ flex:1, background:"rgba(255,255,255,.1)", borderRadius:12, padding:"12px 13px" }}>
                 <div style={{ font:"400 22px 'Newsreader'", color:"#fff" }}>
                   {approvalPct != null ? `~${Math.min(100, Math.round(approvalPct * 0.9))}%` : "—"}
                 </div>
-                <div style={{ font:"500 11px 'Hanken Grotesk'", color:"rgba(255,255,255,.78)" }}>Projected Vote Share</div>
+                <div style={{ display:"flex", alignItems:"center", gap:6, font:"500 11px 'Hanken Grotesk'", color:"rgba(255,255,255,.78)" }}>
+                  <span>Projected Vote Share</span>
+                  <InfoTip text="Projected Vote Share = estimated vote share derived from current approval percentage and event momentum, approximated as 90% of approval." />
+                </div>
               </div>
             </div>
           </div>

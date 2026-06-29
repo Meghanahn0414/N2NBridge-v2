@@ -13,6 +13,19 @@ const INDIAN_STATES = [
   "Uttarakhand", "West Bengal",
 ];
 
+const INITIAL_FORM = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  countryCode: "+91",
+  phone: "",
+  state: "",
+  district: "",
+  secretKey: "",
+  password: "",
+  confirmPassword: "",
+};
+
 const FlagStrip = () => (
   <div style={{ display: "flex", flexDirection: "column", width: 6, height: 36, borderRadius: 9999, overflow: "hidden" }}>
     <div style={{ flex: 1, background: "#fb923c" }} />
@@ -24,18 +37,13 @@ const FlagStrip = () => (
 export default function AdminSignup() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    countryCode: "+91",
-    phone: "",
-    state: "",
-    district: "",
-    secretKey: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [formKey, setFormKey] = useState(Date.now());
+  const [fieldNames] = useState(() => ({
+    email: `email-${Date.now()}`,
+    password: `password-${Date.now()}`,
+    confirmPassword: `confirm-password-${Date.now()}`,
+  }));
 
   const [show, setShow] = useState({
     secretKey: false,
@@ -63,9 +71,7 @@ export default function AdminSignup() {
     if (!form.lastName.trim())     e.lastName     = "Required";
     if (!form.email.includes("@")) e.email        = "Invalid email";
     if (form.phone.replace(/\D/g, "").length !== 10) e.phone = "Must be 10 digits";
-    if (!form.state)               e.state        = "Required";
-    if (!form.district.trim())     e.district     = "Required";
-    if (form.secretKey.length < 6) e.secretKey    = "Min 6 characters";
+    if (form.secretKey && form.secretKey.length < 6) e.secretKey = "Min 6 characters";
     if (form.password.length < 8)  e.password     = "Min 8 characters";
     if (form.password !== form.confirmPassword)
                                    e.confirmPassword = "Passwords do not match";
@@ -99,7 +105,7 @@ export default function AdminSignup() {
       const response = await registerAdmin(registrationData);
       const userId = response?.user?.id;
 
-      if (userId) {
+      if (userId && form.secretKey.trim()) {
         try {
           await api.post(`/api/admin/verify-secret-key`, { secretKey: form.secretKey });
         } catch {
@@ -108,6 +114,8 @@ export default function AdminSignup() {
       }
 
       setSubmitted(true);
+      setForm(INITIAL_FORM);
+      setFormKey(Date.now());
     } catch (err) {
       const msg = err.message || "";
       if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("duplicate")) {
@@ -169,7 +177,9 @@ export default function AdminSignup() {
           </p>
         </div>
         {/* Form */}
-        <form onSubmit={handleSubmit} style={styles.formBody}>
+        <form key={formKey} onSubmit={handleSubmit} style={styles.formBody} autoComplete="off">
+        <input type="text" name="username" autoComplete="username" style={{ position: "absolute", opacity: 0, height: 0, width: 0, border: "none", padding: 0, margin: 0 }} />
+        <input type="password" name="password" autoComplete="new-password" style={{ position: "absolute", opacity: 0, height: 0, width: 0, border: "none", padding: 0, margin: 0 }} />
 
           <SectionLabel title="Personal Information" />
 
@@ -197,6 +207,8 @@ export default function AdminSignup() {
           <Field label="Email Address" error={errors.email}>
             <input
               type="email"
+              name={fieldNames.email}
+              autoComplete="off"
               placeholder="admin@mail.in"
               value={form.email}
               onChange={(e) => update("email", e.target.value)}
@@ -225,9 +237,47 @@ export default function AdminSignup() {
               />
             </div>
           </Field>
+          {/* <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Field label="State (optional)" error={errors.state}>
+              <select
+                value={form.state}
+                onChange={(e) => update("state", e.target.value)}
+                style={{ ...inputStyle(errors.state), width: "100%" }}
+              >
+                <option value="">Select state</option>
+                {INDIAN_STATES.map((state) => (
+                  <option key={state} value={state}>{state}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="District (optional)" error={errors.district}>
+              <input
+                type="text"
+                placeholder="District"
+                value={form.district}
+                onChange={(e) => update("district", e.target.value)}
+                style={inputStyle(errors.district)}
+              />
+            </Field>
+          </div>
           <SectionLabel title="Security" />
+          <Field label="Secret Key (optional)" error={errors.secretKey}>
+            <PasswordInput
+              placeholder="Enter admin secret key (optional)"
+              value={form.secretKey}
+              show={show.secretKey}
+              error={errors.secretKey}
+              onChange={(v) => update("secretKey", v)}
+              onToggle={() => toggleShow("secretKey")}
+            />
+            <div style={styles.secretKeyBox}>
+              Optional: enter the admin secret key if you have one, otherwise leave blank.
+            </div>
+          </Field> */}
           <Field label="Password" error={errors.password}>
             <PasswordInput
+              name={fieldNames.password}
+              autoComplete="off"
               placeholder="Create strong password (min 8 chars)"
               value={form.password}
               show={show.password}
@@ -239,6 +289,8 @@ export default function AdminSignup() {
 
           <Field label="Confirm Password" error={errors.confirmPassword}>
             <PasswordInput
+              name={fieldNames.confirmPassword}
+              autoComplete="off"
               placeholder="Repeat your password"
               value={form.confirmPassword}
               show={show.confirmPassword}
@@ -297,11 +349,13 @@ function Field({ label, error, children }) {
   );
 }
 
-function PasswordInput({ placeholder, value, show, error, onChange, onToggle, borderColor }) {
+function PasswordInput({ placeholder, value, show, error, onChange, onToggle, borderColor, name, autoComplete }) {
   return (
     <div style={{ position: "relative" }}>
       <input
         type={show ? "text" : "password"}
+        name={name}
+        autoComplete={autoComplete}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
