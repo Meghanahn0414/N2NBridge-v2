@@ -62,7 +62,7 @@ export default function ToastNotification({ toast, onDismiss, onClick }) {
             <span style={{ color: '#fff', fontSize: 8, fontWeight: 700, letterSpacing: -0.5 }}>JS</span>
           </div>
           <span style={{ fontSize: 11.5, color: '#555', fontWeight: 600, letterSpacing: 0.1 }}>
-            Jan Seva
+            N2N Bridge
           </span>
         </div>
         <button

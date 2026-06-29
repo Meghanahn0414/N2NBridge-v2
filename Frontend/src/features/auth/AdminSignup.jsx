@@ -197,7 +197,7 @@ export default function AdminSignup() {
           <Field label="Email Address" error={errors.email}>
             <input
               type="email"
-              placeholder="admin@gov.in"
+              placeholder="admin@mail.in"
               value={form.email}
               onChange={(e) => update("email", e.target.value)}
               style={inputStyle(errors.email)}
