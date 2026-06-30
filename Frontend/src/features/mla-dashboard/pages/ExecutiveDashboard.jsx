@@ -330,11 +330,62 @@ export default function ExecutiveDashboard() {
         hasData: true,
         positive: { pct: sentDist.positivePct ?? 0 },
         neutral:  { pct: sentDist.neutralPct  ?? 0 },
-        negative: { pct: sentDist.negativePct ?? 0 },
+        negative: { pct: sentDist.negativePct  ?? 0 },
         total: sentDist.total,
         positiveTrend: null,
         _fallback: true,
       } : null);
+
+  const dashboardCards = [
+    { id: "map", title: "Constituency Map", type: "map" },
+    { id: "overview", title: "Grievance Overview", type: "overview" },
+    { id: "category", title: "Grievances by Category", type: "category" },
+    { id: "notifications", title: "Recent Notifications", type: "notifications" },
+  ];
+
+  const categoryStats = analytics?.grievances?.byCategory
+    ? Object.entries(analytics.grievances.byCategory)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 7)
+      .map(([label, value]) => ({ label, value }))
+    : [
+      { label: "Water Supply", value: 320 },
+      { label: "Roads", value: 278 },
+      { label: "Electricity", value: 196 },
+      { label: "Healthcare", value: 154 },
+      { label: "Education", value: 98 },
+      { label: "Pension", value: 76 },
+      { label: "Revenue", value: 64 },
+    ];
+
+  const grievanceStats = analytics?.grievances?.byStatus || {};
+  const totalGrievances = analytics?.grievances?.total ?? 1248;
+  const overviewItems = [
+    { label: "New", value: grievanceStats.NEW ?? 218, color: "#2563EB" },
+    { label: "In Progress", value: grievanceStats.IN_PROGRESS ?? 453, color: "#F97316" },
+    { label: "Pending", value: grievanceStats.PENDING ?? 362, color: "#FBBF24" },
+    { label: "Resolved", value: grievanceStats.RESOLVED ?? 1067, color: "#22C55E" },
+    { label: "Escalated", value: grievanceStats.ESCALATED ?? 67, color: "#EF4444" },
+  ];
+  const overviewTotal = overviewItems.reduce((sum, item) => sum + item.value, 0);
+
+  const notificationItems = analytics?.notifications?.recent || [
+    { title: "High Priority: Water shortage reported in Ward 23, Shantipur", time: "10 mins ago", icon: "warning", color: "#DC2626" },
+    { title: "Project \"CC Road - Village Rampur\" is delayed", time: "35 mins ago", icon: "event", color: "#F59E0B" },
+    { title: "MGNREGA: 42 new works approved", time: "1 hour ago", icon: "task_alt", color: "#2563EB" },
+    { title: "Meeting Reminder: Village Visit to Navagaon on 24 May 2025", time: "2 hours ago", icon: "meeting_room", color: "#16A34A" },
+    { title: "Low Fund Utilization Alert in Education Sector", time: "3 hours ago", icon: "school", color: "#8B5CF6" },
+  ];
+
+  const mapLegend = [
+    { label: "Villages", color: "#16A34A" },
+    { label: "Schools", color: "#2563EB" },
+    { label: "Hospitals", color: "#7C3AED" },
+    { label: "Roads", color: "#F59E0B" },
+    { label: "Water Sources", color: "#3B82F6" },
+    { label: "Anganwadis", color: "#EF4444" },
+    { label: "Other Assets", color: "#64748B" },
+  ];
 
   return (
     <>
@@ -576,243 +627,6 @@ export default function ExecutiveDashboard() {
             </div>
           </div>
 
-          {/* Election scenarios */}
-          <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)", display:"flex", flexDirection:"column" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Winning Chances</div>
-              <InfoTip text="Winning Chances = election outcome buckets computed from approval percentage, sentiment momentum, and the insights probability model." />
-            </div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Modeled on current momentum</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:11, flex:1 }}>
-              {[
-                { icon:"verified", iconC:"#1E8A5B", border:"#2B5BD7", bg:"#F5F8FF", label:"Strong Re-election", glow:true,  prob: strongProb, barColor:"#2B5BD7", tooltip:"Strong Re-election = model probability from insights API indicating high re-election odds based on current approval and sentiment momentum." },
-                { icon:"balance",  iconC:"#C9871F", border:"#EEF1F7", bg:"#fff",    label:"Competitive Race",  glow:false, prob: compProb,   barColor:"#C9871F", tooltip:"Competitive Race = modeled when probability is moderate and the race remains close if momentum stays unchanged." },
-                { icon:"warning",  iconC:"#C8453A", border:"#EEF1F7", bg:"#fff",    label:"At Risk",           glow:false, prob: atRiskProb, barColor:"#C8453A", tooltip:"At Risk = model probability below safe thresholds, suggesting low re-election odds unless performance improves." },
-              ].map(s => (
-                <div key={s.label} style={{ border:`${s.glow?"1.5":"1"}px solid ${s.border}`, background:s.bg, borderRadius:15, padding:"15px 16px", ...(s.glow?{boxShadow:"0 0 0 3px rgba(43,91,215,.06)"}:{}) }}>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-                    <span style={{ display:"flex", alignItems:"center", gap:7, font:"700 14px 'Hanken Grotesk'", color:"#16233C" }}>
-                      <MIcon name={s.icon} style={{ fontSize:19, color:s.iconC }} />
-                      {s.label}
-                      <InfoTip text={s.tooltip} />
-                    </span>
-                    <span style={{ font:"400 22px 'Newsreader'", color:s.glow?"#2B5BD7":s.iconC }}>
-                      {s.prob != null ? `${s.prob}%` : "—"}
-                    </span>
-                  </div>
-                  <div style={{ height:6, borderRadius:4, background:"#E1E6F0", overflow:"hidden" }}>
-                    {s.prob != null && <div style={{ width:`${s.prob}%`, height:"100%", borderRadius:4, background:s.barColor }} />}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: Public sentiment + Approval by group + What's moving your numbers */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:20 }}>
-
-          {/* Public sentiment */}
-          <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Public Opinion</div>
-              <InfoTip text="Public Opinion = sentiment percentages aggregated from citizen feedback or grievance classification during the selected date range." />
-            </div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:20 }}>
-              {effectiveSentiment?._fallback ? "From satisfaction ratings" : "From comments & grievances"}
-            </div>
-            {effectiveSentiment?.hasData ? (
-              <>
-                <div style={{ display:"flex", height:14, borderRadius:8, overflow:"hidden", marginBottom:20 }}>
-                  <div style={{ width:`${effectiveSentiment.positive.pct}%`, background:"#1E8A5B" }} />
-                  <div style={{ width:`${effectiveSentiment.neutral.pct}%`,  background:"#C9871F" }} />
-                  <div style={{ width:`${effectiveSentiment.negative.pct}%`, background:"#C8453A" }} />
-                </div>
-                <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                  {[
-                    ["#1E8A5B", "Positive", effectiveSentiment.positive.pct],
-                    ["#C9871F", "Neutral",  effectiveSentiment.neutral.pct],
-                    ["#C8453A", "Negative", effectiveSentiment.negative.pct],
-                  ].map(([c,l,pct]) => (
-                    <div key={l} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                      <span style={{ width:11, height:11, borderRadius:3, background:c, flexShrink:0 }} />
-                      <span style={{ flex:1, font:"600 14px 'Hanken Grotesk'", color:"#16233C" }}>{l}</span>
-                      <span style={{ font:"700 15px 'Hanken Grotesk'", color:"#16233C" }}>{pct}%</span>
-                    </div>
-                  ))}
-                </div>
-                {effectiveSentiment.positiveTrend != null && (
-                  <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:20, paddingTop:16, borderTop:"1px solid #F0F2F7" }}>
-                    <MS style={{ fontSize:18, color: effectiveSentiment.positiveTrend >= 0 ? "#1E8A5B" : "#C8453A" }}>
-                      {effectiveSentiment.positiveTrend >= 0 ? "arrow_upward" : "arrow_downward"}
-                    </MS>
-                    <span style={{ font:"500 12px 'Hanken Grotesk'", color:"#5A6678" }}>
-                      {effectiveSentiment.positiveTrend >= 0
-                        ? `Positive sentiment up ${Math.abs(effectiveSentiment.positiveTrend)}% vs last period`
-                        : `Positive sentiment down ${Math.abs(effectiveSentiment.positiveTrend)}% vs last period`}
-                    </span>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div style={{ display:"flex", height:14, borderRadius:8, overflow:"hidden", marginBottom:20, background:"#F0F2F7" }} />
-                <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                  {[["#1E8A5B","Positive"],["#C9871F","Neutral"],["#C8453A","Negative"]].map(([c,l]) => (
-                    <div key={l} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                      <span style={{ width:11, height:11, borderRadius:3, background:c, flexShrink:0 }} />
-                      <span style={{ flex:1, font:"600 14px 'Hanken Grotesk'", color:"#16233C" }}>{l}</span>
-                      <span style={{ font:"700 15px 'Hanken Grotesk'", color:"#C0C7D4" }}>—</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Approval by group */}
-          <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Support by Age Group</div>
-              <InfoTip text="Support by Age Group = approval percent for each age bracket, where approval means positive or neutral responses." />
-            </div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:20 }}>Where your support is strongest</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:17 }}>
-              {(byGroup?.groups || [
-                {label:"18–29"}, {label:"30–44"}, {label:"45–59"}, {label:"60+"}
-              ]).map(g => {
-                const pct = g.approvalPct;
-                const hasVal = pct != null;
-                const color = hasVal ? pct >= 65 ? "#2B5BD7" : pct >= 50 ? "#C9871F" : "#C8453A" : null;
-                const tooltip = hasVal
-                  ? `Approval for ${g.label}: ${pct}% of residents in this age group responded positively or neutrally.`
-                  : `Approval data not available for ${g.label}.`;
-                return (
-                  <div key={g.label}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                        <span style={{ font:"600 13px 'Hanken Grotesk'", color:"#16233C" }}>{g.label}</span>
-                        <InfoTip text={tooltip} />
-                      </div>
-                      <span style={{ font:"700 13px 'Hanken Grotesk'", color: hasVal ? color : "#C0C7D4" }}>
-                        {hasVal ? `${pct}%` : "—"}
-                      </span>
-                    </div>
-                    <div style={{ height:8, borderRadius:5, background:"#EEF1F7", overflow:"hidden" }}>
-                      {hasVal && <div style={{ width:`${pct}%`, height:"100%", borderRadius:5, background:color }} />}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* What's moving your numbers */}
-          <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Top Issues Affecting Public Opinion</div>
-              <InfoTip text="Top Issues = complaint categories ranked by impact on sentiment, based on report volume and resolution trends." />
-            </div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>Issues with the biggest impact</div>
-            {moving?.hasData ? (
-              <div style={{ display:"flex", flexDirection:"column", gap:11 }}>
-                {moving.drivers.map((d, i) => {
-                  const pos = d.impact >= 0;
-                  const curTotal = d.total ?? 0;
-                  const curResolved = d.resolved ?? 0;
-                  const prevTotal = d.prev_total ?? 0;
-                  const prevResolved = d.prev_resolved ?? 0;
-                  const curRate = curTotal ? (curResolved / curTotal) : 0;
-                  const prevRate = prevTotal ? (prevResolved / prevTotal) : 0;
-                  const tooltip = `${d.label}: ${curResolved} resolved / ${curTotal} reports now; previously ${prevResolved} / ${prevTotal}. ` +
-                    `Current resolution rate ${Math.round(curRate * 100)}%, previous rate ${Math.round(prevRate * 100)}%.`;
-                  return (
-                    <div key={i} style={{ display:"flex", alignItems:"center", gap:12 }}>
-                      <div style={{ width:38, height:38, flexShrink:0, borderRadius:11, background: pos?"#E6F4EC":"#FBEAE8", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                        <MS style={{ fontSize:20, color: pos?"#1E8A5B":"#C8453A" }}>{d.icon}</MS>
-                      </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-                          <div style={{ font:"700 13px 'Hanken Grotesk'", color:"#16233C", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{d.label}</div>
-                          <InfoTip text={tooltip} />
-                        </div>
-                        <div style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>{d.sub}</div>
-                      </div>
-                      <span style={{ font:"700 14px 'Hanken Grotesk'", color: pos?"#1E8A5B":"#C8453A", flexShrink:0 }}>
-                        {pos ? "+" : ""}{d.impact}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", minHeight:160 }}>
-                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No data available</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Row 2.5: Standing vs. peers + Approval by neighborhood */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1.55fr", gap:20 }}>
-
-          {/* Standing vs. peers */}
-          <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Compared to Other Wards</div>
-              <InfoTip text="Compared to Other Wards = your ward's approval rank among peer wards based on approval percentage." />
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:6, color:"#8590A6", marginBottom:18, font:"500 12px 'Hanken Grotesk'" }}>
-              <span>Approval rank among wards</span>
-              <InfoTip text="Approval rank among wards = your ranking by approval percentage within the current peer ward dataset." />
-            </div>
-            {peers?.hasData ? (
-              peers.totalWards === 1 ? (
-                <>
-                  <div style={{ display:"flex", alignItems:"flex-end", gap:8, marginBottom:8 }}>
-                    <span style={{ font:"400 46px 'Newsreader'", color:"#2B5BD7", lineHeight:.9 }}>#1</span>
-                    <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#8590A6", paddingBottom:6 }}>of 1 ward</span>
-                  </div>
-                  <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#C0C7D4" }}>Only ward in the system</div>
-                </>
-              ) : (
-                <>
-                  <div style={{ display:"flex", alignItems:"flex-end", gap:8, marginBottom:16 }}>
-                    <span style={{ font:"400 46px 'Newsreader'", color:"#2B5BD7", lineHeight:.9 }}>#{peers.wards[0]?.rank ?? "—"}</span>
-                    <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#8590A6", paddingBottom:6 }}>of {peers.totalWards} wards</span>
-                  </div>
-                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    {peers.wards.slice(0, 4).map((w) => {
-                      const barColor = w.rank === 1 ? "#2B5BD7" : w.approvalPct >= 50 ? "#1E8A5B" : "#C9871F";
-                      const tooltip = `Ward ${w.wardName}: ${w.approvalPct}% approval${w.total != null ? `, ${w.total} grievances` : ""}.`;
-                      return (
-                        <div key={w.wardId}>
-                          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3, alignItems:"center" }}>
-                            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                              <span style={{ font:"600 11px 'Hanken Grotesk'", color:"#16233C" }}>#{w.rank} {w.wardName}</span>
-                              <InfoTip text={tooltip} />
-                            </div>
-                            <span style={{ font:"600 11px 'Hanken Grotesk'", color: barColor }}>{w.approvalPct}%</span>
-                          </div>
-                          <div style={{ height:5, borderRadius:3, background:"#F0F2F7" }}>
-                            <div style={{ height:"100%", width:`${w.approvalPct}%`, borderRadius:3, background: barColor }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )
-            ) : (
-              <>
-                <div style={{ display:"flex", alignItems:"flex-end", gap:14, marginBottom:20 }}>
-                  <span style={{ font:"400 46px 'Newsreader'", color:"#2B5BD7", lineHeight:.9 }}>—</span>
-                </div>
-                <div style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No peer data available</div>
-              </>
-            )}
-          </div>
-
           {/* Approval by neighborhood */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
@@ -863,130 +677,136 @@ export default function ExecutiveDashboard() {
           </div>
         </div>
 
-        {/* Row 3: Overall Approval + Re-election Outlook */}
-        <div style={{ display:"grid", gridTemplateColumns:"1.55fr 1fr", gap:20 }}>
+        {/* Dashboard cards row below Trend and Support */}
+        <div style={{ display:"grid", gridTemplateColumns:"1.8fr 1fr 1fr 0.95fr", gap:20, alignItems:"start" }}>
+          {dashboardCards.map(card => {
+            if (card.type === "map") {
+              return (
+                <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+                    <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                  </div>
+                  <div style={{ minHeight:260, borderRadius:20, background:"linear-gradient(180deg,#FDFEFF 0%,#EFF6FF 100%)", border:"1px solid #E5E9F1", position:"relative", overflow:"hidden" }}>
+                    <div style={{ position:"absolute", inset:0, background:"url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=400 height=250 viewBox=\'0 0 400 250\'%3E%3Crect width=400 height=250 fill=%23F8FAFD/%3E%3Cpath d=\'M15 110C55 90 120 80 165 90C200 100 240 95 297 115C325 125 368 135 385 147\' stroke=%23D6E4FF stroke-width=8 fill=none/%3E%3Cpath d=\'M40 175C84 160 130 135 180 146C221 154 260 165 315 149\' stroke=%23E2E8F0 stroke-width=8 fill=none/%3E%3C/svg%3E') center/cover", opacity:0.85 }} />
+                    <div style={{ position:"absolute", top:36, left:32, width:18, height:18, borderRadius:999, background:"#16A34A", boxShadow:"0 0 0 6px rgba(22,163,74,.18)" }} />
+                    <div style={{ position:"absolute", top:80, left:120, width:18, height:18, borderRadius:999, background:"#2563EB", boxShadow:"0 0 0 6px rgba(37,99,235,.18)" }} />
+                    <div style={{ position:"absolute", top:130, left:210, width:18, height:18, borderRadius:999, background:"#7C3AED", boxShadow:"0 0 0 6px rgba(124,58,237,.18)" }} />
+                    <div style={{ position:"absolute", top:52, right:40, width:18, height:18, borderRadius:999, background:"#EF4444", boxShadow:"0 0 0 6px rgba(239,68,68,.18)" }} />
+                    <div style={{ position:"absolute", bottom:34, right:100, width:18, height:18, borderRadius:999, background:"#F59E0B", boxShadow:"0 0 0 6px rgba(245,158,11,.18)" }} />
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(4,minmax(0,1fr))", gap:10, marginTop:18, font:"500 11px 'Hanken Grotesk'", color:"#475569" }}>
+                    {mapLegend.map(item => (
+                      <div key={item.label} style={{ display:"flex", alignItems:"center", gap:8, minWidth:0, overflow:"hidden" }}>
+                        <span style={{ width:10, height:10, borderRadius:999, background:item.color, flexShrink:0 }} />
+                        <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
 
-          {/* Overall Approval Rating */}
-          <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:"26px 28px", boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:18 }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#8590A6", textTransform:"uppercase", letterSpacing:".05em" }}>Your Approval Score</div>
-                  <InfoTip text="Your Approval Score = percentage of residents with positive sentiment, shown on a 0-100 scale." />
-                </div>
-                <div style={{ display:"flex", alignItems:"flex-end", gap:14 }}>
-                  <span style={{ font:"400 60px 'Newsreader'", color:"#16233C", lineHeight:.9, letterSpacing:"-.02em" }}>
-                    {approvalPct != null ? `${Math.round(approvalPct)}%` : "—"}
-                  </span>
-                  {approvalTrend != null && (
-                    <span style={{ display:"inline-flex", alignItems:"center", gap:4, background: approvalTrend >= 0 ? "#E6F4EC" : "#FBEAE8", color: approvalTrend >= 0 ? "#1E7A50" : "#C8453A", font:"700 14px 'Hanken Grotesk'", padding:"6px 11px", borderRadius:20, marginBottom:6 }}>
-                      <MS style={{ fontSize:17 }}>{approvalTrend >= 0 ? "arrow_upward" : "arrow_downward"}</MS>
-                      {Math.abs(Math.round(approvalTrend))} pts
-                    </span>
-                  )}
-                </div>
-                <div style={{ font:"500 13px 'Hanken Grotesk'", color:"#8590A6", marginTop:8 }}>
-                  {approvalTrend != null ? `${approvalTrend >= 0 ? "+" : ""}${Math.round(approvalTrend)} pts vs. last quarter · ` : ""}
-                  based on {approvalResponses != null ? approvalResponses.toLocaleString() : "—"} resident responses
-                </div>
-              </div>
-              <div style={{ textAlign:"right" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:6, justifyContent:"flex-end", marginBottom:4 }}>
-                  <div style={{ font:"600 12px 'Hanken Grotesk'", color:"#8590A6" }}>People's Satisfaction</div>
-                    <InfoTip text="People's Satisfaction = approvalPct divided by 10, converting approval percentage into a 0-10 score." />
+            if (card.type === "overview") {
+              const donutRadius = 64;
+              const circumference = 2 * Math.PI * donutRadius;
+              let offset = 0;
+              return (
+                <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+                    <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
                   </div>
-                  <div style={{ font:"400 26px 'Newsreader'", color:"#2B5BD7" }}>
-                    {approvalPct != null ? `${Math.round(approvalPct / 10)}/10` : "—"}
+                  <div style={{ display:"grid", gridTemplateColumns:"120px 1fr", gap:20, alignItems:"center" }}>
+                    <div style={{ position:"relative", width:120, height:120 }}>
+                      <svg viewBox="0 0 160 160" style={{ width:"100%", height:"100%" }}>
+                        <circle cx="80" cy="80" r="64" fill="#F8FAFD" />
+                        {overviewItems.map((item, idx) => {
+                          const pct = item.value / overviewTotal;
+                          const dash = Math.round(circumference * pct);
+                          const dashOffset = Math.round(circumference * (1 - offset));
+                          offset += pct;
+                          return (
+                            <circle key={item.label}
+                              cx="80" cy="80" r="64"
+                              fill="none" stroke={item.color}
+                              strokeWidth="16"
+                              strokeDasharray={`${dash} ${circumference - dash}`}
+                              strokeDashoffset={dashOffset}
+                              transform="rotate(-90 80 80)"
+                              strokeLinecap="round"
+                            />
+                          );
+                        })}
+                        <circle cx="80" cy="80" r="44" fill="#fff" />
+                      </svg>
+                      <div style={{ position:"absolute", inset:0, display:"grid", placeItems:"center", font:"700 20px 'Hanken Grotesk'", color:"#16233C" }}>{totalGrievances}</div>
+                    </div>
+                    <div style={{ display:"grid", gap:12 }}>
+                      {overviewItems.map(item => (
+                        <div key={item.label} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, font:"600 12px 'Hanken Grotesk'", color:"#475569" }}>
+                          <span style={{ display:"inline-flex", alignItems:"center", gap:8, minWidth:120 }}>
+                            <span style={{ width:10, height:10, borderRadius:999, background:item.color, display:"inline-block" }} />
+                            {item.label}
+                          </span>
+                          <span>{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ display:"flex", alignItems:"center", gap:6, justifyContent:"flex-end" }}>
-                    <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6" }}>Composite Index</div>
-                    <InfoTip text="Composite Index = a summary metric derived from approval and sentiment measures to reflect overall performance." />
+                  <button style={{ marginTop:18, width:"100%", height:44, background:"#2563EB", color:"#fff", border:"none", borderRadius:14, font:"700 13px 'Hanken Grotesk'", cursor:"pointer" }}>View All Grievances</button>
                 </div>
-              </div>
-            </div>
-            {approvalPct != null ? (
-              <div style={{ borderTop:"1px solid #F0F2F7", marginTop:8, paddingTop:18 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
-                  <div style={{ font:"600 11px 'Hanken Grotesk'", color:"#9AA3B5" }}>SENTIMENT BREAKDOWN</div>
-                  <InfoTip text="Sentiment Breakdown = positive, neutral, and negative shares used to compute approvalPct." />
+              );
+            }
+
+            if (card.type === "category") {
+              const colors = ["#2563EB", "#F59E0B", "#22C55E", "#A855F7", "#EF4444", "#0C4A6E", "#10B981"];
+              const maxValue = categoryStats[0]?.value || 1;
+              return (
+                <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+                    <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                  </div>
+                  <div style={{ display:"grid", gap:14 }}>
+                    {categoryStats.map((item, idx) => {
+                      const width = Math.round((item.value / maxValue) * 100);
+                      return (
+                        <div key={item.label}>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8, font:"600 12px 'Hanken Grotesk'", color:"#16233C" }}>
+                            <span>{item.label}</span>
+                            <span>{item.value}</span>
+                          </div>
+                          <div style={{ height:10, borderRadius:99, background:"#F1F5F9" }}>
+                            <div style={{ width:`${width}%`, height:"100%", borderRadius:99, background: colors[idx % colors.length] }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div style={{ display:"flex", height:12, borderRadius:8, overflow:"hidden", marginBottom:8 }}>
-                  <div style={{ width:`${effectiveSentiment?.positive?.pct ?? 0}%`, background:"#1E8A5B" }} />
-                  <div style={{ width:`${effectiveSentiment?.neutral?.pct  ?? 0}%`, background:"#C9871F" }} />
-                  <div style={{ width:`${effectiveSentiment?.negative?.pct ?? 0}%`, background:"#C8453A" }} />
+              );
+            }
+
+            return (
+              <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+                  <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                  <button style={{ font:"600 12px 'Hanken Grotesk'", color:"#2563EB", background:"transparent", border:"none", cursor:"pointer" }}>View All</button>
                 </div>
-                <div style={{ display:"flex", gap:16 }}>
-                  {[["#1E8A5B","Positive",effectiveSentiment?.positive?.pct],["#C9871F","Neutral",effectiveSentiment?.neutral?.pct],["#C8453A","Negative",effectiveSentiment?.negative?.pct]].map(([c,l,p])=>(
-                    <span key={l} style={{ display:"flex", alignItems:"center", gap:5, font:"500 11px 'Hanken Grotesk'", color:"#5A6678" }}>
-                      <span style={{ width:8, height:8, borderRadius:2, background:c, display:"inline-block" }} />
-                      {l} {p != null ? `${p}%` : "—"}
-                    </span>
+                <div style={{ display:"grid", gap:16 }}>
+                  {notificationItems.map((note, idx) => (
+                    <div key={idx} style={{ display:"flex", alignItems:"flex-start", gap:12, paddingBottom: idx < notificationItems.length-1 ? 14 : 0, borderBottom: idx < notificationItems.length-1 ? "1px solid #F0F2F7" : "none" }}>
+                      <div style={{ width:34, height:34, borderRadius:14, background:"#F8FAFD", display:"grid", placeItems:"center", color:note.color }}>
+                        <MS style={{ fontSize:18 }}>{note.icon}</MS>
+                      </div>
+                      <div>
+                        <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>{note.title}</div>
+                        <div style={{ font:"500 11px 'Hanken Grotesk'", color:"#6B7280" }}>{note.time}</div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
-            ) : (
-              <div style={{ height:100, display:"flex", alignItems:"center", justifyContent:"center", borderTop:"1px solid #F0F2F7", marginTop:8, paddingTop:18 }}>
-                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No rating data available</span>
-              </div>
-            )}
-          </div>
-
-          {/* Re-election Outlook */}
-          <div style={{ background:"linear-gradient(165deg,#1B3C8F,#2B5BD7)", borderRadius:22, padding:"26px 28px", color:"#fff", display:"flex", flexDirection:"column", boxShadow:"0 18px 36px -22px rgba(43,91,215,.7)" }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ font:"600 13px 'Hanken Grotesk'", color:"rgba(255,255,255,.82)", textTransform:"uppercase", letterSpacing:".05em" }}>Chance of Re-Election</span>
-                <InfoTip text="Chance of Re-Election = model probability from insights based on approvalPct, sentiment momentum, and event influence." />
-              </div>
-            </div>
-            <div style={{ display:"flex", justifyContent:"center", margin:"6px 0 0" }}>
-              <GaugeArc pct={approvalPct} />
-            </div>
-            <div style={{ textAlign:"center", marginTop:-10 }}>
-              <div style={{ font:"400 48px 'Newsreader'", color:"#fff", lineHeight:1 }}>
-                {strongProb != null ? `${strongProb}%` : "—"}
-              </div>
-              <div style={{ font:"600 13px 'Hanken Grotesk'", color:"rgba(255,255,255,.85)" }}>
-                {strongProb != null
-                  ? strongProb >= 50 ? "Likely to hold seat" : compProb >= 40 ? "Competitive race" : "At risk — action needed"
-                  : "Insufficient data"}
-              </div>
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(255,255,255,.14)", borderRadius:12, padding:"11px 14px", marginTop:18 }}>
-              <MS style={{ fontSize:20, color: approvalTrend != null ? (approvalTrend >= 0 ? "#9FE8C2" : "#F08080") : "#9FE8C2" }}>
-                {approvalTrend != null ? (approvalTrend >= 0 ? "trending_up" : "trending_down") : "trending_up"}
-              </MS>
-              <span style={{ font:"600 13px 'Hanken Grotesk'", color:"#fff" }}>
-                {approvalTrend != null
-                  ? (approvalTrend >= 0
-                      ? `Approval up ${Math.abs(Math.round(approvalTrend))} pts this quarter`
-                      : `Approval down ${Math.abs(Math.round(approvalTrend))} pts this quarter`)
-                  : approvalPct != null
-                    ? `${Math.round(approvalPct)}% approval among residents`
-                    : "Momentum data unavailable"}
-              </span>
-            </div>
-            <div style={{ display:"flex", gap:10, marginTop:12 }}>
-              <div style={{ flex:1, background:"rgba(255,255,255,.1)", borderRadius:12, padding:"12px 13px" }}>
-                <div style={{ font:"400 22px 'Newsreader'", color:"#fff" }}>
-                  {analytics?.events?.totalEvents != null ? `${analytics.events.totalEvents} events` : "—"}
-                </div>
-                <div style={{ display:"flex", alignItems:"center", gap:6, font:"500 11px 'Hanken Grotesk'", color:"rgba(255,255,255,.78)" }}>
-                  <span>Events Held</span>
-                  <InfoTip text="Events Held = total citizen-facing events recorded in the selected date range." />
-                </div>
-              </div>
-              <div style={{ flex:1, background:"rgba(255,255,255,.1)", borderRadius:12, padding:"12px 13px" }}>
-                <div style={{ font:"400 22px 'Newsreader'", color:"#fff" }}>
-                  {approvalPct != null ? `~${Math.min(100, Math.round(approvalPct * 0.9))}%` : "—"}
-                </div>
-                <div style={{ display:"flex", alignItems:"center", gap:6, font:"500 11px 'Hanken Grotesk'", color:"rgba(255,255,255,.78)" }}>
-                  <span>Projected Vote Share</span>
-                  <InfoTip text="Projected Vote Share = estimated vote share derived from current approval percentage and event momentum, approximated as 90% of approval." />
-                </div>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       </div>
     </>

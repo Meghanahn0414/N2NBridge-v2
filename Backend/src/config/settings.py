@@ -94,13 +94,13 @@ class Settings(BaseSettings):
     SENDER_EMAIL: Optional[str] = os.getenv("SENDER_EMAIL") or os.getenv("SMTP_USERNAME") or os.getenv("SMTP_EMAIL")
 
     # ── SMS / Twilio ───────────────────────────────────────────────────────────
-    SMS_API_KEY: Optional[str] = None
-    SMS_API_URL: Optional[str] = None
-    SMS_PROVIDER: Optional[str] = None
-    TWILIO_ACCOUNT_SID: Optional[str] = None
-    TWILIO_AUTH_TOKEN: Optional[str] = None
-    TWILIO_PHONE_NUMBER: Optional[str] = None
-    FAST2SMS_API_KEY: Optional[str] = None
+    SMS_API_KEY: Optional[str] = os.getenv("SMS_API_KEY")
+    SMS_API_URL: Optional[str] = os.getenv("SMS_API_URL")
+    SMS_PROVIDER: Optional[str] = os.getenv("SMS_PROVIDER") or "fast2sms"
+    TWILIO_ACCOUNT_SID: Optional[str] = os.getenv("TWILIO_ACCOUNT_SID")
+    TWILIO_AUTH_TOKEN: Optional[str] = os.getenv("TWILIO_AUTH_TOKEN")
+    TWILIO_PHONE_NUMBER: Optional[str] = os.getenv("TWILIO_PHONE_NUMBER")
+    FAST2SMS_API_KEY: Optional[str] = os.getenv("FAST2SMS_API_KEY")
     TWOFACTOR_API_KEY: Optional[str] = None
     VONAGE_API_KEY: Optional[str] = None
     VONAGE_API_SECRET: Optional[str] = None
