@@ -125,7 +125,7 @@ export default function Header({ onMobileMenuClick }) {
       window.removeEventListener('notification-sent', handleNotificationSent);
       window.removeEventListener('app-notification-updated', handleNotificationUpdated);
     };
-  }, [showNotificationsList]);
+  }, []);
 
   // Poll the backend count endpoint every 5s as a fallback for simple real-time updates
   useEffect(() => {

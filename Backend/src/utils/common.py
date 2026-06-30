@@ -10,7 +10,7 @@ from enum import Enum
 class UserRole(str, Enum):
     """User roles in the system"""
     ADMIN = "ADMIN"
-    MANAGER = "MANAGER"
+    CONSTITUENCY_MANAGER = "CONSTITUENCY_MANAGER"
     FIELD_OFFICER = "FIELD_OFFICER"
     REPRESENTATIVE = "REPRESENTATIVE"
     VOLUNTEER = "VOLUNTEER"

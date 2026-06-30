@@ -86,12 +86,12 @@ class UserRole:
     """User roles"""
     CITIZEN = "CITIZEN"
     REPRESENTATIVE = "REPRESENTATIVE"
-    MANAGER = "MANAGER"
+    CONSTITUENCY_MANAGER = "CONSTITUENCY_MANAGER"
     FIELD_OFFICER = "FIELD_OFFICER"
     VOLUNTEER = "VOLUNTEER"
     ADMIN = "ADMIN"
     
-    ALL_ROLES = [CITIZEN, REPRESENTATIVE, MANAGER, FIELD_OFFICER, VOLUNTEER, ADMIN]
+    ALL_ROLES = [CITIZEN, REPRESENTATIVE, CONSTITUENCY_MANAGER, FIELD_OFFICER, VOLUNTEER, ADMIN]
 
 
 class Permission:
@@ -99,7 +99,7 @@ class Permission:
     
     ROLE_PERMISSIONS = {
         UserRole.ADMIN: ["*"],  # Full access
-        UserRole.MANAGER: [
+        UserRole.CONSTITUENCY_MANAGER: [
             "grievance:read",
             "grievance:update",
             "alert:read",

@@ -112,6 +112,7 @@ export default function RolePermissions() {
   const [activeRoleId, setActiveRoleId] = useState(defaultRoles[0]?.id || null);
   const [formError, setFormError] = useState('');
   const location = useLocation();
+  const rolesListRef = React.useRef(null);
 
   const roleIdMap = {
     ADMIN: 'role-admin',
@@ -193,6 +194,11 @@ export default function RolePermissions() {
 
     setShowModal(false);
     resetForm();
+    
+    // Scroll to roles list to show the updated/new role
+    setTimeout(() => {
+      rolesListRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   return (
@@ -240,7 +246,7 @@ export default function RolePermissions() {
         </div>
       </div>
 
-      <div className="roles-section">
+      <div className="roles-section" ref={rolesListRef}>
         <h3>Existing Roles</h3>
         <div className="roles-list">
           {roles.map((role) => (

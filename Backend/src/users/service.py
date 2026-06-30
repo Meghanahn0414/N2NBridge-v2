@@ -24,16 +24,25 @@ class UserService:
         try:
             db = MongoDatabase.get_db()
             
-            logger.info(f"Creating user with email: {user_data.get('email')}")
+            user_role = user_data.get("role", "").strip()
+            logger.info(f"[CREATE_USER] Creating user with email: {user_data.get('email')}, role: '{user_role}'")
+            
             # Hash password
             user_data["passwordHash"] = SecurityManager.hash_password(user_data.pop("password"))
             user_data["status"] = "ACTIVE"
             user_data["lastLoginAt"] = None
             
             # Generate unique citizen ID for CITIZEN role
-            if user_data.get("role") == "CITIZEN":
+            if user_role == "CITIZEN":
                 user_data["citizenId"] = IDGenerator.generate_citizen_id()
-                logger.info(f"Generated citizen ID: {user_data['citizenId']}")
+                logger.info(f"[CREATE_USER] Generated citizen ID: {user_data['citizenId']}")
+            
+            # Generate unique manager ID for CONSTITUENCY_MANAGER role
+            if user_role == "CONSTITUENCY_MANAGER":
+                user_data["managerId"] = IDGenerator.generate_manager_id()
+                logger.info(f"[CREATE_USER] Generated manager ID: {user_data['managerId']}")
+            else:
+                logger.info(f"[CREATE_USER] Role '{user_role}' != CONSTITUENCY_MANAGER, skipping managerId generation")
             
             # Normalize contact fields for consistent lookup and storage
             if "email" in user_data:
@@ -45,9 +54,9 @@ class UserService:
             audit_user_id = user_id if user_id else "system"
             user_data.update(Helper.audit_fields(audit_user_id))
             
-            logger.info(f"Inserting user document into database")
+            logger.info(f"[CREATE_USER] Inserting user document: role='{user_data.get('role')}', email='{user_data.get('email')}', managerId='{user_data.get('managerId')}'")
             result = db.users.insert_one(user_data)
-            logger.info(f"User created successfully with ID: {result.inserted_id}")
+            logger.info(f"[CREATE_USER] User created successfully with ID: {result.inserted_id}, role: {user_data.get('role')}")
             return str(result.inserted_id)
         except Exception as e:
             logger.error(f"Error creating user: {e}", exc_info=True)
@@ -116,7 +125,16 @@ class UserService:
         if role:
             query["role"] = role
         
-        return list(db.users.find(query).skip(skip).limit(limit))
+        logger.info(f"[LIST_USERS] Querying with: {query}, skip={skip}, limit={limit}")
+        results = list(db.users.find(query).skip(skip).limit(limit))
+        logger.info(f"[LIST_USERS] Found {len(results)} users for role '{role}'")
+        if role == "CONSTITUENCY_MANAGER" and len(results) == 0:
+            logger.warning(f"[LIST_USERS] No CONSTITUENCY_MANAGER found! Checking all users...")
+            all_users = list(db.users.find({"isDeleted": False}))
+            logger.warning(f"[LIST_USERS] Total users in database: {len(all_users)}")
+            for u in all_users:
+                logger.warning(f"[LIST_USERS] User: {u.get('email')} has role: {u.get('role')}")
+        return results
     
     @staticmethod
     def update_user(user_id: str, update_data: dict, updated_by: str) -> bool:

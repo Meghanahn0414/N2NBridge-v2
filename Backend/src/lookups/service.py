@@ -27,7 +27,7 @@ EVENT_TYPES = [
 ]
 
 ROLE_LABELS = {
-    UserRole.MANAGER.value: "Manager",
+    UserRole.CONSTITUENCY_MANAGER.value: "Constituency Manager",
     UserRole.FIELD_OFFICER.value: "Field Officer",
     UserRole.REPRESENTATIVE.value: "Representative",
     UserRole.VOLUNTEER.value: "Volunteer",

@@ -89,11 +89,61 @@ export default function RegistrationPage() {
       const response = await api.get("/api/users/", {
         params: { per_page: 100, role: "CONSTITUENCY_MANAGER" },
       });
-      if (response.data) {
-        setManagers(response.data);
-      }
+      const list = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
+      setManagers(list);
     } catch (err) {
       console.warn("Unable to load managers", err);
+    }
+  };
+
+  // Generate Manager ID (MGR-XXXX format)
+  const generateManagerId = () => {
+    const randomNum = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
+    return `MGR-${randomNum}`;
+  };
+
+  const generateFieldOfficerId = () => {
+    const randomNum = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
+    return `FO-${randomNum}`;
+  };
+
+  // Handle role change and auto-generate IDs if needed
+  const handleRoleChange = (e) => {
+    const selectedRole = e.target.value;
+    setRole(selectedRole);
+    
+    if (selectedRole === "CONSTITUENCY_MANAGER") {
+      // Auto-generate Manager ID when role is selected
+      const generatedId = generateManagerId();
+      setFormData((prev) => ({
+        ...prev,
+        managerId: generatedId,
+        department: "",
+        officeLocation: "",
+        managerCode: "",
+        fieldOfficerId: "",
+        assignedArea: "",
+      }));
+    } else if (selectedRole === "FIELD_OFFICER") {
+      // Auto-generate Field Officer ID when role is selected
+      const generatedId = generateFieldOfficerId();
+      setFormData((prev) => ({
+        ...prev,
+        fieldOfficerId: generatedId,
+        assignedArea: "",
+        managerId: "",
+      }));
+    } else {
+      // Clear role-specific fields for other roles
+      setFormData((prev) => ({
+        ...prev,
+        managerId: "",
+        department: "",
+        officeLocation: "",
+        managerCode: "",
+        fieldOfficerId: "",
+        assignedArea: "",
+      }));
     }
   };
 
@@ -177,18 +227,18 @@ export default function RegistrationPage() {
         if (formData.district.trim()) payload.district = formData.district.trim();
       }
       if (role === "CONSTITUENCY_MANAGER") {
-        payload.department = formData.department.trim();
-        payload.officeLocation = formData.officeLocation.trim();
-        payload.managerCode = formData.managerCode.trim();
+        payload.managerId = formData.managerId.trim();
       }
       if (role === "FIELD_OFFICER") {
         payload.assignedArea = formData.assignedArea.trim();
-        payload.managerId = formData.managerId;
+        payload.managerId = formData.managerId.trim();
         payload.fieldOfficerId = formData.fieldOfficerId.trim();
       }
 
+      console.log("[RegistrationPage] Submitting registration with payload:", { ...payload, password: "***" });
       // Register the user and get the userId
       const registrationResponse = await api.post("/api/auth/register", payload);
+      console.log("[RegistrationPage] Registration response:", registrationResponse.data);
       const userId = registrationResponse.data?.user?.id;
       
       console.log("[RegistrationPage] Full registration response:", registrationResponse);
@@ -225,7 +275,12 @@ export default function RegistrationPage() {
       setRole("");
       setSelectedCountry(COUNTRIES[0]);
 
-      navigate(ROUTES.rolePermissions, { state: { selectedRole: role } });
+      // Navigate back to the appropriate list page after successful registration
+      if (role === "CONSTITUENCY_MANAGER") {
+        navigate(ROUTES.managerList);
+      } else {
+        navigate(ROUTES.rolePermissions, { state: { selectedRole: role } });
+      }
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.response?.data?.detail || err.message || "Failed to register user.";
       setError(errorMessage);
@@ -251,10 +306,10 @@ export default function RegistrationPage() {
               name="role"
               className="new-mla-input"
               value={role}
-              onChange={(e) => setRole(e.target.value)}
+              onChange={handleRoleChange}
             >
               <option value="">Select Role</option>
-              {roles.map((option) => (
+              {roles.filter((option) => !["VOLUNTEER", "CITIZEN"].includes(option.value)).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -445,36 +500,14 @@ export default function RegistrationPage() {
             <>
               <div style={{ margin: "24px 0 16px", fontWeight: 700, color: "#1f2937" }}>Manager Details</div>
               <div className="new-mla-group">
-                <label className="new-mla-label">Department</label>
+                <label className="new-mla-label">Manager ID</label>
                 <input
                   type="text"
-                  name="department"
-                  value={formData.department}
-                  onChange={handleInputChange}
-                  placeholder="Enter department"
+                  value={formData.managerId}
+                  disabled
+                  placeholder="Auto-generated when role selected"
                   className="new-mla-input"
-                />
-              </div>
-              <div className="new-mla-group">
-                <label className="new-mla-label">Office Location</label>
-                <input
-                  type="text"
-                  name="officeLocation"
-                  value={formData.officeLocation}
-                  onChange={handleInputChange}
-                  placeholder="Enter office location"
-                  className="new-mla-input"
-                />
-              </div>
-              <div className="new-mla-group">
-                <label className="new-mla-label">Manager Code</label>
-                <input
-                  type="text"
-                  name="managerCode"
-                  value={formData.managerCode}
-                  onChange={handleInputChange}
-                  placeholder="Enter manager code"
-                  className="new-mla-input"
+                  style={{ backgroundColor: "#f3f4f6", cursor: "not-allowed", fontWeight: 600, color: "#1f2937" }}
                 />
               </div>
               <div className="new-mla-group">
@@ -549,11 +582,11 @@ export default function RegistrationPage() {
                 <label className="new-mla-label">Field Officer ID</label>
                 <input
                   type="text"
-                  name="fieldOfficerId"
                   value={formData.fieldOfficerId}
-                  onChange={handleInputChange}
-                  placeholder="Enter field officer ID"
+                  disabled
+                  placeholder="Auto-generated when role selected"
                   className="new-mla-input"
+                  style={{ backgroundColor: "#f3f4f6", cursor: "not-allowed", fontWeight: 600, color: "#1f2937" }}
                 />
               </div>
               <div className="new-mla-group">

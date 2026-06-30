@@ -32,12 +32,6 @@ const styles = {
   },
   name: { fontWeight: 600, color: '#0f172a', fontSize: 13 },
   email: { fontSize: 11, color: '#94a3b8', marginTop: 1 },
-  roleBadge: {
-    display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-    fontSize: 11, fontWeight: 600,
-    background: '#eff6ff', color: '#2563eb',
-  },
-  statusDot: { width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block', marginRight: 6 },
   empty: { textAlign: 'center', padding: '48px 0', color: '#94a3b8', fontSize: 14 },
   loading: { textAlign: 'center', padding: '48px 0', color: '#64748b', fontSize: 14 },
   error: { margin: 24, padding: '12px 16px', background: '#fef2f2', color: '#b91c1c', borderRadius: 10, fontSize: 13 },
@@ -93,14 +87,12 @@ export default function CitizenList() {
                   <th style={styles.th}>Citizen ID</th>
                   <th style={styles.th}>Email</th>
                   <th style={styles.th}>Mobile</th>
-                  <th style={styles.th}>Role</th>
-                  <th style={styles.th}>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={styles.empty}>No citizens found</td>
+                    <td colSpan={5} style={styles.empty}>No citizens found</td>
                   </tr>
                 ) : (
                   users.map((u, i) => {
@@ -121,15 +113,6 @@ export default function CitizenList() {
                         </td>
                         <td style={styles.td}>{u.email || '—'}</td>
                         <td style={styles.td}>{formatPhoneDisplay(u.mobile)}</td>
-                        <td style={styles.td}>
-                          <span style={styles.roleBadge}>{u.role || 'CITIZEN'}</span>
-                        </td>
-                        <td style={styles.td}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
-                            <span style={styles.statusDot} />
-                            Active
-                          </span>
-                        </td>
                       </tr>
                     );
                   })

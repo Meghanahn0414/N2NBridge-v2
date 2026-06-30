@@ -16,8 +16,6 @@ const styles = {
   avatarCell: { display: 'flex', alignItems: 'center', gap: 10 },
   avatar: { width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 },
   name: { fontWeight: 600, color: '#0f172a', fontSize: 13 },
-  roleBadge: { display: 'inline-block', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: '#ecfdf5', color: '#059669' },
-  statusDot: { width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block', marginRight: 6 },
   empty: { textAlign: 'center', padding: '48px 0', color: '#94a3b8', fontSize: 14 },
   loading: { textAlign: 'center', padding: '48px 0', color: '#64748b', fontSize: 14 },
   error: { margin: 24, padding: '12px 16px', background: '#fef2f2', color: '#b91c1c', borderRadius: 10, fontSize: 13 },
@@ -70,13 +68,11 @@ export default function FieldOfficerList() {
                   <th style={styles.th}>Mobile</th>
                   <th style={styles.th}>Assigned Area</th>
                   <th style={styles.th}>Officer ID</th>
-                  <th style={styles.th}>Role</th>
-                  <th style={styles.th}>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length === 0 ? (
-                  <tr><td colSpan={8} style={styles.empty}>No field officers found</td></tr>
+                  <tr><td colSpan={6} style={styles.empty}>No field officers found</td></tr>
                 ) : (
                   users.map((u, i) => {
                     const fullName = u.fullName || u.name || '—';
@@ -93,12 +89,6 @@ export default function FieldOfficerList() {
                         <td style={styles.td}>{formatPhoneDisplay(u.mobile)}</td>
                         <td style={styles.td}>{u.assignedArea || '—'}</td>
                         <td style={styles.td}>{u.fieldOfficerId || '—'}</td>
-                        <td style={styles.td}><span style={styles.roleBadge}>{u.role || 'FIELD_OFFICER'}</span></td>
-                        <td style={styles.td}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
-                            <span style={styles.statusDot} />Active
-                          </span>
-                        </td>
                       </tr>
                     );
                   })

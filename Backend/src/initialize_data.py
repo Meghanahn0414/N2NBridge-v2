@@ -67,7 +67,7 @@ def initialize_database():
         "mobile": "9999999998",
         "email": "manager@crm.com",
         "passwordHash": SecurityManager.hash_password("manager@123"),
-        "role": UserRole.MANAGER,
+        "role": UserRole.CONSTITUENCY_MANAGER,
         "status": "ACTIVE",
         "lastLoginAt": None,
         "createdAt": datetime.utcnow(),

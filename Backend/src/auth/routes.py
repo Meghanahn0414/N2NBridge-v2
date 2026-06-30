@@ -116,7 +116,7 @@ async def login_admin(request: Request, login_data: UserLoginRequest):
         )
 
     # Block citizens — they must use OTP login
-    allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER", "MANAGER"]
+    allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER"]
     user_role = result.user.role if result.user else None
     if user_role not in allowed_roles:
         raise HTTPException(

@@ -16,8 +16,6 @@ const styles = {
   avatarCell: { display: 'flex', alignItems: 'center', gap: 10 },
   avatar: { width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #f59e0b, #d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 },
   name: { fontWeight: 600, color: '#0f172a', fontSize: 13 },
-  roleBadge: { display: 'inline-block', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: '#fffbeb', color: '#d97706' },
-  statusDot: { width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block', marginRight: 6 },
   empty: { textAlign: 'center', padding: '48px 0', color: '#94a3b8', fontSize: 14 },
   loading: { textAlign: 'center', padding: '48px 0', color: '#64748b', fontSize: 14 },
   error: { margin: 24, padding: '12px 16px', background: '#fef2f2', color: '#b91c1c', borderRadius: 10, fontSize: 13 },
@@ -37,10 +35,14 @@ export default function ManagerList() {
 
   const fetchUsers = async () => {
     try {
+      console.log("[ManagerList] Fetching managers with role=CONSTITUENCY_MANAGER");
       const res = await api.get("/api/users/", { params: { role: "CONSTITUENCY_MANAGER", per_page: 100 } });
+      console.log("[ManagerList] API Response:", res.data);
       const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      console.log("[ManagerList] Parsed managers list:", list);
       setUsers(list);
     } catch (err) {
+      console.error("[ManagerList] Fetch error:", err);
       setError(err?.response?.data?.detail || err?.message || "Failed to load managers");
     } finally {
       setLoading(false);
@@ -65,25 +67,23 @@ export default function ManagerList() {
               <thead>
                 <tr>
                   <th style={styles.th} className="notranslate" translate="no">#</th>
+                  <th style={styles.th}>Manager ID</th>
                   <th style={styles.th}>Name</th>
                   <th style={styles.th}>Email</th>
                   <th style={styles.th}>Mobile</th>
-                  <th style={styles.th}>Department</th>
-                  <th style={styles.th}>Office Location</th>
-                  <th style={styles.th}>Manager Code</th>
-                  <th style={styles.th}>Role</th>
-                  <th style={styles.th}>Status</th>
+                  <th style={styles.th}>Address</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length === 0 ? (
-                  <tr><td colSpan={9} style={styles.empty}>No managers found</td></tr>
+                  <tr><td colSpan={7} style={styles.empty}>No managers found</td></tr>
                 ) : (
                   users.map((u, i) => {
                     const fullName = u.fullName || u.name || '—';
                     return (
                       <tr key={u._id || u.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
                         <td style={{ ...styles.td, color: '#94a3b8', fontWeight: 600, width: 48 }}>{i + 1}</td>
+                        <td style={styles.td}>{u.managerId || '—'}</td>
                         <td style={styles.td}>
                           <div style={styles.avatarCell}>
                             <div style={styles.avatar}>{initials(fullName)}</div>
@@ -92,15 +92,7 @@ export default function ManagerList() {
                         </td>
                         <td style={styles.td}>{u.email || '—'}</td>
                         <td style={styles.td}>{formatPhoneDisplay(u.mobile)}</td>
-                        <td style={styles.td}>{u.department || '—'}</td>
-                        <td style={styles.td}>{u.officeLocation || '—'}</td>
-                        <td style={styles.td}>{u.managerCode || '—'}</td>
-                        <td style={styles.td}><span style={styles.roleBadge}>{u.role || 'MANAGER'}</span></td>
-                        <td style={styles.td}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
-                            <span style={styles.statusDot} />Active
-                          </span>
-                        </td>
+                        <td style={styles.td}>{u.address || '—'}</td>
                       </tr>
                     );
                   })

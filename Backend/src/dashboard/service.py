@@ -93,7 +93,7 @@ class DashboardService:
         db = MongoDatabase.get_db()
 
         officers = list(db.users.find(
-            {"role": {"$in": ["FIELD_OFFICER", "OFFICER", "MANAGER"]}, "isDeleted": False}
+            {"role": {"$in": ["FIELD_OFFICER", "OFFICER", "CONSTITUENCY_MANAGER"]}, "isDeleted": False}
         ))
 
         team_data = []

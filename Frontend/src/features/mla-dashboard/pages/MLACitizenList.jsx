@@ -83,8 +83,8 @@ export default function MLACitizenList() {
 
         <div style={card}>
           {/* Table header */}
-          <div style={{ display: "grid", gridTemplateColumns: "48px 2fr 1fr 2fr 1.2fr 120px 100px", borderBottom: "1px solid #EAEDF4", background: "#F9FAFC" }}>
-            {["#", "Name", "Citizen ID", "Email", "Mobile", "Role", "Status"].map((h) => (
+          <div style={{ display: "grid", gridTemplateColumns: "48px 2fr 1fr 2fr 1.2fr", borderBottom: "1px solid #EAEDF4", background: "#F9FAFC" }}>
+            {["#", "Name", "Citizen ID", "Email", "Mobile"].map((h) => (
               <div key={h} style={{ padding: "10px 14px", font: "700 11px 'Hanken Grotesk'", color: "#8590A6", textTransform: "uppercase", letterSpacing: "0.07em" }}>{h}</div>
             ))}
           </div>
@@ -108,7 +108,7 @@ export default function MLACitizenList() {
               const isOtp = (u.email || "").includes("@otp.local");
               return (
                 <div key={u._id || u.id}
-                  style={{ display: "grid", gridTemplateColumns: "48px 2fr 1fr 2fr 1.2fr 120px 100px", borderBottom: i < filtered.length - 1 ? "1px solid #F4F6FA" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFD", alignItems: "center" }}>
+                  style={{ display: "grid", gridTemplateColumns: "48px 2fr 1fr 2fr 1.2fr", borderBottom: i < filtered.length - 1 ? "1px solid #F4F6FA" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFD", alignItems: "center" }}>
 
                   {/* # */}
                   <div style={{ padding: "13px 14px", font: "600 12px 'Hanken Grotesk'", color: "#B0B9CC" }}>{i + 1}</div>
@@ -134,19 +134,6 @@ export default function MLACitizenList() {
                   {/* Mobile */}
                   <div style={{ padding: "13px 14px", font: "500 13px 'Hanken Grotesk'", color: "#16233C" }}>
                     {formatPhoneDisplay(u.mobile) || "—"}
-                  </div>
-
-                  {/* Role */}
-                  <div style={{ padding: "13px 14px" }}>
-                    <span style={{ display: "inline-block", padding: "3px 12px", borderRadius: 20, font: "600 11px 'Hanken Grotesk'", background: "#EEF2FF", color: "#2B5BD7" }}>
-                      {u.role || "CITIZEN"}
-                    </span>
-                  </div>
-
-                  {/* Status */}
-                  <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 6, font: "600 12px 'Hanken Grotesk'", color: u.status === "INACTIVE" ? "#C8453A" : "#1E8A5B" }}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: u.status === "INACTIVE" ? "#C8453A" : "#1E8A5B", flexShrink: 0 }} />
-                    {u.status === "INACTIVE" ? "Inactive" : "Active"}
                   </div>
                 </div>
               );

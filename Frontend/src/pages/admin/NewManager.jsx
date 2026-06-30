@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../shared/services/api';
 import { normalizePhone } from '../../utils/phoneUtils';
+import { ROUTES } from '../../app/routes/RouteConstants';
 import "./NewMLA.css";
 
 export default function NewManager() {
@@ -9,21 +11,28 @@ export default function NewManager() {
   const [mobile, setMobile] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/api/auth/register', {
+      const payload = {
         fullName: name,
         email,
         mobile: normalizePhone(mobile),
         role: 'CONSTITUENCY_MANAGER',
         password: 'ChangeMe123',
-      });
+      };
+      console.log("[NewManager] Submitting registration with payload:", payload);
+      await api.post('/api/auth/register', payload);
+      console.log("[NewManager] Registration successful!");
       setMessage('Manager created. Default password: ChangeMe123');
       setName(''); setEmail(''); setMobile('');
+      // Navigate to manager list after successful creation
+      setTimeout(() => navigate(ROUTES.managerList), 1500);
     } catch (err) {
+      console.error("[NewManager] Registration error:", err);
       setMessage('Failed to create manager');
     } finally { setLoading(false); }
   };

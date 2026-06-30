@@ -158,3 +158,32 @@ class IDGenerator:
         fallback_id = f"EVT-{int(datetime.utcnow().timestamp()) % 10000:04d}"
         logger.warning(f"Could not find unique ID in {max_attempts} attempts. Using fallback: {fallback_id}")
         return fallback_id
+    
+    @staticmethod
+    def generate_manager_id() -> str:
+        """
+        Generate a unique 4-digit manager ID
+        Format: MGR-XXXX (where XXXX is a 4-digit number)
+        
+        Returns:
+            str: Unique manager ID like "MGR-1234"
+        """
+        db = MongoDatabase.get_db()
+        max_attempts = 1000
+        
+        for attempt in range(max_attempts):
+            # Generate random 4-digit number
+            four_digit = random.randint(1000, 9999)
+            manager_id = f"MGR-{four_digit}"
+            
+            # Check if ID already exists
+            existing = db.users.find_one({"managerId": manager_id})
+            
+            if not existing:
+                logger.info(f"Generated unique Manager ID: {manager_id}")
+                return manager_id
+        
+        # Fallback: use timestamp + random suffix if all attempts fail
+        fallback_id = f"MGR-{int(datetime.utcnow().timestamp()) % 10000:04d}"
+        logger.warning(f"Could not find unique ID in {max_attempts} attempts. Using fallback: {fallback_id}")
+        return fallback_id
