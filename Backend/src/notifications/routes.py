@@ -11,8 +11,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from notifications.model import NotificationResponse
 from notifications.service import NotificationService
 from pydantic import BaseModel, EmailStr
-from tasks.background import (notify_all_citizens as _notify_all_task,
-                               notify_ward_citizens as _notify_ward_task)
+from tasks.background import notify_all_citizens as _notify_all_task
+from tasks.background import notify_ward_citizens as _notify_ward_task
 from utils.email_service import send_otp_via_email
 from utils.helper import Helper
 from utils.jwt import TokenManager
@@ -70,8 +70,8 @@ async def get_unread_notifications(
     current_user: dict = Depends(get_current_user_optional)
 ):
     """Get unread notifications"""
-    from fastapi.responses import JSONResponse
     from fastapi.encoders import jsonable_encoder
+    from fastapi.responses import JSONResponse
     try:
         user_id = current_user.get("user_id") if current_user else None
         notifications = NotificationService.get_unread_notifications(user_id)
@@ -445,13 +445,13 @@ async def check_email_status():
     Returns:
         Status information
     """
-    configured = bool(os.getenv("SMTP_EMAIL"))
-    
+    configured = bool(os.getenv("SMTP_USERNAME") or os.getenv("SMTP_EMAIL") or os.getenv("SENDER_EMAIL"))
+
     return success_response(
         {
             "configured": configured,
             "smtp_server": os.getenv("SMTP_SERVER", "smtp.gmail.com"),
-            "smtp_email": os.getenv("SMTP_EMAIL", "not_configured")
+            "smtp_email": os.getenv("SENDER_EMAIL") or os.getenv("SMTP_USERNAME") or os.getenv("SMTP_EMAIL") or "not_configured"
         },
         "Email service status retrieved"
     )

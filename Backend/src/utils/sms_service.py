@@ -158,11 +158,7 @@ def send_via_fast2sms(phone_number: str, otp: str) -> bool:
         params = {
             "authorization": api_key,
             "route": "q",
-<<<<<<< HEAD
-            "message": f"Your N2N Bridge OTP is {otp}. Valid for 5 minutes. Do not share.",
-=======
-            "message": f"Your N2N OTP is {otp}. Valid for 5 minutes. Do not share.",
->>>>>>> 14d2bd7f8d1bd9b8468e4e6a71dd070529d5ce32
+
             "numbers": number,
             "flash": 0,
         }

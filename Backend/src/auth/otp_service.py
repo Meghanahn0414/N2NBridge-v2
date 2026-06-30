@@ -1,11 +1,11 @@
 """
 OTP Service for authentication
 """
+import json
+import logging
 import random
 import re
 import time
-import json
-import logging
 from typing import Dict
 
 logger = logging.getLogger(__name__)

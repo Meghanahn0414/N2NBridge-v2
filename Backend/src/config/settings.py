@@ -87,9 +87,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT: str = "200/minute"
 
     # ── Email ──────────────────────────────────────────────────────────────────
-    SMTP_SERVER: Optional[str] = None
-    SMTP_PORT: Optional[int] = None
-    SENDER_EMAIL: Optional[str] = None
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME: Optional[str] = os.getenv("SMTP_USERNAME") or os.getenv("SMTP_EMAIL") or os.getenv("SENDER_EMAIL")
+    SMTP_PASSWORD: Optional[str] = os.getenv("SMTP_PASSWORD")
+    SENDER_EMAIL: Optional[str] = os.getenv("SENDER_EMAIL") or os.getenv("SMTP_USERNAME") or os.getenv("SMTP_EMAIL")
 
     # ── SMS / Twilio ───────────────────────────────────────────────────────────
     SMS_API_KEY: Optional[str] = None
