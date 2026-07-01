@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     # ── MongoDB ────────────────────────────────────────────────────────────────
     MONGODB_URL: str = os.getenv("MONGODB_URL", os.getenv("MONGODB_URI", "mongodb://localhost:27017"))
     MONGODB_DB: str = os.getenv("MONGODB_DB", "crm_database")
+    # Master DB stores the representative registry (slug → tenant db_name mapping)
+    MONGODB_MASTER_DB: str = os.getenv("MONGODB_MASTER_DB", "crm_master")
 
     # ── JWT ────────────────────────────────────────────────────────────────────
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"

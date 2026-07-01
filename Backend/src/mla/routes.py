@@ -10,7 +10,7 @@ GET /api/mla/public-profile    ← citizen-facing: MLA card for the citizen's co
 
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from mla.sentiment_service import (
     get_public_sentiment,
@@ -34,7 +34,8 @@ router = APIRouter(prefix="/api/mla", tags=["MLA Insights"])
 logger = logging.getLogger(__name__)
 
 
-def _get_optional_user(authorization: Optional[str] = Header(None, alias="Authorization")):
+def _get_optional_user(request: Request):
+    authorization = request.headers.get("Authorization")
     if not authorization:
         return None
     token = TokenManager.extract_token_from_header(authorization)

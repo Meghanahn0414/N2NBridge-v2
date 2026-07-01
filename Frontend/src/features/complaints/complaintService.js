@@ -1,16 +1,11 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim();
 const API_BASE = API_BASE_URL ? `${API_BASE_URL.replace(/\/$/, "")}/api` : "/api";
 
-function getAuthHeaders(contentType = "application/json") {
-  const token = (typeof sessionStorage !== "undefined" && sessionStorage.getItem("token")) || localStorage.getItem("token");
+function getHeaders(contentType = "application/json") {
   const headers = {};
 
   if (contentType !== null) {
     headers["Content-Type"] = contentType;
-  }
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
   }
 
   return headers;
@@ -78,14 +73,14 @@ async function request(path, options) {
 export function fetchComplaintCategories() {
   return request(`/grievances/categories`, {
     method: "GET",
-    headers: getAuthHeaders(),
+    headers: getHeaders(),
   });
 }
 
 export function createComplaint(payload) {
   return request(`/grievances`, {
     method: "POST",
-    headers: getAuthHeaders(),
+    headers: getHeaders(),
     body: JSON.stringify(payload),
   });
 }
@@ -98,14 +93,14 @@ export function getCitizenComplaints() {
 
   return request(`/grievances/citizen/${citizenId}`, {
     method: "GET",
-    headers: getAuthHeaders(),
+    headers: getHeaders(),
   });
 }
 
 export function getComplaintById(id) {
   return request(`/grievances/${id}`, {
     method: "GET",
-    headers: getAuthHeaders(),
+    headers: getHeaders(),
   });
 }
 
@@ -115,7 +110,7 @@ export function uploadComplaintAttachment(grievanceId, file) {
 
   return request(`/grievances/${grievanceId}/upload`, {
     method: "POST",
-    headers: getAuthHeaders(null),
+    headers: getHeaders(null),
     body: formData,
   });
 }

@@ -1,194 +1,152 @@
 """
-User Model and Schemas
+User Models and Schemas
 """
 from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-# from bson import ObjectId
+
+# ── Representative Register ────────────────────────────────────────────────────
+
+class RepresentativeRegisterRequest(BaseModel):
+    """Request body for POST /api/auth/representative/register"""
+    name:               str      = Field(..., description="Full name of the representative")
+    rep_type:           str      = Field(..., description="MLA | MP | COUNCILLOR")
+    mobile:             str      = Field(..., description="10-digit mobile number")
+    email:              EmailStr = Field(..., description="Email address")
+    password:           str      = Field(..., description="Login password")
+    location:           str      = Field(..., description="Constituency / ward name — used to generate the invite slug")
+
+    assembly_name:      Optional[str] = Field(None, description="Required for MLA — Assembly constituency name")
+    parliamentary_name: Optional[str] = Field(None, description="Required for MP — Parliamentary constituency name")
+    ward_id:            Optional[str] = Field(None, description="Required for COUNCILLOR — Ward ID / number")
+    ward_name:          Optional[str] = Field(None, description="COUNCILLOR — Ward name")
+
+    taluk:    Optional[str] = Field(None, description="Taluk / Tehsil")
+    district: Optional[str] = Field(None, description="District name")
+    state:    Optional[str] = Field(None, description="State name")
 
 
-class UserBase(BaseModel):
-    """Base user schema"""
+# ── Staff Register ─────────────────────────────────────────────────────────────
+
+class StaffRegisterRequest(BaseModel):
+    """Request body for POST /api/auth/staff/register"""
+    name:        str      = Field(..., description="Full name")
+    mobile:      str      = Field(..., description="10-digit mobile number")
+    email:       EmailStr = Field(..., description="Email address")
+    password:    str      = Field(..., description="Login password")
+    designation: Optional[str] = Field("Staff", description="PA | Field Officer | Manager | Volunteer")
+    role:        Optional[str] = Field("STAFF",  description="STAFF (default)")
+
+
+# ── Citizen Register (OTP flow) ────────────────────────────────────────────────
+
+class SendOtpRequest(BaseModel):
+    """Step 1 — send OTP to citizen mobile or email"""
+    type:  str = Field(..., description="phone  or  email")
+    value: str = Field(..., description="Mobile number or email address")
+
+
+class VerifyOtpRequest(BaseModel):
+    """Step 2 — verify OTP and register / login citizen"""
+    value:   str           = Field(..., description="Same mobile or email used in send-otp")
+    otp:     str           = Field(..., description="6-digit OTP received")
+    db_name: Optional[str] = Field(None, description="Tenant DB name (internal use)")
+
+
+class CitizenRegisterRequest(BaseModel):
+    """Step 2 — verify OTP and register citizen by selecting their representative"""
+    value:              str           = Field(..., description="Mobile number or email used in send-otp")
+    otp:                str           = Field(..., description="6-digit OTP received")
+    rep_type:           str           = Field(..., description="MLA | MP | COUNCILLOR")
+    assembly_name:      Optional[str] = Field(None, description="Assembly constituency name — required when rep_type is MLA")
+    parliamentary_name: Optional[str] = Field(None, description="Parliamentary constituency name — required when rep_type is MP")
+    ward_id:            Optional[str] = Field(None, description="Ward ID — required when rep_type is COUNCILLOR")
+
+
+# ── Login ──────────────────────────────────────────────────────────────────────
+
+class UserLoginRequest(BaseModel):
+    email:    EmailStr = Field(..., description="Registered email address")
+    password: str      = Field(..., description="Password")
+
+
+class UserPasswordChange(BaseModel):
+    oldPassword: str = Field(..., description="Current password")
+    newPassword: str = Field(..., description="New password")
+
+
+# ── Profile models ─────────────────────────────────────────────────────────────
+
+class UserCreate(BaseModel):
+    """Legacy registration — backward-compat only."""
     fullName: str
-    mobile: str
-    email: EmailStr
-    role: str
-    constituencyId: Optional[str] = None
-    wardId: Optional[str] = None
-    boothNumber: Optional[str] = None
-    address: Optional[str] = None
-    profileImage: Optional[str] = None
-    # Representative-specific fields
-    district: Optional[str] = None
-    partyName: Optional[str] = None
-    # Manager-specific fields
-    department: Optional[str] = None
-    officeLocation: Optional[str] = None
-    managerCode: Optional[str] = None
-    # Field Officer-specific fields
-    assignedArea: Optional[str] = None
-    managerId: Optional[str] = None
-    fieldOfficerId: Optional[str] = None
-
-
-class UserCreate(UserBase):
-    """User creation schema"""
+    mobile:   str
+    email:    EmailStr
+    role:     Optional[str] = "MLA"
     password: str
 
 
 class UserUpdate(BaseModel):
-    """User update schema"""
-    fullName: Optional[str] = None
-    mobile: Optional[str] = None
-    email: Optional[EmailStr] = None
-    age: Optional[int] = None
-    address: Optional[str] = None
-    profileImage: Optional[str] = None
-    constituencyId: Optional[str] = None
-    wardId: Optional[str] = None
-    status: Optional[str] = None
-    # MLA / Representative profile fields
-    title: Optional[str] = None
-    bio: Optional[str] = None
-    officePhone: Optional[str] = None
-    officeAddress: Optional[str] = None
-    showApprovalRating: Optional[bool] = None
-    showResolvedCount: Optional[bool] = None
-    notifPreferences: Optional[dict] = None
-    broadcastSignature: Optional[str] = None
-    defaultBroadcastType: Optional[str] = None
+    """Update representative / staff profile."""
+    fullName:           Optional[str]      = Field(None, description="Full name")
+    mobile:             Optional[str]      = Field(None, description="Mobile number")
+    email:              Optional[EmailStr] = Field(None, description="Email address")
+    address:            Optional[str]      = Field(None, description="Office / home address")
+    profileImage:       Optional[str]      = Field(None, description="Profile photo URL")
+    age:                Optional[int]      = None
+    gender:             Optional[str]      = Field(None, description="Male | Female | Other")
+    bio:                Optional[str]      = Field(None, description="Short bio / about")
+    officePhone:        Optional[str]      = Field(None, description="Office phone number")
+    officeAddress:      Optional[str]      = Field(None, description="Office address")
+    assembly_name:      Optional[str]      = None
+    parliamentary_name: Optional[str]      = None
+    ward_id:            Optional[str]      = None
+    ward_name:          Optional[str]      = None
+    taluk:              Optional[str]      = None
+    district:           Optional[str]      = None
+    state:              Optional[str]      = None
 
 
 class UserResponse(BaseModel):
-    """User response schema"""
-    id: str = Field(alias="_id")
-    citizenId: Optional[str] = None
-    fullName: Optional[str] = None
-    mobile: Optional[str] = None
-    email: Optional[str] = None
-    role: Optional[str] = None
-    constituencyId: Optional[str] = None
-    wardId: Optional[str] = None
-    boothNumber: Optional[str] = None
-    address: Optional[str] = None
-    profileImage: Optional[str] = None
-    age: Optional[int] = None
-    gender: Optional[str] = None
-    title: Optional[str] = None
-    bio: Optional[str] = None
-    officePhone: Optional[str] = None
-    officeAddress: Optional[str] = None
-    showApprovalRating: Optional[bool] = None
-    showResolvedCount: Optional[bool] = None
-    notifPreferences: Optional[dict] = None
-    broadcastSignature: Optional[str] = None
-    defaultBroadcastType: Optional[str] = None
-    status: Optional[str] = 'ACTIVE'
-    lastLoginAt: Optional[datetime] = None
-    createdAt: Optional[datetime] = None
-    updatedAt: Optional[datetime] = None
-    # Role-specific fields returned in list/detail views
-    district: Optional[str] = None
-    partyName: Optional[str] = None
-    department: Optional[str] = None
-    officeLocation: Optional[str] = None
-    managerCode: Optional[str] = None
-    assignedArea: Optional[str] = None
-    managerId: Optional[str] = None
-    fieldOfficerId: Optional[str] = None
+    """User response — representative or staff."""
+    id:                 str             = Field(alias="_id")
+    fullName:           Optional[str]   = None
+    mobile:             Optional[str]   = None
+    email:              Optional[str]   = None
+    role:               Optional[str]   = None
+    title:              Optional[str]   = None
+    status:             Optional[str]   = "ACTIVE"
+    address:            Optional[str]   = None
+    profileImage:       Optional[str]   = None
+    age:                Optional[int]   = None
+    gender:             Optional[str]   = None
+    bio:                Optional[str]   = None
+    officePhone:        Optional[str]   = None
+    officeAddress:      Optional[str]   = None
+    assembly_name:      Optional[str]   = None
+    parliamentary_name: Optional[str]   = None
+    ward_id:            Optional[str]   = None
+    ward_name:          Optional[str]   = None
+    taluk:              Optional[str]   = None
+    district:           Optional[str]   = None
+    state:              Optional[str]   = None
+    createdAt:          Optional[datetime] = None
+    updatedAt:          Optional[datetime] = None
 
     model_config = ConfigDict(populate_by_name=True)
-
-
-class UserLoginRequest(BaseModel):
-    """Login request"""
-    email: EmailStr
-    password: str
-
-
-class UserPasswordChange(BaseModel):
-    """Password change request"""
-    oldPassword: str
-    newPassword: str
 
 
 class TokenResponse(BaseModel):
-    """Token response"""
     accessToken: str
-    tokenType: str = "bearer"
-    user: UserResponse
-
-
-class SendOtpRequest(BaseModel):
-    """Send OTP request"""
-    type: str = Field(..., description="'phone' or 'email'")
-    value: str = Field(..., description="Phone number or email address")
-
-
-class VerifyOtpRequest(BaseModel):
-    """Verify OTP request"""
-    value: str = Field(..., description="Phone number or email address")
-    otp: str = Field(..., description="6-digit OTP code")
+    tokenType:   str = "bearer"
+    user:        UserResponse
 
 
 class OtpResponse(BaseModel):
-    """OTP response"""
-    success: bool
-    message: str
-    token: Optional[str] = None
-    role: Optional[str] = None
-    user: Optional[UserResponse] = None
-
-
-class ConstituencyCreate(BaseModel):
-    """Constituency creation"""
-    constituencyCode: Optional[str] = None
-    name: str
-    district: str
-    state: str
-    representativeId: Optional[str] = None
-
-
-class ConstituencyUpdate(BaseModel):
-    """Constituency update"""
-    constituencyCode: Optional[str] = None
-    name: Optional[str] = None
-    district: Optional[str] = None
-    state: Optional[str] = None
-    representativeId: Optional[str] = None
-
-
-class ConstituencyResponse(BaseModel):
-    """Constituency response"""
-    id: str = Field(alias="_id")
-    constituencyCode: Optional[str] = None
-    name: Optional[str] = None
-    district: Optional[str] = None
-    state: Optional[str] = None
-    representativeId: Optional[str] = None
-    wardCount: Optional[int] = 0
-    createdAt: Optional[datetime] = None
-    updatedAt: Optional[datetime] = None
-
-    model_config = ConfigDict(populate_by_name=True)
-
-
-class WardCreate(BaseModel):
-    """Ward creation"""
-    wardNumber: str
-    wardName: str
-    constituencyId: str
-
-
-class WardResponse(BaseModel):
-    """Ward response"""
-    id: str = Field(alias="_id")
-    wardNumber: Optional[str] = None
-    wardName: Optional[str] = None
-    constituencyId: Optional[str] = None
-    createdAt: Optional[datetime] = None
-    updatedAt: Optional[datetime] = None
-
-    model_config = ConfigDict(populate_by_name=True)
+    success:     bool
+    message:     str
+    accessToken: Optional[str]          = None
+    role:        Optional[str]          = None
+    user:        Optional[UserResponse] = None

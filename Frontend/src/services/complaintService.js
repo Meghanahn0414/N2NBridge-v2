@@ -6,14 +6,9 @@ import { getCurrentUserId } from "../features/complaints/complaintService";
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000"}/api`;
 
-function getAuthToken() {
-  return (typeof sessionStorage !== "undefined" && sessionStorage.getItem("token")) || localStorage.getItem("token");
-}
-
 function getHeaders() {
   return {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${getAuthToken()}`,
   };
 }
 

@@ -1,84 +1,167 @@
 """
-Citizen Routes
-"""
-from fastapi import APIRouter, Depends, HTTPException, status
-from citizens.service import CitizenService
-from citizens.model import CitizenProfileUpdate, CitizenProfileResponse
-from auth.routes import get_current_user
-from users.service import UserService
-import logging
+Citizen Routes — Multi-Tenant
 
-router = APIRouter(prefix="/api/citizen", tags=["Citizen"])
+GET  /api/citizens/me                   Own profile
+PUT  /api/citizens/me                   Update own profile
+GET  /api/citizens/my-representatives   Councillor, MLA, MP lookup (from master DB)
+GET  /api/citizens/{id}                 Rep/Staff: get citizen profile
+GET  /api/citizens/                     Rep/Staff: list all citizens
+"""
+import logging
+from datetime import datetime, timezone
+from typing import Optional
+
+from bson import ObjectId
+from citizens.model import CitizenProfileUpdate, CitizenRegisterDetails
+from fastapi import APIRouter, Depends, HTTPException, Query
+from utils.response import success_response
+from utils.tenant import get_tenant_db, require_auth
+router = APIRouter(prefix="/api/citizens", tags=["Citizen"])
 logger = logging.getLogger(__name__)
 
 
-@router.get("/profile", response_model=CitizenProfileResponse)
-async def get_profile(current_user: dict = Depends(get_current_user)):
-    """Get citizen profile"""
+def _doc(d: dict) -> dict:
+    if not d:
+        return {}
+    d = dict(d)
+    d["id"] = str(d.pop("_id", ""))
+    for k, v in d.items():
+        if isinstance(v, ObjectId):
+            d[k] = str(v)
+        elif isinstance(v, datetime):
+            d[k] = v.isoformat()
+    return d
+
+
+def _oid(val: str) -> ObjectId:
     try:
-        user_id = current_user.get("user_id")
-        profile = CitizenService.get_citizen_profile(user_id)
-        
-        if not profile:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Citizen profile not found"
-            )
-        
-        # Convert ObjectId to string
-        profile["_id"] = str(profile["_id"])
-        return profile
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching citizen profile: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch profile")
+        return ObjectId(val)
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Invalid ID: {val}")
 
 
-@router.put("/profile")
-async def update_profile(
-    update_data: CitizenProfileUpdate,
-    current_user: dict = Depends(get_current_user)
+# ── Citizen: register details (first-time profile completion) ─────────────────
+
+@router.post("/register-details", summary="Complete citizen profile after OTP login")
+async def register_citizen_details(
+    body: CitizenRegisterDetails,
+    db=Depends(get_tenant_db),
+    user=Depends(require_auth),
 ):
-    """Update citizen profile"""
-    from utils.helper import Helper
-    from fastapi.responses import JSONResponse
-    from fastapi.encoders import jsonable_encoder
-    try:
-        user_id = current_user.get("user_id")
+    """
+    **Called immediately after OTP verification.**
 
-        # Verify user is a citizen
-        user = UserService.get_user_by_id(user_id)
-        if not user or user.get("role") != "CITIZEN":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only citizens can update citizen profiles"
-            )
+    Citizen fills in their personal details for the first time.
+    Requires the Bearer token returned by `POST /api/auth/citizen/register`.
 
-        # Build update payload (only fields sent by the client)
-        update_fields = update_data.model_dump(exclude_unset=True)
+    All fields except `name` are optional and can be updated later via `PUT /me`.
+    """
+    citizen_id = user.get("user_id")
+    update = body.model_dump(exclude_unset=True)
+    if not update:
+        raise HTTPException(status_code=400, detail="No fields provided")
+    update["updated_at"] = datetime.now(timezone.utc)
+    result = db.citizens.update_one({"_id": _oid(citizen_id)}, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Citizen not found")
+    citizen = db.citizens.find_one({"_id": _oid(citizen_id)})
+    return success_response(_doc(citizen), "Profile saved successfully")
 
-        # Update profile
-        ok = CitizenService.update_citizen_profile(user_id, update_fields)
-        if not ok:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to update profile — user record may be missing isDeleted:false"
-            )
 
-        # Fetch refreshed profile and make it JSON-safe
-        profile = CitizenService.get_citizen_profile(user_id) or {}
-        profile = Helper.convert_mongo_doc(profile)
+# ── Citizen: own profile ───────────────────────────────────────────────────────
 
-        # jsonable_encoder converts datetime → ISO string, ObjectId strings stay as-is
-        return JSONResponse(content=jsonable_encoder({
-            "success": True,
-            "message": "Profile updated successfully",
-            "data": {"profile": profile},
-            "statusCode": 200,
-        }))
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating citizen profile: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to update profile: {e}")
+@router.get("/me")
+async def get_my_profile(db=Depends(get_tenant_db), user=Depends(require_auth)):
+    """Get the logged-in citizen's profile."""
+    citizen_id = user.get("user_id")
+    citizen = db.citizens.find_one({"_id": _oid(citizen_id)})
+    if not citizen:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return success_response(_doc(citizen), "Profile retrieved")
+
+
+@router.put("/me")
+async def update_my_profile(body: CitizenProfileUpdate, db=Depends(get_tenant_db), user=Depends(require_auth)):
+    """Update citizen profile."""
+    citizen_id = user.get("user_id")
+    update = body.model_dump(exclude_unset=True)
+    if not update:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    update["updated_at"] = datetime.now(timezone.utc)
+    result = db.citizens.update_one({"_id": _oid(citizen_id)}, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Citizen not found")
+    citizen = db.citizens.find_one({"_id": _oid(citizen_id)})
+    return success_response(_doc(citizen), "Profile updated")
+
+
+@router.get("/my-representatives")
+async def my_representatives(db=Depends(get_tenant_db), user=Depends(require_auth)):  # noqa: ARG001
+    """
+    Return the Councillor, MLA, and MP for this citizen.
+
+    In the multi-tenant model, a citizen belongs to exactly one representative's
+    DB. This endpoint returns that representative's profile and any linked higher-
+    tier representatives stored in the master DB.
+    """
+    # Own tenant's representative
+    rep = db.users.find_one({"role": "REPRESENTATIVE"}, {
+        "_id": 1, "fullName": 1, "title": 1, "mobile": 1,
+        "email": 1, "officeAddress": 1, "profileImage": 1,
+    })
+
+    result: dict = {"councillor": None, "mla": None, "mp": None}
+    if rep:
+        rep_doc = _doc(rep)
+        title = (rep.get("title") or "").lower()
+        if title == "councillor":
+            result["councillor"] = rep_doc
+        elif title == "mla":
+            result["mla"] = rep_doc
+        elif title == "mp":
+            result["mp"] = rep_doc
+
+    return success_response(result, "Representatives retrieved")
+
+
+# ── Rep/Staff: citizen list and detail ────────────────────────────────────────
+
+@router.get("/")
+async def list_citizens(
+    page:     int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    search:   Optional[str] = None,
+    db=Depends(get_tenant_db),
+    user=Depends(require_auth),
+):
+    """Representative/Staff: list all registered citizens."""
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    q: dict = {"is_deleted": {"$ne": True}}
+    if search:
+        q["$or"] = [
+            {"name":       {"$regex": search, "$options": "i"}},
+            {"mobile":     {"$regex": search, "$options": "i"}},
+            {"citizen_id": {"$regex": search, "$options": "i"}},
+        ]
+    skip  = (page - 1) * per_page
+    items = list(db.citizens.find(q).sort("created_at", -1).skip(skip).limit(per_page))
+    total = db.citizens.count_documents(q)
+    return success_response(
+        {"items": [_doc(c) for c in items], "total": total, "page": page, "per_page": per_page},
+        "Citizens retrieved",
+    )
+
+
+@router.get("/{citizen_id}")
+async def get_citizen(citizen_id: str, db=Depends(get_tenant_db), user=Depends(require_auth)):
+    """Rep/Staff: get a citizen's full profile including grievance count."""
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    citizen = db.citizens.find_one({"_id": _oid(citizen_id)})
+    if not citizen:
+        raise HTTPException(status_code=404, detail="Citizen not found")
+    data = _doc(citizen)
+    data["grievance_count"] = db.grievances.count_documents({"citizen_id": citizen_id})
+    data["open_grievances"]  = db.grievances.count_documents({"citizen_id": citizen_id, "status": "Open"})
+    return success_response(data, "Citizen retrieved")
