@@ -353,6 +353,7 @@ async def check_sms_status():
         Status information
     """
     providers = {
+        "fast2sms": bool(os.getenv("FAST2SMS_API_KEY")),
         "twilio": bool(os.getenv("TWILIO_ACCOUNT_SID")),
         "aws_sns": bool(os.getenv("AWS_ACCESS_KEY_ID")),
         "custom_api": bool(os.getenv("SMS_API_URL")),

@@ -330,11 +330,62 @@ export default function ExecutiveDashboard() {
         hasData: true,
         positive: { pct: sentDist.positivePct ?? 0 },
         neutral:  { pct: sentDist.neutralPct  ?? 0 },
-        negative: { pct: sentDist.negativePct ?? 0 },
+        negative: { pct: sentDist.negativePct  ?? 0 },
         total: sentDist.total,
         positiveTrend: null,
         _fallback: true,
       } : null);
+
+  const dashboardCards = [
+    { id: "map", title: "Constituency Map", type: "map" },
+    { id: "overview", title: "Grievance Overview", type: "overview" },
+    { id: "category", title: "Grievances by Category", type: "category" },
+    { id: "notifications", title: "Recent Notifications", type: "notifications" },
+  ];
+
+  const categoryStats = analytics?.grievances?.byCategory
+    ? Object.entries(analytics.grievances.byCategory)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 7)
+      .map(([label, value]) => ({ label, value }))
+    : [
+      { label: "Water Supply", value: 320 },
+      { label: "Roads", value: 278 },
+      { label: "Electricity", value: 196 },
+      { label: "Healthcare", value: 154 },
+      { label: "Education", value: 98 },
+      { label: "Pension", value: 76 },
+      { label: "Revenue", value: 64 },
+    ];
+
+  const grievanceStats = analytics?.grievances?.byStatus || {};
+  const totalGrievances = analytics?.grievances?.total ?? 1248;
+  const overviewItems = [
+    { label: "New", value: grievanceStats.NEW ?? 218, color: "#2563EB" },
+    { label: "In Progress", value: grievanceStats.IN_PROGRESS ?? 453, color: "#F97316" },
+    { label: "Pending", value: grievanceStats.PENDING ?? 362, color: "#FBBF24" },
+    { label: "Resolved", value: grievanceStats.RESOLVED ?? 1067, color: "#22C55E" },
+    { label: "Escalated", value: grievanceStats.ESCALATED ?? 67, color: "#EF4444" },
+  ];
+  const overviewTotal = overviewItems.reduce((sum, item) => sum + item.value, 0);
+
+  const notificationItems = analytics?.notifications?.recent || [
+    { title: "High Priority: Water shortage reported in Ward 23, Shantipur", time: "10 mins ago", icon: "warning", color: "#DC2626" },
+    { title: "Project \"CC Road - Village Rampur\" is delayed", time: "35 mins ago", icon: "event", color: "#F59E0B" },
+    { title: "MGNREGA: 42 new works approved", time: "1 hour ago", icon: "task_alt", color: "#2563EB" },
+    { title: "Meeting Reminder: Village Visit to Navagaon on 24 May 2025", time: "2 hours ago", icon: "meeting_room", color: "#16A34A" },
+    { title: "Low Fund Utilization Alert in Education Sector", time: "3 hours ago", icon: "school", color: "#8B5CF6" },
+  ];
+
+  const mapLegend = [
+    { label: "Villages", color: "#16A34A" },
+    { label: "Schools", color: "#2563EB" },
+    { label: "Hospitals", color: "#7C3AED" },
+    { label: "Roads", color: "#F59E0B" },
+    { label: "Water Sources", color: "#3B82F6" },
+    { label: "Anganwadis", color: "#EF4444" },
+    { label: "Other Assets", color: "#64748B" },
+  ];
 
   return (
     <>
@@ -574,7 +625,8 @@ export default function ExecutiveDashboard() {
                 ));
               })()}
             </div>
-          </div>            
+          </div>
+
           {/* Approval by neighborhood */}
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
@@ -623,7 +675,139 @@ export default function ExecutiveDashboard() {
               </div>
             )}
           </div>
-          </div>
+        </div>
+
+        {/* Dashboard cards row below Trend and Support */}
+        <div style={{ display:"grid", gridTemplateColumns:"1.8fr 1fr 1fr 0.95fr", gap:20, alignItems:"start" }}>
+          {dashboardCards.map(card => {
+            if (card.type === "map") {
+              return (
+                <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+                    <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                  </div>
+                  <div style={{ minHeight:260, borderRadius:20, background:"linear-gradient(180deg,#FDFEFF 0%,#EFF6FF 100%)", border:"1px solid #E5E9F1", position:"relative", overflow:"hidden" }}>
+                    <div style={{ position:"absolute", inset:0, background:"url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=400 height=250 viewBox=\'0 0 400 250\'%3E%3Crect width=400 height=250 fill=%23F8FAFD/%3E%3Cpath d=\'M15 110C55 90 120 80 165 90C200 100 240 95 297 115C325 125 368 135 385 147\' stroke=%23D6E4FF stroke-width=8 fill=none/%3E%3Cpath d=\'M40 175C84 160 130 135 180 146C221 154 260 165 315 149\' stroke=%23E2E8F0 stroke-width=8 fill=none/%3E%3C/svg%3E') center/cover", opacity:0.85 }} />
+                    <div style={{ position:"absolute", top:36, left:32, width:18, height:18, borderRadius:999, background:"#16A34A", boxShadow:"0 0 0 6px rgba(22,163,74,.18)" }} />
+                    <div style={{ position:"absolute", top:80, left:120, width:18, height:18, borderRadius:999, background:"#2563EB", boxShadow:"0 0 0 6px rgba(37,99,235,.18)" }} />
+                    <div style={{ position:"absolute", top:130, left:210, width:18, height:18, borderRadius:999, background:"#7C3AED", boxShadow:"0 0 0 6px rgba(124,58,237,.18)" }} />
+                    <div style={{ position:"absolute", top:52, right:40, width:18, height:18, borderRadius:999, background:"#EF4444", boxShadow:"0 0 0 6px rgba(239,68,68,.18)" }} />
+                    <div style={{ position:"absolute", bottom:34, right:100, width:18, height:18, borderRadius:999, background:"#F59E0B", boxShadow:"0 0 0 6px rgba(245,158,11,.18)" }} />
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(4,minmax(0,1fr))", gap:10, marginTop:18, font:"500 11px 'Hanken Grotesk'", color:"#475569" }}>
+                    {mapLegend.map(item => (
+                      <div key={item.label} style={{ display:"flex", alignItems:"center", gap:8, minWidth:0, overflow:"hidden" }}>
+                        <span style={{ width:10, height:10, borderRadius:999, background:item.color, flexShrink:0 }} />
+                        <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+
+            if (card.type === "overview") {
+              const donutRadius = 64;
+              const circumference = 2 * Math.PI * donutRadius;
+              let offset = 0;
+              return (
+                <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+                    <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"120px 1fr", gap:20, alignItems:"center" }}>
+                    <div style={{ position:"relative", width:120, height:120 }}>
+                      <svg viewBox="0 0 160 160" style={{ width:"100%", height:"100%" }}>
+                        <circle cx="80" cy="80" r="64" fill="#F8FAFD" />
+                        {overviewItems.map((item, idx) => {
+                          const pct = item.value / overviewTotal;
+                          const dash = Math.round(circumference * pct);
+                          const dashOffset = Math.round(circumference * (1 - offset));
+                          offset += pct;
+                          return (
+                            <circle key={item.label}
+                              cx="80" cy="80" r="64"
+                              fill="none" stroke={item.color}
+                              strokeWidth="16"
+                              strokeDasharray={`${dash} ${circumference - dash}`}
+                              strokeDashoffset={dashOffset}
+                              transform="rotate(-90 80 80)"
+                              strokeLinecap="round"
+                            />
+                          );
+                        })}
+                        <circle cx="80" cy="80" r="44" fill="#fff" />
+                      </svg>
+                      <div style={{ position:"absolute", inset:0, display:"grid", placeItems:"center", font:"700 20px 'Hanken Grotesk'", color:"#16233C" }}>{totalGrievances}</div>
+                    </div>
+                    <div style={{ display:"grid", gap:12 }}>
+                      {overviewItems.map(item => (
+                        <div key={item.label} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, font:"600 12px 'Hanken Grotesk'", color:"#475569" }}>
+                          <span style={{ display:"inline-flex", alignItems:"center", gap:8, minWidth:120 }}>
+                            <span style={{ width:10, height:10, borderRadius:999, background:item.color, display:"inline-block" }} />
+                            {item.label}
+                          </span>
+                          <span>{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <button style={{ marginTop:18, width:"100%", height:44, background:"#2563EB", color:"#fff", border:"none", borderRadius:14, font:"700 13px 'Hanken Grotesk'", cursor:"pointer" }}>View All Grievances</button>
+                </div>
+              );
+            }
+
+            if (card.type === "category") {
+              const colors = ["#2563EB", "#F59E0B", "#22C55E", "#A855F7", "#EF4444", "#0C4A6E", "#10B981"];
+              const maxValue = categoryStats[0]?.value || 1;
+              return (
+                <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+                    <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                  </div>
+                  <div style={{ display:"grid", gap:14 }}>
+                    {categoryStats.map((item, idx) => {
+                      const width = Math.round((item.value / maxValue) * 100);
+                      return (
+                        <div key={item.label}>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8, font:"600 12px 'Hanken Grotesk'", color:"#16233C" }}>
+                            <span>{item.label}</span>
+                            <span>{item.value}</span>
+                          </div>
+                          <div style={{ height:10, borderRadius:99, background:"#F1F5F9" }}>
+                            <div style={{ width:`${width}%`, height:"100%", borderRadius:99, background: colors[idx % colors.length] }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+                  <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                  <button style={{ font:"600 12px 'Hanken Grotesk'", color:"#2563EB", background:"transparent", border:"none", cursor:"pointer" }}>View All</button>
+                </div>
+                <div style={{ display:"grid", gap:16 }}>
+                  {notificationItems.map((note, idx) => (
+                    <div key={idx} style={{ display:"flex", alignItems:"flex-start", gap:12, paddingBottom: idx < notificationItems.length-1 ? 14 : 0, borderBottom: idx < notificationItems.length-1 ? "1px solid #F0F2F7" : "none" }}>
+                      <div style={{ width:34, height:34, borderRadius:14, background:"#F8FAFD", display:"grid", placeItems:"center", color:note.color }}>
+                        <MS style={{ fontSize:18 }}>{note.icon}</MS>
+                      </div>
+                      <div>
+                        <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>{note.title}</div>
+                        <div style={{ font:"500 11px 'Hanken Grotesk'", color:"#6B7280" }}>{note.time}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </>
   );
