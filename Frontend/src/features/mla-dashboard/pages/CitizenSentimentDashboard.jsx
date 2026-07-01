@@ -41,12 +41,8 @@ function InfoTip({ text }) {
   return (
     <span
       style={{ position: "relative", display: "inline-flex", alignItems: "center", padding: "0 6px", minWidth: 20, cursor: "pointer" }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onClick={() => setOpen(open => !open)}
+      onClick={(e) => { e.stopPropagation(); setOpen(open => !open); }}
       tabIndex={0}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
       aria-label={text}
     >
       <span
@@ -65,7 +61,7 @@ function InfoTip({ text }) {
           fontWeight: 700,
           border: "1px solid #dbeafe",
           lineHeight: 1,
-          opacity: open ? 1 : 0.55,
+          opacity: open ? 1 : 0,
           transition: "opacity .12s ease",
           fontStyle: "italic",
           fontFamily: "Georgia, 'Times New Roman', serif",
@@ -743,15 +739,14 @@ export default function CitizenSentimentDashboard() {
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
                 {moving.drivers.map((d, i) => {
                   const pos = d.impact >= 0;
-                  const tooltip = (() => {
-                    const curTotal = d.total ?? 0;
-                    const curResolved = d.resolved ?? 0;
-                    const prevTotal = d.prev_total ?? 0;
-                    const prevResolved = d.prev_resolved ?? 0;
-                    const curRate = curTotal ? Math.round((curResolved / curTotal) * 100) : 0;
-                    const prevRate = prevTotal ? Math.round((prevResolved / prevTotal) * 100) : 0;
-                    return `${d.label}: ${curResolved} of ${curTotal} reports resolved this period (${curRate}%), compared to ${prevResolved} of ${prevTotal} last period (${prevRate}%). ${pos ? "Getting better at resolving this is helping public opinion." : "Falling behind on this is hurting public opinion."}`;
-                  })();
+                  const curTotal = d.total ?? 0;
+                  const curResolved = d.resolved ?? 0;
+                  const prevTotal = d.prev_total ?? 0;
+                  const prevResolved = d.prev_resolved ?? 0;
+                  const curRate = curTotal ? Math.round((curResolved / curTotal) * 100) : 0;
+                  const prevRate = prevTotal ? Math.round((prevResolved / prevTotal) * 100) : 0;
+                  const tooltip = `${d.label}: ${curResolved} of ${curTotal} reports resolved this period (${curRate}%), compared to ${prevResolved} of ${prevTotal} last period (${prevRate}%). ${pos ? "Getting better at resolving this is helping public opinion." : "Falling behind on this is hurting public opinion."}`;
+                  const scoreTooltip = `How ${pos ? "+" : ""}${d.impact} is worked out: take how much the resolution rate for "${d.label}" changed between periods (${prevRate}% → ${curRate}%), then scale it up a bit if there were a lot of reports. It's an estimate of how much this issue is moving public opinion, not a direct measurement of citizen sentiment on this specific issue.`;
 
                   return (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -765,9 +760,11 @@ export default function CitizenSentimentDashboard() {
                         </div>
                         <div style={{ font: "500 11px 'Hanken Grotesk'", color: "#8590A6" }}>{d.sub}</div>
                       </div>
-                      <span style={{ font: "700 14px 'Hanken Grotesk'", color: pos ? "#1E8A5B" : "#C8453A", flexShrink: 0 }}>
-                        {pos ? "+" : ""}{d.impact}
-                      </span>
+                      <InfoTip text={scoreTooltip}>
+                        <span style={{ font: "700 14px 'Hanken Grotesk'", color: pos ? "#1E8A5B" : "#C8453A", flexShrink: 0 }}>
+                          {pos ? "+" : ""}{d.impact}
+                        </span>
+                      </InfoTip>
                     </div>
                   );
                 })}

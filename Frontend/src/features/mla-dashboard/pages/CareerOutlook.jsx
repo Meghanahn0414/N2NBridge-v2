@@ -13,16 +13,12 @@ function InfoTip({ text, children }) {
   return (
     <span
       style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "0 8px", minWidth: 24, minHeight: 24 }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onClick={() => setOpen(o => !o)}
+      onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
       tabIndex={0}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
       aria-label={text}
     >
       {children}
-      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", opacity: open ? 1 : 0.55, transition: "opacity .12s ease" }}>
+      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", opacity: open ? 1 : 0, transition: "opacity .12s ease" }}>
         i
       </span>
       {open && (
@@ -200,7 +196,9 @@ function ReelectionGauge({ pct, voteShare, moToElection, momentum }) {
           <div style={{ font: "400 48px 'Newsreader',serif", color: "#fff", lineHeight: 1 }}>
             {pct != null ? `${pct}%` : "—"}
           </div>
-          <div style={{ font: "600 13px 'Hanken Grotesk',sans-serif", color: "rgba(255,255,255,.85)" }}>Likely to hold seat</div>
+          <InfoTip text={`This is a modeled estimate, not a poll. Steps: (1) your current approval rating is converted into an estimated vote share ${voteShare != null ? `(currently ~${voteShare}%)` : ""}; (2) that vote share is compared against a 55% "strong majority" bar, allowing for some uncertainty either way; (3) the result is the chance your vote share clears that bar if the election were held today. A low number usually means approval is currently low or there isn't much feedback data yet — it moves as your approval rating and momentum change.`}>
+            <span style={{ font: "600 13px 'Hanken Grotesk',sans-serif", color: "rgba(255,255,255,.85)" }}>Likely to hold seat</span>
+          </InfoTip>
         </div>
       </div>
 

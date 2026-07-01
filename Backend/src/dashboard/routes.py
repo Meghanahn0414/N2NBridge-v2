@@ -8,6 +8,7 @@ from bson import ObjectId
 from dashboard.service import DashboardService
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from utils.response import success_response
 from auth.routes import get_current_user
 
@@ -49,7 +50,10 @@ async def get_admin_dashboard():
 @router.get("/mla")
 async def get_mla_dashboard():
     try:
-        dashboard = DashboardService.get_mla_dashboard()
+        # Offload the blocking pymongo aggregation work to a thread so this
+        # request doesn't hold up the event loop (and every other request
+        # this worker is serving) for however long the query takes.
+        dashboard = await run_in_threadpool(DashboardService.get_mla_dashboard)
         dashboard = serialize_for_json(dashboard)
         return success_response(dashboard, "MLA dashboard retrieved")
     except Exception as e:

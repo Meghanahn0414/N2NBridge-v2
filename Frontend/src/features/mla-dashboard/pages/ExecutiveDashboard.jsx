@@ -106,16 +106,12 @@ function InfoTip({ text, children }) {
   return (
     <span
       style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "0 8px", minWidth: 24, minHeight: 24 }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onClick={() => setOpen(o => !o)}
+      onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
       tabIndex={0}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
       aria-label={text}
     >
       {children}
-      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", opacity: open ? 1 : 0.55, transition: "opacity .12s ease" }}>
+      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", opacity: open ? 1 : 0, transition: "opacity .12s ease" }}>
         i
       </span>
       {open && (

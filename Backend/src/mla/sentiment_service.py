@@ -179,22 +179,34 @@ def _ensure_sentiment_scores(db, limit: int = 500) -> None:
 
     logger.info(f"Scoring sentiment for {len(unanalysed)} grievances…")
 
+    # Was: one db.grievances.update_one() call per grievance in a loop — up to
+    # `limit` (500) individual round trips to MongoDB. Same result, single
+    # bulk_write() instead: one round trip covering all of them.
+    from pymongo import UpdateOne
+
+    now = datetime.utcnow()
+    ops = []
     for g in unanalysed:
         feedback = g.get("feedback") or {}
         rating   = feedback.get("rating")
         score    = _score_grievance(g.get("description", ""), feedback, rating)
-        try:
-            db.grievances.update_one(
+        ops.append(
+            UpdateOne(
                 {"_id": g["_id"]},
                 {
                     "$set": {
                         "aiAnalysis.sentimentScore": score,
-                        "aiAnalysis.analyzedAt": datetime.utcnow(),
+                        "aiAnalysis.analyzedAt": now,
                     }
                 },
             )
+        )
+
+    if ops:
+        try:
+            db.grievances.bulk_write(ops, ordered=False)
         except Exception as exc:
-            logger.error(f"Failed to write sentiment score for {g['_id']}: {exc}")
+            logger.error(f"Failed to bulk-write sentiment scores: {exc}", exc_info=True)
 
     logger.info("Sentiment scoring complete.")
 

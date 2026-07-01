@@ -20,12 +20,20 @@ class MongoDatabase:
         try:
             import os
             is_production = os.getenv("ENV", "development") == "production"
+            # Was maxPoolSize=10 in development. The dashboard now fires several
+            # MongoDB-querying requests concurrently on a single page load
+            # (parallel /api/mla/insights sub-queries + analytics + notification
+            # polling all landing around the same time), which was exceeding 10
+            # connections and causing OTHER, unrelated requests to queue for up
+            # to waitQueueTimeoutMS and fail with 500s while waiting for a free
+            # connection. Raised to comfortably cover that concurrency; still far
+            # below what a single local MongoDB instance can handle.
             cls._client = MongoClient(
                 connection_string,
                 serverSelectionTimeoutMS=5000,
                 connectTimeoutMS=10000,
                 socketTimeoutMS=30000,
-                maxPoolSize=50 if is_production else 10,
+                maxPoolSize=50 if is_production else 30,
                 minPoolSize=2,
                 maxIdleTimeMS=60000,
                 waitQueueTimeoutMS=5000,

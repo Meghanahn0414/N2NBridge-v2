@@ -127,14 +127,18 @@ export default function Header({ onMobileMenuClick }) {
     };
   }, []);
 
-  // Poll the backend count endpoint every 5s as a fallback for simple real-time updates
+  // Poll the backend count endpoint every 30s as a fallback for simple real-time updates.
+  // (Was 5s — that plus the dashboard's own notification bell polling every 30s meant
+  // this endpoint was being hit multiple times per minute on every page. Real-time
+  // updates still happen instantly via the 'notification-sent' / 'app-notification-updated'
+  // event listeners above; this interval is only the fallback safety net.)
   useEffect(() => {
     fetchNotificationCount();
     let intervalId = null;
     try {
       intervalId = setInterval(() => {
         fetchNotificationCount();
-      }, 5000);
+      }, 30000);
     } catch (e) {
       // ignore
     }

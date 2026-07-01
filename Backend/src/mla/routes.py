@@ -8,10 +8,12 @@ GET /api/mla/insights          ← all three in one call (used by the dashboard)
 GET /api/mla/public-profile    ← citizen-facing: MLA card for the citizen's constituency
 """
 
+import asyncio
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from mla.sentiment_service import (
     get_public_sentiment,
     get_approval_by_group,
@@ -221,19 +223,43 @@ async def all_insights(days: int = Query(90, ge=7, le=365)):
     """All insight cards in a single request."""
     months = 3 if days <= 90 else 6 if days <= 180 else 12
 
-    # Compute sentiment first — approval_pct is needed for election probability
-    sentiment = _safe(get_public_sentiment, days)
+    # These six calls each run their own MongoDB queries/aggregations and don't
+    # depend on each other (election probability is the only one that needs
+    # sentiment's result, so it's computed after). They used to run one after
+    # another inside this `async def`, which — since they're plain sync/blocking
+    # calls — both serialized their wait time (sum of all six) AND blocked the
+    # event loop for other requests being handled by this worker in the
+    # meantime. Running them in a threadpool concurrently keeps the exact same
+    # results but cuts wall-clock time to roughly the slowest single call
+    # instead of the sum of all of them, and stops this endpoint from stalling
+    # unrelated requests (like the notification/dashboard polling) while it runs.
+    (
+        sentiment,
+        approval_by_group,
+        moving_numbers,
+        peer_ranking,
+        sentiment_trend,
+        feedback_sources,
+    ) = await asyncio.gather(
+        run_in_threadpool(_safe, get_public_sentiment, days),
+        run_in_threadpool(_safe, get_approval_by_group, days),
+        run_in_threadpool(_safe, get_moving_numbers, days),
+        run_in_threadpool(_safe, get_peer_ranking, days),
+        run_in_threadpool(_safe, get_sentiment_trend, months),
+        run_in_threadpool(_safe, get_feedback_sources, days),
+    )
+
     approval_pct = None
     if isinstance(sentiment, dict) and sentiment.get("hasData"):
         approval_pct = (sentiment.get("positive") or {}).get("pct")
 
     data = {
         "publicSentiment":     sentiment,
-        "approvalByGroup":     _safe(get_approval_by_group, days),
-        "movingNumbers":       _safe(get_moving_numbers, days),
-        "peerRanking":         _safe(get_peer_ranking, days),
-        "sentimentTrend":      _safe(get_sentiment_trend, months),
-        "feedbackSources":     _safe(get_feedback_sources, days),
+        "approvalByGroup":     approval_by_group,
+        "movingNumbers":       moving_numbers,
+        "peerRanking":         peer_ranking,
+        "sentimentTrend":      sentiment_trend,
+        "feedbackSources":     feedback_sources,
         # Election probability is computed from live approval data — keeps the
         # CDF algorithm on the server so the frontend only renders results.
         "electionProbability": _safe(get_election_probability, approval_pct),
