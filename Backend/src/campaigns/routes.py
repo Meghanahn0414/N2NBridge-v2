@@ -1,294 +1,308 @@
 """
-Campaign Routes
+Campaign Routes — Multi-Tenant
+
+GET    /api/campaigns/                 List campaigns
+POST   /api/campaigns/                 Create campaign
+GET    /api/campaigns/{id}             Get campaign
+PUT    /api/campaigns/{id}             Update campaign
+DELETE /api/campaigns/{id}             Delete campaign
+POST   /api/campaigns/{id}/launch      Activate campaign
+POST   /api/campaigns/{id}/cancel      Cancel campaign
+POST   /api/campaigns/{id}/join        Citizen joins campaign
+GET    /api/campaigns/constituents/stats  Citizen stats for the dashboard
 """
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from campaigns.model import CampaignCreate, CampaignResponse, CampaignUpdate
-from campaigns.service import CampaignService
-from fastapi import APIRouter, HTTPException, Query, File, UploadFile
+from bson import ObjectId
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
-from utils.helper import Helper
+from utils.response import success_response
+from utils.tenant import get_tenant_db, require_auth
+
+
+class CampaignCreate(BaseModel):
+    title:           str
+    description:     Optional[str] = ""
+    start_date:      Optional[str] = ""
+    end_date:        Optional[str] = ""
+    target_audience: Optional[str] = "all"
+    status:          Optional[str] = "Draft"
+    image_url:       Optional[str] = ""
+
+class CampaignUpdate(BaseModel):
+    title:           Optional[str] = None
+    description:     Optional[str] = None
+    start_date:      Optional[str] = None
+    end_date:        Optional[str] = None
+    target_audience: Optional[str] = None
+    image_url:       Optional[str] = None
 
 router = APIRouter(prefix="/api/campaigns", tags=["Campaigns"])
 logger = logging.getLogger(__name__)
 
 
-@router.get("/citizen-count")
-async def get_citizen_count():
-    """Total registered citizens — used by Broadcasts page for reach estimate."""
-    from config.database import MongoDatabase
-    db = MongoDatabase.get_db()
-    count = db.users.count_documents({"role": "CITIZEN", "isDeleted": {"$ne": True}})
-    return {"count": count}
+def _doc(d: dict) -> dict:
+    if not d:
+        return {}
+    d = dict(d)
+    d["id"] = str(d.pop("_id", ""))
+    for k, v in d.items():
+        if isinstance(v, ObjectId):
+            d[k] = str(v)
+        elif isinstance(v, datetime):
+            d[k] = v.isoformat()
+    return d
 
 
-@router.get("/audience-wards")
-async def get_audience_wards():
-    """Return distinct ward values that have registered citizens."""
-    from config.database import MongoDatabase
-    db = MongoDatabase.get_db()
+def _oid(val: str) -> ObjectId:
+    try:
+        return ObjectId(val)
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Invalid ID: {val}")
 
-    # wardId is stored as a plain string on citizen profiles (e.g. "Ward 21")
-    ward_values = db.users.distinct(
-        "wardId",
-        {"role": "CITIZEN", "isDeleted": {"$ne": True}, "wardId": {"$nin": [None, ""]}}
-    )
 
-    results = [{"id": str(w), "name": str(w)} for w in sorted(ward_values, key=str)]
-    return {"wards": results}
-
+# ── Citizen stats (used by Constituents dashboard) ─────────────────────────────
 
 @router.get("/constituents/stats")
-async def get_constituents_stats():
-    """Aggregate citizen stats for the Constituents dashboard page."""
-    from config.database import MongoDatabase
-    from datetime import datetime, timedelta
-    db = MongoDatabase.get_db()
+async def constituents_stats(db=Depends(get_tenant_db), user=Depends(require_auth)):
+    """Aggregate citizen statistics for the representative dashboard."""
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
 
-    now = datetime.utcnow()
-    thirty_days_ago = now - timedelta(days=30)
-    sixty_days_ago  = now - timedelta(days=60)
+    now = datetime.now(timezone.utc)
+    thirty_ago = now - timedelta(days=30)
+    sixty_ago  = now - timedelta(days=60)
+    base: dict = {"is_deleted": {"$ne": True}}
 
-    base_q = {"role": "CITIZEN", "isDeleted": {"$ne": True}}
-
-    total      = db.users.count_documents(base_q)
-    new_30d    = db.users.count_documents({**base_q, "createdAt": {"$gte": thirty_days_ago}})
-    new_prev30 = db.users.count_documents({**base_q, "createdAt": {"$gte": sixty_days_ago, "$lt": thirty_days_ago}})
+    total      = db.citizens.count_documents(base)
+    new_30d    = db.citizens.count_documents({**base, "created_at": {"$gte": thirty_ago}})
+    new_prev30 = db.citizens.count_documents({**base, "created_at": {"$gte": sixty_ago, "$lt": thirty_ago}})
     new_pct    = round(((new_30d - new_prev30) / new_prev30 * 100) if new_prev30 > 0 else 0)
 
-    # Verified = citizen has wardId + age filled in
-    verified = db.users.count_documents({**base_q, "wardId": {"$nin": [None, ""]}, "age": {"$exists": True, "$ne": None}})
-
-    # Active 30d = citizens who submitted at least 1 grievance in last 30 days
-    active_citizen_ids = db.grievances.distinct("citizenId", {"createdAt": {"$gte": thirty_days_ago}})
-    active_30d = len([c for c in active_citizen_ids if c])  # exclude null/empty citizenId
-
-    # Engagement funnel — citizens with 1+, 2+, 5+ complaints
-    pipeline_engaged = [
-        {"$match": {}},
-        {"$group": {"_id": "$citizenId", "count": {"$sum": 1}}},
-        {"$match": {"count": {"$gte": 2}}},
-        {"$count": "total"},
-    ]
-    engaged_res = list(db.grievances.aggregate(pipeline_engaged))
-    engaged = engaged_res[0]["total"] if engaged_res else 0
-
-    pipeline_advocates = [
-        {"$match": {}},
-        {"$group": {"_id": "$citizenId", "count": {"$sum": 1}}},
-        {"$match": {"count": {"$gte": 5}}},
-        {"$count": "total"},
-    ]
-    advocate_res = list(db.grievances.aggregate(pipeline_advocates))
-    advocates = advocate_res[0]["total"] if advocate_res else 0
-
-    # Ward breakdown (top 5 wards by size)
-    ward_pipeline = [
-        {"$match": {**base_q, "wardId": {"$nin": [None, ""]}}},
-        {"$group": {"_id": "$wardId", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}},
-        {"$limit": 5},
-    ]
-    wards = [{"ward": w["_id"], "count": w["count"]} for w in db.users.aggregate(ward_pipeline)]
+    # Active = submitted at least 1 grievance in last 30 days
+    active_ids = db.grievances.distinct("citizen_id", {"created_at": {"$gte": thirty_ago}})
+    active_30d = len([c for c in active_ids if c])
 
     # Gender breakdown
     gender_pipeline = [
-        {"$match": {**base_q, "gender": {"$nin": [None, ""]}}},
+        {"$match": {**base, "gender": {"$nin": [None, ""]}}},
         {"$group": {"_id": "$gender", "count": {"$sum": 1}}},
     ]
-    genders = {g["_id"]: g["count"] for g in db.users.aggregate(gender_pipeline)}
+    genders = {g["_id"]: g["count"] for g in db.citizens.aggregate(gender_pipeline)}
 
-    # Registration growth — last 12 months by month
+    # Growth — last 12 months
     twelve_ago = now - timedelta(days=365)
     growth_pipeline = [
-        {"$match": {**base_q, "createdAt": {"$gte": twelve_ago}}},
-        {"$group": {"_id": {"year": {"$year": "$createdAt"}, "month": {"$month": "$createdAt"}}, "count": {"$sum": 1}}},
+        {"$match": {**base, "created_at": {"$gte": twelve_ago}}},
+        {"$group": {"_id": {"year": {"$year": "$created_at"}, "month": {"$month": "$created_at"}}, "count": {"$sum": 1}}},
         {"$sort": {"_id.year": 1, "_id.month": 1}},
     ]
-    growth = [{"year": g["_id"]["year"], "month": g["_id"]["month"], "count": g["count"]} for g in db.users.aggregate(growth_pipeline)]
+    growth = [{"year": g["_id"]["year"], "month": g["_id"]["month"], "count": g["count"]}
+              for g in db.citizens.aggregate(growth_pipeline)]
 
-    # Most engaged residents — top 4 by grievance count
+    # Top citizens by grievance count
     top_pipeline = [
-        {"$group": {"_id": "$citizenId", "complaints": {"$sum": 1}}},
+        {"$group": {"_id": "$citizen_id", "complaints": {"$sum": 1}}},
         {"$sort": {"complaints": -1}},
-        {"$limit": 4},
+        {"$limit": 5},
     ]
     top_ids = list(db.grievances.aggregate(top_pipeline))
-    top_residents = []
+    top_citizens = []
     for entry in top_ids:
         cid = entry["_id"]
         if not cid:
             continue
         try:
-            from bson import ObjectId
-            user = db.users.find_one({"_id": ObjectId(cid)})
+            c = db.citizens.find_one({"_id": _oid(cid)})
         except Exception:
-            user = None
-        if user:
-            full_name = user.get("fullName") or user.get("name") or "Resident"
-            initials  = "".join(w[0] for w in full_name.split()[:2]).upper()
-            top_residents.append({
-                "name":      full_name,
-                "initials":  initials,
-                "ward":      user.get("wardId", ""),
+            c = None
+        if c:
+            name = c.get("name") or "Resident"
+            top_citizens.append({
+                "name":       name,
+                "initials":   "".join(w[0] for w in name.split()[:2]).upper(),
+                "mobile":     c.get("mobile", ""),
                 "complaints": entry["complaints"],
             })
 
-    return {
-        "total":      total,
-        "verified":   verified,
-        "active30d":  active_30d,
-        "new30d":     new_30d,
-        "newPct":     new_pct,
-        "engaged":    engaged,
-        "advocates":  advocates,
-        "wards":      wards,
-        "genders":    genders,
-        "growth":     growth,
-        "topResidents": top_residents,
-    }
+    return success_response({
+        "total": total, "new30d": new_30d, "newPct": new_pct,
+        "active30d": active_30d, "genders": genders,
+        "growth": growth, "topCitizens": top_citizens,
+    }, "Constituent stats retrieved")
 
 
-@router.get("/", response_model=list[CampaignResponse])
+@router.get("/citizen-count")
+async def citizen_count(db=Depends(get_tenant_db), user=Depends(require_auth)):
+    """Total registered citizens — used for reach estimate."""
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    count = db.citizens.count_documents({"is_deleted": {"$ne": True}})
+    return success_response({"count": count}, "Citizen count retrieved")
+
+
+# ── CRUD ──────────────────────────────────────────────────────────────────────
+
+@router.get("/")
 async def list_campaigns(
-    page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=1000),
-    status: Optional[str] = None,
-    type: Optional[str] = None,
+    page:     int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    status:   Optional[str] = None,
+    db=Depends(get_tenant_db),
+    user=Depends(require_auth),
 ):
-    skip, limit = Helper.paginate(page, per_page)
-    filters = {}
+    q: dict = {"is_deleted": {"$ne": True}}
     if status:
-        filters["status"] = status
-    if type:
-        filters["type"] = type
-    campaigns = CampaignService.list_campaigns(skip, limit, filters)
-    return [CampaignResponse(**Helper.convert_mongo_doc(c)) for c in campaigns]
-
-
-@router.get("/{campaign_id}", response_model=CampaignResponse)
-async def get_campaign(campaign_id: str):
-    campaign = CampaignService.get_campaign_by_id(campaign_id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    return CampaignResponse(**Helper.convert_mongo_doc(campaign))
-
-
-@router.post("/", response_model=CampaignResponse)
-async def create_campaign(data: CampaignCreate):
-    campaign_id = CampaignService.create_campaign(data.model_dump(), None)
-    campaign = CampaignService.get_campaign_by_id(campaign_id)
-    return CampaignResponse(**Helper.convert_mongo_doc(campaign))
-
-
-@router.post("/upload-image")
-async def upload_campaign_image(file: UploadFile = File(...)):
-    try:
-        from utils.storage import upload_file
-
-        file_url = await upload_file(file, folder="campaigns")
-        return {"fileUrl": file_url}
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:
-        logger.error(f"Campaign image upload failed: {exc}")
-        raise HTTPException(status_code=500, detail="Upload failed")
-
-
-@router.put("/{campaign_id}", response_model=CampaignResponse)
-async def update_campaign(campaign_id: str, data: CampaignUpdate):
-    success = CampaignService.update_campaign(
-        campaign_id, data.model_dump(exclude_unset=True), None
+        q["status"] = status
+    skip  = (page - 1) * per_page
+    items = list(db.campaigns.find(q).sort("created_at", -1).skip(skip).limit(per_page))
+    total = db.campaigns.count_documents(q)
+    return success_response(
+        {"items": [_doc(c) for c in items], "total": total, "page": page, "per_page": per_page},
+        "Campaigns retrieved",
     )
-    if not success:
-        raise HTTPException(status_code=404, detail="Campaign not found or no changes made")
-    campaign = CampaignService.get_campaign_by_id(campaign_id)
-    return CampaignResponse(**Helper.convert_mongo_doc(campaign))
+
+
+@router.get("/{campaign_id}")
+async def get_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depends(require_auth)):
+    c = db.campaigns.find_one({"_id": _oid(campaign_id), "is_deleted": {"$ne": True}})
+    if not c:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    return success_response(_doc(c), "Campaign retrieved")
+
+
+@router.post("/")
+async def create_campaign(body: CampaignCreate, db=Depends(get_tenant_db), user=Depends(require_auth)):
+    """
+    Create a campaign.
+
+    Body:
+      title            str  (required)
+      description      str
+      start_date       str  (ISO date)
+      end_date         str  (ISO date)
+      target_audience  str  — all | ward | custom
+      status           str  — Draft (default)
+    """
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    now = datetime.now(timezone.utc)
+    doc = {
+        "title":           body.title,
+        "description":     body.description or "",
+        "start_date":      body.start_date or "",
+        "end_date":        body.end_date or "",
+        "target_audience": body.target_audience or "all",
+        "status":          body.status or "Draft",
+        "image_url":       body.image_url or "",
+        "reach":           0,
+        "participants":    [],
+        "is_deleted":      False,
+        "created_by":      user.get("user_id"),
+        "created_at":      now,
+        "updated_at":      now,
+    }
+    result = db.campaigns.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return success_response(_doc(doc), "Campaign created")
+
+
+@router.put("/{campaign_id}")
+async def update_campaign(campaign_id: str, body: CampaignUpdate, db=Depends(get_tenant_db), user=Depends(require_auth)):
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    update = body.model_dump(exclude_unset=True)
+    if not update:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    update["updated_at"] = datetime.now(timezone.utc)
+    result = db.campaigns.update_one({"_id": _oid(campaign_id)}, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    c = db.campaigns.find_one({"_id": _oid(campaign_id)})
+    return success_response(_doc(c), "Campaign updated")
 
 
 @router.delete("/{campaign_id}")
-async def delete_campaign(campaign_id: str):
-    success = CampaignService.delete_campaign(campaign_id, None)
-    if not success:
+async def delete_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depends(require_auth)):
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    result = db.campaigns.update_one(
+        {"_id": _oid(campaign_id)},
+        {"$set": {"is_deleted": True, "updated_at": datetime.now(timezone.utc)}},
+    )
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    return {"success": True, "message": "Campaign deleted"}
+    return success_response(None, "Campaign deleted")
 
 
-class JoinCampaignRequest(BaseModel):
-    citizenId: Optional[str] = None
+@router.post("/{campaign_id}/launch")
+async def launch_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depends(require_auth)):
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    now = datetime.now(timezone.utc)
+    result = db.campaigns.update_one(
+        {"_id": _oid(campaign_id)},
+        {"$set": {"status": "Active", "launched_at": now, "updated_at": now}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    # Notify all citizens
+    c = db.campaigns.find_one({"_id": _oid(campaign_id)})
+    if c:
+        citizens = list(db.citizens.find({"is_deleted": {"$ne": True}}, {"_id": 1}))
+        notifs = [{
+            "user_id":      str(cit["_id"]),
+            "title":        f"New Campaign: {c.get('title')}",
+            "message":      c.get("description", ""),
+            "type":         "Campaign",
+            "reference_id": campaign_id,
+            "is_read":      False,
+            "created_at":   now,
+        } for cit in citizens]
+        if notifs:
+            db.notifications.insert_many(notifs)
+    return success_response(None, "Campaign launched")
+
+
+@router.post("/{campaign_id}/cancel")
+async def cancel_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depends(require_auth)):
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    result = db.campaigns.update_one(
+        {"_id": _oid(campaign_id)},
+        {"$set": {"status": "Cancelled", "updated_at": datetime.now(timezone.utc)}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    return success_response(None, "Campaign cancelled")
 
 
 @router.post("/{campaign_id}/join")
-async def join_campaign(campaign_id: str, body: JoinCampaignRequest):
+async def join_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depends(require_auth)):
     """Citizen joins / supports a campaign."""
-    from config.database import MongoDatabase
-    from bson import ObjectId
-    db = MongoDatabase.get_db()
+    citizen_id = user.get("user_id")
+    c = db.campaigns.find_one({"_id": _oid(campaign_id), "is_deleted": {"$ne": True}})
+    if not c:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if citizen_id in c.get("participants", []):
+        return success_response({"alreadyJoined": True}, "Already joined")
+    db.campaigns.update_one(
+        {"_id": _oid(campaign_id)},
+        {"$addToSet": {"participants": citizen_id}, "$inc": {"reach": 1}},
+    )
+    return success_response({"alreadyJoined": False}, "Joined campaign")
+
+
+@router.post("/upload-image")
+async def upload_campaign_image(file: UploadFile = File(...), user=Depends(require_auth)):
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
     try:
-        campaign = db.campaigns.find_one({"_id": ObjectId(campaign_id), "isDeleted": {"$ne": True}})
-        if not campaign:
-            raise HTTPException(status_code=404, detail="Campaign not found")
-        citizen_id = body.citizenId or ""
-        participants = campaign.get("participants", [])
-        if citizen_id and citizen_id in participants:
-            return {"success": True, "alreadyJoined": True, "message": "Already joined"}
-        update: dict = {"$inc": {"reach": 1}}
-        if citizen_id:
-            update["$addToSet"] = {"participants": citizen_id}
-        db.campaigns.update_one({"_id": ObjectId(campaign_id)}, update)
-        return {"success": True, "alreadyJoined": False, "message": "Joined successfully"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/{campaign_id}/cancel", response_model=CampaignResponse)
-async def cancel_campaign(campaign_id: str):
-    """Cancel campaign — keeps it in DB with status CANCELLED"""
-    success = CampaignService.cancel_campaign(campaign_id, None)
-    if not success:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    campaign = CampaignService.get_campaign_by_id(campaign_id)
-    return CampaignResponse(**Helper.convert_mongo_doc(campaign))
-
-
-@router.post("/{campaign_id}/launch", response_model=CampaignResponse)
-async def launch_campaign(campaign_id: str):
-    success = CampaignService.launch_campaign(campaign_id, None)
-    if not success:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    campaign = CampaignService.get_campaign_by_id(campaign_id)
-    if campaign:
-        from tasks.background import notify_staff_users
-        title = f"📢 Campaign Launched: {campaign.get('name', 'New Campaign')}"
-        body = campaign.get("message") or f"A new {campaign.get('type','awareness')} campaign has been activated."
-        extra = {"campaignId": campaign_id}
-        try:
-            notify_staff_users.delay(title, body, "CAMPAIGN", extra)
-        except Exception as exc:
-            logger.warning(f"Staff campaign notification dispatch failed (non-fatal): {exc}")
-    return CampaignResponse(**Helper.convert_mongo_doc(campaign))
-
-
-@router.post("/{campaign_id}/notify")
-async def resend_campaign_notifications(campaign_id: str):
-    """Re-send notifications for an existing campaign."""
-    from tasks.background import send_campaign_notifications
-    from config.database import MongoDatabase
-    from bson import ObjectId
-    db = MongoDatabase.get_db()
-    campaign = db.campaigns.find_one({"_id": ObjectId(campaign_id), "isDeleted": {"$ne": True}})
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    try:
-        send_campaign_notifications.delay(campaign_id)
-        return {"success": True, "notified": 0, "message": "Notifications queued for delivery"}
-    except Exception:
-        try:
-            result = send_campaign_notifications(campaign_id)
-            sent = result.get("sent", 0) if isinstance(result, dict) else 0
-            return {"success": True, "notified": sent, "message": f"Notifications sent to {sent} citizens"}
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Failed to send notifications: {exc}")
+        from utils.storage import upload_file
+        file_url = await upload_file(file, folder="campaigns")
+        return success_response({"file_url": file_url}, "Image uploaded")
+    except Exception as exc:
+        logger.error(f"Campaign image upload failed: {exc}")
+        raise HTTPException(status_code=500, detail="Upload failed")

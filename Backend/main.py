@@ -22,7 +22,12 @@ sys.path.insert(0, _src_path)
 
 from alerts.routes import router as alerts_router  # noqa: E402
 from analytics.routes import router as analytics_router  # noqa: E402
-from auth.routes import router as auth_router  # noqa: E402
+from auth.routes import (  # noqa: E402
+    rep_router     as auth_rep_router,
+    staff_router   as auth_staff_router,
+    citizen_router as auth_citizen_router,
+    compat_router  as auth_compat_router,
+)
 from campaigns.routes import router as campaigns_router  # noqa: E402
 from citizens.routes import router as citizens_router  # noqa: E402
 from config.cache import close_cache, init_cache  # noqa: E402
@@ -31,9 +36,11 @@ from config.rate_limit import limiter  # noqa: E402
 from config.settings import settings  # noqa: E402
 from dashboard.routes import router as dashboard_router  # noqa: E402
 from events.routes import router as events_router  # noqa: E402
+from grievances.routes import rep_router as grievances_rep_router  # noqa: E402
 from grievances.routes import router as grievances_router  # noqa: E402
 from lookups.routes import router as lookups_router  # noqa: E402
 from mla.routes import router as mla_router  # noqa: E402
+from staff.routes import router as staff_router  # noqa: E402
 from notifications.routes import router as notifications_router  # noqa: E402
 from surveys.routes import router as surveys_router  # noqa: E402
 from tasks.routes import router as tasks_router  # noqa: E402
@@ -51,8 +58,9 @@ async def lifespan(app: FastAPI):
     """Startup: DB + Redis cache. Shutdown: clean close."""
     logger.info("Starting CRM Management System...")
     try:
-        MongoDatabase.connect(settings.MONGODB_URL, settings.MONGODB_DB)
-        logger.info("Database connection established")
+        # Connect to master DB (crm_master); tenant DBs are accessed on-demand
+        MongoDatabase.connect(settings.MONGODB_URL, settings.MONGODB_MASTER_DB)
+        logger.info(f"Master database connected: {settings.MONGODB_MASTER_DB}")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
         raise
@@ -159,9 +167,14 @@ async def health_check():
 
 
 # ── Routers ────────────────────────────────────────────────────────────────────
-app.include_router(auth_router)
+app.include_router(auth_rep_router)
+app.include_router(auth_staff_router)
+app.include_router(auth_citizen_router)
+app.include_router(auth_compat_router)
 app.include_router(users_router)
 app.include_router(grievances_router)
+app.include_router(grievances_rep_router)
+app.include_router(staff_router)
 app.include_router(alerts_router)
 app.include_router(campaigns_router)
 app.include_router(events_router)

@@ -1,39 +1,35 @@
 """
 Citizen Profile Models
 """
-from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field
+
+
+class CitizenRegisterDetails(BaseModel):
+    """Fill in citizen details after OTP verification"""
+    name:         str                = Field(..., description="Full name of the citizen")
+    email:        Optional[EmailStr] = Field(None, description="Email address")
+    gender:       Optional[str]      = Field(None, description="Male | Female | Other")
+    age:          Optional[int]      = Field(None, ge=1, le=120, description="Age in years")
+    address:      Optional[str]      = Field(None, description="Residential address")
+    pincode:      Optional[str]      = Field(None, description="PIN / ZIP code")
+    profileImage: Optional[str]      = Field(None, description="Profile photo URL")
 
 
 class CitizenProfileUpdate(BaseModel):
-    """Citizen profile update schema"""
-    name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    profileImage: Optional[str] = None
-    age: Optional[int] = Field(None, ge=1, le=120)
-    gender: Optional[str] = None
-    wardId: Optional[str] = None
-    constituencyId: Optional[str] = None
-
-
-class CitizenProfileResponse(BaseModel):
-    """Citizen profile response schema"""
-    id: str = Field(alias="_id")
-    fullName: str
-    mobile: str
-    email: str
-    address: Optional[str] = None
-    profileImage: Optional[str] = None
-    age: Optional[int] = None
-    gender: Optional[str] = None
-    constituencyId: Optional[str] = None
-    wardId: Optional[str] = None
-    role: str
-    createdAt: datetime
-    updatedAt: datetime
-    
-    model_config = ConfigDict(populate_by_name=True)
+    """Update citizen profile fields"""
+    name:               Optional[str]       = Field(None, description="Full name")
+    email:              Optional[EmailStr]  = Field(None, description="Email address")
+    gender:             Optional[str]       = Field(None, description="Male | Female | Other")
+    age:                Optional[int]       = Field(None, ge=1, le=120, description="Age in years")
+    address:            Optional[str]       = Field(None, description="Residential address")
+    pincode:            Optional[str]       = Field(None, description="PIN / ZIP code")
+    profileImage:       Optional[str]       = Field(None, description="Profile photo URL")
+    assembly_name:      Optional[str]       = Field(None, description="Assembly constituency")
+    parliamentary_name: Optional[str]       = Field(None, description="Parliamentary constituency")
+    ward_id:            Optional[str]       = Field(None, description="Ward ID")
+    area_name:          Optional[str]       = Field(None, description="Area name")
+    taluk:              Optional[str]       = Field(None, description="Taluk / Tehsil")
+    district:           Optional[str]       = Field(None, description="District")
+    state:              Optional[str]       = Field(None, description="State")
