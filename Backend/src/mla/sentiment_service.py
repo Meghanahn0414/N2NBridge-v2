@@ -161,9 +161,13 @@ def _ensure_sentiment_scores(db, limit: int = 500) -> None:
                     {"aiAnalysis": {"$exists": False}},
                     {"aiAnalysis.sentimentScore": None},
                     {"aiAnalysis.sentimentScore": {"$exists": False}},
-                    # Re-score grievances that got exactly 0.0 (no keywords matched
-                    # on the first pass — may score differently now with expanded vocab)
-                    {"aiAnalysis.sentimentScore": 0.0},
+                    # NOTE: previously also re-scored anything with a stored score of
+                    # exactly 0.0, intended as a one-time re-pass after the keyword
+                    # vocabulary was expanded. Left permanently, that condition made
+                    # every genuinely-neutral grievance (a real, correct 0.0 score)
+                    # get re-scored on every single request forever — this was the
+                    # main cause of 15-30s dashboard load times. Removed; scores are
+                    # now truly persisted once computed.
                 ],
             },
             {"_id": 1, "description": 1, "feedback": 1},

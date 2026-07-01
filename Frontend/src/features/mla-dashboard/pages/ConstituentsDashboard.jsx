@@ -25,8 +25,8 @@ function InfoTip({ text, children }) {
       aria-label={text}
     >
       {children}
-      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, opacity: open ? 1 : 0, transition: "opacity .12s ease" }}>
-        ?
+      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", opacity: open ? 1 : 0.55, transition: "opacity .12s ease" }}>
+        i
       </span>
       {open && (
         <div style={{

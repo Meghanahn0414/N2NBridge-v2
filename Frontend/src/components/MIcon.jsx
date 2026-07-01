@@ -7,7 +7,7 @@ import {
   FaEnvelope, FaPhone, FaUserPlus, FaLaptop, FaTrashAlt, FaVolumeUp,
   FaExclamationCircle, FaChartLine, FaTimes, FaCheck, FaStar,
   FaShieldAlt, FaKey, FaDesktop, FaUserCog, FaUser, FaSearch,
-  FaTint, FaRoad, FaClipboardList,
+  FaTint, FaRoad, FaClipboardList, FaPlusCircle, FaPencilAlt, FaFileAlt,
 } from "react-icons/fa";
 import { MdVerified, MdBalance, MdWarning } from "react-icons/md";
 
@@ -84,6 +84,10 @@ const MAP = {
   noise:               FaVolumeUp,
   clipboard:           FaClipboardList,
   list_alt:            FaClipboardList,
+  // Quick actions
+  add_task:            FaPlusCircle,
+  edit_note:           FaPencilAlt,
+  summarize:           FaFileAlt,
 };
 
 export default function MIcon({ name, style }) {

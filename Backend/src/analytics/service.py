@@ -26,11 +26,23 @@ class AnalyticsService:
         return round(((current_count - previous_count) / previous_count) * 100, 1)
 
     @staticmethod
-    def get_grievance_stats() -> dict:
-        """Get grievance statistics"""
+    def get_grievance_stats(since: "datetime | None" = None) -> dict:
+        """
+        Get grievance statistics.
+
+        `since`, when provided, scopes total/byStatus/byPriority/byCategory to
+        grievances created on/after that timestamp — this is what makes the
+        Executive Dashboard's date-range picker (Last 30 Days / 90 Days / etc.)
+        actually affect the "Grievances by Category" and overview breakdowns,
+        instead of them always showing all-time totals regardless of filter.
+        """
         db = MongoDatabase.get_db()
 
-        total = db.grievances.count_documents({"isDeleted": False})
+        base_match = {"isDeleted": False}
+        if since is not None:
+            base_match = {**base_match, "createdAt": {"$gte": since}}
+
+        total = db.grievances.count_documents(base_match)
 
         now = datetime.utcnow()
         thirty_days_ago = now - timedelta(days=30)
@@ -53,7 +65,7 @@ class AnalyticsService:
         # Get grievances by category
         from bson import ObjectId as _ObjId
         by_category_raw = list(db.grievances.aggregate([
-            {"$match": {"isDeleted": False}},
+            {"$match": base_match},
             {"$group": {
                 "_id": {"$ifNull": ["$category", "$categoryId"]},
                 "count": {"$sum": 1}
@@ -90,11 +102,11 @@ class AnalyticsService:
             "total":      total,
             "trend":      trend,
             "byStatus":   _agg_dict(db.grievances.aggregate([
-                {"$match": {"isDeleted": False}},
+                {"$match": base_match},
                 {"$group": {"_id": "$status", "count": {"$sum": 1}}}
             ])),
             "byPriority": _agg_dict(db.grievances.aggregate([
-                {"$match": {"isDeleted": False}},
+                {"$match": base_match},
                 {"$group": {"_id": "$priority", "count": {"$sum": 1}}}
             ])),
             "byCategory": by_category,
@@ -159,11 +171,36 @@ class AnalyticsService:
         return {"total": total, "trend": trend, "byRole": by_role}
 
     @staticmethod
-    def get_event_stats() -> dict:
-        """Get event statistics"""
+    def get_event_stats(since: "datetime | None" = None) -> dict:
+        """
+        Get event statistics.
+
+        `since`, when provided, scopes totalEvents/publishedEvents/eventCampaignsCount
+        to items created on/after that timestamp, so this responds to the dashboard's
+        date-range picker instead of always showing an all-time total.
+
+        "Organized" events combine two sources, per rep confirmation:
+         1. The dedicated Events feature (db.events) — anything out of DRAFT status.
+         2. Communication Center campaigns whose type is "Event" and that have
+            actually been published (ACTIVE/COMPLETED), e.g. "B Camp" — since
+            reps commonly organize events as campaign broadcasts, not via the
+            separate Events feature.
+        """
         db = MongoDatabase.get_db()
 
-        total_events        = db.events.count_documents({})
+        events_match = {} if since is None else {"createdAt": {"$gte": since}}
+        total_events    = db.events.count_documents(events_match)
+        events_feature_count = db.events.count_documents({**events_match, "status": {"$ne": "DRAFT"}})
+        event_campaigns_filter = {
+            "isDeleted": {"$ne": True},
+            "type":      "Event",
+            "status":    {"$in": ["ACTIVE", "COMPLETED"]},
+        }
+        if since is not None:
+            event_campaigns_filter = {**event_campaigns_filter, "createdAt": {"$gte": since}}
+        event_campaigns_count = db.campaigns.count_documents(event_campaigns_filter)
+        published_events = events_feature_count + event_campaigns_count
+
         total_registrations = db.event_registrations.count_documents({})
 
         # Also count citizens who joined campaigns (reach field is incremented on each join)
@@ -178,26 +215,41 @@ class AnalyticsService:
         thirty_days_ago = now - timedelta(days=30)
         sixty_days_ago  = now - timedelta(days=60)
 
-        current_count  = db.events.count_documents({"createdAt": {"$gte": thirty_days_ago}})
-        previous_count = db.events.count_documents({
-            "createdAt": {"$gte": sixty_days_ago, "$lt": thirty_days_ago}
-        })
+        current_count = (
+            db.events.count_documents({"createdAt": {"$gte": thirty_days_ago}})
+            + db.campaigns.count_documents({**event_campaigns_filter, "createdAt": {"$gte": thirty_days_ago}})
+        )
+        previous_count = (
+            db.events.count_documents({"createdAt": {"$gte": sixty_days_ago, "$lt": thirty_days_ago}})
+            + db.campaigns.count_documents({**event_campaigns_filter, "createdAt": {"$gte": sixty_days_ago, "$lt": thirty_days_ago}})
+        )
         trend = AnalyticsService.calculate_trend(current_count, previous_count)
 
         return {
             "totalEvents":               total_events,
+            "publishedEvents":           published_events,
+            "eventsFeatureCount":        events_feature_count,
+            "eventCampaignsCount":       event_campaigns_count,
             "totalRegistrations":        total_registrations,
             "avgRegistrationsPerEvent":  total_registrations / total_events if total_events > 0 else 0,
             "trend":                     trend,
         }
 
     @staticmethod
-    def get_resolution_time_stats() -> dict:
-        """Get average, min, max resolution time for resolved complaints"""
+    def get_resolution_time_stats(since: "datetime | None" = None) -> dict:
+        """
+        Get average, min, max resolution time for resolved/closed complaints.
+        `since`, when provided, scopes this to grievances resolved (updatedAt)
+        on/after that timestamp, so it responds to the dashboard's date-range picker.
+        """
         db = MongoDatabase.get_db()
 
+        match = {"status": {"$in": ["RESOLVED", "CLOSED"]}, "isDeleted": False}
+        if since is not None:
+            match = {**match, "updatedAt": {"$gte": since}}
+
         resolved = list(db.grievances.aggregate([
-            {"$match": {"status": "RESOLVED", "isDeleted": False}},
+            {"$match": match},
             {"$project": {"resolutionTime": {"$subtract": ["$updatedAt", "$createdAt"]}}},
             {"$group": {
                 "_id":     None,
@@ -245,6 +297,49 @@ class AnalyticsService:
         return sentiment_counts
 
     @staticmethod
+    def get_grievance_monthly_trend(months: int = 6) -> dict:
+        """
+        Received vs resolved grievance counts per calendar month (IST), for the
+        last N months including the current month. Powers the "Grievance Trend"
+        chart on the Executive Dashboard.
+        """
+        db  = MongoDatabase.get_db()
+        IST = timedelta(hours=5, minutes=30)
+        now_ist = datetime.utcnow() + IST
+
+        buckets = []
+        year, month = now_ist.year, now_ist.month
+        for i in range(months - 1, -1, -1):
+            y, m = year, month - i
+            while m <= 0:
+                m += 12
+                y -= 1
+            buckets.append((y, m))
+
+        month_labels, received, resolved = [], [], []
+        for (y, m) in buckets:
+            start_ist = datetime(y, m, 1)
+            end_ist   = datetime(y + 1, 1, 1) if m == 12 else datetime(y, m + 1, 1)
+            start_utc = start_ist - IST
+            end_utc   = end_ist - IST
+
+            received_count = db.grievances.count_documents({
+                "isDeleted": False,
+                "createdAt": {"$gte": start_utc, "$lt": end_utc},
+            })
+            resolved_count = db.grievances.count_documents({
+                "isDeleted": False,
+                "status":    {"$in": ["RESOLVED", "CLOSED"]},
+                "updatedAt": {"$gte": start_utc, "$lt": end_utc},
+            })
+
+            month_labels.append(start_ist.strftime("%b %Y"))
+            received.append(received_count)
+            resolved.append(resolved_count)
+
+        return {"months": month_labels, "received": received, "resolved": resolved}
+
+    @staticmethod
     def get_performance_metrics(days: int = 365) -> dict:
         """Get performance metrics filtered by time window"""
         db    = MongoDatabase.get_db()
@@ -265,16 +360,21 @@ class AnalyticsService:
         })
         trend = AnalyticsService.calculate_trend(resolved_in_period, resolved_prev)
 
-        base_stats = AnalyticsService.get_grievance_stats()
+        # Scope total/byStatus/byPriority/byCategory to the selected date range so
+        # the dashboard's date-range picker actually changes what these cards show.
+        base_stats = AnalyticsService.get_grievance_stats(since=since)
         base_stats["byStatus"]["RESOLVED"] = resolved_in_period
         base_stats["trend"] = trend
+        base_stats["trendSeries"] = AnalyticsService.get_grievance_monthly_trend(6)
 
         return {
             "grievances":           base_stats,
             "alerts":               AnalyticsService.get_alert_stats(),
+            # Registered Citizens intentionally stays an all-time cumulative total
+            # (you don't "lose" registered citizens by picking a shorter range).
             "users":                AnalyticsService.get_user_stats(),
-            "events":               AnalyticsService.get_event_stats(),
-            "resolutionTime":       AnalyticsService.get_resolution_time_stats(),
+            "events":               AnalyticsService.get_event_stats(since=since),
+            "resolutionTime":       AnalyticsService.get_resolution_time_stats(since=since),
             "activeUsers":          AnalyticsService.get_active_users(),
             "sentimentDistribution": AnalyticsService.get_sentiment_distribution(),
         }

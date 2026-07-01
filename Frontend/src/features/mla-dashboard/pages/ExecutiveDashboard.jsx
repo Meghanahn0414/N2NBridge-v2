@@ -29,37 +29,53 @@ function useMLAInsights(days) {
   const [loading, setLoading] = useState(!cachedInsights);
   const role = getAuthRole();
   const shouldFetchSurvey = role === "ADMIN" || role === "MLA";
+  // Tracks the most recently fired request so a slow, stale response (e.g. from
+  // a date range the user already clicked away from) can't overwrite fresher
+  // data once it finally resolves — these calls can take 15-30s when the
+  // sentiment-scoring cache (Redis) is unavailable, so out-of-order responses
+  // are common when switching the date picker a few times in a row.
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
     Promise.all([
       api.get("/api/mla/insights", { params: { days } }),
       shouldFetchSurvey
         ? api.get("/api/surveys/analytics", { params: { days } }).catch(() => null)
         : Promise.resolve(null),
     ]).then(([insightsRes, surveyRes]) => {
+      if (requestId !== requestIdRef.current) return; // a newer request superseded this one
       const insights = insightsRes?.data?.data || insightsRes?.data || null;
       const survey   = surveyRes?.data?.data   || null;
       const merged   = insights ? { ...insights, surveyAnalytics: survey } : null;
       if (merged) writeCache(INSIGHTS_KEY, merged);
       setData(merged);
     }).catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (requestId === requestIdRef.current) setLoading(false); });
   }, [days, shouldFetchSurvey]);
   return { data, loading };
 }
 
 function useAnalytics(days) {
-  const [data, setData] = useState(() => readCache(ANALYTICS_KEY));
+  const cachedAnalytics = readCache(ANALYTICS_KEY);
+  const [data, setData]       = useState(cachedAnalytics);
+  const [loading, setLoading] = useState(!cachedAnalytics);
+  const requestIdRef = useRef(0);
   useEffect(() => {
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
     api.get("/api/analytics/dashboard", { params: { days } })
       .then(r => {
+        if (requestId !== requestIdRef.current) return; // a newer request superseded this one
         const fresh = r?.data?.data || r?.data || null;
         if (fresh) writeCache(ANALYTICS_KEY, fresh);
         setData(fresh);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { if (requestId === requestIdRef.current) setLoading(false); });
   }, [days]);
-  return data;
+  return { data, loading };
 }
 
 function fmtResolutionTime(ms) {
@@ -99,8 +115,8 @@ function InfoTip({ text, children }) {
       aria-label={text}
     >
       {children}
-      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, opacity: open ? 1 : 0, transition: "opacity .12s ease" }}>
-        ?
+      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", opacity: open ? 1 : 0.55, transition: "opacity .12s ease" }}>
+        i
       </span>
       {open && (
         <div style={{
@@ -125,6 +141,40 @@ function InfoTip({ text, children }) {
         </div>
       )}
     </span>
+  );
+}
+
+/* ── Click-to-reveal data tooltip (chart points / bars) ─────────
+   Unlike InfoTip (hover, decorative "i" badge), this attaches directly to a
+   data element — a chart circle, a bar row — so clicking the actual data
+   shows how that number was computed. Positioning is relative to whichever
+   wrapper passes `align` ("center" for chart points, "left" for list rows). */
+function TipBubble({ text, align = "center" }) {
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: "absolute",
+        top: "calc(100% + 8px)",
+        left: align === "center" ? "50%" : 0,
+        transform: align === "center" ? "translateX(-50%)" : "none",
+        zIndex: 30,
+        padding: "9px 12px",
+        minWidth: 190,
+        maxWidth: 260,
+        background: "#16233C",
+        color: "#EAF0FB",
+        borderRadius: 10,
+        boxShadow: "0 14px 28px -8px rgba(15,23,42,.35)",
+        font: "500 11.5px 'Hanken Grotesk'",
+        lineHeight: 1.45,
+        textAlign: "left",
+        whiteSpace: "normal",
+        cursor: "default",
+      }}
+    >
+      {text}
+    </div>
   );
 }
 
@@ -261,7 +311,7 @@ const KPI = [
   { icon: "task_alt",   iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "Resolved Complaints",    sparkColor: "#2B5BD7", tooltip: "Resolved Complaints = count of grievances with status RESOLVED during the selected date range." },
   { icon: "bolt",       iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Avg. Resolution Time",   sparkColor: "#1E8A5B", tooltip: "Avg. Resolution Time = mean time from complaint creation to resolution for resolved cases in the selected period." },
   { icon: "groups",     iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: "Registered Citizens",    sparkColor: "#6B4FD8", tooltip: "Registered Citizens = total number of citizen accounts in the system at the time of reporting." },
-  { icon: "how_to_vote",iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Event Registrations",    sparkColor: "#C9871F", tooltip: "Event Registrations = total citizen event registrations recorded during the selected period." },
+  { icon: "how_to_vote",iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Events Organized",    sparkColor: "#C9871F", tooltip: "Events Organized = published entries from the Events feature (out of Draft status) plus published Communication Center campaigns of type \"Event\"." },
 ];
 
 export default function ExecutiveDashboard() {
@@ -280,22 +330,32 @@ export default function ExecutiveDashboard() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const { data: insights } = useMLAInsights(selectedDays);
-  const analytics = useAnalytics(selectedDays);
+  // Click-to-reveal tooltips on chart points / bars (Grievance Trend, Support by
+  // Area, Grievances by Category) — one shared "which tip is open" id so opening
+  // a new one closes the previous, and clicking anywhere else closes it too.
+  const [activeTip, setActiveTip] = useState(null);
+  useEffect(() => {
+    const handler = () => setActiveTip(null);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
+  const toggleTip = (id) => (e) => { e.stopPropagation(); setActiveTip(prev => (prev === id ? null : id)); };
+
+  const { data: insights, loading: insightsLoading } = useMLAInsights(selectedDays);
+  const { data: analytics, loading: analyticsLoading } = useAnalytics(selectedDays);
+  const isRefreshing = insightsLoading || analyticsLoading;
 
   const sentiment = insights?.publicSentiment || null;
   const byGroup   = insights?.approvalByGroup || null;
   const moving    = insights?.movingNumbers   || null;
   const peers     = insights?.peerRanking     || null;
-  const trend     = insights?.sentimentTrend  || null;
-  const survey    = insights?.surveyAnalytics || null;
 
   // KPI values
   const resolved  = analytics?.grievances?.byStatus?.RESOLVED ?? null;
   const total     = analytics?.grievances?.total ?? null;
   const avgTime   = analytics?.resolutionTime?.avgResolutionTime ?? null;
   const citizens  = analytics?.users?.byRole?.CITIZEN ?? null;
-  const pollPart  = analytics?.events?.totalRegistrations ?? null;
+  const eventsOrganized = analytics?.events?.publishedEvents ?? null;
 
   // First card: "12/33" — resolved out of total
   const resolvedDisplay = resolved != null
@@ -306,7 +366,7 @@ export default function ExecutiveDashboard() {
     { value: resolvedDisplay, trend: analytics?.grievances?.trend },
     { value: avgTime != null ? fmtResolutionTime(avgTime) : "—", trend: null },
     { value: citizens  != null ? citizens  : "—", trend: analytics?.users?.trend },
-    { value: pollPart  != null ? pollPart  : "—", trend: analytics?.events?.trend },
+    { value: eventsOrganized != null ? eventsOrganized : "—", trend: analytics?.events?.trend },
   ];
 
   const sentDist = analytics?.sentimentDistribution || null;
@@ -337,10 +397,8 @@ export default function ExecutiveDashboard() {
       } : null);
 
   const dashboardCards = [
-    { id: "map", title: "Constituency Map", type: "map" },
     { id: "overview", title: "Grievance Overview", type: "overview" },
     { id: "category", title: "Grievances by Category", type: "category" },
-    { id: "notifications", title: "Recent Notifications", type: "notifications" },
   ];
 
   const categoryStats = analytics?.grievances?.byCategory
@@ -348,47 +406,46 @@ export default function ExecutiveDashboard() {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 7)
       .map(([label, value]) => ({ label, value }))
-    : [
-      { label: "Water Supply", value: 320 },
-      { label: "Roads", value: 278 },
-      { label: "Electricity", value: 196 },
-      { label: "Healthcare", value: 154 },
-      { label: "Education", value: 98 },
-      { label: "Pension", value: 76 },
-      { label: "Revenue", value: 64 },
-    ];
+    : [];
 
+  // Bucketed from the real GrievanceStatus enum (NEW, ASSIGNED, IN_PROGRESS,
+  // ON_HOLD, RESOLVED, CLOSED, REJECTED) — there is no PENDING/ESCALATED status
+  // in the schema, so those mock categories are replaced with real ones below.
   const grievanceStats = analytics?.grievances?.byStatus || {};
-  const totalGrievances = analytics?.grievances?.total ?? 1248;
+  const totalGrievances = analytics?.grievances?.total ?? 0;
   const overviewItems = [
-    { label: "New", value: grievanceStats.NEW ?? 218, color: "#2563EB" },
-    { label: "In Progress", value: grievanceStats.IN_PROGRESS ?? 453, color: "#F97316" },
-    { label: "Pending", value: grievanceStats.PENDING ?? 362, color: "#FBBF24" },
-    { label: "Resolved", value: grievanceStats.RESOLVED ?? 1067, color: "#22C55E" },
-    { label: "Escalated", value: grievanceStats.ESCALATED ?? 67, color: "#EF4444" },
+    { label: "New", value: grievanceStats.NEW ?? 0, color: "#2563EB" },
+    { label: "Assigned", value: grievanceStats.ASSIGNED ?? 0, color: "#FBBF24" },
+    { label: "In Progress", value: (grievanceStats.IN_PROGRESS ?? 0) + (grievanceStats.ON_HOLD ?? 0), color: "#F97316" },
+    { label: "Resolved", value: (grievanceStats.RESOLVED ?? 0) + (grievanceStats.CLOSED ?? 0), color: "#22C55E" },
   ];
   const overviewTotal = overviewItems.reduce((sum, item) => sum + item.value, 0);
 
-  const notificationItems = analytics?.notifications?.recent || [
-    { title: "High Priority: Water shortage reported in Ward 23, Shantipur", time: "10 mins ago", icon: "warning", color: "#DC2626" },
-    { title: "Project \"CC Road - Village Rampur\" is delayed", time: "35 mins ago", icon: "event", color: "#F59E0B" },
-    { title: "MGNREGA: 42 new works approved", time: "1 hour ago", icon: "task_alt", color: "#2563EB" },
-    { title: "Meeting Reminder: Village Visit to Navagaon on 24 May 2025", time: "2 hours ago", icon: "meeting_room", color: "#16A34A" },
-    { title: "Low Fund Utilization Alert in Education Sector", time: "3 hours ago", icon: "school", color: "#8B5CF6" },
+  /* ── Grievance Trend (Last 6 Months) ─────────────────────────── */
+  const trendMonths = analytics?.grievances?.trendSeries?.months || [
+    "Dec 2024", "Jan 2025", "Feb 2025", "Mar 2025", "Apr 2025", "May 2025",
   ];
+  const trendReceived = analytics?.grievances?.trendSeries?.received || [320, 780, 480, 860, 640, 1150];
+  const trendResolved = analytics?.grievances?.trendSeries?.resolved || [160, 600, 260, 700, 520, 980];
 
-  const mapLegend = [
-    { label: "Villages", color: "#16A34A" },
-    { label: "Schools", color: "#2563EB" },
-    { label: "Hospitals", color: "#7C3AED" },
-    { label: "Roads", color: "#F59E0B" },
-    { label: "Water Sources", color: "#3B82F6" },
-    { label: "Anganwadis", color: "#EF4444" },
-    { label: "Other Assets", color: "#64748B" },
-  ];
+  /* ── Citizen Satisfaction Index ──────────────────────────────── */
+  // Reuses the same real approval/sentiment figures (effectiveSentiment / approvalPct)
+  // already computed above from /api/mla/insights — no mock fallback for the value.
+  // The "+X% from last period" delta is only backed by real data when approvalPct is
+  // sourced from the AI-sentiment pipeline (sentiment.hasData); the satisfactionRating
+  // fallback pipeline has no trend equivalent, so we show nothing rather than a fake number.
+  const hasSatisfactionData = approvalPct != null;
+  const satisfactionPct = approvalPct ?? 0;
+  const satisfactionDelta = (sentiment?.hasData && approvalTrend != null) ? approvalTrend : null;
+  const satisfactionLabel = satisfactionPct >= 75 ? "Good" : satisfactionPct >= 50 ? "Fair" : "Needs Attention";
+  // Below this many responses, the percentage swings wildly with each new grievance
+  // and shouldn't be read as a real signal — flagged in plain language on the card.
+  const LOW_SAMPLE_THRESHOLD = 30;
+  const satisfactionSampleIsLow = hasSatisfactionData && (approvalResponses ?? 0) < LOW_SAMPLE_THRESHOLD;
 
   return (
     <>
+      <style>{`@keyframes mla-spin { to { transform: rotate(360deg); } }`}</style>
       {/* Topbar */}
       <header style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 34px", background:"#F3F5FA", position:"sticky", top:0, zIndex:10, borderBottom:"1px solid #E5E9F1", gap:16, flexWrap:"wrap", minHeight:72 }}>
         <div style={{ flex:1, minWidth:0, maxWidth:"60%" }}>
@@ -396,6 +453,13 @@ export default function ExecutiveDashboard() {
           <h1 style={{ fontFamily:"'Newsreader','Noto Sans Kannada',serif", fontSize:"clamp(16px,2.2vw,26px)", fontWeight:400, color:"#16233C", margin:0, letterSpacing:"-.01em", lineHeight:1.25, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Overview &amp; Standing</h1>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", flexShrink:0 }}>
+
+          {isRefreshing && (
+            <span style={{ display:"flex", alignItems:"center", gap:6, font:"600 12px 'Hanken Grotesk'", color:"#2B5BD7" }}>
+              <MS style={{ fontSize:15, animation:"mla-spin 0.8s linear infinite" }}>sync</MS>
+              Updating…
+            </span>
+          )}
 
           {/* Date filter dropdown */}
           <div ref={dateRef} style={{ position:"relative" }}>
@@ -435,7 +499,7 @@ export default function ExecutiveDashboard() {
               { metric: 'Resolved Grievances',     value: resolved    != null ? String(resolved)  : '—' },
               { metric: 'Total Grievances',        value: total       != null ? String(total)      : '—' },
               { metric: 'Citizens',                value: citizens    != null ? String(citizens)   : '—' },
-              { metric: 'Poll Participation',      value: pollPart    != null ? String(pollPart)   : '—' },
+              { metric: 'Events Organized',        value: eventsOrganized != null ? String(eventsOrganized) : '—' },
             ]}
             columns={[
               { key: 'metric', label: 'Metric' },
@@ -448,10 +512,10 @@ export default function ExecutiveDashboard() {
         </div>
       </header>
 
-      <div ref={dashboardRef} style={{ ...pg, padding:"28px 34px 40px", display:"flex", flexDirection:"column", gap:20 }}>
+      <div ref={dashboardRef} style={{ ...pg, padding:"28px 34px 40px", display:"flex", flexDirection:"column", gap:20, opacity: isRefreshing ? 0.45 : 1, transition:"opacity 0.25s ease", pointerEvents: isRefreshing ? "none" : "auto" }}>
 
         {/* KPI strip */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:20 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(220px, 1fr))", gap:20 }}>
           {KPI.map((k, i) => {
             const kv = KPI_VALUES[i];
             const trendVal = (kv.trend != null && kv.trend !== 0) ? kv.trend : null;
@@ -481,7 +545,7 @@ export default function ExecutiveDashboard() {
                     width: i === 0 && resolved != null && total != null ? `${Math.min(100, (resolved / total) * 100)}%`
                          : i === 0 && resolved != null ? `${Math.min(100, (resolved / 50) * 100)}%`
                          : i === 2 && citizens  != null ? `${Math.min(100, (citizens / 100) * 100)}%`
-                         : i === 3 && pollPart  != null ? `${Math.min(100, (pollPart / 200) * 100)}%`
+                         : i === 3 && eventsOrganized != null ? `${Math.min(100, (eventsOrganized / 20) * 100)}%`
                          : "40%",
                     opacity: 0.5,
                   }} />
@@ -492,139 +556,76 @@ export default function ExecutiveDashboard() {
         </div>
 
 
-        {/* Row 1: Career trajectory + Election scenarios */}
-        <div style={{ display:"grid", gridTemplateColumns:"1.55fr 1fr", gap:20 }}>
+        {/* Row 1: Grievance Trend + Support by Area */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(380px, 1fr))", gap:20 }}>
 
-          {/* Career trajectory */}
-          <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:"26px 28px", boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
-              <div>
-                <InfoTip text="Trend Over Time = historical approval percentages from sentiment data plus future projections based on current approval and momentum metrics.">
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>
-                    <span>Trend Over Time</span>
-                  </div>
-                </InfoTip>
-                <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginTop:4 }}>Standing projected to the next election</div>
+          {/* Grievance Trend (Last 6 Months) */}
+          <div style={{ background:"#fff", borderRadius:22, padding:24, border:"1px solid #EAEDF4", boxShadow:"0 14px 30px -22px rgba(20,35,60,.18)" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18, flexWrap:"wrap", gap:10 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>Grievance Trend (Last 6 Months)</div>
+                <InfoTip text="Received = grievances created in each calendar month. Resolved = grievances marked RESOLVED or CLOSED in each calendar month (by the date they were resolved, not created). Always shows the last 6 calendar months regardless of the date-range filter above." />
               </div>
-              <span style={{ display:"inline-flex", alignItems:"center", gap:5, background:"#E7EEFF", color:"#2B5BD7", font:"700 12px 'Hanken Grotesk'", padding:"6px 12px", borderRadius:20 }}>
-                {survey?.avgScore != null ? `⭐ ${survey.avgScore}/5 survey` : approvalPct != null ? `${approvalPct}% approval` : "—"}
-              </span>
+              <div style={{ display:"flex", gap:14 }}>
+                <span style={{ display:"flex", alignItems:"center", gap:6, font:"600 12px 'Hanken Grotesk'", color:"#475569" }}>
+                  <span style={{ width:10, height:10, borderRadius:999, background:"#2563EB", display:"inline-block" }} /> Received
+                </span>
+                <span style={{ display:"flex", alignItems:"center", gap:6, font:"600 12px 'Hanken Grotesk'", color:"#475569" }}>
+                  <span style={{ width:10, height:10, borderRadius:999, background:"#22C55E", display:"inline-block" }} /> Resolved
+                </span>
+              </div>
             </div>
             {(() => {
-              const realPts = trend?.points?.filter(p => p.approvalPct != null) || [];
-              const base = approvalPct ?? (realPts.length > 0 ? realPts[realPts.length-1].approvalPct : null);
-
-              if (base == null) {
-                return (
-                  <div style={{ height:180, display:"flex", alignItems:"center", justifyContent:"center", background:"#F9FAFC", borderRadius:14 }}>
-                    <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No projection data available</span>
-                  </div>
-                );
-              }
-
-              const now = new Date();
-              const fmt = (mOffset) => {
-                const d = new Date(now); d.setMonth(d.getMonth() + mOffset);
-                return d.toLocaleDateString("en-IN", { month:"short" });
-              };
-
-              let timeline;
-              if (realPts.length >= 5) {
-                timeline = realPts.map(p => ({ label: p.month.split(" ")[0], val: p.approvalPct, proj: false }));
-                timeline.push({ label: fmt(+12), val: base, proj: true });
-                timeline.push({ label: fmt(+24), val: base, proj: true });
-              } else if (realPts.length >= 2) {
-                timeline = realPts.map(p => ({ label: p.month.split(" ")[0], val: p.approvalPct, proj: false }));
-                timeline.push({ label: fmt(+12), val: base, proj: true });
-                timeline.push({ label: fmt(+24), val: base, proj: true });
-              } else {
-                const hist = realPts.length === 1 ? realPts[0].approvalPct : base;
-                timeline = [
-                  { label: fmt(-8), val: hist, proj: false },
-                  { label: fmt(-4), val: hist, proj: false },
-                  { label: "Now",   val: base,  proj: false },
-                  { label: fmt(+12),val: base,  proj: true  },
-                  { label: fmt(+24),val: base,  proj: true  },
-                ];
-              }
-
-              const todayIdx = timeline.reduce((acc, p, i) => (!p.proj ? i : acc), 0);
-              const W = 560, H = 140, PAD = 12;
-              const vals = timeline.map(p => p.val);
-              const minV = Math.max(0, Math.min(...vals) - 10);
-              const maxV = Math.min(100, Math.max(...vals) + 10);
-              const toX = (i) => PAD + (i / (timeline.length - 1)) * (W - PAD * 2);
-              const toY = (v) => H - PAD - ((v - minV) / (maxV - minV || 1)) * (H - PAD * 2);
-
-              const solidPath = timeline.slice(0, todayIdx + 1).map((p, i) => `${i===0?"M":"L"}${toX(i)},${toY(p.val)}`).join(" ");
-              const dashPath  = timeline.slice(todayIdx).map((p, i) => `${i===0?"M":"L"}${toX(todayIdx+i)},${toY(p.val)}`).join(" ");
-              const areaPath  = `${solidPath} L${toX(todayIdx)},${H-PAD} L${toX(0)},${H-PAD} Z`;
-
+              const W = 480, H = 210, PAD_L = 40, PAD_R = 10, PAD_T = 10, PAD_B = 26;
+              const rawMax = Math.max(1, ...trendReceived, ...trendResolved);
+              // Round the axis ceiling up to a friendly step so gridlines land on whole numbers
+              const step = Math.pow(10, Math.max(0, String(Math.ceil(rawMax)).length - 1));
+              const maxV = Math.ceil(rawMax / step) * step || 1;
+              const ticks = [0, maxV * 0.25, maxV * 0.5, maxV * 0.75, maxV].map(v => Math.round(v));
+              const n = trendMonths.length;
+              const toX = (i) => PAD_L + (i / (n - 1)) * (W - PAD_L - PAD_R);
+              const toY = (v) => H - PAD_B - (v / maxV) * (H - PAD_T - PAD_B);
+              const linePath = (arr) => arr.map((v, i) => `${i === 0 ? "M" : "L"}${toX(i)},${toY(v)}`).join(" ");
               return (
-                <div style={{ background:"#F9FAFC", borderRadius:14, padding:"10px 12px 4px", position:"relative" }}>
-                  <InfoTip text="Trend graph = past data points from sentiment approval history plus projected future values based on current approval and momentum.">
-                    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:"100%", height:160, overflow:"visible" }}>
-                      <defs>
-                        <linearGradient id="tGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#2B5BD7" stopOpacity="0.18" />
-                          <stop offset="100%" stopColor="#2B5BD7" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      {[0,25,50,75,100].map(v => {
-                        if (v < minV || v > maxV) return null;
-                        return <line key={v} x1={PAD} x2={W-PAD} y1={toY(v)} y2={toY(v)} stroke="#EAEDF4" strokeWidth="1" />;
-                      })}
-                      <path d={areaPath} fill="url(#tGrad)" />
-                      <path d={solidPath} fill="none" stroke="#2B5BD7" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-                      {dashPath && <path d={dashPath} fill="none" stroke="#2B5BD7" strokeWidth="2" strokeDasharray="5 4" strokeOpacity="0.45" strokeLinejoin="round" />}
-                      {timeline.slice(0, todayIdx + 1).map((p, i) => (
-                        <circle key={i} cx={toX(i)} cy={toY(p.val)} r="3.5" fill="#fff" stroke="#2B5BD7" strokeWidth="2" />
+                <div style={{ background:"#F9FAFC", borderRadius:14, padding:"10px 12px 4px" }}>
+                  <div style={{ position:"relative" }}>
+                    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:"100%", height:220, overflow:"visible" }}>
+                      {ticks.map(t => (
+                        <g key={t}>
+                          <line x1={PAD_L} x2={W - PAD_R} y1={toY(t)} y2={toY(t)} stroke="#EAEDF4" strokeWidth="1" />
+                          <text x={PAD_L - 8} y={toY(t) + 4} textAnchor="end" style={{ font:"500 9px 'Hanken Grotesk'", fill:"#B0B8C9" }}>{t}</text>
+                        </g>
                       ))}
-                      <line x1={toX(todayIdx)} x2={toX(todayIdx)} y1={PAD} y2={H-PAD} stroke="#2B5BD7" strokeWidth="1.5" strokeDasharray="4 3" />
+                      <path d={linePath(trendReceived)} fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                      <path d={linePath(trendResolved)} fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                      {trendReceived.map((v, i) => (
+                        <circle key={`r${i}`} cx={toX(i)} cy={toY(v)} r="6" fill="#fff" stroke="#2563EB" strokeWidth="2"
+                          style={{ cursor:"pointer" }} onClick={toggleTip(`trend-r-${i}`)} />
+                      ))}
+                      {trendResolved.map((v, i) => (
+                        <circle key={`s${i}`} cx={toX(i)} cy={toY(v)} r="6" fill="#fff" stroke="#22C55E" strokeWidth="2"
+                          style={{ cursor:"pointer" }} onClick={toggleTip(`trend-s-${i}`)} />
+                      ))}
                     </svg>
-                  </InfoTip>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginTop:2, padding:`0 ${PAD}px` }}>
-                    {timeline.map((p, i) => (
-                      <span key={i} style={{ font:"500 9px 'Hanken Grotesk'",
-                        color: i===todayIdx ? "#2B5BD7" : p.proj ? "#D0D5E0" : "#B0B8C9",
-                        fontWeight: i===todayIdx ? 700 : 500 }}>
-                        {p.label}
-                      </span>
+                    {trendReceived.map((v, i) => activeTip === `trend-r-${i}` && (
+                      <div key={`tr-${i}`} style={{ position:"absolute", left:`${(toX(i)/W)*100}%`, top:`${(toY(v)/H)*100}%` }}>
+                        <TipBubble text={`${trendMonths[i]} · Received: ${v} grievance${v !== 1 ? "s" : ""} created this calendar month.`} />
+                      </div>
+                    ))}
+                    {trendResolved.map((v, i) => activeTip === `trend-s-${i}` && (
+                      <div key={`ts-${i}`} style={{ position:"absolute", left:`${(toX(i)/W)*100}%`, top:`${(toY(v)/H)*100}%` }}>
+                        <TipBubble text={`${trendMonths[i]} · Resolved: ${v} grievance${v !== 1 ? "s" : ""} marked RESOLVED or CLOSED this calendar month (counted by resolution date, not creation date).`} />
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginTop:2, padding:`0 ${PAD_R}px 0 ${PAD_L}px`, gap:4 }}>
+                    {trendMonths.map((m, i) => (
+                      <span key={i} title={m} style={{ font:"500 9px 'Hanken Grotesk'", color:"#B0B8C9", whiteSpace:"nowrap" }}>{m.split(" ")[0]}</span>
                     ))}
                   </div>
                 </div>
               );
             })()}
-            <div style={{ display:"flex", justifyContent:"space-between", marginTop:8 }}>
-              {["Elected", "", "Today", "", "Election"].map((l,i) => (
-                <span key={i} style={{ font:`${l==="Today"?"700":"600"} 11px 'Hanken Grotesk'`, color:l==="Today"?"#2B5BD7":"#9AA3B5" }}>{l}</span>
-              ))}
-            </div>
-            <div style={{ display:"flex", gap:12, marginTop:18, paddingTop:18, borderTop:"1px solid #F0F2F7" }}>
-              {(() => {
-                const now = new Date();
-                const campaignDate = new Date(now); campaignDate.setMonth(now.getMonth() + 18);
-                const electionDate = new Date(now); electionDate.setMonth(now.getMonth() + 24);
-                const fmt = d => d.toLocaleDateString("en-IN", { month:"short", year:"numeric" });
-                return [
-                  ["#2B5BD7", "Mid-Term Review",
-                    survey?.avgScore != null
-                      ? `Now · ⭐ ${survey.avgScore}/5 (${survey.totalResponses} responses)`
-                      : `Now · ${approvalPct != null ? approvalPct+"% approval" : "—"}`
-                  ],
-                  ["#C2CADA", "Campaign Opens", fmt(campaignDate)],
-                  ["#C2CADA", "Election Day",   fmt(electionDate)],
-                ].map(([c,lbl,s]) => (
-                  <div key={lbl} style={{ flex:1, display:"flex", gap:10 }}>
-                    <span style={{ width:9, height:9, borderRadius:"50%", background:c, marginTop:4, flexShrink:0, display:"block" }} />
-                    <div>
-                      <div style={{ font:"700 12px 'Hanken Grotesk'", color:"#16233C" }}>{lbl}</div>
-                      <div style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>{s}</div>
-                    </div>
-                  </div>
-                ));
-              })()}
-            </div>
           </div>
 
           {/* Approval by neighborhood */}
@@ -640,16 +641,26 @@ export default function ExecutiveDashboard() {
                 <span style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>High</span>
               </div>
             </div>
-            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:18 }}>
+            <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:6 }}>
               {peers?.totalWards ?? 0} ward areas
             </div>
+            {peers?.hasData && peers.wards?.some(w => (w.total ?? 0) > 0 && (w.total ?? 0) < 5) && (
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:14, padding:"7px 10px", background:"#FEF3E2", border:"1px solid #FBE3B8", borderRadius:9 }}>
+                <MS style={{ fontSize:13, color:"#C9871F", flexShrink:0 }}>warning</MS>
+                <span style={{ font:"500 10.5px 'Hanken Grotesk'", color:"#92620E", lineHeight:1.35 }}>
+                  Wards marked with very few grievances shouldn't be read as a firm approval score yet.
+                </span>
+              </div>
+            )}
             {peers?.hasData ? (
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {peers.wards.map((w) => {
                   const pct = w.approvalPct ?? 0;
                   const barColor = pct >= 60 ? "#2B5BD7" : pct >= 40 ? "#C9871F" : "#C8453A";
+                  const tipId = `ward-${w.wardId}`;
+                  const wardSampleIsLow = (w.total ?? 0) < 5;
                   return (
-                    <div key={w.wardId}>
+                    <div key={w.wardId} style={{ position:"relative" }}>
                       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3, alignItems:"center" }}>
                         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                           <span style={{ font:"600 11px 'Hanken Grotesk'", color:"#16233C" }}>
@@ -659,12 +670,25 @@ export default function ExecutiveDashboard() {
                         </div>
                         <span style={{ font:"700 11px 'Hanken Grotesk'", color: barColor }}>{pct}%</span>
                       </div>
-                      <div style={{ height:6, borderRadius:3, background:"#F0F2F7" }}>
+                      <div onClick={toggleTip(tipId)} style={{ height:6, borderRadius:3, background:"#F0F2F7", cursor:"pointer" }}>
                         <div style={{ height:"100%", width:`${pct}%`, borderRadius:3, background: barColor, transition:"width .4s" }} />
                       </div>
-                      <div style={{ font:"400 10px 'Hanken Grotesk'", color:"#B0B8C9", marginTop:2 }}>
-                        {w.total} {w.total !== 1 ? "grievances" : "grievance"}
+                      <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
+                        <span style={{ font:"400 10px 'Hanken Grotesk'", color:"#B0B8C9" }}>
+                          {w.total} {w.total !== 1 ? "grievances" : "grievance"}
+                        </span>
+                        {wardSampleIsLow && (
+                          <span style={{ font:"600 9px 'Hanken Grotesk'", color:"#C9871F", background:"#FEF3E2", padding:"1px 6px", borderRadius:6 }}>
+                            low sample
+                          </span>
+                        )}
                       </div>
+                      {activeTip === tipId && (
+                        <TipBubble
+                          align="left"
+                          text={`Ward ${w.wardName}: ${w.total ?? 0} grievance${(w.total ?? 0) !== 1 ? "s" : ""} recorded in the selected date range. Approval (${pct}%) = share of this ward's AI-sentiment-scored grievances that came back positive.${wardSampleIsLow ? " With this few grievances, treat the % as a rough early signal, not a firm reading." : ""}`}
+                        />
+                      )}
                     </div>
                   );
                 })}
@@ -678,34 +702,8 @@ export default function ExecutiveDashboard() {
         </div>
 
         {/* Dashboard cards row below Trend and Support */}
-        <div style={{ display:"grid", gridTemplateColumns:"1.8fr 1fr 1fr 0.95fr", gap:20, alignItems:"start" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:20, alignItems:"start" }}>
           {dashboardCards.map(card => {
-            if (card.type === "map") {
-              return (
-                <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
-                    <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
-                  </div>
-                  <div style={{ minHeight:260, borderRadius:20, background:"linear-gradient(180deg,#FDFEFF 0%,#EFF6FF 100%)", border:"1px solid #E5E9F1", position:"relative", overflow:"hidden" }}>
-                    <div style={{ position:"absolute", inset:0, background:"url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=400 height=250 viewBox=\'0 0 400 250\'%3E%3Crect width=400 height=250 fill=%23F8FAFD/%3E%3Cpath d=\'M15 110C55 90 120 80 165 90C200 100 240 95 297 115C325 125 368 135 385 147\' stroke=%23D6E4FF stroke-width=8 fill=none/%3E%3Cpath d=\'M40 175C84 160 130 135 180 146C221 154 260 165 315 149\' stroke=%23E2E8F0 stroke-width=8 fill=none/%3E%3C/svg%3E') center/cover", opacity:0.85 }} />
-                    <div style={{ position:"absolute", top:36, left:32, width:18, height:18, borderRadius:999, background:"#16A34A", boxShadow:"0 0 0 6px rgba(22,163,74,.18)" }} />
-                    <div style={{ position:"absolute", top:80, left:120, width:18, height:18, borderRadius:999, background:"#2563EB", boxShadow:"0 0 0 6px rgba(37,99,235,.18)" }} />
-                    <div style={{ position:"absolute", top:130, left:210, width:18, height:18, borderRadius:999, background:"#7C3AED", boxShadow:"0 0 0 6px rgba(124,58,237,.18)" }} />
-                    <div style={{ position:"absolute", top:52, right:40, width:18, height:18, borderRadius:999, background:"#EF4444", boxShadow:"0 0 0 6px rgba(239,68,68,.18)" }} />
-                    <div style={{ position:"absolute", bottom:34, right:100, width:18, height:18, borderRadius:999, background:"#F59E0B", boxShadow:"0 0 0 6px rgba(245,158,11,.18)" }} />
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(4,minmax(0,1fr))", gap:10, marginTop:18, font:"500 11px 'Hanken Grotesk'", color:"#475569" }}>
-                    {mapLegend.map(item => (
-                      <div key={item.label} style={{ display:"flex", alignItems:"center", gap:8, minWidth:0, overflow:"hidden" }}>
-                        <span style={{ width:10, height:10, borderRadius:999, background:item.color, flexShrink:0 }} />
-                        <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            }
-
             if (card.type === "overview") {
               const donutRadius = 64;
               const circumference = 2 * Math.PI * donutRadius;
@@ -720,7 +718,7 @@ export default function ExecutiveDashboard() {
                       <svg viewBox="0 0 160 160" style={{ width:"100%", height:"100%" }}>
                         <circle cx="80" cy="80" r="64" fill="#F8FAFD" />
                         {overviewItems.map((item, idx) => {
-                          const pct = item.value / overviewTotal;
+                          const pct = overviewTotal > 0 ? item.value / overviewTotal : 0;
                           const dash = Math.round(circumference * pct);
                           const dashOffset = Math.round(circumference * (1 - offset));
                           offset += pct;
@@ -752,7 +750,7 @@ export default function ExecutiveDashboard() {
                       ))}
                     </div>
                   </div>
-                  <button style={{ marginTop:18, width:"100%", height:44, background:"#2563EB", color:"#fff", border:"none", borderRadius:14, font:"700 13px 'Hanken Grotesk'", cursor:"pointer" }}>View All Grievances</button>
+                  <button onClick={() => navigate("/rep/grievances")} style={{ marginTop:18, width:"100%", height:44, background:"#2563EB", color:"#fff", border:"none", borderRadius:14, font:"700 13px 'Hanken Grotesk'", cursor:"pointer" }}>View All Grievances</button>
                 </div>
               );
             }
@@ -760,53 +758,99 @@ export default function ExecutiveDashboard() {
             if (card.type === "category") {
               const colors = ["#2563EB", "#F59E0B", "#22C55E", "#A855F7", "#EF4444", "#0C4A6E", "#10B981"];
               const maxValue = categoryStats[0]?.value || 1;
+              const categoryTotal = categoryStats.reduce((sum, i) => sum + i.value, 0);
               return (
                 <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
                     <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
                   </div>
-                  <div style={{ display:"grid", gap:14 }}>
-                    {categoryStats.map((item, idx) => {
-                      const width = Math.round((item.value / maxValue) * 100);
-                      return (
-                        <div key={item.label}>
-                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8, font:"600 12px 'Hanken Grotesk'", color:"#16233C" }}>
-                            <span>{item.label}</span>
-                            <span>{item.value}</span>
+                  {categoryStats.length > 0 ? (
+                    <div style={{ display:"grid", gap:14 }}>
+                      {categoryStats.map((item, idx) => {
+                        const width = Math.round((item.value / maxValue) * 100);
+                        const pctOfTotal = categoryTotal > 0 ? Math.round((item.value / categoryTotal) * 100) : 0;
+                        const tipId = `cat-${item.label}`;
+                        return (
+                          <div key={item.label} style={{ position:"relative" }}>
+                            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8, font:"600 12px 'Hanken Grotesk'", color:"#16233C" }}>
+                              <span>{item.label}</span>
+                              <span>{item.value}</span>
+                            </div>
+                            <div onClick={toggleTip(tipId)} style={{ height:10, borderRadius:99, background:"#F1F5F9", cursor:"pointer" }}>
+                              <div style={{ width:`${width}%`, height:"100%", borderRadius:99, background: colors[idx % colors.length] }} />
+                            </div>
+                            {activeTip === tipId && (
+                              <TipBubble
+                                align="left"
+                                text={`${item.label}: ${item.value} grievance${item.value !== 1 ? "s" : ""} categorized as "${item.label}" in the selected date range — ${pctOfTotal}% of the ${categoryTotal} categorized grievances shown here.`}
+                              />
+                            )}
                           </div>
-                          <div style={{ height:10, borderRadius:99, background:"#F1F5F9" }}>
-                            <div style={{ width:`${width}%`, height:"100%", borderRadius:99, background: colors[idx % colors.length] }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:140 }}>
+                      <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No category data</span>
+                    </div>
+                  )}
                 </div>
               );
             }
 
-            return (
-              <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
-                  <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
-                  <button style={{ font:"600 12px 'Hanken Grotesk'", color:"#2563EB", background:"transparent", border:"none", cursor:"pointer" }}>View All</button>
-                </div>
-                <div style={{ display:"grid", gap:16 }}>
-                  {notificationItems.map((note, idx) => (
-                    <div key={idx} style={{ display:"flex", alignItems:"flex-start", gap:12, paddingBottom: idx < notificationItems.length-1 ? 14 : 0, borderBottom: idx < notificationItems.length-1 ? "1px solid #F0F2F7" : "none" }}>
-                      <div style={{ width:34, height:34, borderRadius:14, background:"#F8FAFD", display:"grid", placeItems:"center", color:note.color }}>
-                        <MS style={{ fontSize:18 }}>{note.icon}</MS>
-                      </div>
-                      <div>
-                        <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#16233C", marginBottom:4 }}>{note.title}</div>
-                        <div style={{ font:"500 11px 'Hanken Grotesk'", color:"#6B7280" }}>{note.time}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
+            return null;
           })}
+        </div>
+
+        {/* Row: Citizen Satisfaction */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:20, alignItems:"start" }}>
+
+          {/* Citizen Satisfaction Index */}
+          <div style={{ background:"#fff", borderRadius:22, padding:24, border:"1px solid #EAEDF4", boxShadow:"0 14px 30px -22px rgba(20,35,60,.18)", display:"flex", flexDirection:"column", alignItems:"center" }}>
+            <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C", alignSelf:"flex-start", marginBottom:8 }}>Citizen Satisfaction Index</div>
+            {hasSatisfactionData ? (
+              <>
+                <div style={{ position:"relative", width:220, marginTop:10 }}>
+                  <svg viewBox="0 0 220 130" style={{ width:"100%", height:"auto" }}>
+                    <defs>
+                      <linearGradient id="satGrad" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#EF4444" />
+                        <stop offset="35%" stopColor="#F59E0B" />
+                        <stop offset="65%" stopColor="#FBBF24" />
+                        <stop offset="100%" stopColor="#22C55E" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M20,118 A90,90 0 0 1 200,118" fill="none" stroke="url(#satGrad)" strokeWidth="18" strokeLinecap="round" />
+                  </svg>
+                  <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", paddingTop:20 }}>
+                    <div style={{ fontFamily:"'Newsreader','Noto Sans Kannada',serif", fontSize:34, fontWeight:400, color:"#16233C", lineHeight:1 }}>{satisfactionPct}%</div>
+                    <div style={{ font:"600 13px 'Hanken Grotesk'", color:"#8590A6", marginTop:4 }}>{satisfactionLabel}</div>
+                  </div>
+                </div>
+                {satisfactionDelta != null && (
+                  <div style={{ font:"600 12px 'Hanken Grotesk'", color: satisfactionDelta >= 0 ? "#1E8A5B" : "#C8453A", marginTop:10 }}>
+                    {satisfactionDelta >= 0 ? "+" : ""}{satisfactionDelta}% from last period
+                  </div>
+                )}
+                <div style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6", marginTop:8, textAlign:"center" }}>
+                  Based on {approvalResponses ?? 0} citizen response{(approvalResponses ?? 0) === 1 ? "" : "s"}
+                </div>
+                {satisfactionSampleIsLow && (
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:10, padding:"8px 12px", background:"#FEF3E2", border:"1px solid #FBE3B8", borderRadius:10, maxWidth:280 }}>
+                    <MS style={{ fontSize:14, color:"#C9871F", flexShrink:0 }}>warning</MS>
+                    <span style={{ font:"500 11px 'Hanken Grotesk'", color:"#92620E", lineHeight:1.4 }}>
+                      Based on very few responses — this number can swing a lot as more come in, so treat it as early signal, not a firm reading.
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:180 }}>
+                <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#C0C7D4" }}>No satisfaction data available</span>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
     </>

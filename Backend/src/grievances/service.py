@@ -11,6 +11,7 @@ from bson import ObjectId
 from typing import Optional, List, Dict
 from datetime import datetime
 import logging
+from utils.email_service import send_email
 from utils.helper import Helper
 from utils.id_generator import IDGenerator
 
@@ -220,25 +221,10 @@ class GrievanceService:
                 email = citizen.get("email")
                 if email:
                     try:
-                        import smtplib, os
-                        from email.mime.multipart import MIMEMultipart
-                        from email.mime.text import MIMEText
-                        sender_email    = os.getenv("SMTP_EMAIL", "")
-                        sender_password = os.getenv("SMTP_PASSWORD", "")
-                        smtp_server     = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-                        smtp_port       = int(os.getenv("SMTP_PORT", 587))
-                        msg = MIMEMultipart()
-                        msg["From"]    = sender_email
-                        msg["To"]      = email
-                        msg["Subject"] = title
-                        msg.attach(MIMEText(
-                            f"Hello {citizen.get('fullName', 'Citizen')},\n\n{body}\n\nThank you,\nJan Seva CRM Team",
-                            "plain"
-                        ))
-                        with smtplib.SMTP(smtp_server, smtp_port) as srv:
-                            srv.starttls()
-                            srv.login(sender_email, sender_password)
-                            srv.send_message(msg)
+                        body_text = f"Hello {citizen.get('fullName', 'Citizen')},\n\n{body}\n\nThank you,\nN2N Team"
+                        email_sent = send_email(email, title, body_text)
+                        if not email_sent:
+                            logger.warning(f"Grievance email notification failed for {email}")
                     except Exception as e:
                         logger.warning(f"Grievance email notification failed: {e}")
 

@@ -22,8 +22,8 @@ function InfoTip({ text, children }) {
       aria-label={text}
     >
       {children}
-      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, opacity: open ? 1 : 0, transition: "opacity .12s ease" }}>
-        ?
+      <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", opacity: open ? 1 : 0.55, transition: "opacity .12s ease" }}>
+        i
       </span>
       {open && (
         <div style={{
@@ -111,9 +111,11 @@ function deriveCareerData(insights, analytics, grievances = []) {
     ? insights.sentimentTrend.points : [];
 
   const citizens = analytics?.users?.byRole?.CITIZEN ?? null;
-  const totalReg = analytics?.events?.totalRegistrations ?? null;
+  // Total events organized (Events feature entries out of Draft + published
+  // "Event"-type Communication Center campaigns) — not registration counts.
+  const eventsOrganized = analytics?.events?.publishedEvents ?? null;
 
-  return { approvalPct, peers, resolved, total, openRoad, openTransit, trendPoints, citizens, totalReg, byStatus };
+  return { approvalPct, peers, resolved, total, openRoad, openTransit, trendPoints, citizens, eventsOrganized, byStatus };
 }
 
 function readCareerCache() {
@@ -693,9 +695,9 @@ export default function CareerOutlook() {
                 />
                 <StatCard
                   iconName="campaign" iconBg="#EDEAFB" iconColor="#6B4FD8"
-                  label="Event Registrations"
-                  tooltip="Recent constituent event sign-ups; higher engagement often correlates with stronger reelection outlook."
-                  value={data?.totalReg != null ? data.totalReg.toLocaleString() : "—"}
+                  label="Events Organized"
+                  tooltip="Published entries from the Events feature (out of Draft status) plus published Communication Center campaigns of type 'Event'."
+                  value={data?.eventsOrganized != null ? data.eventsOrganized.toLocaleString() : "—"}
                   sub="Constituent engagement" subColor="#1E7A50"
                 />
               </>

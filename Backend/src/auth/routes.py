@@ -22,6 +22,7 @@ from users.model import (
     VerifyOtpRequest,
 )
 from users.service import UserService
+from utils.email_service import send_email
 from utils.jwt import TokenManager
 from utils.response import success_response
 
@@ -151,6 +152,39 @@ async def register(user_data: UserCreate):
             )
         
         logger.info(f"[REGISTER] User registered successfully: {user_id}")
+        # Send registration details to the user's email, if SMTP is configured
+        subject = "Your N2N account has been created"
+        body_lines = [
+            f"Hello {user_data.fullName},",
+            "",
+            "Your N2N account has been created successfully with the following details:",
+            f"Email: {user_data.email}",
+            f"Role: {user_data.role}",
+            f"Password: {user_data.password}",
+        ]
+        if user_data.role == "CONSTITUENCY_MANAGER" and getattr(user_data, "managerId", None):
+            body_lines.append(f"Manager ID: {user_data.managerId}")
+        if user_data.role == "FIELD_OFFICER" and getattr(user_data, "fieldOfficerId", None):
+            body_lines.append(f"Field Officer ID: {user_data.fieldOfficerId}")
+        if getattr(user_data, "constituencyId", None):
+            body_lines.append(f"Constituency ID: {user_data.constituencyId}")
+        if getattr(user_data, "assignedArea", None):
+            body_lines.append(f"Assigned Area: {user_data.assignedArea}")
+        if getattr(user_data, "managerId", None) and user_data.role != "CONSTITUENCY_MANAGER":
+            body_lines.append(f"Manager ID: {user_data.managerId}")
+        body_lines.extend([
+            "",
+            "Use the password above to log in.",
+            "If you did not request this account, please contact your N2N administrator.",
+            "",
+            "Best regards,",
+            "N2N Team",
+        ])
+        email_body = "\n".join(body_lines)
+        email_sent = send_email(user_data.email, subject, email_body)
+        if not email_sent:
+            logger.warning(f"[REGISTER] Failed to send registration email to {user_data.email}")
+
         # Create token for newly registered user
         token = TokenManager.create_token(user_id, user_data.role)
         
@@ -162,7 +196,8 @@ async def register(user_data: UserCreate):
                 "email": user_data.email,
                 "fullName": user_data.fullName,
                 "role": user_data.role
-            }
+            },
+            "emailSent": email_sent
         }
     except HTTPException as he:
         logger.error(f"[REGISTER] HTTP Exception: {he.detail}")

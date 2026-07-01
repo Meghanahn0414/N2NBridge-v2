@@ -65,11 +65,13 @@ function InfoTip({ text }) {
           fontWeight: 700,
           border: "1px solid #dbeafe",
           lineHeight: 1,
-          opacity: open ? 1 : 0,
+          opacity: open ? 1 : 0.55,
           transition: "opacity .12s ease",
+          fontStyle: "italic",
+          fontFamily: "Georgia, 'Times New Roman', serif",
         }}
       >
-        ?
+        i
       </span>
       {open && (
         <div style={{
@@ -562,23 +564,29 @@ export default function CitizenSentimentDashboard() {
                   {approvalDelta != null && (
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: approvalDelta >= 0 ? "#E6F4EC" : "#FBEAE8", color: approvalDelta >= 0 ? "#1E7A50" : "#C8453A", font: "700 14px 'Hanken Grotesk'", padding: "6px 11px", borderRadius: 20, marginBottom: 5 }}>
                       <MS style={{ fontSize: 17 }}>{approvalDelta >= 0 ? "arrow_upward" : "arrow_downward"}</MS>
-                      {Math.abs(approvalDelta)} pts
+                      {approvalDelta >= 0 ? "up" : "down"} {Math.abs(approvalDelta)} points
                     </span>
                   )}
                   {approvalDelta == null && curApproval != null && (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#E6F4EC", color: "#1E7A50", font: "700 14px 'Hanken Grotesk'", padding: "6px 11px", borderRadius: 20, marginBottom: 5 }}>
-                      <MS style={{ fontSize: 17 }}>arrow_upward</MS>— pts
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#F0F2F7", color: "#8590A6", font: "700 14px 'Hanken Grotesk'", padding: "6px 11px", borderRadius: 20, marginBottom: 5 }}>
+                      not enough data yet
                     </span>
                   )}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 18 }}>
                 <div>
-                  <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>{period} low</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>Lowest point</span>
+                    <InfoTip text={`The lowest approval rating recorded during the last ${period}. Approval rating comes from citizen sentiment (positive feedback share) over time.`} />
+                  </div>
                   <div style={{ font: "400 20px 'Newsreader'", color: "#16233C" }}>{moLow != null ? `${moLow}%` : "—"}</div>
                 </div>
                 <div>
-                  <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>{period} high</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>Highest point</span>
+                    <InfoTip text={`The highest approval rating recorded during the last ${period}. Approval rating comes from citizen sentiment (positive feedback share) over time.`} />
+                  </div>
                   <div style={{ font: "400 20px 'Newsreader'", color: "#2B5BD7" }}>{moHigh != null ? `${moHigh}%` : "—"}</div>
                 </div>
               </div>
@@ -589,10 +597,10 @@ export default function CitizenSentimentDashboard() {
           {/* Net sentiment score */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Citizen Sentiment Score</div>
-              <InfoTip text="Net sentiment = positive % minus negative % across citizen feedback." />
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Citizen Mood Score</div>
+              <InfoTip text="How this number is worked out: the share of feedback that's positive, minus the share that's negative. A higher number means more people are happy; a lower (or negative) number means more people are unhappy." />
             </div>
-            <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>Positive minus negative</div>
+            <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>Happy feedback minus unhappy feedback</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 6 }}>
               <span style={{ font: "400 56px 'Newsreader'", color: netScore != null ? (netScore >= 0 ? "#1E8A5B" : "#C8453A") : "#C0C7D4", lineHeight: .85 }}>
                 {netScore != null ? `${netScore > 0 ? "+" : ""}${netScore}` : "—"}
@@ -600,8 +608,8 @@ export default function CitizenSentimentDashboard() {
             </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 24 }}>
               {sentiment?.hasData
-                ? netScore >= 0 ? "More positive than negative" : "More negative than positive"
-                : "No data yet"}
+                ? netScore >= 0 ? "More citizens are happy than unhappy" : "More citizens are unhappy than happy"
+                : "Not enough feedback yet to tell"}
             </div>
             {/* Diverging bar: positive | neutral | negative (interactive) */}
             <div style={{ display: "flex", height: 34, borderRadius: 9, overflow: "visible", marginBottom: 14 }}>
@@ -646,10 +654,10 @@ export default function CitizenSentimentDashboard() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Public Feedback Breakdown</div>
-                  <InfoTip text="Tone share of citizen feedback in the selected time period." />
+                  <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>How Citizens Feel Over Time</div>
+                  <InfoTip text="Shows the mix of happy, neutral, and unhappy feedback from citizens, month by month." />
                 </div>
-                <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>Share of feedback by tone, {period}</div>
+                <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>Happy, neutral, and unhappy feedback, last {period}</div>
               </div>
               <div style={{ display: "flex", gap: 14 }}>
                 {[["#1E8A5B", "Positive"], ["#E3B778", "Neutral"], ["#D86C5E", "Negative"]].map(([c, l]) => (
@@ -666,11 +674,11 @@ export default function CitizenSentimentDashboard() {
           {/* Where feedback comes from */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Feedback Sources</div>
-              <InfoTip text="Where citizen signals are coming from: reports, comments, surveys." />
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Where Feedback Comes From</div>
+              <InfoTip text="Where citizens are sending their feedback from: app reports, comments, and surveys." />
             </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>
-              {sources?.total != null ? `${sources.total.toLocaleString()} signals this period` : "— signals this period"}
+              {sources?.total != null ? `${sources.total.toLocaleString()} responses this period` : "No responses yet this period"}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {[
@@ -703,7 +711,7 @@ export default function CitizenSentimentDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Approval by Age Group</div>
-              <InfoTip text="Approval % broken down by citizen age cohort." />
+              <InfoTip text="How approval differs across citizen age groups." />
             </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 22 }}>Where you connect — and where to grow</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 18, height: 180, padding: "0 6px" }}>
@@ -740,12 +748,9 @@ export default function CitizenSentimentDashboard() {
                     const curResolved = d.resolved ?? 0;
                     const prevTotal = d.prev_total ?? 0;
                     const prevResolved = d.prev_resolved ?? 0;
-                    const curRate = curTotal ? (curResolved / curTotal) : 0;
-                    const prevRate = prevTotal ? (prevResolved / prevTotal) : 0;
-                    const volumeWeight = Math.min(curTotal / 10, 5);
-                    const formula = `impact = (cur_resolved/cur_total - prev_resolved/prev_total) * 10 * (1 + volume_weight*0.1)`;
-                    return `${d.label}: ${curResolved} resolved / ${curTotal} reports now; previously ${prevResolved} / ${prevTotal}.\n` +
-                      `cur_rate=${(curRate).toFixed(2)}, prev_rate=${(prevRate).toFixed(2)}, volume_weight=${volumeWeight.toFixed(1)}\n${formula}`;
+                    const curRate = curTotal ? Math.round((curResolved / curTotal) * 100) : 0;
+                    const prevRate = prevTotal ? Math.round((prevResolved / prevTotal) * 100) : 0;
+                    return `${d.label}: ${curResolved} of ${curTotal} reports resolved this period (${curRate}%), compared to ${prevResolved} of ${prevTotal} last period (${prevRate}%). ${pos ? "Getting better at resolving this is helping public opinion." : "Falling behind on this is hurting public opinion."}`;
                   })();
 
                   return (
