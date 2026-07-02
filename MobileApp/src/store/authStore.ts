@@ -8,6 +8,7 @@ interface User {
   email: string;
   role: string;
   age?: number;
+  repType?: "MLA" | "MP" | "COUNCILLOR";
   mobile?: string;
 }
 

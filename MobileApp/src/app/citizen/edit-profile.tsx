@@ -383,6 +383,7 @@ export default function EditProfileScreen() {
           name:  newUser.fullName || form.fullName.trim(),
           email: newUser.email || form.email.trim(),
           role:  "CITIZEN",
+          repType,
         });
         setProfileComplete(true);
 
