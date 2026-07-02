@@ -36,6 +36,7 @@ export default function NewComplaintScreen() {
   const { photoUri } = useLocalSearchParams<{ photoUri?: string }>();
   const user = useAuthStore((s) => s.user);
   const profileComplete = useAuthStore((s) => s.profileComplete);
+  const updateUser = useAuthStore((s) => s.updateUser);
 
   const [categories,   setCategories]   = useState(DEFAULT_CATEGORIES);
   const [category,     setCategory]     = useState(DEFAULT_CATEGORIES[0].value);
@@ -69,8 +70,25 @@ export default function NewComplaintScreen() {
   useEffect(() => {
     async function loadCategories() {
       try {
+        // The citizen's rep_type (MLA/MP/COUNCILLOR) is set once at profile
+        // completion and never changes after — see edit-profile.tsx. Older
+        // sessions completed before repType started being persisted won't
+        // have it, so fall back to deriving it from /api/citizens/me (which
+        // of assembly_name/parliamentary_name/ward_id is populated tells us
+        // which representative type this citizen belongs to) and cache it
+        // for next time.
+        let repType = user?.repType;
+        if (!repType) {
+          try {
+            const { data: meData } = await api.get("/api/citizens/me");
+            const p = meData?.data ?? meData;
+            repType = p.assembly_name ? "MLA" : p.parliamentary_name ? "MP" : p.ward_id ? "COUNCILLOR" : undefined;
+            if (repType) updateUser({ repType });
+          } catch { /* fall through to default below */ }
+        }
+
         const { data } = await api.get("/api/lookups/grievance-categories", {
-          params: { rep_type: "MLA" },
+          params: { rep_type: repType || "MLA" },
         });
         const payload = data?.data ?? data;
         if (Array.isArray(payload) && payload.length > 0) {
@@ -78,12 +96,12 @@ export default function NewComplaintScreen() {
           setCategory(payload[0].value);
         }
       } catch (err) {
-        console.error("Unable to load MLA categories", err);
+        console.error(`Unable to load ${user?.repType || "MLA"} categories`, err);
       }
     }
 
     loadCategories();
-  }, []);
+  }, [user?.repType]);
 
   const catLabel = (key: string) => {
     const match = categories.find((item) => item.value === key);
@@ -198,11 +216,9 @@ export default function NewComplaintScreen() {
         });
       } catch { /* non-fatal */ }
 
-      Alert.alert(
-        tr("Submitted!"),
-        tr("Your complaint has been registered successfully."),
-        [{ text: tr("View My Reports"), onPress: () => router.replace("/citizen/complaint-list" as any) }],
-      );
+      // A native Alert is a modal that blocks the view until dismissed, so it
+      // can't coexist with an instant redirect — navigate straight away.
+      router.replace("/citizen/complaint-list" as any);
     } catch (err: any) {
       const msg = err?.response?.data?.detail || err?.message || tr("Failed to submit. Please try again.");
       Alert.alert(tr("Error"), String(msg));
