@@ -144,7 +144,8 @@ async def my_representatives(db=Depends(get_tenant_db), user=Depends(require_aut
     # Own tenant's representative
     rep = db.users.find_one({"role": "REPRESENTATIVE"}, {
         "_id": 1, "fullName": 1, "title": 1, "mobile": 1,
-        "email": 1, "officeAddress": 1, "profileImage": 1,
+        "email": 1, "officeAddress": 1, "officePhone": 1,
+        "profileImage": 1, "bio": 1,
     })
 
     result: dict = {"councillor": None, "mla": None, "mp": None}

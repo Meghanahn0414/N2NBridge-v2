@@ -159,18 +159,19 @@ export default function MlaProfileScreen() {
       const realEmail = (e: string | null | undefined) =>
         e && !e.startsWith("otp-") ? e : null;
 
-      // bio / officePhone / approvalPct / resolvedCount aren't part of this
-      // endpoint's response shape yet — left null rather than guessed from
-      // cross-tenant data.
+      // approvalPct / resolvedCount still aren't part of this endpoint's
+      // response shape — left null rather than guessed from cross-tenant
+      // data. bio / officePhone ARE returned now (see my_representatives in
+      // citizens/routes.py — its projection used to silently drop both).
       const mlaData: MlaProfile = {
         id:                  u.id || u._id,
         fullName:            u.fullName || u.name || null,
         title:               u.title || "MLA",
-        bio:                 null,
+        bio:                 u.bio || null,
         profileImage:        toAbsoluteUrl(u.profileImage || u.profilePhoto) ?? null,
         constituencyName:    null,
         email:               realEmail(u.email),
-        officePhone:         null,
+        officePhone:         u.officePhone || null,
         officeAddress:       u.officeAddress || null,
         showApprovalRating:  false,
         showResolvedCount:   false,

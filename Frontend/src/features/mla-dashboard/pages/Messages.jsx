@@ -374,11 +374,16 @@ export default function Messages() {
   async function notifyCitizen(citizenId, senderName, messageText) {
     if (!citizenId) return;
     try {
+      // Backend's SendRequest model requires citizen_id/message (not
+      // userId/body) — those were silently mismatched, so every call here
+      // 422'd and got swallowed by the catch below. The reply still saved
+      // fine into the grievance history (shown as "Sent" in this UI), but
+      // the citizen never actually received it as a notification.
       await api.post("/api/notifications/send", {
-        userId: citizenId,
-        title:  `Message from ${senderName}`,
-        body:   messageText,
-        type:   "MESSAGE",
+        citizen_id: citizenId,
+        title:      `Message from ${senderName}`,
+        message:    messageText,
+        type:       "Message",
       });
     } catch (e) {
       // Non-fatal — message is still saved in the grievance history
