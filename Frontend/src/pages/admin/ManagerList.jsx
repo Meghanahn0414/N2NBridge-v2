@@ -38,7 +38,8 @@ export default function ManagerList() {
       console.log("[ManagerList] Fetching managers with role=CONSTITUENCY_MANAGER");
       const res = await api.get("/api/users/", { params: { role: "CONSTITUENCY_MANAGER", per_page: 100 } });
       console.log("[ManagerList] API Response:", res.data);
-      const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      // Backend wraps results as { items, total, page, per_page } under .data.
+      const list = res.data?.data?.items ?? [];
       console.log("[ManagerList] Parsed managers list:", list);
       setUsers(list);
     } catch (err) {

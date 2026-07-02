@@ -5,6 +5,7 @@ import PageHeader from "../../../components/PageHeader";
 import { fetchUsers, updateUser, deleteUser, resetUserPassword } from '../../../features/team-management/userService';
 import Pagination from '../../../components/Pagination';
 import { FaEdit, FaKey, FaBan, FaCheck, FaTrashAlt } from 'react-icons/fa';
+import { getAuthUser } from '../../../services/authStorage';
 
 const PAGE_SIZE = 100;
 import PhoneInput from '../../../components/PhoneInput';
@@ -13,10 +14,18 @@ import api from '../../../shared/services/api';
 
 const EMPTY_EDIT = { fullName: '', mobile: '', email: '', role: '', address: '', constituencyId: '' };
 
+const SCOPE_LABELS = { MLA: 'MLA', MP: 'MP', COUNCILLOR: 'Councillor' };
+
 const extractError = (err) =>
   err?.message || err?.response?.data?.detail || 'Operation failed';
 
 export default function UserManagement() {
+  const currentUser = getAuthUser();
+  // For an elevated Representative, `title` carries the MLA/MP/COUNCILLOR
+  // value (the Admin-only `scope` field doesn't survive elevation); for a
+  // still-plain Admin, `scope` is the one to use.
+  const effectiveScope = currentUser?.role === 'REPRESENTATIVE' ? currentUser?.title : currentUser?.scope;
+
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -157,6 +166,23 @@ export default function UserManagement() {
       </PageHeader>
       <div className="module-container">
 
+        {effectiveScope && (
+          <div
+            style={{
+              margin: "0 0 20px",
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              fontSize: 13,
+              color: "#1d4ed8",
+              fontWeight: 600,
+            }}
+          >
+            Registered as: {SCOPE_LABELS[effectiveScope] || effectiveScope} — showing only your own team's users.
+          </div>
+        )}
+
       <div className="module-stats">
         {[
           { label: "Total Users", value: totalUsers,                                         icon: "👥", bg: "#EEF2FF" },
@@ -219,7 +245,7 @@ export default function UserManagement() {
                         {user.status || 'ACTIVE'}
                       </span>
                     </td>
-                    <td>{user.constituencyId || user.wardId || '-'}</td>
+                    <td>{user.constituencyId || user.wardId || SCOPE_LABELS[effectiveScope] || effectiveScope || '-'}</td>
                     <td>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</td>
                     <td>
                       <div className="action-btns">

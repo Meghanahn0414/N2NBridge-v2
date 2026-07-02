@@ -40,7 +40,6 @@ const SECTIONS = [
     label: "PEOPLE",
     items: [
       { label: "Citizens",        icon: <RiGroupLine />,      to: ROUTES.adminUsers },
-      { label: "Representatives", icon: <RiVipCrownLine />,   to: ROUTES.mlaList },
       { label: "Managers",        icon: <RiBriefcaseLine />,  to: ROUTES.managerList },
       { label: "Field Officers",  icon: <RiUserLine />,       to: ROUTES.fieldOfficerList },
     ],
@@ -82,6 +81,11 @@ const SECTIONS = [
 
 export default function AdminLayout() {
   const user = getAuthUser();
+
+  // A scoped admin's one-time representative registration happens through
+  // the Role dropdown on the Registration page itself (the scope, e.g.
+  // "MLA", is offered there as a selectable option until managedDbName is
+  // set) — no separate sidebar entry/page needed for it.
   return (
     <div className="mla-shell">
       <SharedSidebar

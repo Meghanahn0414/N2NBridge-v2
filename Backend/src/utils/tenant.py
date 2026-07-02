@@ -3,6 +3,7 @@ Tenant database dependency for FastAPI routes.
 """
 from typing import Optional
 
+from bson import ObjectId
 from fastapi import Depends, HTTPException, Request
 from utils.jwt import TokenManager
 from config.database import MongoDatabase
@@ -18,7 +19,45 @@ def _extract_user(request: Request) -> Optional[dict]:
     token = TokenManager.extract_token_from_header(authorization)
     if not token:
         return None
-    return TokenManager.verify_token(token)
+    payload = TokenManager.verify_token(token)
+    return _resolve_admin_managed_tenant(payload)
+
+
+def _resolve_admin_managed_tenant(payload: Optional[dict]) -> Optional[dict]:
+    """
+    A scoped Admin's own login never becomes a Representative login (that
+    elevation flow was deliberately removed — the Admin keeps using the
+    normal Admin Portal permanently). But tenant-scoped, rep-only endpoints
+    (/api/staff/, /api/rep/grievances/*, /api/citizens/ list/detail, etc.)
+    only work for a caller whose db_name points at a tenant and whose role
+    passes each endpoint's own REPRESENTATIVE/STAFF check — an Admin's token
+    carries db_name=master and role=ADMIN, so those endpoints would either
+    404 on the wrong database or 403 on the role check, even though the
+    Admin is the one meant to manage that tenant's team/grievances/citizens
+    day to day.
+
+    Once the Admin has registered their one representative (managedDbName
+    set on their master.users doc), resolve their EFFECTIVE tenant identity
+    here — db_name becomes the managed tenant, role becomes REPRESENTATIVE —
+    for every endpoint that goes through require_auth/get_tenant_db. The
+    original admin user_id is preserved under `admin_user_id` so any
+    endpoint that still needs to tell "this is really an Admin, treat them
+    specially" apart from a genuine Representative can check for that key —
+    see users/routes.py's list_users(), which restores its own ADMIN-specific
+    cross-tenant/isolation branch when admin_user_id is present rather than
+    falling into the plain single-tenant Representative branch.
+    """
+    if not payload or payload.get("role") != "ADMIN":
+        return payload
+    try:
+        master = MongoDatabase.get_db()
+        admin_doc = master.users.find_one({"_id": ObjectId(payload.get("user_id"))})
+    except Exception:
+        return payload
+    managed_db_name = (admin_doc or {}).get("managedDbName")
+    if not managed_db_name:
+        return payload
+    return {**payload, "db_name": managed_db_name, "role": "REPRESENTATIVE", "admin_user_id": payload.get("user_id")}
 
 
 def require_auth(

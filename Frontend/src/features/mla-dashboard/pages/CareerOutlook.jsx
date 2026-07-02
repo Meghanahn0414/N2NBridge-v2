@@ -145,12 +145,16 @@ function useCareerData() {
     Promise.all([
       api.get("/api/mla/insights", { params: { days: 365 } }),
       api.get("/api/analytics/dashboard", { params: { days: 365 } }),
-      api.get("/api/grievances/", { params: { page: 1, per_page: 100 } }).catch(() => null),
+      // Was /api/grievances/ — the citizen "my own grievances" endpoint,
+      // which filters by citizen_id == caller's own user_id and returns
+      // nothing for a representative. /api/rep/grievances/ is the actual
+      // rep-facing queue.
+      api.get("/api/rep/grievances/", { params: { page: 1, per_page: 100 } }).catch(() => null),
     ])
       .then(([insRes, anRes, grRes]) => {
         const insights   = insRes?.data?.data  || insRes?.data  || null;
         const analytics  = anRes?.data?.data   || anRes?.data   || null;
-        const grievances = Array.isArray(grRes?.data) ? grRes.data : [];
+        const grievances = grRes?.data?.data?.items ?? [];
         const freshData  = deriveCareerData(insights, analytics, grievances);
         writeCareerCache(freshData);
         setData(freshData);

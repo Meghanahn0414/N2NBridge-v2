@@ -1,6 +1,13 @@
 """
-Dashboard Routes — Multi-Tenant
+Dashboard Routes
 
+Legacy, role-based dashboards (still used by the web frontend):
+GET /api/dashboard/admin     Admin dashboard
+GET /api/dashboard/mla       MLA / representative dashboard
+GET /api/dashboard/officer   Field officer dashboard
+GET /api/dashboard/citizen   Citizen dashboard
+
+Multi-tenant dashboard (representative/staff, tenant-scoped):
 GET /api/dashboard/          Main stats for the representative's dashboard
 GET /api/dashboard/settings  CRM settings
 PUT /api/dashboard/settings  Update CRM settings
@@ -11,12 +18,17 @@ from typing import Optional
 
 from bson import ObjectId
 from dashboard.service import DashboardService
-from fastapi.responses import JSONResponse
-from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
+
+from auth.routes import get_current_user
 from utils.response import success_response
 from utils.tenant import get_tenant_db, require_auth
+
+router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
+logger = logging.getLogger(__name__)
 
 
 class SettingsUpdate(BaseModel):
@@ -26,13 +38,37 @@ class SettingsUpdate(BaseModel):
     office_hours:          Optional[str]  = None
     welcome_message:       Optional[str]  = None
 
-router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
-logger = logging.getLogger(__name__)
+
+def serialize_for_json(obj):
+    """Convert MongoDB ObjectId and datetime to JSON serializable format"""
+    if isinstance(obj, dict):
+        return {key: serialize_for_json(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_for_json(item) for item in obj]
+    elif isinstance(obj, ObjectId):
+        return str(obj)
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    return obj
 
 
 def _oid(val: str) -> ObjectId:
     try:
-        dashboard = DashboardService.get_admin_dashboard()
+        return ObjectId(val)
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Invalid ID: {val}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LEGACY ROLE-BASED DASHBOARDS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/admin")
+async def get_admin_dashboard(db=Depends(get_tenant_db), current_user: dict = Depends(require_auth)):
+    """Get admin dashboard — tenant-scoped to the calling Admin's own managed
+    representative (via utils.tenant's Admin-to-tenant resolution)."""
+    try:
+        dashboard = await run_in_threadpool(DashboardService.get_admin_dashboard, db)
         dashboard = serialize_for_json(dashboard)
         return success_response(dashboard, "Admin dashboard retrieved")
     except Exception as e:
@@ -46,13 +82,15 @@ def _oid(val: str) -> ObjectId:
             }
         )
 
+
 @router.get("/mla")
-async def get_mla_dashboard():
+async def get_mla_dashboard(db=Depends(get_tenant_db), current_user: dict = Depends(require_auth)):
+    """Get MLA/representative dashboard — tenant-scoped to the caller's own db."""
     try:
         # Offload the blocking pymongo aggregation work to a thread so this
         # request doesn't hold up the event loop (and every other request
         # this worker is serving) for however long the query takes.
-        dashboard = await run_in_threadpool(DashboardService.get_mla_dashboard)
+        dashboard = await run_in_threadpool(DashboardService.get_mla_dashboard, db)
         dashboard = serialize_for_json(dashboard)
         return success_response(dashboard, "MLA dashboard retrieved")
     except Exception as e:
@@ -66,11 +104,12 @@ async def get_mla_dashboard():
             }
         )
 
+
 @router.get("/officer")
-async def get_officer_dashboard(current_user: dict = Depends(get_current_user)):
-    """Get officer dashboard"""
+async def get_officer_dashboard(db=Depends(get_tenant_db), current_user: dict = Depends(require_auth)):
+    """Get officer dashboard — tenant-scoped to the calling officer's own db."""
     try:
-        dashboard = DashboardService.get_officer_dashboard(current_user["user_id"])
+        dashboard = DashboardService.get_officer_dashboard(current_user["user_id"], db=db)
         dashboard = serialize_for_json(dashboard)
         return success_response(dashboard, "Officer dashboard retrieved")
     except Exception as e:
@@ -83,10 +122,30 @@ async def get_officer_dashboard(current_user: dict = Depends(get_current_user)):
                 "statusCode": 500
             }
         )
-        return ObjectId(val)
-    except Exception:
-        raise HTTPException(status_code=400, detail=f"Invalid ID: {val}")
 
+
+@router.get("/citizen")
+async def get_citizen_dashboard():
+    """Get citizen dashboard"""
+    try:
+        dashboard = DashboardService.get_citizen_dashboard(None)
+        dashboard = serialize_for_json(dashboard)
+        return success_response(dashboard, "Citizen dashboard retrieved")
+    except Exception as e:
+        logger.error(f"Error fetching citizen dashboard: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "message": str(e),
+                "statusCode": 500
+            }
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MULTI-TENANT DASHBOARD (representative / staff, tenant-scoped)
+# ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/")
 async def dashboard(db=Depends(get_tenant_db), user=Depends(require_auth)):

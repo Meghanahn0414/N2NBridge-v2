@@ -156,7 +156,7 @@ def _ensure_sentiment_scores(db, limit: int = 500) -> None:
     unanalysed = list(
         db.grievances.find(
             {
-                "isDeleted": False,
+                "is_deleted": {"$ne": True},
                 "$or": [
                     {"aiAnalysis": {"$exists": False}},
                     {"aiAnalysis.sentimentScore": None},
@@ -225,13 +225,15 @@ def flush_sentiment_cache() -> None:
         r.delete(*keys)
 
 
-def get_public_sentiment(days: int = 90) -> dict:
-    cache_key = f"mla:public_sentiment:{days}"
+def get_public_sentiment(db, days: int = 90) -> dict:
+    # Cache key includes the tenant db name — without it, two different
+    # representatives' dashboards would read/write the SAME cached result,
+    # leaking one tenant's sentiment data into another's.
+    cache_key = f"mla:{db.name}:public_sentiment:{days}"
     cached = _cache_get(cache_key)
     if cached:
         return cached
 
-    db = MongoDatabase.get_db()
     _ensure_sentiment_scores(db)
 
     now   = datetime.utcnow()
@@ -242,8 +244,8 @@ def get_public_sentiment(days: int = 90) -> dict:
         docs = list(
             db.grievances.find(
                 {
-                    "isDeleted": False,
-                    "createdAt": {"$gte": start, "$lt": end},
+                    "is_deleted": {"$ne": True},
+                    "created_at": {"$gte": start, "$lt": end},
                     "aiAnalysis.sentimentScore": {"$exists": True, "$ne": None},
                 },
                 {"aiAnalysis.sentimentScore": 1},
@@ -296,18 +298,17 @@ AGE_GROUPS = [
 ]
 
 
-def get_approval_by_group(days: int = 90) -> dict:
+def get_approval_by_group(db, days: int = 90) -> dict:
     """
     Joins citizens (age) with their grievance sentiment scores and returns
     an approval percentage per age group.
     Age is now a required field on citizen profile, so this will have real data.
     """
-    cache_key = f"mla:approval_by_group:{days}"
+    cache_key = f"mla:{db.name}:approval_by_group:{days}"
     cached = _cache_get(cache_key)
     if cached:
         return cached
 
-    db = MongoDatabase.get_db()
     _ensure_sentiment_scores(db)
 
     since = datetime.utcnow() - timedelta(days=days)
@@ -315,8 +316,8 @@ def get_approval_by_group(days: int = 90) -> dict:
     pipeline = [
         {
             "$match": {
-                "isDeleted": False,
-                "createdAt": {"$gte": since},
+                "is_deleted": {"$ne": True},
+                "created_at": {"$gte": since},
                 "aiAnalysis.sentimentScore": {"$exists": True, "$ne": None},
             }
         },
@@ -453,15 +454,14 @@ def _normalize_category_key(raw_key: Any) -> str:
     return "OTHER"
 
 
-def get_moving_numbers(days: int = 90) -> dict:
-    db  = MongoDatabase.get_db()
+def get_moving_numbers(db, days: int = 90) -> dict:
     now = datetime.utcnow()
     since      = now - timedelta(days=days)
     prev_since = now - timedelta(days=days * 2)
 
     def _cat_stats(start, end):
         pipeline = [
-            {"$match": {"isDeleted": False, "createdAt": {"$gte": start, "$lt": end}}},
+            {"$match": {"is_deleted": {"$ne": True}, "created_at": {"$gte": start, "$lt": end}}},
             {
                 "$group": {
                     # categoryId stores enum string e.g. "ROAD_ISSUE"; fall back to category field
@@ -538,12 +538,11 @@ def get_moving_numbers(days: int = 90) -> dict:
 # Card 4 — Standing vs. peers (ward-level approval ranking)
 # ---------------------------------------------------------------------------
 
-def get_peer_ranking(days: int = 90) -> dict:
+def get_peer_ranking(db, days: int = 90) -> dict:
     """
     Rank all wards by their grievance-derived approval %, giving a
     'Standing vs. peers' view across constituencies.
     """
-    db = MongoDatabase.get_db()
     _ensure_sentiment_scores(db)
 
     since = datetime.utcnow() - timedelta(days=days)
@@ -551,8 +550,8 @@ def get_peer_ranking(days: int = 90) -> dict:
     pipeline = [
         {
             "$match": {
-                "isDeleted": False,
-                "createdAt": {"$gte": since},
+                "is_deleted": {"$ne": True},
+                "created_at": {"$gte": since},
                 "aiAnalysis.sentimentScore": {"$exists": True, "$ne": None},
                 "wardId": {"$exists": True, "$ne": None},
             }
@@ -621,12 +620,11 @@ def get_peer_ranking(days: int = 90) -> dict:
 # Card 5 — Career trajectory (monthly approval trend)
 # ---------------------------------------------------------------------------
 
-def get_sentiment_trend(months: int = 12) -> dict:
+def get_sentiment_trend(db, months: int = 12) -> dict:
     """
     Returns monthly approval % for the past N months.
     Used to draw the career trajectory sparkline.
     """
-    db = MongoDatabase.get_db()
     _ensure_sentiment_scores(db)
 
     now = datetime.utcnow()
@@ -648,8 +646,8 @@ def get_sentiment_trend(months: int = 12) -> dict:
 
         docs = list(db.grievances.find(
             {
-                "isDeleted": False,
-                "createdAt": {"$gte": m_start, "$lt": m_end},
+                "is_deleted": {"$ne": True},
+                "created_at": {"$gte": m_start, "$lt": m_end},
                 "aiAnalysis.sentimentScore": {"$exists": True, "$ne": None},
             },
             {"aiAnalysis.sentimentScore": 1}
@@ -745,27 +743,26 @@ def get_election_probability(approval_pct) -> dict:
     }
 
 
-def get_feedback_sources(days: int = 90) -> dict:
+def get_feedback_sources(db, days: int = 90) -> dict:
     """Count feedback signals from each channel in the given period."""
-    db    = MongoDatabase.get_db()
     since = datetime.utcnow() - timedelta(days=days)
 
     # In-app grievance reports
     reports = db.grievances.count_documents({
-        "isDeleted": False,
-        "createdAt": {"$gte": since},
+        "is_deleted": {"$ne": True},
+        "created_at": {"$gte": since},
     })
 
     # Grievances that have a text comment in feedback
     comments = db.grievances.count_documents({
-        "isDeleted": False,
-        "createdAt": {"$gte": since},
+        "is_deleted": {"$ne": True},
+        "created_at": {"$gte": since},
         "feedback.comments": {"$exists": True, "$nin": [None, ""]},
     })
 
     # Event registrations (poll / event participation)
     polls = db.events.count_documents({
-        "createdAt": {"$gte": since},
+        "created_at": {"$gte": since},
     })
 
     # Survey responses

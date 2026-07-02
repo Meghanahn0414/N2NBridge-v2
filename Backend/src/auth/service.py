@@ -39,9 +39,36 @@ class AuthService:
                 logger.warning(f"Login: no db_name in registry for {login_data.email}")
                 return None
 
-            # Fetch user from the tenant DB
+            # Fetch user from the tenant DB. Representatives live in
+            # tenant_db.users (camelCase fields: fullName, passwordHash,
+            # isDeleted). Field Officers/Managers registered via
+            # /api/staff/ live in a SEPARATE tenant_db.staff collection
+            # with different field names (name, password_hash, is_deleted)
+            # — without this fallback, a staff account could be created but
+            # could never actually log in (always "user not found").
             tenant_db = MongoDatabase.get_tenant_db(db_name)
             user = tenant_db.users.find_one({"email": login_data.email, "isDeleted": {"$ne": True}})
+            logger.info(
+                f"AuthService.login: email={login_data.email!r} db_name={db_name} "
+                f"found_in_users={'YES id=' + str(user['_id']) if user else 'no'}"
+            )
+            is_staff_account = False
+            if not user:
+                staff_doc = tenant_db.staff.find_one({"email": login_data.email, "is_deleted": {"$ne": True}})
+                if staff_doc:
+                    is_staff_account = True
+                    user = {
+                        "_id":          staff_doc["_id"],
+                        "fullName":     staff_doc.get("name"),
+                        "mobile":       staff_doc.get("mobile"),
+                        "email":        staff_doc.get("email"),
+                        "role":         staff_doc.get("role") or "STAFF",
+                        "title":        staff_doc.get("designation"),
+                        "status":       staff_doc.get("status", "ACTIVE"),
+                        "passwordHash": staff_doc.get("password_hash", ""),
+                        "createdAt":    staff_doc.get("created_at"),
+                        "updatedAt":    staff_doc.get("updated_at"),
+                    }
             if not user:
                 logger.warning(f"Login: user not found in tenant DB ({db_name}): {login_data.email}")
                 return None
@@ -56,10 +83,9 @@ class AuthService:
             # Update last login (non-fatal)
             try:
                 from datetime import datetime, timezone
-                tenant_db.users.update_one(
-                    {"_id": user["_id"]},
-                    {"$set": {"lastLoginAt": datetime.now(timezone.utc)}},
-                )
+                target_collection = tenant_db.staff if is_staff_account else tenant_db.users
+                update_field = {"updated_at": datetime.now(timezone.utc)} if is_staff_account else {"lastLoginAt": datetime.now(timezone.utc)}
+                target_collection.update_one({"_id": user["_id"]}, {"$set": update_field})
             except Exception as e:
                 logger.warning(f"Could not update lastLoginAt for {user_id}: {e}")
 
@@ -92,6 +118,8 @@ class AuthService:
                 notifPreferences=user.get("notifPreferences"),
                 broadcastSignature=user.get("broadcastSignature"),
                 defaultBroadcastType=user.get("defaultBroadcastType"),
+                scope=user.get("scope"),
+                managedDbName=user.get("managedDbName"),
             )
 
             return TokenResponse(accessToken=token, user=user_response)

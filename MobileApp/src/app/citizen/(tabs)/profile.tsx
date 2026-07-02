@@ -71,7 +71,7 @@ const getCatStyle = (cat?: string) => {
 export default function ProfileScreen() {
   const tr = useT();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, profileComplete } = useAuthStore();
   const [profile, setProfile]           = useState<any>(null);
   const [recentComplaints, setRecentComplaints] = useState<RecentComplaint[]>([]);
   const [statsData, setStatsData]       = useState({ total: 0, resolved: 0 });
@@ -92,28 +92,33 @@ export default function ProfileScreen() {
 
   const loadData = useCallback(async () => {
     if (!user?.id) return;
+    // /api/citizens/me requires a tenant (db_name) claim on the token,
+    // which only exists once profile completion has resolved a
+    // representative. A citizen who's only done OTP verification so far has
+    // a bare master-DB account with no db_name yet — calling this early
+    // always 400s (harmless since it's caught below, but pure console
+    // noise and a wasted request). Skip until profile setup is done.
+    if (!profileComplete) { setLoading(false); setRefreshing(false); return; }
     try {
-      const [pRes, cRes, sRes] = await Promise.all([
-        api.get(`/api/users/${user.id}`),
-        api.get(`/api/grievances/citizen/${user.id}?page=1`).catch(() => ({ data: [] })),
-        api.get(`/api/grievances/stats/citizen/${user.id}`).catch(() => ({ data: null })),
+      // /api/users/{id} is rep/staff-only (403s for a citizen) — the
+      // citizen-safe equivalent is /api/citizens/me. /api/grievances/
+      // citizen/{id} and /api/grievances/stats/citizen/{id} don't exist at
+      // all; there's no dedicated stats endpoint, so counts are computed
+      // client-side from the (large-page) grievances list instead.
+      const [pRes, cRes] = await Promise.all([
+        api.get(`/api/citizens/me`),
+        api.get(`/api/grievances/?page=1&per_page=100`).catch(() => ({ data: null })),
       ]);
       const p = pRes.data?.data ?? pRes.data;
       if (p?.profileImage) p.profileImage = toAbsoluteUrl(p.profileImage);
       setPhotoError(false);
       setProfile(p);
 
-      // Accurate counts from the stats endpoint
-      const s = sRes.data?.data ?? sRes.data;
-      if (s) {
-        const byStatus: Record<string, number> = s.byStatus ?? {};
-        const total    = s.total ?? Object.values(byStatus).reduce((a: number, b: any) => a + (b as number), 0);
-        const resolved = (byStatus.RESOLVED ?? 0) + (byStatus.CLOSED ?? 0);
-        setStatsData({ total, resolved });
-      }
+      const list = cRes.data?.data?.items ?? [];
+      const total = cRes.data?.data?.total ?? list.length;
+      const resolved = list.filter((g: any) => ["Resolved", "Closed"].includes(g.status)).length;
+      setStatsData({ total, resolved });
 
-      const c = cRes.data;
-      const list = Array.isArray(c) ? c : (c.items ?? c.results ?? c.data ?? []);
       setRecentComplaints(list.slice(0, 3).map((g: any) => ({
         id: g._id || g.id,
         title: g.title,
@@ -125,7 +130,7 @@ export default function ProfileScreen() {
       })));
     } catch { /* silent */ }
     finally { setLoading(false); setRefreshing(false); }
-  }, [user?.id]);
+  }, [user?.id, profileComplete]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
@@ -145,7 +150,10 @@ export default function ProfileScreen() {
       } else {
         fd.append("file", { uri: localUri, name: "profile.jpg", type: "image/jpeg" } as any);
       }
-      const { data } = await api.post(`/api/users/${user?.id}/upload-profile-photo`, fd);
+      // /api/users/{id}/upload-profile-photo is rep/staff-only and writes to
+      // the wrong collection for a citizen — /api/citizens/me/upload-photo
+      // is the working equivalent (see edit-profile.tsx).
+      const { data } = await api.post(`/api/citizens/me/upload-photo`, fd);
       const rawUri = data?.profileImage || data?.data?.profileImage;
       if (rawUri) setProfile((p: any) => ({ ...p, profileImage: toAbsoluteUrl(rawUri) }));
     } catch { /* keep local preview */ }
@@ -155,7 +163,7 @@ export default function ProfileScreen() {
   const initials = (profile?.fullName || user?.name || user?.email || "C")
     .split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
 
-  const wardLabel  = profile?.wardId ? `${tr("Ward")} ${profile.wardId}` : null;
+  const wardLabel  = profile?.ward_id ? `${tr("Ward")} ${profile.ward_id}` : null;
   const areaLabel  = profile?.address || null;
   const locationStr = [areaLabel, wardLabel, tr("Verified resident")].filter(Boolean).join(" · ");
 
@@ -279,7 +287,7 @@ export default function ProfileScreen() {
               { icon: "call-outline"     as const, label: "Phone",       value: profile?.mobile || profile?.phone || "—" },
               { icon: "mail-outline"     as const, label: "Email",       value: realEmail(profile?.email) || realEmail(user?.email) || "—" },
               { icon: "location-outline" as const, label: "Address",     value: profile?.address || "—" },
-              { icon: "map-outline"      as const, label: "Ward",        value: profile?.wardId ? `${tr("Ward")} ${profile.wardId}` : "—" },
+              { icon: "map-outline"      as const, label: "Ward",        value: profile?.ward_id ? `${tr("Ward")} ${profile.ward_id}` : "—" },
             ].map((row, idx, arr) => (
               <View key={row.label} style={[s.detailRow, idx === arr.length - 1 && { borderBottomWidth: 0 }]}>
                 <View style={s.detailIconBox}>

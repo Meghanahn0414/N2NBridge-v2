@@ -63,15 +63,17 @@ export default function CitizenDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
+      // /api/grievances/citizen/{id} doesn't exist — /api/grievances/ derives
+      // the citizen from the JWT. /api/users/{id} is rep/staff-only (403s for
+      // a citizen); /api/citizens/me is the citizen-safe equivalent.
       const [cRes, nRes, pRes] = await Promise.all([
-        api.get(`/api/grievances/citizen/${user?.id}?page=1`),
+        api.get(`/api/grievances/?page=1`),
         api.get(`/api/notifications?page=1&per_page=20`).catch(() => ({ data: [] })),
-        user?.id ? api.get(`/api/users/${user.id}`).catch(() => ({ data: null })) : Promise.resolve({ data: null }),
+        user?.id ? api.get(`/api/citizens/me`).catch(() => ({ data: null })) : Promise.resolve({ data: null }),
       ]);
 
       // Recent complaints
-      const c = cRes.data;
-      const list = Array.isArray(c) ? c : (c.items ?? c.results ?? c.data ?? []);
+      const list = cRes.data?.data?.items ?? [];
       setRecent(list.slice(0, 4).map((g: any) => ({
         id: g._id || g.id,
         title: g.title,

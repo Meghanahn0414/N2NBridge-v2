@@ -78,12 +78,10 @@ export default function ActivityScreen() {
   const fetchActivity = useCallback(async () => {
     if (!user?.id) { setLoading(false); return; }
     try {
-      const { data } = await api.get(
-        `/api/grievances/citizen/${user.id}?page=1&per_page=50`
-      );
-      const list: any[] = Array.isArray(data)
-        ? data
-        : (data.items ?? data.results ?? data.data ?? []);
+      // /api/grievances/citizen/{id} doesn't exist — GET /api/grievances/
+      // derives the citizen from the JWT.
+      const { data } = await api.get(`/api/grievances/?page=1&per_page=50`);
+      const list: any[] = data?.data?.items ?? [];
       setComplaints(
         list.map((g: any) => ({
           id: g._id || g.id,

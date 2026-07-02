@@ -2,9 +2,53 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../shared/services/api";
 import { getUserRoles } from "../../shared/services/lookupService";
+import { getAuthUser, setAuthUser } from "../../services/authStorage";
 import { ROUTES } from "../../app/routes/RouteConstants";
 import "./NewMLA.css";
 import PageHeader from "../../components/PageHeader";
+
+// A logged-in Representative (including a scoped admin who has completed
+// their one-time "register my representative" step and is now elevated to
+// this role) should only be registering THEIR OWN team here — Field
+// Officers and Managers for their one MLA/MP/Councillor — not creating
+// unrelated Admins, Managers-at-large, or other representatives entirely.
+const SCOPE_LABELS = {
+  MLA:        "MLA",
+  MP:         "MP",
+  COUNCILLOR: "Councillor",
+};
+
+// role value that the existing MLA/MP/Councillor registration branch
+// (handleSubmit's isRepType check) expects for each scope.
+const SCOPE_ROLE_VALUE = {
+  MLA:        "REPRESENTATIVE",
+  MP:         "MP",
+  COUNCILLOR: "COUNCILLOR",
+};
+
+// Option labels are prefixed with the admin's own scope (e.g. "MLA's Field
+// Officer") so it's clear whose team these roles belong to, since this page
+// otherwise gives no indication that "Field Officer"/"Manager" here means
+// "my MLA's Field Officer/Manager" rather than a platform-wide role.
+// `includeScopeOption` also adds the scope itself (e.g. "MLA") as a
+// selectable option — only relevant before the admin has registered their
+// one representative (managedDbName not set yet); once that's done,
+// registering another would violate the one-admin-one-representative rule.
+function repTeamRoles(scope, includeScopeOption, customLabel) {
+  // customLabel comes from the Admin Signup form's "Other" text box — the
+  // account still runs as one of the 3 real scope values underneath, this
+  // just swaps in the name the admin actually typed wherever it's shown.
+  const scopeLabel = customLabel || SCOPE_LABELS[scope] || scope || "";
+  const prefix = scopeLabel ? `${scopeLabel}'s ` : "";
+  const options = [
+    { value: "FIELD_OFFICER",        label: `${prefix}Field Officer` },
+    { value: "CONSTITUENCY_MANAGER", label: `${prefix}Manager` },
+  ];
+  if (includeScopeOption && scopeLabel && SCOPE_ROLE_VALUE[scope]) {
+    options.unshift({ value: SCOPE_ROLE_VALUE[scope], label: scopeLabel });
+  }
+  return options;
+}
 
 const COUNTRIES = [
   { flag: "🇮🇳", code: "IN", dial: "+91" },
@@ -38,8 +82,29 @@ const initialFormState = {
 };
 
 export default function RegistrationPage() {
+  const currentUser = getAuthUser();
+  // Anyone tied to a single MLA/MP/Councillor scope — an elevated
+  // Representative, or a scoped Admin who hasn't run "Register My
+  // Representative" yet — only ever manages their own Field Officer/Manager
+  // team here. Only an unscoped/platform-wide Admin (if one ever exists)
+  // would see the full role list.
+  const isRepresentative =
+    currentUser?.role === "REPRESENTATIVE" ||
+    (currentUser?.role === "ADMIN" && !!currentUser?.scope);
+  // Once elevated to REPRESENTATIVE, the account no longer carries a
+  // `scope` field (that was an Admin-only field) — but `title` holds the
+  // same MLA/MP/COUNCILLOR value for any representative account, so use
+  // that as the fallback so the banner/labels keep working after elevation.
+  const effectiveScope = currentUser?.role === "REPRESENTATIVE" ? currentUser?.title : currentUser?.scope;
+  // The scope itself (e.g. "MLA") is only offered as a selectable option
+  // while still a plain ADMIN who hasn't registered their representative
+  // yet — never for an already-elevated Representative, who has nothing
+  // left to self-register.
+  const canRegisterScope = currentUser?.role === "ADMIN" && !currentUser?.managedDbName;
+  const teamRoles = repTeamRoles(effectiveScope, canRegisterScope, currentUser?.scopeLabel);
+
   const [role, setRole] = useState("");
-  const [roles, setRoles] = useState([]);
+  const [roles, setRoles] = useState(isRepresentative ? teamRoles : []);
   const [formData, setFormData] = useState(initialFormState);
   const [managers, setManagers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -70,6 +135,10 @@ export default function RegistrationPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // /api/users/ (manager lookup) and /api/lookups/user-roles are
+    // admin-facing; a Representative registering their own team doesn't
+    // need either — the role list is fixed to REP_TEAM_ROLES above.
+    if (isRepresentative) return;
     fetchManagers();
     fetchRoles();
   }, []);
@@ -78,7 +147,17 @@ export default function RegistrationPage() {
   const fetchRoles = async () => {
     try {
       const response = await getUserRoles();
-      setRoles(response || []);
+      // Backend's role list only has one generic "Representative" bucket
+      // (MLA/MP/Councillor are all rep_type values under that one role, not
+      // separate UserRole enum entries) — MP and Councillor are added here
+      // client-side so they're selectable as their own options. register()
+      // already accepts role="MP"/"COUNCILLOR" directly (see handleSubmit).
+      const base = response || [];
+      const extra = [
+        { value: "MP", label: "MP" },
+        { value: "COUNCILLOR", label: "Councillor" },
+      ].filter((e) => !base.some((b) => b.value === e.value));
+      setRoles([...base, ...extra]);
     } catch (err) {
       console.warn("Unable to load role options", err);
     }
@@ -89,7 +168,8 @@ export default function RegistrationPage() {
       const response = await api.get("/api/users/", {
         params: { per_page: 100, role: "CONSTITUENCY_MANAGER" },
       });
-      const list = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
+      // Backend wraps results as { items, total, page, per_page } under .data.
+      const list = response.data?.data?.items ?? [];
       setManagers(list);
     } catch (err) {
       console.warn("Unable to load managers", err);
@@ -172,6 +252,13 @@ export default function RegistrationPage() {
     if (role === "FIELD_OFFICER") {
       // Assigned Area, Manager, and Field Officer ID are now optional
     }
+    if (["REPRESENTATIVE", "MP", "COUNCILLOR"].includes(role) && !formData.constituencyId.trim()) {
+      return role === "MP"
+        ? "Parliamentary Constituency is required."
+        : role === "COUNCILLOR"
+        ? "Ward ID is required."
+        : "Assembly Constituency is required.";
+    }
 
     return "";
   };
@@ -212,34 +299,125 @@ export default function RegistrationPage() {
     setLoading(true);
 
     try {
-      const payload = {
-        fullName: formData.fullName.trim(),
-        email: formData.email.trim(),
-        mobile: selectedCountry.dial + formData.mobile.trim(),
-        address: formData.address.trim() || null,
-        password: formData.password,
-        role,
-      };
+      // Registering the admin's OWN scope (e.g. an MLA-scoped admin picking
+      // "MLA") must go through the dedicated one-time endpoint, not the
+      // generic representative-registration shim below. The generic shim
+      // has no concept of "this admin already has a representative" and
+      // would happily create a second, disconnected representative account
+      // every time it's submitted — the dedicated endpoint enforces
+      // one-admin-one-representative server-side (rejects if managedDbName
+      // is already set, or if the caller's role isn't ADMIN anymore).
+      //
+      // This admin's own login stays exactly as-is — no session swap, no
+      // redirect to the Representative dashboard. They keep working from
+      // the normal Admin Portal; the only change is that their account is
+      // now linked (managedDbName) to the representative they just
+      // registered, so it starts showing up in Citizens/Representatives/
+      // Field Officers/Managers here going forward.
+      const isScopeRegistration = canRegisterScope && SCOPE_ROLE_VALUE[currentUser?.scope] === role;
 
-      if (role === "REPRESENTATIVE") {
-        if (formData.constituencyId.trim()) payload.constituencyId = formData.constituencyId.trim();
-        if (formData.partyName.trim()) payload.partyName = formData.partyName.trim();
-        if (formData.district.trim()) payload.district = formData.district.trim();
-      }
-      if (role === "CONSTITUENCY_MANAGER") {
-        payload.managerId = formData.managerId.trim();
-      }
-      if (role === "FIELD_OFFICER") {
-        payload.assignedArea = formData.assignedArea.trim();
-        payload.managerId = formData.managerId.trim();
-        payload.fieldOfficerId = formData.fieldOfficerId.trim();
+      if (isScopeRegistration) {
+        const location = formData.constituencyId.trim();
+        const repPayload = {
+          name: formData.fullName.trim(),
+          email: formData.email.trim(),
+          mobile: selectedCountry.dial + formData.mobile.trim(),
+          rep_type: currentUser.scope,
+          location,
+          district: formData.district.trim() || null,
+          password: formData.password,
+        };
+        if (currentUser.scope === "MLA") repPayload.assembly_name = location;
+        if (currentUser.scope === "MP") repPayload.parliamentary_name = location;
+        if (currentUser.scope === "COUNCILLOR") repPayload.ward_id = location;
+
+        console.log("[RegistrationPage] Submitting one-time representative self-registration:", { ...repPayload, password: "***" });
+        const res = await api.post("/api/auth/admin/register-my-representative", repPayload);
+        const data = res.data?.data ?? res.data;
+
+        // Still logged in as the same Admin — just record that they now
+        // manage this representative, so canRegisterScope/effectiveScope
+        // on this and other admin pages reflect it without a re-login.
+        setAuthUser({ ...currentUser, managedDbName: data.managedDbName });
+        setSuccess(`${currentUser.scopeLabel || SCOPE_LABELS[currentUser.scope] || currentUser.scope} registered — you can now manage them from your Admin Portal.`);
+        setError("");
+        setFormData(initialFormState);
+        setPhotoFile(null);
+        setPhotoPreview("");
+        setRole("");
+        setSelectedCountry(COUNTRIES[0]);
+        setLoading(false);
+        return;
       }
 
-      console.log("[RegistrationPage] Submitting registration with payload:", { ...payload, password: "***" });
-      // Register the user and get the userId
-      const registrationResponse = await api.post("/api/auth/register", payload);
+      const isRepType = ["REPRESENTATIVE", "MP", "COUNCILLOR"].includes(role);
+      let registrationResponse;
+
+      if (isRepType) {
+        // MLA/MP/Councillor go through the dedicated representative
+        // registration endpoint — it's the one that actually persists
+        // assembly_name/parliamentary_name/ward_id/district/state (the
+        // legacy /api/auth/register shim silently drops all of that, which
+        // was making these accounts permanently unreachable by citizens).
+        const repType = role === "REPRESENTATIVE" ? "MLA" : role;
+        const location = formData.constituencyId.trim();
+        const repPayload = {
+          name: formData.fullName.trim(),
+          email: formData.email.trim(),
+          mobile: selectedCountry.dial + formData.mobile.trim(),
+          rep_type: repType,
+          location,
+          district: formData.district.trim() || null,
+          password: formData.password,
+        };
+        if (repType === "MLA") repPayload.assembly_name = location;
+        if (repType === "MP") repPayload.parliamentary_name = location;
+        if (repType === "COUNCILLOR") repPayload.ward_id = location;
+
+        console.log("[RegistrationPage] Submitting representative registration:", { ...repPayload, password: "***" });
+        registrationResponse = await api.post("/api/auth/representative/register", repPayload);
+      } else if (isRepresentative && ["FIELD_OFFICER", "CONSTITUENCY_MANAGER"].includes(role)) {
+        // A Representative's own Field Officer/Manager must live in THEIR
+        // tenant database (the /api/staff/ collection), not the master DB
+        // that /api/auth/register writes to below. That mismatch was
+        // invisible at registration time (it "succeeded") but made the
+        // person permanently unreachable from anywhere that queries the
+        // rep's own tenant data — e.g. the Complaint Management "Reassign"
+        // dropdown, which looks for tenant-scoped staff and would always
+        // come up empty for anyone registered the old way.
+        const staffPayload = {
+          name: formData.fullName.trim(),
+          email: formData.email.trim(),
+          mobile: selectedCountry.dial + formData.mobile.trim(),
+          password: formData.password,
+          designation: role === "CONSTITUENCY_MANAGER" ? "Manager" : "Field Officer",
+        };
+        console.log("[RegistrationPage] Submitting team member to /api/staff/:", { ...staffPayload, password: "***" });
+        registrationResponse = await api.post("/api/staff/", staffPayload);
+      } else {
+        const payload = {
+          fullName: formData.fullName.trim(),
+          email: formData.email.trim(),
+          mobile: selectedCountry.dial + formData.mobile.trim(),
+          address: formData.address.trim() || null,
+          password: formData.password,
+          role,
+        };
+        if (role === "CONSTITUENCY_MANAGER") {
+          payload.managerId = formData.managerId.trim();
+        }
+        if (role === "FIELD_OFFICER") {
+          payload.assignedArea = formData.assignedArea.trim();
+          payload.managerId = formData.managerId.trim();
+          payload.fieldOfficerId = formData.fieldOfficerId.trim();
+        }
+
+        console.log("[RegistrationPage] Submitting registration with payload:", { ...payload, password: "***" });
+        registrationResponse = await api.post("/api/auth/register", payload);
+      }
+
       console.log("[RegistrationPage] Registration response:", registrationResponse.data);
-      const userId = registrationResponse.data?.user?.id;
+      const userId = registrationResponse.data?.user?.id ?? registrationResponse.data?.data?.user?.id;
       
       console.log("[RegistrationPage] Full registration response:", registrationResponse);
       console.log("[RegistrationPage] Extracted userId:", userId);
@@ -299,6 +477,26 @@ export default function RegistrationPage() {
           {error && <div className="new-mla-alert new-mla-alert--error">{error}</div>}
           {success && <div className="new-mla-alert new-mla-alert--success">{success}</div>}
 
+          {isRepresentative && effectiveScope && (
+            <div
+              style={{
+                margin: "0 0 20px",
+                padding: "10px 14px",
+                borderRadius: 10,
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                fontSize: 13,
+                color: "#1d4ed8",
+                fontWeight: 600,
+              }}
+            >
+              Registered as: {currentUser?.scopeLabel || SCOPE_LABELS[effectiveScope] || effectiveScope}
+              {canRegisterScope
+                ? ` — register your ${currentUser?.scopeLabel || SCOPE_LABELS[effectiveScope] || effectiveScope} first, then add Field Officers and Managers.`
+                : " — you can only add Field Officers and Managers to this team."}
+            </div>
+          )}
+
           <div className="new-mla-group">
             <label className="new-mla-label" htmlFor="role">Role *</label>
             <select
@@ -309,7 +507,7 @@ export default function RegistrationPage() {
               onChange={handleRoleChange}
             >
               <option value="">Select Role</option>
-              {roles.filter((option) => !["VOLUNTEER", "CITIZEN"].includes(option.value)).map((option) => (
+              {(isRepresentative ? teamRoles : roles).filter((option) => !["VOLUNTEER", "CITIZEN"].includes(option.value)).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -433,18 +631,23 @@ export default function RegistrationPage() {
             />
           </div>
 
-          {role === "REPRESENTATIVE" && (
+          {["REPRESENTATIVE", "MP", "COUNCILLOR"].includes(role) && (
             <>
-              <div style={{ margin: "24px 0 16px", fontWeight: 700, color: "#1f2937" }}>MLA Details</div>
+              <div style={{ margin: "24px 0 16px", fontWeight: 700, color: "#1f2937" }}>
+                {role === "MP" ? "MP Details" : role === "COUNCILLOR" ? "Councillor Details" : "MLA Details"}
+              </div>
               <div className="new-mla-group">
-                <label className="new-mla-label">Constituency </label>
+                <label className="new-mla-label">
+                  {role === "MP" ? "Parliamentary Constituency *" : role === "COUNCILLOR" ? "Ward ID *" : "Assembly Constituency *"}
+                </label>
                 <input
                   type="text"
                   name="constituencyId"
                   value={formData.constituencyId}
                   onChange={handleInputChange}
-                  placeholder="Enter constituency"
+                  placeholder={role === "MP" ? "Enter parliamentary constituency" : role === "COUNCILLOR" ? "Enter ward ID" : "Enter assembly constituency"}
                   className="new-mla-input"
+                  required
                 />
               </div>
               <div className="new-mla-group">

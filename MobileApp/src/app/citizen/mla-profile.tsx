@@ -140,66 +140,42 @@ export default function MlaProfileScreen() {
   const load = useCallback(async () => {
     setErrorMsg(null);
     try {
-      // Use existing /api/users/?role=REPRESENTATIVE endpoint — no new backend route needed
-      const res = await api.get("/api/users/", {
-        params: { role: "REPRESENTATIVE", per_page: 1 },
-      });
-
-      // Response is a plain array (not wrapped in success_response)
-      const list: any[] = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
-      if (!list.length) {
+      // /api/users/?role=REPRESENTATIVE is rep/staff-only and 403s for a
+      // citizen. /api/mla/insights and /api/analytics/dashboard also aren't
+      // tenant-scoped (they read the master DB), so they can't be trusted to
+      // return THIS citizen's own representative's data anyway. The
+      // purpose-built, tenant-scoped endpoint for "who is my rep" is
+      // /api/citizens/my-representatives — it returns whichever one of
+      // councillor/mla/mp this tenant's representative actually is.
+      const res = await api.get("/api/citizens/my-representatives");
+      const reps = res.data?.data ?? res.data ?? {};
+      const u = reps.councillor || reps.mla || reps.mp;
+      if (!u) {
         setErrorMsg(tr('mlaProfile.noRepresentativeRegistered'));
         return;
-      }
-
-      const u = list[0];
-
-      // Pull approval % from /api/mla/insights (already works)
-      let approvalPct: number | null = null;
-      let resolvedCount: number | null = null;
-
-      if (u.showApprovalRating !== false) {
-        try {
-          const ins = await api.get("/api/mla/insights", { params: { days: 90 } });
-          const insData = ins.data?.data ?? ins.data;
-          const sentiment = insData?.publicSentiment;
-          if (sentiment?.positive?.pct != null) {
-            approvalPct = Math.round(sentiment.positive.pct * 10) / 10;
-          }
-        } catch (_) {}
-      }
-
-      if (u.showResolvedCount !== false) {
-        try {
-          const stats = await api.get("/api/analytics/dashboard", { params: { days: 365 } });
-          const d = stats.data?.data ?? stats.data;
-          // shape: { grievances: { byStatus: { RESOLVED: N } } }
-          resolvedCount =
-            d?.grievances?.byStatus?.RESOLVED ??
-            d?.grievances?.byStatus?.resolved ??
-            d?.complaintsByStatus?.RESOLVED ??
-            null;
-        } catch (_) {}
       }
 
       // Filter out OTP placeholder emails
       const realEmail = (e: string | null | undefined) =>
         e && !e.startsWith("otp-") ? e : null;
 
+      // bio / officePhone / approvalPct / resolvedCount aren't part of this
+      // endpoint's response shape yet — left null rather than guessed from
+      // cross-tenant data.
       const mlaData: MlaProfile = {
-        id:                  u._id || u.id,
+        id:                  u.id || u._id,
         fullName:            u.fullName || u.name || null,
         title:               u.title || "MLA",
-        bio:                 u.bio || null,
+        bio:                 null,
         profileImage:        toAbsoluteUrl(u.profileImage || u.profilePhoto) ?? null,
-        constituencyName:    u.constituencyId || null,
+        constituencyName:    null,
         email:               realEmail(u.email),
-        officePhone:         u.officePhone || null,
+        officePhone:         null,
         officeAddress:       u.officeAddress || null,
-        showApprovalRating:  u.showApprovalRating !== false,
-        showResolvedCount:   u.showResolvedCount !== false,
-        approvalPct,
-        resolvedCount,
+        showApprovalRating:  false,
+        showResolvedCount:   false,
+        approvalPct:         null,
+        resolvedCount:       null,
       };
       setMla(mlaData);
     } catch (e: any) {

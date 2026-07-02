@@ -63,12 +63,12 @@ export default function TeamManagement() {
   const completionRate = totalTasks > 0 ? Math.round((completedTaskCount / totalTasks) * 100) : 0;
 
   const completedWithTimes = grievances.filter(
-    g => DONE_STATUSES.includes(g.status) && g.createdAt && g.updatedAt
+    g => DONE_STATUSES.includes(g.status) && g.created_at && g.updated_at
   );
   const avgResolutionHrs = completedWithTimes.length > 0
     ? Math.round(
         completedWithTimes.reduce((sum, t) => {
-          const ms = new Date(t.updatedAt) - new Date(t.createdAt);
+          const ms = new Date(t.updated_at) - new Date(t.created_at);
           return sum + ms / (1000 * 60 * 60);
         }, 0) / completedWithTimes.length
       )
@@ -79,14 +79,14 @@ export default function TeamManagement() {
 
   const getMemberStats = (memberId) => {
     const nid = normId(memberId);
-    const memberGrievances = nid ? grievances.filter(g => normId(g.assignedOfficerId || g.assignedTo) === nid) : [];
+    const memberGrievances = nid ? grievances.filter(g => normId(g.assigned_to) === nid) : [];
     const active = memberGrievances.filter(g => ACTIVE_STATUSES.includes(g.status)).length;
     const completed = memberGrievances.filter(g => DONE_STATUSES.includes(g.status)).length;
-    const withTimes = memberGrievances.filter(g => DONE_STATUSES.includes(g.status) && g.createdAt && g.updatedAt);
+    const withTimes = memberGrievances.filter(g => DONE_STATUSES.includes(g.status) && g.created_at && g.updated_at);
     const avgHrs = withTimes.length > 0
       ? Math.round(
           withTimes.reduce((sum, g) => {
-            const ms = new Date(g.updatedAt) - new Date(g.createdAt);
+            const ms = new Date(g.updated_at) - new Date(g.created_at);
             return sum + ms / (1000 * 60 * 60);
           }, 0) / withTimes.length
         )
@@ -99,7 +99,7 @@ export default function TeamManagement() {
     .map(m => {
       const id = m._id || m.id;
       const nid = normId(id);
-      const memberGrievances = nid ? grievances.filter(g => normId(g.assignedOfficerId || g.assignedTo) === nid) : [];
+      const memberGrievances = nid ? grievances.filter(g => normId(g.assigned_to) === nid) : [];
       if (memberGrievances.length === 0) return null;
       return (memberGrievances.filter(g => DONE_STATUSES.includes(g.status)).length / memberGrievances.length) * 5;
     })
@@ -239,12 +239,12 @@ export default function TeamManagement() {
                     <div className="empty-state">No grievances</div>
                   ) : (
                     column.items.map(g => {
-                      const officer = teamMembers.find(m => normId(m._id || m.id) === normId(g.assignedOfficerId || g.assignedTo));
+                      const officer = teamMembers.find(m => normId(m._id || m.id) === normId(g.assigned_to));
                       return (
                         <div key={g._id || g.id} className="task-card">
                           <div className="task-title">{g.complaintNumber || `#${String(g._id || '').slice(-6)}`}</div>
                           <div className="task-assignee">{officer?.fullName || 'Unassigned'}</div>
-                          <div className="task-date">{g.createdAt ? new Date(g.createdAt).toLocaleDateString() : '—'}</div>
+                          <div className="task-date">{g.created_at ? new Date(g.created_at).toLocaleDateString() : '—'}</div>
                         </div>
                       );
                     })

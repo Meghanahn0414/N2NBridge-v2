@@ -199,7 +199,7 @@ export default function ConstituentsDashboard() {
     setError(null);
     api.get("/api/campaigns/constituents/stats")
       .then((r) => {
-        const fresh = r.data;
+        const fresh = r.data?.data ?? r.data;
         if (fresh) { try { sessionStorage.setItem("mla_constituents_cache", JSON.stringify(fresh)); } catch {} }
         setStats(fresh);
       })
@@ -260,7 +260,11 @@ export default function ConstituentsDashboard() {
     }
   };
 
-  /* ── Derived values ── */
+  /* ── Derived values ──
+     verified/engaged/advocates/wards aren't computed by the backend at all
+     (GET /api/campaigns/constituents/stats only returns total/new30d/
+     newPct/active30d/genders/growth/topCitizens) — those cards stay at
+     their fallback until that aggregation is actually built server-side. */
   const total     = stats?.total     ?? 0;
   const verified  = stats?.verified  ?? 0;
   const active30d = stats?.active30d ?? 0;
@@ -270,7 +274,9 @@ export default function ConstituentsDashboard() {
   const advocates = stats?.advocates ?? 0;
   const growth    = stats?.growth    ?? [];
   const wards     = stats?.wards     ?? [];
-  const topResidents = stats?.topResidents ?? [];
+  // Backend calls this topCitizens, not topResidents — same shape
+  // (name/initials/mobile/complaints), just a naming mismatch.
+  const topResidents = stats?.topCitizens ?? stats?.topResidents ?? [];
 
   /* SVG chart */
   const { line, area, dots } = buildGrowthPath(growth);

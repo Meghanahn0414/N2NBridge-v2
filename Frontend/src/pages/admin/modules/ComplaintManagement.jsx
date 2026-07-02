@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../../../styles/modules/ComplaintManagement.css';
 import { fetchGrievances, updateGrievance, assignGrievance } from '../../../features/grievances/grievanceService';
 import { fetchUsers } from '../../../features/team-management/userService';
+import api from '../../../shared/services/api';
 import Pagination from '../../../components/Pagination';
 import { FaUserAlt, FaSyncAlt, FaCheck, FaDownload, FaExchangeAlt } from 'react-icons/fa';
 
@@ -27,8 +28,13 @@ export default function ComplaintManagement() {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [statusUpdating, setStatusUpdating] = useState(false);
 
-  const statuses = ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'RESOLVED', 'CLOSED', 'REJECTED'];
-  const priorities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+  // Only the statuses actually reachable through a backend transition
+  // (Backend/src/grievances/routes.py's acknowledge/progress/resolve/close
+  // PATCH endpoints) — Open/Rejected aren't manually settable here, they're
+  // the result of creation/other flows. "Assigned" routes through the same
+  // /acknowledge endpoint (renamed — see grievanceService.js).
+  const statuses = ['Assigned', 'In Progress', 'Resolved', 'Closed'];
+  const priorities = ['Critical', 'High', 'Medium', 'Low'];
 
   const [stats, setStats] = useState({ total: 0, open: 0, assigned: 0, inProgress: 0, resolved: 0 });
 
@@ -49,18 +55,28 @@ export default function ComplaintManagement() {
 
   const loadOfficers = async () => {
     try {
-      const data = await fetchUsers(1, 200, 'FIELD_OFFICER');
-      setOfficers(Array.isArray(data) ? data : []);
+      // Field Officers/Managers registered for this representative's team
+      // live in the tenant-scoped `staff` collection (/api/staff/), not
+      // `users` — /api/users/?role=FIELD_OFFICER was always empty for a
+      // rep caller because it queries the wrong collection entirely.
+      const res = await api.get('/api/staff/');
+      const list = res.data?.data ?? res.data ?? [];
+      const arr = Array.isArray(list) ? list : [];
+      setOfficers(arr.filter((s) => (s.designation || '').toLowerCase() === 'field officer'));
     } catch { /* silent */ }
   };
 
   const calculateStats = (list) => {
+    // Backend statuses are Title Case with spaces ("Open", "Assigned",
+    // "In Progress", "Resolved", "Closed", "Rejected", "Acknowledged") —
+    // not the ALL_CAPS/underscore values these filters used to check
+    // against, which never matched anything real.
     setStats({
       total: list.length,
-      open: list.filter(c => c.status === 'NEW').length,
-      assigned: list.filter(c => c.status === 'ASSIGNED').length,
-      inProgress: list.filter(c => c.status === 'IN_PROGRESS').length,
-      resolved: list.filter(c => c.status === 'RESOLVED').length,
+      open: list.filter(c => c.status === 'Open').length,
+      assigned: list.filter(c => c.status === 'Assigned').length,
+      inProgress: list.filter(c => c.status === 'In Progress').length,
+      resolved: list.filter(c => c.status === 'Resolved' || c.status === 'Closed').length,
     });
   };
 
@@ -97,7 +113,7 @@ export default function ComplaintManagement() {
   // ── Status change ─────────────────────────────────────────
   const openStatusModal = (complaint) => {
     setStatusModal(complaint);
-    setSelectedStatus(complaint.status || 'NEW');
+    setSelectedStatus(complaint.status || 'Assigned');
   };
 
   const handleStatusConfirm = async () => {
@@ -116,9 +132,9 @@ export default function ComplaintManagement() {
 
   // ── Resolve ───────────────────────────────────────────────
   const handleResolve = async (complaint) => {
-    if (!window.confirm(`Mark complaint as RESOLVED?`)) return;
+    if (!window.confirm(`Mark complaint as Resolved?`)) return;
     try {
-      await updateGrievance(complaint._id || complaint.id, { status: 'RESOLVED' });
+      await updateGrievance(complaint._id || complaint.id, { status: 'Resolved' });
       await loadComplaints();
     } catch (err) {
       setError(err.message || 'Failed to resolve');
@@ -134,11 +150,11 @@ export default function ComplaintManagement() {
       ['Complaint #', complaint.complaintNumber || ''],
       ['Description', (complaint.description || '').replace(/,/g, ' ')],
       ['Address', complaint.address || ''],
-      ['Citizen', complaint.citizenName || complaint.citizenId || ''],
+      ['Citizen', complaint.citizenName || complaint.citizen_id || ''],
       ['Priority', complaint.priority || ''],
       ['Status', complaint.status || ''],
-      ['Assigned To', complaint.assignedOfficerId || 'Unassigned'],
-      ['Created Date', complaint.createdAt ? new Date(complaint.createdAt).toLocaleDateString() : ''],
+      ['Assigned To', complaint.assigned_to || 'Unassigned'],
+      ['Created Date', complaint.created_at ? new Date(complaint.created_at).toLocaleDateString() : ''],
     ];
     const csv = rows.map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -162,11 +178,11 @@ export default function ComplaintManagement() {
     return matchSearch && matchStatus && matchPriority;
   });
 
-  const getPriorityColor = (p) => ({ CRITICAL: '#ef4444', HIGH: '#f59e0b', MEDIUM: '#eab308', LOW: '#10b981' }[p] || '#6b7280');
+  const getPriorityColor = (p) => ({ Critical: '#ef4444', High: '#f59e0b', Medium: '#eab308', Low: '#10b981' }[p] || '#6b7280');
 
   const getStatusBadgeClass = (status) => ({
-    NEW: 'status-open', ASSIGNED: 'status-assigned', IN_PROGRESS: 'status-in-progress',
-    ON_HOLD: 'status-on-hold', RESOLVED: 'status-resolved', CLOSED: 'status-closed', REJECTED: 'status-rejected',
+    Open: 'status-open', Assigned: 'status-assigned', 'In Progress': 'status-in-progress',
+    Resolved: 'status-resolved', Closed: 'status-closed', Rejected: 'status-rejected',
   }[status] || '');
 
   const KPI = [
@@ -243,7 +259,7 @@ export default function ComplaintManagement() {
                 <tr><td colSpan="9" style={{ padding: 32, textAlign: "center", color: "#8590A6", fontSize: 14 }}>No complaints found.</td></tr>
               ) : filteredComplaints.map((complaint, rowIdx) => {
                 const id = complaint._id || complaint.id;
-                const officer = officers.find(o => (o._id || o.id) === complaint.assignedOfficerId);
+                const officer = officers.find(o => (o._id || o.id) === complaint.assigned_to);
                 const tdStyle = { padding: "11px 14px", fontSize: 13, color: "#16233C", fontFamily: "'Hanken Grotesk',sans-serif", borderBottom: "1px solid #F3F5FA", whiteSpace: "nowrap" };
                 return (
                   <tr key={id} style={{ background: rowIdx % 2 === 0 ? "#fff" : "#FAFBFD", transition: "background 0.1s" }}
@@ -255,19 +271,19 @@ export default function ComplaintManagement() {
                     </td>
                     <td style={tdStyle}>{complaint.description ? complaint.description.substring(0, 30) + '…' : 'N/A'}</td>
                     <td style={{ ...tdStyle, color: "#8590A6" }}>{complaint.address || 'N/A'}</td>
-                    <td style={tdStyle} className="notranslate" translate="no">{complaint.citizenName || (complaint.citizenId ? String(complaint.citizenId).substring(0, 8) : 'Unknown')}</td>
+                    <td style={tdStyle} className="notranslate" translate="no">{complaint.citizenName || (complaint.citizen_id ? String(complaint.citizen_id).substring(0, 8) : 'Unknown')}</td>
                     <td style={tdStyle}>
                       <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: getPriorityColor(complaint.priority) + '18', color: getPriorityColor(complaint.priority) }}>
                         {complaint.priority || 'N/A'}
                       </span>
                     </td>
-                    <td style={{ ...tdStyle, color: "#8590A6" }}>{officer ? (officer.fullName || officer.email) : (complaint.assignedOfficerId ? String(complaint.assignedOfficerId).substring(0, 8) : 'Unassigned')}</td>
+                    <td style={{ ...tdStyle, color: "#8590A6" }}>{officer ? (officer.name || officer.email) : (complaint.assigned_to ? String(complaint.assigned_to).substring(0, 8) : 'Unassigned')}</td>
                     <td style={tdStyle}>
                       <span className={`complaint-status ${getStatusBadgeClass(complaint.status)}`}>
-                        {complaint.status?.replace('_', ' ') || 'NEW'}
+                        {complaint.status || 'Open'}
                       </span>
                     </td>
-                    <td style={{ ...tdStyle, color: "#8590A6" }}>{complaint.createdAt ? new Date(complaint.createdAt).toLocaleDateString() : 'N/A'}</td>
+                    <td style={{ ...tdStyle, color: "#8590A6" }}>{complaint.created_at ? new Date(complaint.created_at).toLocaleDateString() : 'N/A'}</td>
                     <td style={tdStyle}>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button onClick={() => openReassign(complaint)} title="Reassign Officer"
@@ -322,7 +338,7 @@ export default function ComplaintManagement() {
                 <option value="">— Choose an officer —</option>
                 {officers.map(o => (
                   <option key={o._id || o.id} value={o._id || o.id}>
-                    {o.fullName || o.email || o.mobile}
+                    {o.name || o.email || o.mobile}
                   </option>
                 ))}
               </select>

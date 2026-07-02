@@ -91,8 +91,12 @@ export default function ComplaintListScreen() {
 
   const fetchComplaints = useCallback(async (pageNum = 1, refresh = false) => {
     try {
-      const { data } = await api.get(`/api/grievances/citizen/${user?.id}?page=${pageNum}`);
-      const list: Complaint[] = Array.isArray(data) ? data : (data.items ?? data.results ?? data.data ?? []);
+      // /api/grievances/citizen/{id} doesn't exist — the real endpoint is
+      // GET /api/grievances/, which derives the citizen from the JWT rather
+      // than a path param, and wraps its payload in {items,total,...} inside
+      // the standard {success,message,data} envelope.
+      const { data } = await api.get(`/api/grievances/?page=${pageNum}`);
+      const list: Complaint[] = data?.data?.items ?? [];
       const mapped = list.map((g: any) => ({
         id: g._id || g.id,
         title: g.title,

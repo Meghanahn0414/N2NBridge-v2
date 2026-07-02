@@ -14,7 +14,17 @@ export async function fetchUsers(page = 1, perPage = 100, role = null) {
       params.role = role;
     }
     const response = await api.get(USER_ENDPOINT, { params });
-    return Array.isArray(response.data) ? response.data : response.data?.data || [];
+    // GET /api/users/ wraps its payload in the standard envelope. For an
+    // ADMIN caller the backend now returns a paginated shape
+    // { items, total, page, per_page } inside data (cross-tenant view over
+    // citizens/representatives/master users) instead of a flat list — for
+    // REPRESENTATIVE/STAFF callers it's the same paginated shape too. Unwrap
+    // .items first; only fall back to treating .data itself as the array
+    // for any older/flat response shape.
+    const payload = response.data?.data;
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray(payload.items)) return payload.items;
+    return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     throw extractError(error);
   }

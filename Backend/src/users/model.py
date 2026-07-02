@@ -65,6 +65,28 @@ class CitizenRegisterRequest(BaseModel):
     ward_id:            Optional[str] = Field(None, description="Ward ID — required when rep_type is COUNCILLOR")
 
 
+class CitizenCompleteProfileRequest(BaseModel):
+    """
+    Complete Your Profile page — used when OTP verification was done WITHOUT
+    picking a representative up front (see auth/routes.py verify_otp_compat).
+    This is where Ward/Assembly/Parliament selection happens instead: the
+    representative is resolved here, and the citizen is moved from the plain
+    tenant-less account created at OTP time into that representative's own
+    database.
+    """
+    fullName:           str           = Field(..., description="Full name of the citizen")
+    email:              Optional[str] = Field(None, description="Email address")
+    mobile:             Optional[str] = Field(None, description="Phone number (confirms/updates the OTP-verified number)")
+    age:                Optional[int] = Field(None, ge=1, le=120, description="Age in years")
+    address:            Optional[str] = Field(None, description="Residential address")
+    ward_number:        Optional[str] = Field(None, description="General ward number (distinct from the COUNCILLOR-lookup ward_id below)")
+    rep_type:           str           = Field(..., description="MLA | MP | COUNCILLOR")
+    assembly_name:      Optional[str] = Field(None, description="Assembly constituency name — required when rep_type is MLA")
+    parliamentary_name: Optional[str] = Field(None, description="Parliamentary constituency name — required when rep_type is MP")
+    ward_id:            Optional[str] = Field(None, description="Ward ID — required when rep_type is COUNCILLOR")
+    ward_name:          Optional[str] = Field(None, description="Ward name (optional, alongside ward_id)")
+
+
 # ── Login ──────────────────────────────────────────────────────────────────────
 
 class UserLoginRequest(BaseModel):
@@ -86,6 +108,14 @@ class UserCreate(BaseModel):
     email:    EmailStr
     role:     Optional[str] = "MLA"
     password: str
+    # Required when role == "ADMIN" — which representative type (MLA / MP /
+    # COUNCILLOR) this admin will manage. Chosen directly on the Admin
+    # Signup form; not used for any other role.
+    scope: Optional[str] = None
+    # Optional display name when the Admin Signup form's "Other" option was
+    # picked — the account still registers under `scope` (one of the 3 real
+    # types the rest of the app understands), this is purely cosmetic.
+    scopeLabel: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
@@ -132,6 +162,11 @@ class UserResponse(BaseModel):
     taluk:              Optional[str]   = None
     district:           Optional[str]   = None
     state:              Optional[str]   = None
+    # Scoped-admin fields: scope = MLA|MP|COUNCILLOR the admin's invite token
+    # was locked to; managedDbName = the tenant DB of the one representative
+    # they've registered (null until they complete that one-time step).
+    scope:              Optional[str]   = None
+    managedDbName:      Optional[str]   = None
     createdAt:          Optional[datetime] = None
     updatedAt:          Optional[datetime] = None
 

@@ -23,6 +23,7 @@ from typing import Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+from pydantic import BaseModel, Field
 from pymongo import ReturnDocument
 
 from auth.otp_service import OTP_STORAGE, OTPService
@@ -30,7 +31,9 @@ from auth.service import AuthService
 from config.database import MongoDatabase
 from config.rate_limit import limiter
 from config.security import SecurityManager
+from config.settings import settings
 from users.model import (
+    CitizenCompleteProfileRequest,
     CitizenRegisterRequest,
     OtpResponse,
     RepresentativeRegisterRequest,
@@ -93,35 +96,6 @@ def _generate_slug(name: str, rep_type: str) -> str:
     return f"{clean}-{suffix}" if not clean.endswith(f"-{suffix}") else clean
 
 
-@router.post("/login-admin", response_model=TokenResponse)
-@limiter.limit("10/minute")
-async def login_admin(request: Request, login_data: UserLoginRequest):
-    """Admin/Staff login using email/password (ADMIN, REPRESENTATIVE, CONSTITUENCY_MANAGER, FIELD_OFFICER)"""
-    try:
-        result = AuthService.login(login_data)
-    except Exception as e:
-        logger.error(f"[login_admin] Unexpected error during login for {login_data.email}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Login failed due to an internal error: {str(e)}"
-        )
-
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
-
-    # Block citizens — they must use OTP login
-    allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER"]
-    user_role = result.user.role if result.user else None
-    if user_role not in allowed_roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized. Citizens must use citizen login."
-        )
-
-    return result
 def _generate_db_name(slug: str) -> str:
     return slug.replace("-", "_") + "_db"
 
@@ -132,68 +106,6 @@ def _next_rep_code(master_db, rep_type: str) -> str:
     return f"{prefix}{count + 1:05d}"
 
 
-        user_id = AuthService.register_user(user_data.dict(), None)
-        if not user_id:
-            logger.error("[REGISTER] register_user returned None - likely email or mobile already exists")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to register user - Email or mobile number may already be registered"
-            )
-        
-        logger.info(f"[REGISTER] User registered successfully: {user_id}")
-        # Send registration details to the user's email, if SMTP is configured
-        subject = "Your N2N account has been created"
-        body_lines = [
-            f"Hello {user_data.fullName},",
-            "",
-            "Your N2N account has been created successfully with the following details:",
-            f"Email: {user_data.email}",
-            f"Role: {user_data.role}",
-            f"Password: {user_data.password}",
-        ]
-        if user_data.role == "CONSTITUENCY_MANAGER" and getattr(user_data, "managerId", None):
-            body_lines.append(f"Manager ID: {user_data.managerId}")
-        if user_data.role == "FIELD_OFFICER" and getattr(user_data, "fieldOfficerId", None):
-            body_lines.append(f"Field Officer ID: {user_data.fieldOfficerId}")
-        if getattr(user_data, "constituencyId", None):
-            body_lines.append(f"Constituency ID: {user_data.constituencyId}")
-        if getattr(user_data, "assignedArea", None):
-            body_lines.append(f"Assigned Area: {user_data.assignedArea}")
-        if getattr(user_data, "managerId", None) and user_data.role != "CONSTITUENCY_MANAGER":
-            body_lines.append(f"Manager ID: {user_data.managerId}")
-        body_lines.extend([
-            "",
-            "Use the password above to log in.",
-            "If you did not request this account, please contact your N2N administrator.",
-            "",
-            "Best regards,",
-            "N2N Team",
-        ])
-        email_body = "\n".join(body_lines)
-        email_sent = send_email(user_data.email, subject, email_body)
-        if not email_sent:
-            logger.warning(f"[REGISTER] Failed to send registration email to {user_data.email}")
-
-        # Create token for newly registered user
-        token = TokenManager.create_token(user_id, user_data.role)
-        
-        # Return simple response with token
-        return {
-            "accessToken": token,
-            "user": {
-                "id": str(user_id),
-                "email": user_data.email,
-                "fullName": user_data.fullName,
-                "role": user_data.role
-            },
-            "emailSent": email_sent
-        }
-    except HTTPException as he:
-        logger.error(f"[REGISTER] HTTP Exception: {he.detail}")
-        raise
-    except Exception as e:
-        logger.error(f"[REGISTER] Unexpected error: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Registration failed")
 def _ensure_unique_slug(master_db, base_slug: str) -> str:
     slug = base_slug
     n    = 2
@@ -215,7 +127,7 @@ def _citizen_to_user_response(citizen: dict) -> dict:
         "mobile":   citizen.get("mobile", ""),
         "email":    citizen.get("email", ""),
         "role":     "CITIZEN",
-        "status":   "ACTIVE" if not citizen.get("isDeleted") else "INACTIVE",
+        "status":   "ACTIVE" if not citizen.get("is_deleted") else "INACTIVE",
         "createdAt": citizen.get("created_at"),
         "updatedAt": citizen.get("updated_at"),
     }
@@ -225,19 +137,13 @@ def _citizen_to_user_response(citizen: dict) -> dict:
 # REPRESENTATIVE ROUTES
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@rep_router.post("/register", status_code=status.HTTP_201_CREATED,
-                 summary="Register a new MLA / MP / Councillor")
-@limiter.limit("5/minute")
-async def register_representative(request: Request, body: RepresentativeRegisterRequest):
+def _create_representative_account(body: RepresentativeRegisterRequest) -> dict:
     """
-    Create a new representative account and their isolated tenant database.
-
-    **Constituency field required per role:**
-    - MLA → `assembly_name`
-    - MP → `parliamentary_name`
-    - COUNCILLOR → `ward_id` (+ optional `ward_name`)
-
-    **Optional common fields:** `taluk`, `district`, `state`
+    Shared by the public rep_router registration endpoint and the scoped-
+    admin "register my representative" flow — creates the tenant database +
+    representative account and returns everything the caller needs
+    (slug, db_name, token, user info). Raises HTTPException on validation
+    failure or duplicate email/mobile, same as before this was extracted.
     """
     master = MongoDatabase.get_db()
 
@@ -333,6 +239,36 @@ async def register_representative(request: Request, body: RepresentativeRegister
     logger.info(f"Representative registered: {name} ({rep_type}), DB: {db_name}")
 
     return {
+        "slug": slug, "rep_code": rep_code, "db_name": db_name, "user_id": user_id,
+        "token": token, "name": name, "rep_type": rep_type, "email": email, "mobile": mobile,
+        "assembly_name": assembly_name, "parliamentary_name": parliamentary_name,
+        "ward_id": ward_id, "ward_name": ward_name,
+        "taluk": taluk, "district": district, "state": state,
+    }
+
+
+@rep_router.post("/register", status_code=status.HTTP_201_CREATED,
+                 summary="Register a new MLA / MP / Councillor")
+@limiter.limit("5/minute")
+async def register_representative(request: Request, body: RepresentativeRegisterRequest):
+    """
+    Create a new representative account and their isolated tenant database.
+
+    **Constituency field required per role:**
+    - MLA → `assembly_name`
+    - MP → `parliamentary_name`
+    - COUNCILLOR → `ward_id` (+ optional `ward_name`)
+
+    **Optional common fields:** `taluk`, `district`, `state`
+    """
+    r = _create_representative_account(body)
+    slug, rep_code, db_name, user_id, token = r["slug"], r["rep_code"], r["db_name"], r["user_id"], r["token"]
+    name, rep_type, email, mobile = r["name"], r["rep_type"], r["email"], r["mobile"]
+    assembly_name, parliamentary_name = r["assembly_name"], r["parliamentary_name"]
+    ward_id, ward_name = r["ward_id"], r["ward_name"]
+    taluk, district, state = r["taluk"], r["district"], r["state"]
+
+    return {
         "success": True,
         "message": "Representative registered successfully",
         "data": {
@@ -358,6 +294,64 @@ async def register_representative(request: Request, body: RepresentativeRegister
             },
         },
     }
+
+
+@compat_router.post("/admin/register-my-representative",
+                     summary="Scoped admin's one-time representative registration")
+async def register_my_representative(body: RepresentativeRegisterRequest, current_user: dict = Depends(get_current_user)):
+    """
+    A scoped Admin (one who chose an MLA/MP/COUNCILLOR scope on the Admin
+    Signup form) calls this exactly once to register the one representative
+    their scope authorizes. `rep_type` in the body must match that scope.
+
+    The Admin's own login is NOT replaced or elevated — they stay logged in
+    as an Admin, on the normal Admin Portal, exactly as before. This just
+    links their account to the representative it created (managedDbName),
+    which is what GET /api/users/ uses to scope their admin-panel views
+    (Citizens, Representatives, Field Officers, Managers) down to only this
+    one representative's data — see list_users() in users/routes.py.
+    """
+    if current_user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Only a scoped Admin can register their representative")
+
+    master = MongoDatabase.get_db()
+    try:
+        admin_object_id = ObjectId(current_user["user_id"])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    admin_doc = master.users.find_one({"_id": admin_object_id})
+    if not admin_doc:
+        raise HTTPException(status_code=404, detail="Admin account not found")
+
+    scope = admin_doc.get("scope")
+    if not scope:
+        raise HTTPException(status_code=403, detail="Your account has no assigned scope")
+    if admin_doc.get("managedDbName"):
+        raise HTTPException(status_code=400, detail="You have already registered your representative")
+
+    rep_type = (body.rep_type or "").strip().upper()
+    if rep_type != scope:
+        raise HTTPException(status_code=403, detail=f"Your account is scoped to {scope}, not {rep_type or '(none)'}")
+
+    r = _create_representative_account(body)
+
+    update_result = master.users.update_one(
+        {"_id": admin_doc["_id"]},
+        {"$set": {"managedDbName": r["db_name"], "updatedAt": datetime.utcnow()}},
+    )
+    logger.info(
+        f"register_my_representative: admin_id={admin_doc['_id']} admin_email={admin_doc.get('email')} "
+        f"matched={update_result.matched_count} modified={update_result.modified_count} "
+        f"set_managedDbName={r['db_name']}"
+    )
+
+    return success_response({
+        "managedDbName": r["db_name"],
+        "representative": {
+            "id": r["user_id"], "fullName": r["name"], "email": r["email"],
+            "mobile": r["mobile"], "role": "REPRESENTATIVE", "title": r["rep_type"],
+        },
+    }, "Representative registered — you can now manage them from your Admin Portal")
 
 
 @rep_router.post("/login", response_model=TokenResponse,
@@ -736,9 +730,9 @@ async def citizen_register(request: CitizenRegisterRequest):
         }) or {}
 
         if is_mobile:
-            lookup_filter = {"mobile": normalized_mobile, "isDeleted": {"$ne": True}}
+            lookup_filter = {"mobile": normalized_mobile, "is_deleted": {"$ne": True}}
         else:
-            lookup_filter = {"email": normalized_email, "isDeleted": {"$ne": True}}
+            lookup_filter = {"email": normalized_email, "is_deleted": {"$ne": True}}
 
         citizen = tenant_db.citizens.find_one_and_update(
             lookup_filter,
@@ -758,7 +752,7 @@ async def citizen_register(request: CitizenRegisterRequest):
                     "taluk":              rep_user.get("taluk", ""),
                     "district":           rep_user.get("district", ""),
                     "state":              rep_user.get("state", ""),
-                    "isDeleted":          False,
+                    "is_deleted":         False,
                     "created_at":         now,
                     "updated_at":         now,
                 }
@@ -788,6 +782,171 @@ async def citizen_register(request: CitizenRegisterRequest):
     except Exception as e:
         logger.error(f"OTP verification error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="OTP verification failed")
+
+
+@citizen_router.post("/complete-profile", summary="Resolve representative and complete citizen profile")
+async def complete_citizen_profile(
+    body: CitizenCompleteProfileRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    **Called from the "Complete Your Profile" page**, for citizens who signed
+    in via the plain OTP flow (verify_otp_compat) without picking a
+    representative up front. This is where Ward/Assembly/Parliament selection
+    finally happens: we resolve the matching representative here, move the
+    citizen's record into that representative's tenant database, and issue a
+    new token scoped to it. The old, tenant-less placeholder record from OTP
+    verification is soft-deleted.
+    """
+    if current_user.get("role") != "CITIZEN":
+        raise HTTPException(status_code=403, detail="Only citizens can complete a profile this way")
+
+    old_user_id = current_user.get("user_id")
+    if not old_user_id:
+        raise HTTPException(status_code=401, detail="Invalid session")
+
+    rep_type = body.rep_type.strip().upper()
+    if rep_type not in ("MLA", "MP", "COUNCILLOR"):
+        raise HTTPException(status_code=400, detail="rep_type must be MLA, MP, or COUNCILLOR")
+
+    master = MongoDatabase.get_db()
+
+    if rep_type == "MLA":
+        if not body.assembly_name:
+            raise HTTPException(status_code=400, detail="assembly_name is required for MLA")
+        rep = master.representatives.find_one({
+            "rep_type": "MLA",
+            "assembly_name": {"$regex": f"^{re.escape(body.assembly_name.strip())}$", "$options": "i"},
+            "status": "ACTIVE",
+        })
+    elif rep_type == "MP":
+        if not body.parliamentary_name:
+            raise HTTPException(status_code=400, detail="parliamentary_name is required for MP")
+        rep = master.representatives.find_one({
+            "rep_type": "MP",
+            "parliamentary_name": {"$regex": f"^{re.escape(body.parliamentary_name.strip())}$", "$options": "i"},
+            "status": "ACTIVE",
+        })
+    else:
+        if not body.ward_id:
+            raise HTTPException(status_code=400, detail="ward_id is required for COUNCILLOR")
+        rep = master.representatives.find_one({
+            "rep_type": "COUNCILLOR",
+            "ward_id": {"$regex": f"^{re.escape(body.ward_id.strip())}$", "$options": "i"},
+            "status": "ACTIVE",
+        })
+
+    if not rep:
+        logger.warning(
+            f"complete-profile: NO MATCH for rep_type={rep_type} "
+            f"assembly_name={body.assembly_name!r} parliamentary_name={body.parliamentary_name!r} "
+            f"ward_id={body.ward_id!r}"
+        )
+        raise HTTPException(status_code=404, detail="No active representative found for the selected constituency")
+
+    # How many ACTIVE reps match this rep_type + area — if this is >1, the
+    # citizen may be landing in a different (e.g. older/duplicate) tenant
+    # than the one currently logged in under the same name.
+    dup_query = {"rep_type": rep_type, "status": "ACTIVE"}
+    if rep_type == "MLA":
+        dup_query["assembly_name"] = {"$regex": f"^{re.escape(body.assembly_name.strip())}$", "$options": "i"}
+    elif rep_type == "MP":
+        dup_query["parliamentary_name"] = {"$regex": f"^{re.escape(body.parliamentary_name.strip())}$", "$options": "i"}
+    else:
+        dup_query["ward_id"] = {"$regex": f"^{re.escape(body.ward_id.strip())}$", "$options": "i"}
+    dup_count = master.representatives.count_documents(dup_query)
+    logger.info(
+        f"complete-profile: MATCHED rep_type={rep_type} slug={rep.get('slug')} "
+        f"db_name={rep.get('db_name')} rep_code={rep.get('rep_code')} "
+        f"(candidates matching this rep_type+area: {dup_count})"
+    )
+
+    db_name   = rep["db_name"]
+    tenant_db = MongoDatabase.get_tenant_db(db_name)
+    now       = datetime.utcnow()
+
+    # Carry over identity fields from the tenant-less placeholder record
+    # created at OTP-verify time.
+    try:
+        old_doc = master.users.find_one({"_id": ObjectId(old_user_id)}) or {}
+    except Exception:
+        old_doc = {}
+    mobile    = (body.mobile or old_doc.get("mobile", "") or "").strip()
+    email     = (body.email or old_doc.get("email", "") or "").strip()
+    is_mobile = bool(mobile) and not mobile.startswith("otp-")
+
+    rep_user = tenant_db.users.find_one({"role": "REPRESENTATIVE"}, {
+        "ward_name": 1, "taluk": 1, "district": 1, "state": 1,
+    }) or {}
+
+    if is_mobile:
+        lookup_filter = {"mobile": mobile, "is_deleted": {"$ne": True}}
+    else:
+        lookup_filter = {"email": email, "is_deleted": {"$ne": True}}
+
+    citizen = tenant_db.citizens.find_one_and_update(
+        lookup_filter,
+        {
+            "$set": {
+                "name":               body.fullName.strip(),
+                "email":              email,
+                "mobile":             mobile,
+                "age":                body.age,
+                "address":            body.address or "",
+                "assembly_name":      body.assembly_name or "",
+                "parliamentary_name": body.parliamentary_name or "",
+                "ward_id":            body.ward_id or "",
+                "ward_number":        body.ward_number or "",
+                "area_name":          body.ward_name or rep_user.get("ward_name", ""),
+                "taluk":              rep_user.get("taluk", ""),
+                "district":           rep_user.get("district", ""),
+                "state":              rep_user.get("state", ""),
+                "is_deleted":         False,
+                "updated_at":         now,
+            },
+            "$setOnInsert": {
+                "citizen_id": _next_citizen_id(tenant_db),
+                "created_at": now,
+            },
+        },
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+
+    if citizen is None:
+        raise HTTPException(status_code=500, detail="Failed to save profile")
+
+    # Soft-delete the tenant-less placeholder now that the citizen has a real
+    # home in the representative's tenant DB — avoids an orphaned duplicate.
+    try:
+        master.users.update_one(
+            {"_id": ObjectId(old_user_id)},
+            {"$set": {"isDeleted": True, "updatedAt": now}},
+        )
+    except Exception:
+        pass
+
+    citizen_id = str(citizen["_id"])
+    token = TokenManager.create_token(citizen_id, "CITIZEN", db_name)
+    logger.info(f"Citizen profile completed, migrated to tenant {db_name}: {citizen_id}")
+
+    return success_response({
+        "accessToken": token,
+        "user": UserResponse(
+            _id=citizen_id,
+            fullName=citizen.get("name", ""),
+            mobile=citizen.get("mobile", ""),
+            email=citizen.get("email", ""),
+            role="CITIZEN",
+            status="ACTIVE",
+            assembly_name=citizen.get("assembly_name"),
+            parliamentary_name=citizen.get("parliamentary_name"),
+            ward_id=citizen.get("ward_id"),
+            ward_name=citizen.get("area_name"),
+            createdAt=citizen.get("created_at"),
+            updatedAt=citizen.get("updated_at"),
+        ),
+    }, "Profile completed successfully")
 
 
 @citizen_router.get("/resolve/{slug}", include_in_schema=False)
@@ -856,7 +1015,99 @@ async def send_otp_compat(request: Request, body: SendOtpRequest):
 
 @compat_router.post("/verify-otp", include_in_schema=False)
 async def verify_otp_compat(request: VerifyOtpRequest):
-    return await citizen_register(request)
+    """
+    Simple citizen OTP verification — logs the citizen in (creating a bare
+    account on first verification) WITHOUT requiring a representative to be
+    picked yet. This used to delegate straight into citizen_register(), but
+    that function now requires rep_type + assembly_name/parliamentary_name/
+    ward_id up front to resolve which representative's tenant DB to use —
+    fields this plain {value, otp} request never sends, which crashed every
+    call with an AttributeError.
+
+    Representative / ward / assembly / parliament details are collected
+    afterward on the profile completion page instead (UserUpdate already has
+    assembly_name / parliamentary_name / ward_id / ward_name as optional
+    fields for exactly this).
+
+    If request.db_name IS provided (a representative has already been
+    resolved by an earlier step), we still route into the tenant-aware
+    citizen_register so that flow keeps working.
+    """
+    if request.db_name:
+        return await citizen_register(request)
+
+    try:
+        from users.service import UserService
+
+        normalized_value  = request.value.strip()
+        is_email          = "@" in normalized_value
+        normalized_email  = UserService.normalize_email(normalized_value) if is_email else None
+        normalized_mobile = UserService.normalize_mobile(normalized_value)
+        is_mobile         = bool(normalized_mobile) and not is_email
+
+        otp_key = OTPService.normalize_contact(
+            "phone" if is_mobile else "email", normalized_value
+        )
+        if not OTPService.verify_otp(otp_key, request.otp):
+            raise HTTPException(status_code=401, detail="Invalid or expired OTP")
+
+        db  = MongoDatabase.get_db()
+        now = datetime.utcnow()
+
+        if is_mobile:
+            lookup_filter = {"mobile": normalized_mobile, "role": "CITIZEN", "isDeleted": {"$ne": True}}
+        else:
+            lookup_filter = {"email": normalized_email, "role": "CITIZEN", "isDeleted": {"$ne": True}}
+
+        user = db.users.find_one_and_update(
+            lookup_filter,
+            {
+                "$setOnInsert": {
+                    "role":      "CITIZEN",
+                    "fullName":  "",
+                    "mobile":    normalized_mobile if is_mobile else f"otp-{uuid.uuid4().hex[:8]}",
+                    "email":     normalized_email  if is_email  else f"otp-{uuid.uuid4().hex[:8]}@otp.local",
+                    "isDeleted": False,
+                    "createdAt": now,
+                    "updatedAt": now,
+                }
+            },
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
+
+        if user is None:
+            raise HTTPException(status_code=500, detail="Failed to create or find citizen")
+
+        user_id = str(user["_id"])
+        token   = TokenManager.create_token(user_id, "CITIZEN")
+        logger.info(f"Citizen registered/logged in: {user_id}")
+
+        return OtpResponse(
+            success=True,
+            message="OTP verified successfully",
+            accessToken=token,
+            role="CITIZEN",
+            user=UserResponse(
+                _id=user_id,
+                fullName=user.get("fullName", ""),
+                mobile=user.get("mobile", ""),
+                email=user.get("email", ""),
+                role="CITIZEN",
+                status="ACTIVE" if not user.get("isDeleted") else "INACTIVE",
+                assembly_name=user.get("assembly_name"),
+                parliamentary_name=user.get("parliamentary_name"),
+                ward_id=user.get("ward_id"),
+                ward_name=user.get("ward_name"),
+                createdAt=user.get("createdAt"),
+                updatedAt=user.get("updatedAt"),
+            ),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OTP verification error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="OTP verification failed")
 
 
 @compat_router.get("/resolve/{slug}", include_in_schema=False)
@@ -873,16 +1124,99 @@ async def verify_token_compat(current_user: dict = Depends(get_current_user)):
     )
 
 
+def _require_admin(current_user: dict):
+    if current_user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Only an Admin can do this")
+
+
 @compat_router.post("/register", include_in_schema=False)
-async def register_compat(user_data: UserCreate):
-    """Legacy registration shim."""
+async def register_compat(user_data: UserCreate, current_user: Optional[dict] = Depends(get_current_user_optional)):
+    """
+    Legacy registration shim.
+
+    Was hard-coded to always create a REPRESENTATIVE account regardless of
+    the requested role — any non-MLA/MP/COUNCILLOR role (including "ADMIN",
+    "FIELD_OFFICER", "CONSTITUENCY_MANAGER") silently fell through to "MLA".
+    That's why registering an admin, field officer, or manager via the admin
+    panel produced a working login, just logged in as an MLA/Representative
+    with its own bogus tenant database instead.
+
+    ADMIN / FIELD_OFFICER / CONSTITUENCY_MANAGER are "platform-level" roles
+    handled below — they don't belong to any one representative's tenant
+    database (the admin-panel forms that create them don't even collect a
+    constituency/representative to attach them to), so they live in the
+    master DB instead, matching how AuthService.login() resolves accounts
+    (master.user_registry → db_name → tenant_db.users). Using db_name =
+    the master DB's own name makes that lookup resolve right back to
+    master.users.
+    """
     master = MongoDatabase.get_db()
+    role = (user_data.role or "MLA").upper()
+
+    if role in ("ADMIN", "FIELD_OFFICER", "CONSTITUENCY_MANAGER"):
+        scope = None
+        scope_label = None
+        if role == "ADMIN":
+            # Public self-registration (Admin Signup page) — open, no invite
+            # token / Super Admin approval required. The admin picks which
+            # representative type (MLA/MP/COUNCILLOR) they'll manage right
+            # on the signup form; that's stored as their scope so they can
+            # later register exactly one representative of that type via
+            # /api/auth/admin/register-my-representative, at which point
+            # managedDbName gets filled in.
+            #
+            # The signup form also offers an "Other" option — the rest of
+            # the app (citizen registration, constituency lookup, etc.) only
+            # understands MLA/MP/COUNCILLOR, so the frontend still sends one
+            # of those three as `scope`; scopeLabel just carries the custom
+            # name the admin typed, purely for display.
+            scope = (user_data.scope or "").strip().upper() or None
+            if scope not in ("MLA", "MP", "COUNCILLOR"):
+                raise HTTPException(status_code=400, detail="scope must be MLA, MP, or COUNCILLOR")
+            scope_label = (user_data.scopeLabel or "").strip() or None
+
+        if master.users.find_one({"email": user_data.email}):
+            raise HTTPException(status_code=400, detail="Email already registered")
+        if master.users.find_one({"mobile": user_data.mobile}):
+            raise HTTPException(status_code=400, detail="Mobile already registered")
+
+        now = datetime.utcnow()
+        # FIELD_OFFICER / CONSTITUENCY_MANAGER are always created by an
+        # already-logged-in Admin from the admin panel — stamp which admin,
+        # so that admin's own team stays isolated from every other admin's
+        # (see list_users' createdByAdminId filter). ADMIN accounts don't
+        # get one — they're not "created by" anyone in that sense.
+        created_by_admin_id = None
+        if role in ("FIELD_OFFICER", "CONSTITUENCY_MANAGER") and current_user and current_user.get("role") == "ADMIN":
+            created_by_admin_id = current_user.get("user_id")
+        user_doc = {
+            "fullName": user_data.fullName, "email": user_data.email, "mobile": user_data.mobile,
+            "passwordHash": SecurityManager.hash_password(user_data.password),
+            "role": role, "status": "ACTIVE", "isDeleted": False,
+            "scope": scope, "scopeLabel": scope_label, "managedDbName": None,
+            "createdByAdminId": created_by_admin_id,
+            "createdAt": now, "updatedAt": now,
+        }
+        insert_result = master.users.insert_one(user_doc)
+        user_id = str(insert_result.inserted_id)
+
+        master.user_registry.insert_one({
+            "email": user_data.email, "mobile": user_data.mobile,
+            "db_name": settings.MONGODB_MASTER_DB, "role": role, "user_id": user_id,
+        })
+
+        token = TokenManager.create_token(user_id, role, settings.MONGODB_MASTER_DB)
+        return {"accessToken": token, "user": {
+            "id": user_id, "email": user_data.email,
+            "fullName": user_data.fullName, "role": role, "scope": scope, "scopeLabel": scope_label,
+        }}
+
     if master.representatives.find_one({"email": user_data.email}):
         raise HTTPException(status_code=400, detail="Email already registered")
     if master.representatives.find_one({"mobile": user_data.mobile}):
         raise HTTPException(status_code=400, detail="Mobile already registered")
 
-    rep_type = (user_data.role or "MLA").upper()
+    rep_type = role
     if rep_type not in ("MLA", "MP", "COUNCILLOR"):
         rep_type = "MLA"
 

@@ -217,9 +217,28 @@ export default function Login() {
     try {
       const response = await loginAdmin({ email, password });
       setAuthToken(response.accessToken);
-      const userRole = response.user?.role || "ADMIN";
+      let userRole = response.user?.role || "ADMIN";
+
+      // Field Officers/Managers registered via /api/staff/ carry the
+      // generic backend role "STAFF" (their JWT/API permissions rely on
+      // that literal value, so it's left untouched there) — but the
+      // frontend's routing/RoleRoute guards were built around the older,
+      // more specific FIELD_OFFICER/CONSTITUENCY_MANAGER role values and
+      // don't recognize "STAFF" at all, which is what sent every staff
+      // login to the Admin Portal's RoleRoute and got "Access Denied".
+      // Translate using their designation (returned as `title`) for
+      // frontend routing purposes only.
+      if (userRole === "STAFF") {
+        const designation = (response.user?.title || "").toLowerCase();
+        userRole = designation.includes("manager") ? "CONSTITUENCY_MANAGER" : "FIELD_OFFICER";
+      }
+
       setAuthRole(userRole);
-      setAuthUser(response.user);
+      setAuthUser({ ...response.user, role: userRole });
+
+      // Scoped admins land on the normal admin dashboard like any other
+      // admin — "Register My Representative" shows up in their sidebar as
+      // something to complete when they're ready, not a forced redirect.
       navigate(REDIRECT[userRole] || "/admin");
     } catch (err) {
       setError(err.message || "Login failed");
@@ -367,7 +386,8 @@ export default function Login() {
                       try {
                         const stored = JSON.parse(sessionStorage.getItem("authValue") || "{}");
                         const res = await verifyOtp({ value: stored.value, otp: citizenOtp });
-                        setAuthToken(res.token);
+                        // Backend's OtpResponse model returns the token as `accessToken`, not `token`.
+                        setAuthToken(res.accessToken);
                         setAuthRole(res.role);
                         if (res.user) { setAuthUser(res.user); window.dispatchEvent(new Event("auth-user-updated")); }
                         sessionStorage.removeItem("authValue");

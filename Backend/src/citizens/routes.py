@@ -3,6 +3,7 @@ Citizen Routes — Multi-Tenant
 
 GET  /api/citizens/me                   Own profile
 PUT  /api/citizens/me                   Update own profile
+POST /api/citizens/me/upload-photo      Upload own profile photo
 GET  /api/citizens/my-representatives   Councillor, MLA, MP lookup (from master DB)
 GET  /api/citizens/{id}                 Rep/Staff: get citizen profile
 GET  /api/citizens/                     Rep/Staff: list all citizens
@@ -13,7 +14,7 @@ from typing import Optional
 
 from bson import ObjectId
 from citizens.model import CitizenProfileUpdate, CitizenRegisterDetails
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from utils.response import success_response
 from utils.tenant import get_tenant_db, require_auth
 router = APIRouter(prefix="/api/citizens", tags=["Citizen"])
@@ -95,6 +96,42 @@ async def update_my_profile(body: CitizenProfileUpdate, db=Depends(get_tenant_db
     return success_response(_doc(citizen), "Profile updated")
 
 
+@router.post("/me/upload-photo")
+async def upload_my_photo(
+    file: UploadFile = File(...),
+    db=Depends(get_tenant_db),
+    user=Depends(require_auth),
+):
+    """
+    Upload the logged-in citizen's own profile photo.
+
+    This is the citizen-facing counterpart to
+    POST /api/users/{id}/upload-profile-photo — that one writes to the
+    `users` collection and is representative/staff-only, so it never actually
+    saved anything for a citizen. This one writes to `db.citizens`, keyed off
+    the citizen's own id from the token, matching GET/PUT /api/citizens/me.
+    """
+    citizen_id = user.get("user_id")
+    if not citizen_id:
+        raise HTTPException(status_code=401, detail="Invalid session")
+
+    from utils.file_handler import upload_profile_image
+    try:
+        file_url = await upload_profile_image(file)
+    except Exception as exc:
+        logger.error(f"Citizen photo upload failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Upload failed")
+
+    result = db.citizens.update_one(
+        {"_id": _oid(citizen_id)},
+        {"$set": {"profileImage": file_url, "updated_at": datetime.now(timezone.utc)}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Citizen not found")
+
+    return success_response({"profileImage": file_url}, "Profile photo updated")
+
+
 @router.get("/my-representatives")
 async def my_representatives(db=Depends(get_tenant_db), user=Depends(require_auth)):  # noqa: ARG001
     """
@@ -147,6 +184,11 @@ async def list_citizens(
     skip  = (page - 1) * per_page
     items = list(db.citizens.find(q).sort("created_at", -1).skip(skip).limit(per_page))
     total = db.citizens.count_documents(q)
+    raw_total = db.citizens.count_documents({})
+    logger.info(
+        f"list_citizens: tenant_db={db.name} user_db_name={user.get('db_name')} "
+        f"filtered_total={total} raw_total(no filter)={raw_total}"
+    )
     return success_response(
         {"items": [_doc(c) for c in items], "total": total, "page": page, "per_page": per_page},
         "Citizens retrieved",

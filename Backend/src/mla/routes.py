@@ -31,6 +31,7 @@ from auth.service import AuthService
 from config.database import MongoDatabase
 from utils.jwt import TokenManager
 from utils.response import success_response
+from utils.tenant import get_tenant_db, require_auth
 
 router = APIRouter(prefix="/api/mla", tags=["MLA Insights"])
 logger = logging.getLogger(__name__)
@@ -185,43 +186,43 @@ async def mla_public_profile(
 
 
 @router.get("/public-sentiment")
-async def public_sentiment(days: int = Query(90, ge=7, le=365)):
+async def public_sentiment(days: int = Query(90, ge=7, le=365), db=Depends(get_tenant_db), current_user: dict = Depends(require_auth)):
     """Positive / neutral / negative breakdown from AI analysis of grievances."""
-    data = _safe(get_public_sentiment, days)
+    data = _safe(get_public_sentiment, db, days)
     return success_response(data, "Public sentiment retrieved")
 
 
 @router.get("/approval-by-group")
-async def approval_by_group(days: int = Query(90, ge=7, le=365)):
+async def approval_by_group(days: int = Query(90, ge=7, le=365), db=Depends(get_tenant_db), current_user: dict = Depends(require_auth)):
     """Sentiment-derived approval score segmented by citizen age group."""
-    data = _safe(get_approval_by_group, days)
+    data = _safe(get_approval_by_group, db, days)
     return success_response(data, "Approval by group retrieved")
 
 
 @router.get("/moving-numbers")
-async def moving_numbers(days: int = Query(90, ge=7, le=365)):
+async def moving_numbers(days: int = Query(90, ge=7, le=365), db=Depends(get_tenant_db), current_user: dict = Depends(require_auth)):
     """Top positive and negative grievance-category drivers."""
-    data = _safe(get_moving_numbers, days)
+    data = _safe(get_moving_numbers, db, days)
     return success_response(data, "Moving numbers retrieved")
 
 
 @router.get("/peer-ranking")
-async def peer_ranking(days: int = Query(90, ge=7, le=365)):
+async def peer_ranking(days: int = Query(90, ge=7, le=365), db=Depends(get_tenant_db), current_user: dict = Depends(require_auth)):
     """Ward-level approval ranking for 'Standing vs. peers' card."""
-    data = _safe(get_peer_ranking, days)
+    data = _safe(get_peer_ranking, db, days)
     return success_response(data, "Peer ranking retrieved")
 
 
 @router.get("/sentiment-trend")
-async def sentiment_trend(months: int = Query(12, ge=3, le=24)):
+async def sentiment_trend(months: int = Query(12, ge=3, le=24), db=Depends(get_tenant_db), current_user: dict = Depends(require_auth)):
     """Monthly approval % trend for the career trajectory chart."""
-    data = _safe(get_sentiment_trend, months)
+    data = _safe(get_sentiment_trend, db, months)
     return success_response(data, "Sentiment trend retrieved")
 
 
 @router.get("/insights")
-async def all_insights(days: int = Query(90, ge=7, le=365)):
-    """All insight cards in a single request."""
+async def all_insights(days: int = Query(90, ge=7, le=365), db=Depends(get_tenant_db), current_user: dict = Depends(require_auth)):
+    """All insight cards in a single request — tenant-scoped to the caller's own db."""
     months = 3 if days <= 90 else 6 if days <= 180 else 12
 
     # These six calls each run their own MongoDB queries/aggregations and don't
@@ -242,12 +243,12 @@ async def all_insights(days: int = Query(90, ge=7, le=365)):
         sentiment_trend,
         feedback_sources,
     ) = await asyncio.gather(
-        run_in_threadpool(_safe, get_public_sentiment, days),
-        run_in_threadpool(_safe, get_approval_by_group, days),
-        run_in_threadpool(_safe, get_moving_numbers, days),
-        run_in_threadpool(_safe, get_peer_ranking, days),
-        run_in_threadpool(_safe, get_sentiment_trend, months),
-        run_in_threadpool(_safe, get_feedback_sources, days),
+        run_in_threadpool(_safe, get_public_sentiment, db, days),
+        run_in_threadpool(_safe, get_approval_by_group, db, days),
+        run_in_threadpool(_safe, get_moving_numbers, db, days),
+        run_in_threadpool(_safe, get_peer_ranking, db, days),
+        run_in_threadpool(_safe, get_sentiment_trend, db, months),
+        run_in_threadpool(_safe, get_feedback_sources, db, days),
     )
 
     approval_pct = None

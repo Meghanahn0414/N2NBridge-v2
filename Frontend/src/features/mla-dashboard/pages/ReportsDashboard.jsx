@@ -121,25 +121,23 @@ export default function ReportsDashboard() {
 
   const load = useCallback(async () => {
     try {
+      // /api/grievances/reports/stats and the citizen-scoped /api/grievances/
+      // list don't apply to a representative — the real endpoints are under
+      // /api/rep/grievances/. All three responses are wrapped in the
+      // standard {success,message,data} envelope, which wasn't being unwrapped.
       const [statsRes, listRes, catsRes] = await Promise.all([
-        api.get("/api/grievances/reports/stats"),
-        api.get("/api/grievances/", { params: { per_page: 100 } }),
+        api.get("/api/rep/grievances/stats"),
+        api.get("/api/rep/grievances/", { params: { per_page: 100 } }),
         api.get("/api/grievances/categories"),
       ]);
-      const freshStats = statsRes.data;
+      const freshStats = statsRes.data?.data ?? null;
       if (freshStats) { try { sessionStorage.setItem("mla_reports_stats_cache", JSON.stringify(freshStats)); } catch {} }
       setStats(freshStats);
-      // Handle both plain array and paginated wrapper { items: [...] }
-      const rawList = listRes.data;
-      const gList = Array.isArray(rawList)
-        ? rawList
-        : Array.isArray(rawList?.items)
-        ? rawList.items
-        : [];
+      const gList = listRes.data?.data?.items ?? [];
       setGrievances(gList);
       // Build id → name map from categories
       const map = {};
-      const cats = Array.isArray(catsRes.data) ? catsRes.data : [];
+      const cats = catsRes.data?.data ?? [];
       cats.forEach(c => {
         const id = c.id || c._id;
         if (id) map[id] = c.categoryName || c.name || "";

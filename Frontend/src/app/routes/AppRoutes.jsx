@@ -19,6 +19,7 @@ import CitizenListPage from "../../pages/admin/CitizenList";
 import EventListPage from "../../features/events/pages/EventList";
 import AlertsPage from "../../pages/admin/Alerts";
 import RegistrationPage from "../../pages/admin/RegistrationPage";
+import RegisterMyRepresentativePage from "../../pages/admin/RegisterMyRepresentative";
 import MLAListPage from "../../pages/admin/MLAList";
 import ManagerListPage from "../../pages/admin/ManagerList";
 import FieldOfficerListPage from "../../pages/admin/FieldOfficerList";
@@ -132,6 +133,7 @@ function AppRoutesContent() {
           <Route path={ROUTES.citizenLogin} element={<PublicRoute><CitizenLogin /></PublicRoute>} />
           <Route path={ROUTES.otp} element={<PublicRoute><OtpVerify /></PublicRoute>} />
           <Route path={ROUTES.adminSignup} element={<PublicRoute><AdminSignup /></PublicRoute>} />
+          <Route path={ROUTES.registerMyRepresentative} element={<RoleRoute allowedRoles={["ADMIN"]}><RegisterMyRepresentativePage /></RoleRoute>} />
 
           {/* Field Officer Routes — new unified layout */}
           <Route element={<RoleRoute allowedRoles={["FIELD_OFFICER"]}><FieldLayout /></RoleRoute>}>
@@ -157,6 +159,8 @@ function AppRoutesContent() {
             <Route path={ROUTES.alerts}                 element={<AlertsPage />} />
             <Route path={ROUTES.register}               element={<RegistrationPage />} />
             <Route path={ROUTES.mlaList}                element={<MLAListPage />} />
+            <Route path={ROUTES.mpList}                 element={<MLAListPage repType="MP" title="MPs" subtitle="Registered Members of Parliament" constituencyLabel="Parliamentary Constituency" />} />
+            <Route path={ROUTES.councillorList}         element={<MLAListPage repType="COUNCILLOR" title="Councillors" subtitle="Registered Councillors" constituencyLabel="Ward" />} />
             <Route path={ROUTES.managerList}            element={<ManagerListPage />} />
             <Route path={ROUTES.fieldOfficerList}       element={<FieldOfficerListPage />} />
             <Route path={ROUTES.adminsList}             element={<AdminsListPage />} />

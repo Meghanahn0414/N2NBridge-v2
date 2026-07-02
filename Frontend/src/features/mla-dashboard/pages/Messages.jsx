@@ -336,9 +336,13 @@ export default function Messages() {
   // Fetch grievances as conversations
   useEffect(() => {
     setLoading(true);
-    api.get("/api/grievances/", { params: { page: 1, per_page: 50 } })
+    // Was /api/grievances/ — that's the CITIZEN "my own grievances" endpoint
+    // (filters by citizen_id == caller's own user_id), which for a logged-in
+    // representative matches nothing. /api/rep/grievances/ is the actual
+    // rep-facing queue.
+    api.get("/api/rep/grievances/", { params: { page: 1, per_page: 50 } })
       .then(res => {
-        const list = Array.isArray(res.data) ? res.data : [];
+        const list = res.data?.data?.items ?? [];
         setGrievances(list);
         if (list.length > 0) setSelected(list[0]);
       })
@@ -390,16 +394,20 @@ export default function Messages() {
     if (!id) return;
     setSending(true);
     try {
-      // 1. Save remark into grievance history
-      await api.put(`/api/grievances/${id}`, { remarks: msg, status: selected.status });
+      // 1. Save remark into grievance history — PUT /api/grievances/{id}
+      // doesn't exist (that was never a real route); the closest match,
+      // /api/rep/grievances/{id}/acknowledge etc., forces a status
+      // transition, which a reply shouldn't do. /remark adds history
+      // without touching status.
+      await api.post(`/api/rep/grievances/${id}/remark`, { remarks: msg });
       // 2. Notify the citizen so they receive the message in their app
       await notifyCitizen(
         selected.citizenId,
         rep?.fullName || rep?.name || "Your Representative",
         msg
       );
-      // 3. Refresh thread
-      const res = await api.get(`/api/grievances/${id}`);
+      // 3. Refresh thread — /api/rep/grievances/{id} includes history + citizen info.
+      const res = await api.get(`/api/rep/grievances/${id}`);
       const updated = res?.data?.data || res?.data || null;
       if (updated) {
         setSelected(updated);
@@ -429,8 +437,9 @@ export default function Messages() {
     const id = gid(grievance);
     if (!id) return;
     try {
-      // 1. Save remark into grievance history
-      await api.put(`/api/grievances/${id}`, { remarks: text, status: grievance.status });
+      // 1. Save remark into grievance history (see handleSend for why this
+      // isn't PUT /api/grievances/{id} or one of the status-transition routes).
+      await api.post(`/api/rep/grievances/${id}/remark`, { remarks: text });
       // 2. Send in-app notification to the citizen
       await notifyCitizen(
         grievance.citizenId,
@@ -438,7 +447,7 @@ export default function Messages() {
         text
       );
       // 3. Refresh and switch to that conversation
-      const res = await api.get(`/api/grievances/${id}`);
+      const res = await api.get(`/api/rep/grievances/${id}`);
       const updated = res?.data?.data || res?.data || null;
       if (updated) {
         setSelected(updated);

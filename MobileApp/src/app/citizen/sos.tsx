@@ -48,13 +48,15 @@ export default function SOSScreen() {
           onPress: async () => {
             setSending(true);
             try {
-              await api.post("/api/grievances", {
-                citizenId: user?.id,
-                categoryId: "EMERGENCY",
+              // GrievanceCreate requires `title`; category/priority match the
+              // backend's actual field names and casing (was categoryId/
+              // wardId/CRITICAL — none of which the model accepts).
+              await api.post("/api/grievances/", {
+                title: `EMERGENCY SOS: ${selected}`,
                 description: `EMERGENCY SOS: ${selected}`,
+                category: "EMERGENCY",
                 address: "Location via GPS",
-                wardId: "1",
-                priority: "CRITICAL",
+                priority: "Critical",
               });
               Alert.alert(tr('sosAlert.sosSentTitle'), tr('sosAlert.sosSentMsg'), [
                 { text: tr('sosAlert.ok'), onPress: () => router.back() },

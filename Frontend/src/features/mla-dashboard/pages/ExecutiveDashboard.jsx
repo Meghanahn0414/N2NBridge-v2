@@ -215,7 +215,8 @@ function NotificationBell() {
   };
 
   const markAll = () => {
-    api.post("/api/notifications/mark-all-read").catch(() => {});
+    // Was /api/notifications/mark-all-read — real path is /read-all.
+    api.post("/api/notifications/read-all").catch(() => {});
     setNotifs(prev => prev.map(n => ({ ...n, isRead: true })));
   };
 
@@ -577,7 +578,11 @@ export default function ExecutiveDashboard() {
               // Round the axis ceiling up to a friendly step so gridlines land on whole numbers
               const step = Math.pow(10, Math.max(0, String(Math.ceil(rawMax)).length - 1));
               const maxV = Math.ceil(rawMax / step) * step || 1;
-              const ticks = [0, maxV * 0.25, maxV * 0.5, maxV * 0.75, maxV].map(v => Math.round(v));
+              // When maxV is small (e.g. 1-4), rounding [0, .25, .5, .75, 1] * maxV
+              // to whole numbers collapses several steps onto the same integer
+              // (e.g. maxV=1 -> [0,0,1,1,1]) — dedupe so we don't render/key
+              // multiple gridlines on top of each other.
+              const ticks = [...new Set([0, maxV * 0.25, maxV * 0.5, maxV * 0.75, maxV].map(v => Math.round(v)))];
               const n = trendMonths.length;
               const toX = (i) => PAD_L + (i / (n - 1)) * (W - PAD_L - PAD_R);
               const toY = (v) => H - PAD_B - (v / maxV) * (H - PAD_T - PAD_B);
