@@ -23,6 +23,7 @@ from campaigns.model import CampaignCreate, CampaignUpdate
 from config.database import MongoDatabase
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from mla.sentiment_service import CATEGORY_META, _normalize_category_key
+from utils.email_service import send_email
 from utils.response import success_response
 from utils.tenant import get_tenant_db, require_auth
 
@@ -52,6 +53,20 @@ def _doc(d: dict) -> dict:
         elif isinstance(v, datetime):
             d[k] = v.isoformat()
     return d
+
+
+def _email_citizens(citizens: list, subject: str, body: str):
+    """Send `body` to every citizen dict that has an 'email' field. Used
+    when a campaign's Delivery Channels include "Email" — mirrors the
+    same pattern in events/routes.py's publish_event."""
+    for cit in citizens:
+        email = (cit.get("email") or "").strip()
+        if not email:
+            continue
+        try:
+            send_email(email, subject, body)
+        except Exception as ex:
+            logger.warning(f"Campaign email failed for citizen {cit.get('_id')}: {ex}")
 
 
 def _oid(val: str) -> ObjectId:
@@ -411,7 +426,9 @@ async def launch_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depe
                 {"ward_id": ward_id}, {"ward_number": ward_id}, {"area_name": ward_id},
                 {"assembly_name": ward_id}, {"parliamentary_name": ward_id},
             ]
-        citizens = list(db.citizens.find(cit_q, {"_id": 1}))
+        email_channel = "Email" in (c.get("channels") or [])
+        projection = {"_id": 1, "email": 1} if email_channel else {"_id": 1}
+        citizens = list(db.citizens.find(cit_q, projection))
         notifs = [{
             "user_id":      str(cit["_id"]),
             "title":        f"New Campaign: {c.get('name')}",
@@ -424,6 +441,13 @@ async def launch_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depe
         if notifs:
             db.notifications.insert_many(notifs)
         db.campaigns.update_one({"_id": _oid(campaign_id)}, {"$set": {"reach": len(notifs)}})
+        if email_channel:
+            _email_citizens(
+                citizens,
+                f"New Campaign: {c.get('name')}",
+                f"Hello,\n\nYour representative has launched a new campaign.\n\n"
+                f"{c.get('name')}\n{c.get('message', '')}\n\nBest regards,\nN2N Team",
+            )
     return success_response(None, "Campaign launched")
 
 
@@ -445,7 +469,9 @@ async def notify_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depe
             {"ward_id": ward_id}, {"ward_number": ward_id}, {"area_name": ward_id},
             {"assembly_name": ward_id}, {"parliamentary_name": ward_id},
         ]
-    citizens = list(db.citizens.find(cit_q, {"_id": 1}))
+    email_channel = "Email" in (c.get("channels") or [])
+    projection = {"_id": 1, "email": 1} if email_channel else {"_id": 1}
+    citizens = list(db.citizens.find(cit_q, projection))
     notifs = [{
         "user_id":      str(cit["_id"]),
         "title":        f"New Campaign: {c.get('name')}",
@@ -458,6 +484,13 @@ async def notify_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depe
     if notifs:
         db.notifications.insert_many(notifs)
         db.campaigns.update_one({"_id": _oid(campaign_id)}, {"$set": {"reach": len(notifs), "updatedAt": now}})
+    if email_channel:
+        _email_citizens(
+            citizens,
+            f"New Campaign: {c.get('name')}",
+            f"Hello,\n\nYour representative has an update on a campaign.\n\n"
+            f"{c.get('name')}\n{c.get('message', '')}\n\nBest regards,\nN2N Team",
+        )
     return success_response({"notified": len(notifs)}, "Notifications sent")
 
 

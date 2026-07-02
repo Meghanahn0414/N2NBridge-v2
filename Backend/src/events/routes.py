@@ -18,6 +18,7 @@ from typing import Optional
 from bson import ObjectId
 from events.model import EventCreate, EventUpdate
 from fastapi import APIRouter, Depends, HTTPException, Query
+from utils.email_service import send_email
 from utils.response import success_response
 from utils.tenant import get_tenant_db, require_auth
 
@@ -72,10 +73,29 @@ async def list_events(
     skip  = (page - 1) * per_page
     items = list(db.events.find(q).sort("eventDate", -1).skip(skip).limit(per_page))
     total = db.events.count_documents(q)
+
+    # For a citizen caller, tell the client which of these events they've
+    # already registered for, so a "Join Event" button can render as
+    # "Joined" right after a fresh page load / navigation — without this,
+    # the frontend only knew about a registration for the lifetime of its
+    # own in-memory state, so it reverted to "Join Event" on every remount
+    # even though the registration was still there server-side.
+    my_registered_ids: set = set()
+    if user.get("role") == "CITIZEN" and user.get("user_id"):
+        event_ids = [_doc(e)["id"] for e in items]
+        my_registered_ids = {
+            r["event_id"] for r in db.event_registrations.find(
+                {"citizen_id": user["user_id"], "event_id": {"$in": event_ids}},
+                {"event_id": 1},
+            )
+        }
+
     out = []
     for e in items:
         d = _doc(e)
         d["registrationCount"] = db.event_registrations.count_documents({"event_id": d["id"]})
+        if user.get("role") == "CITIZEN":
+            d["registered"] = d["id"] in my_registered_ids
         out.append(d)
     return success_response(
         {"items": out, "total": total, "page": page, "per_page": per_page},
@@ -109,6 +129,7 @@ async def create_event(body: EventCreate, db=Depends(get_tenant_db), user=Depend
         "qrEnabled":    body.qrEnabled if body.qrEnabled is not None else True,
         "organizerId":  body.organizerId,
         "wardId":       body.wardId,
+        "channels":     body.channels or [],
         "status":       "DRAFT",
         # Compat aliases for older read-only views (EventList.jsx,
         # FieldOfficerEvents.jsx) that still look for title/date/location.
@@ -191,13 +212,18 @@ async def publish_event(event_id: str, db=Depends(get_tenant_db), user=Depends(r
                 {"ward_id": ward_id}, {"ward_number": ward_id}, {"area_name": ward_id},
                 {"assembly_name": ward_id}, {"parliamentary_name": ward_id},
             ]
-        citizens = list(db.citizens.find(cit_q, {"_id": 1}))
+        # "Email" is one of the Delivery Channels checkboxes in the Broadcasts
+        # composer — only fetch/send email when the rep actually selected it.
+        email_channel = "Email" in (e.get("channels") or [])
+        projection = {"_id": 1, "email": 1} if email_channel else {"_id": 1}
+        citizens = list(db.citizens.find(cit_q, projection))
         event_name = e.get("eventName") or e.get("title", "")
         event_date = e.get("eventDate").isoformat() if e.get("eventDate") else e.get("date", "")
+        venue = e.get("venue", "")
         notifs = [{
             "user_id":      str(cit["_id"]),
             "title":        f"New Event: {event_name}",
-            "message":      f"{e.get('venue', '')} — {event_date}",
+            "message":      f"{venue} — {event_date}",
             "type":         "Event",
             "reference_id": event_id,
             "is_read":      False,
@@ -205,6 +231,31 @@ async def publish_event(event_id: str, db=Depends(get_tenant_db), user=Depends(r
         } for cit in citizens]
         if notifs:
             db.notifications.insert_many(notifs)
+
+        if email_channel:
+            subject = f"New Event: {event_name}"
+            body = f"""
+Hello,
+
+Your representative has published a new event.
+
+Event:  {event_name}
+Venue:  {venue}
+Date:   {event_date}
+
+{e.get('description', '')}
+
+Best regards,
+N2N Team
+            """
+            for cit in citizens:
+                email = (cit.get("email") or "").strip()
+                if not email:
+                    continue
+                try:
+                    send_email(email, subject, body)
+                except Exception as ex:
+                    logger.warning(f"Event email failed for citizen {cit.get('_id')}: {ex}")
     return success_response(None, "Event published")
 
 

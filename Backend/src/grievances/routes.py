@@ -35,6 +35,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 from mla.sentiment_service import _score_grievance, flush_sentiment_cache
 from pydantic import BaseModel, Field
+from utils.email_service import send_email
 from utils.response import success_response
 from utils.tenant import get_tenant_db, require_auth
 
@@ -114,6 +115,50 @@ def _add_history(db, grievance_id, status: str, remarks: str, updated_by: str):
         "updated_by":   updated_by,
         "created_at":   datetime.now(timezone.utc),
     })
+
+
+def _notify_citizen(db, citizen_id: str, title: str, message: str, reference_id: str):
+    """
+    Notify a citizen about a status change on their grievance.
+
+    Always creates the in-app notification (unchanged prior behavior).
+    Additionally emails the citizen if they've opted into the "Email"
+    channel via the New Grievance form's "Keep me updated by" selector,
+    which is a multi-select — a citizen may have chosen Email, SMS,
+    and/or in-app Notifications together, stored as
+    citizens.notifPreferences = {"channels": ["Email", ...]}.
+    The older single-value shape {"channel": "Email"} is still honored
+    for citizens who saved a preference before this became multi-select.
+    """
+    db.notifications.insert_one({
+        "user_id":      citizen_id,
+        "title":        title,
+        "message":      message,
+        "type":         "Grievance",
+        "reference_id": reference_id,
+        "is_read":      False,
+        "created_at":   datetime.now(timezone.utc),
+    })
+
+    try:
+        citizen = db.citizens.find_one({"_id": _oid(citizen_id)}, {"email": 1, "notifPreferences": 1})
+    except Exception:
+        citizen = None
+    if not citizen or not citizen.get("email"):
+        return
+
+    prefs = citizen.get("notifPreferences") or {}
+    channels = prefs.get("channels")
+    if channels is None:
+        legacy = prefs.get("channel")
+        channels = [legacy] if legacy else []
+    if "Email" not in (channels or []):
+        return
+
+    try:
+        send_email(citizen["email"], title, message)
+    except Exception as e:
+        logger.warning(f"Grievance status email failed for citizen {citizen_id}: {e}")
 
 
 # ── Category management ────────────────────────────────────────────────────────
@@ -446,13 +491,15 @@ async def rep_get_grievance(grievance_id: str, db=Depends(get_tenant_db), user=D
     return success_response(data, "Grievance retrieved")
 
 
-def _update_status(db, grievance_id: str, new_status: str, remarks: str, actor_id: str):
+def _update_status(db, grievance_id: str, new_status: str, remarks: str, actor_id: str) -> dict:
     now = datetime.now(timezone.utc)
     update: dict = {"$set": {"status": new_status, "updated_at": now}}
     if new_status in ("Resolved", "Closed", "Rejected"):
         update["$set"]["closed_at"] = now
     db.grievances.update_one({"_id": _oid(grievance_id)}, update)
     _add_history(db, grievance_id, new_status, remarks, actor_id)
+    # Returned so callers can notify the citizen without a duplicate query.
+    return db.grievances.find_one({"_id": _oid(grievance_id)}, {"citizen_id": 1, "title": 1}) or {}
 
 
 @rep_router.patch("/{grievance_id}/acknowledge")
@@ -464,7 +511,13 @@ async def acknowledge(grievance_id: str, body: RemarksBody = Body(RemarksBody())
     # second, confusingly similar status name.
     if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
         raise HTTPException(status_code=403, detail="Unauthorized")
-    _update_status(db, grievance_id, "Assigned", body.remarks or "Assigned", user["user_id"])
+    g = _update_status(db, grievance_id, "Assigned", body.remarks or "Assigned", user["user_id"])
+    if g.get("citizen_id"):
+        _notify_citizen(
+            db, g["citizen_id"], "Complaint Assigned",
+            f"Your complaint '{g.get('title', '')}' has been assigned and is being reviewed.",
+            grievance_id,
+        )
     return success_response(None, "Grievance acknowledged")
 
 
@@ -472,7 +525,13 @@ async def acknowledge(grievance_id: str, body: RemarksBody = Body(RemarksBody())
 async def mark_progress(grievance_id: str, body: RemarksBody = Body(RemarksBody()), db=Depends(get_tenant_db), user=Depends(require_auth)):
     if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
         raise HTTPException(status_code=403, detail="Unauthorized")
-    _update_status(db, grievance_id, "In Progress", body.remarks or "Work started", user["user_id"])
+    g = _update_status(db, grievance_id, "In Progress", body.remarks or "Work started", user["user_id"])
+    if g.get("citizen_id"):
+        _notify_citizen(
+            db, g["citizen_id"], "Work In Progress",
+            f"Work has started on your complaint '{g.get('title', '')}'.",
+            grievance_id,
+        )
     return success_response(None, "Status updated to In Progress")
 
 
@@ -480,19 +539,13 @@ async def mark_progress(grievance_id: str, body: RemarksBody = Body(RemarksBody(
 async def resolve_grievance(grievance_id: str, body: RemarksBody = Body(RemarksBody()), db=Depends(get_tenant_db), user=Depends(require_auth)):
     if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
         raise HTTPException(status_code=403, detail="Unauthorized")
-    _update_status(db, grievance_id, "Resolved", body.remarks or "Issue resolved", user["user_id"])
-    # Notify citizen
-    g = db.grievances.find_one({"_id": _oid(grievance_id)}, {"citizen_id": 1, "title": 1})
-    if g:
-        db.notifications.insert_one({
-            "user_id":      g.get("citizen_id", ""),
-            "title":        "Grievance Resolved",
-            "message":      f"Your complaint '{g.get('title')}' has been resolved.",
-            "type":         "Grievance",
-            "reference_id": grievance_id,
-            "is_read":      False,
-            "created_at":   datetime.now(timezone.utc),
-        })
+    g = _update_status(db, grievance_id, "Resolved", body.remarks or "Issue resolved", user["user_id"])
+    if g.get("citizen_id"):
+        _notify_citizen(
+            db, g["citizen_id"], "Grievance Resolved",
+            f"Your complaint '{g.get('title', '')}' has been resolved.",
+            grievance_id,
+        )
     return success_response(None, "Grievance resolved")
 
 
@@ -500,7 +553,13 @@ async def resolve_grievance(grievance_id: str, body: RemarksBody = Body(RemarksB
 async def close_grievance(grievance_id: str, body: RemarksBody = Body(RemarksBody()), db=Depends(get_tenant_db), user=Depends(require_auth)):
     if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
         raise HTTPException(status_code=403, detail="Unauthorized")
-    _update_status(db, grievance_id, "Closed", body.remarks or "Closed", user["user_id"])
+    g = _update_status(db, grievance_id, "Closed", body.remarks or "Closed", user["user_id"])
+    if g.get("citizen_id"):
+        _notify_citizen(
+            db, g["citizen_id"], "Grievance Closed",
+            f"Your complaint '{g.get('title', '')}' has been closed.",
+            grievance_id,
+        )
     return success_response(None, "Grievance closed")
 
 
@@ -508,7 +567,13 @@ async def close_grievance(grievance_id: str, body: RemarksBody = Body(RemarksBod
 async def reject_grievance(grievance_id: str, body: RemarksBody = Body(RemarksBody()), db=Depends(get_tenant_db), user=Depends(require_auth)):
     if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
         raise HTTPException(status_code=403, detail="Unauthorized")
-    _update_status(db, grievance_id, "Rejected", body.remarks or "Rejected", user["user_id"])
+    g = _update_status(db, grievance_id, "Rejected", body.remarks or "Rejected", user["user_id"])
+    if g.get("citizen_id"):
+        _notify_citizen(
+            db, g["citizen_id"], "Grievance Rejected",
+            f"Your complaint '{g.get('title', '')}' has been rejected." + (f" {body.remarks}" if body.remarks else ""),
+            grievance_id,
+        )
     return success_response(None, "Grievance rejected")
 
 

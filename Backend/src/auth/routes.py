@@ -30,6 +30,7 @@ from config.security import SecurityManager
 from config.settings import settings
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 from users.model import (
     CitizenCompleteProfileRequest,
     CitizenRegisterRequest,
@@ -44,6 +45,7 @@ from users.model import (
     UserResponse,
     VerifyOtpRequest,
 )
+from utils.email_service import send_welcome_email
 from utils.jwt import TokenManager
 from utils.response import success_response
 
@@ -301,7 +303,22 @@ def _create_representative_account(body: RepresentativeRegisterRequest) -> dict:
         "createdAt":          now,
         "updatedAt":          now,
     }
-    insert_result = tenant_db.users.insert_one(rep_doc)
+    try:
+        insert_result = tenant_db.users.insert_one(rep_doc)
+    except DuplicateKeyError:
+        # Can happen if a previous registration attempt got as far as
+        # creating this tenant DB + user document but failed before writing
+        # the master.representatives entry (e.g. a mid-request crash or dev
+        # server restart) — the "already registered" check above only looks
+        # at master.representatives, so it doesn't catch this orphaned
+        # tenant-side record on retry, and the raw Mongo error would
+        # otherwise surface as an opaque 500.
+        raise HTTPException(
+            status_code=400,
+            detail="This email or mobile is already registered. If you believe this "
+                   "is a leftover from a previous failed attempt, please use a "
+                   "different email/mobile or contact support.",
+        )
     user_id       = str(insert_result.inserted_id)
 
     master.representatives.insert_one({
@@ -332,6 +349,14 @@ def _create_representative_account(body: RepresentativeRegisterRequest) -> dict:
 
     token = TokenManager.create_token(user_id, "REPRESENTATIVE", db_name)
     logger.info(f"Representative registered: {name} ({rep_type}), DB: {db_name}")
+
+    # Self-registered (they just typed this password themselves) — no
+    # password in the email, just a confirmation. Never let an email
+    # provider hiccup fail the registration itself.
+    try:
+        send_welcome_email(email, name, rep_type)
+    except Exception as e:
+        logger.warning(f"Welcome email failed for representative {email}: {e}")
 
     return {
         "slug": slug, "rep_code": rep_code, "db_name": db_name, "user_id": user_id,
@@ -573,6 +598,15 @@ async def register_staff(
     )
 
     logger.info(f"Staff registered: {name} ({role}) in {db_name}")
+
+    # Field Officer / Constituency Manager accounts are created by their
+    # representative, not self-registered — include the password they'll
+    # need to actually log in.
+    try:
+        send_welcome_email(email, name, role, password=password)
+    except Exception as e:
+        logger.warning(f"Welcome email failed for staff {email}: {e}")
+
     return success_response(
         {"id": user_id, "name": name, "role": role, "designation": designation},
         "Staff registered successfully",
@@ -1337,6 +1371,18 @@ async def register_compat(user_data: UserCreate, current_user: Optional[dict] = 
             "db_name": settings.MONGODB_MASTER_DB, "role": role, "user_id": user_id,
         })
 
+        # ADMIN self-registers (knows their own password already); Field
+        # Officer / Constituency Manager accounts are created on their
+        # behalf by an Admin, so they need the password emailed to them to
+        # be able to log in at all.
+        try:
+            send_welcome_email(
+                user_data.email, user_data.fullName, role,
+                password=user_data.password if role in ("FIELD_OFFICER", "CONSTITUENCY_MANAGER") else None,
+            )
+        except Exception as e:
+            logger.warning(f"Welcome email failed for {role} {user_data.email}: {e}")
+
         token = TokenManager.create_token(user_id, role, settings.MONGODB_MASTER_DB)
         return {"accessToken": token, "user": {
             "id": user_id, "email": user_data.email,
@@ -1367,7 +1413,15 @@ async def register_compat(user_data: UserCreate, current_user: Optional[dict] = 
         "status": "ACTIVE", "isDeleted": False,
         "createdAt": now, "updatedAt": now,
     }
-    insert_result = tenant_db.users.insert_one(rep_doc)
+    try:
+        insert_result = tenant_db.users.insert_one(rep_doc)
+    except DuplicateKeyError:
+        raise HTTPException(
+            status_code=400,
+            detail="This email or mobile is already registered. If you believe this "
+                   "is a leftover from a previous failed attempt, please use a "
+                   "different email/mobile or contact support.",
+        )
     user_id = str(insert_result.inserted_id)
 
     master.representatives.insert_one({
@@ -1380,6 +1434,11 @@ async def register_compat(user_data: UserCreate, current_user: Optional[dict] = 
         "email": user_data.email, "mobile": user_data.mobile,
         "db_name": db_name, "role": "REPRESENTATIVE", "user_id": user_id,
     })
+
+    try:
+        send_welcome_email(user_data.email, name, rep_type)
+    except Exception as e:
+        logger.warning(f"Welcome email failed for representative {user_data.email}: {e}")
 
     token = TokenManager.create_token(user_id, "REPRESENTATIVE", db_name)
     return {"accessToken": token, "user": {

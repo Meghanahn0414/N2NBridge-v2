@@ -86,7 +86,12 @@ export default function MLASettings() {
     api.get("/api/users/me")
       .then(res => {
         if (cancelled) return;
-        const u = res.data;
+        // This fetch-based `api` client returns { data: <raw response body> },
+        // and the backend wraps every payload as { success, message, data,
+        // ... } — so the real profile fields are one level deeper, at
+        // res.data.data, not res.data. Reading res.data directly meant every
+        // field here was always undefined and silently fell back to "".
+        const u = res.data?.data ?? res.data;
         setDisplayName(u.fullName || "");
         setTitle(u.title || "");
         setBio(u.bio || "");
@@ -122,7 +127,8 @@ export default function MLASettings() {
     setSaving(true);
     try {
       const res = await api.put("/api/users/me", payload);
-      updateAuthUser({ fullName: res.data?.fullName, title: res.data?.title, email: res.data?.email });
+      const u = res.data?.data ?? res.data;
+      updateAuthUser({ fullName: u?.fullName, title: u?.title, email: u?.email });
       showToast("Changes saved");
     } catch (err) {
       const msg = err?.response?.data?.detail || err?.response?.data?.message || "Failed to save — please try again";

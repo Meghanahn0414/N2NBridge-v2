@@ -22,9 +22,11 @@ const C = {
 };
 
 type Category = {
-  key: string;
-  keywords: string[];   // substrings matched against API categoryId/category
-  label: string;
+  key: string;      // the citizen's actual categoryId/category value, e.g. "RAILWAYS"
+  label: string;    // resolved from /api/lookups/grievance-categories, or prettified fallback
+  total: number;        // every complaint filed in this category, any status
+  openCount: number;    // still open / in progress
+  resolvedCount: number; // resolved / closed
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
   bg: string;
@@ -35,16 +37,43 @@ type Complaint = {
   status: string; category?: string; createdAt?: string;
 };
 
-const CATEGORIES: Category[] = [
-  { key: "road",  keywords: ["road"],          label: "Roads",    icon: "construct-outline",   color: "#C9871F", bg: "#FEF3C7" },
-  { key: "light", keywords: ["light", "power", "electr"], label: "Power",   icon: "flash-outline",       color: "#6B4FD8", bg: "#EDEAFB" },
-  { key: "garb",  keywords: ["garb", "sanit", "waste"],  label: "Waste",   icon: "trash-outline",       color: "#1E8A5B", bg: "#E6F4EC" },
-  { key: "water", keywords: ["water"],         label: "Water",    icon: "water-outline",       color: "#2B5BD7", bg: "#E7EEFF" },
-  { key: "noise", keywords: ["noise"],         label: "Noise",    icon: "volume-high-outline", color: "#C8453A", bg: "#FEF2F2" },
+// Grievance categories differ entirely by representative type — a Councillor's
+// citizens file under Roads/Water/Garbage, an MLA's under State Highways/
+// Welfare Schemes, an MP's under Railways/Passport & Immigration/etc. (see
+// Backend/src/lookups/categories.py). There's no fixed "the 5 categories"
+// that makes sense app-wide, and previously showing a hardcoded municipal-
+// only list here meant an MP citizen saw categories (Roads, Power, Waste,
+// Water, Noise) that don't even match what they can file under. Instead,
+// this screen now only shows categories the citizen has actually filed a
+// complaint in, with icons guessed by keyword so it still looks reasonable
+// regardless of which representative type's taxonomy is in play.
+const ICON_GUESSES: Array<{ match: RegExp; icon: keyof typeof Ionicons.glyphMap; color: string; bg: string }> = [
+  { match: /road|highway/i,               icon: "construct-outline",      color: "#C9871F", bg: "#FEF3C7" },
+  { match: /light|power|electr/i,         icon: "flash-outline",          color: "#6B4FD8", bg: "#EDEAFB" },
+  { match: /garb|sanit|waste/i,           icon: "trash-outline",          color: "#1E8A5B", bg: "#E6F4EC" },
+  { match: /water|drain|sewage/i,         icon: "water-outline",          color: "#2B5BD7", bg: "#E7EEFF" },
+  { match: /noise/i,                      icon: "volume-high-outline",    color: "#C8453A", bg: "#FEF2F2" },
+  { match: /rail/i,                       icon: "train-outline",          color: "#0891B2", bg: "#E0F7FA" },
+  { match: /passport|immigrat/i,          icon: "airplane-outline",       color: "#C8453A", bg: "#FEF2F2" },
+  { match: /post|mail/i,                  icon: "mail-outline",           color: "#1E8A5B", bg: "#E6F4EC" },
+  { match: /telecom|phone|network/i,      icon: "call-outline",           color: "#6B4FD8", bg: "#EDEAFB" },
+  { match: /school|hospital|health/i,     icon: "medkit-outline",         color: "#C8453A", bg: "#FEF2F2" },
+  { match: /scheme|welfare/i,             icon: "gift-outline",           color: "#C9871F", bg: "#FEF3C7" },
+  { match: /transport|bus/i,              icon: "bus-outline",            color: "#2B5BD7", bg: "#E7EEFF" },
+  { match: /polic|law/i,                  icon: "document-text-outline",  color: "#16233C", bg: "#F3F5FA" },
+  { match: /park|tree|green/i,            icon: "leaf-outline",           color: "#1E8A5B", bg: "#E6F4EC" },
+  { match: /toilet/i,                     icon: "home-outline",           color: "#2B5BD7", bg: "#E7EEFF" },
+  { match: /animal/i,                     icon: "paw-outline",            color: "#C9871F", bg: "#FEF3C7" },
 ];
+const DEFAULT_ICON = { icon: "document-text-outline" as const, color: C.muted, bg: "#F3F5FA" };
+
+const guessIcon = (label: string) => ICON_GUESSES.find((g) => g.match.test(label)) ?? DEFAULT_ICON;
+
+const prettify = (key: string) =>
+  key.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
 const catMatches = (apiCat: string, cat: Category) =>
-  cat.keywords.some((kw) => apiCat.includes(kw));
+  apiCat.toLowerCase().includes(cat.key.toLowerCase()) || cat.label.toLowerCase().includes(apiCat.toLowerCase());
 
 const statusMeta = (st: string) => {
   switch ((st || "").toUpperCase()) {
@@ -60,13 +89,35 @@ export default function ExploreScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [search, setSearch]     = useState("");
-  const [counts, setCounts]     = useState<Record<string, number>>({});
+  const [categories, setCategories] = useState<Category[]>([]);
   const [trending, setTrending] = useState<Array<{ id: string; title: string; count: number }>>([]);
   const [allComplaints, setAllComplaints] = useState<Complaint[]>([]);
   const [searching, setSearching] = useState(false);
 
   const fetchStats = useCallback(async () => {
     try {
+      // Resolve this citizen's rep type the same way new-complaint.tsx does,
+      // so category codes like "RAILWAYS" resolve to a proper label
+      // ("Railways") instead of just being prettified client-side.
+      let repType = user?.repType;
+      if (!repType) {
+        try {
+          const { data: meData } = await api.get("/api/citizens/me");
+          const p = meData?.data ?? meData;
+          repType = p.assembly_name ? "MLA" : p.parliamentary_name ? "MP" : p.ward_id ? "COUNCILLOR" : undefined;
+        } catch { /* fall through */ }
+      }
+      let labelByValue: Record<string, string> = {};
+      try {
+        const { data: catData } = await api.get("/api/lookups/grievance-categories", {
+          params: { rep_type: repType || "MLA" },
+        });
+        const catPayload = catData?.data ?? catData;
+        if (Array.isArray(catPayload)) {
+          catPayload.forEach((c: any) => { if (c?.value) labelByValue[c.value] = c.label || prettify(c.value); });
+        }
+      } catch { /* fall through to prettify() below */ }
+
       // Fetch only this citizen's own complaints — /api/grievances/citizen/{id}
       // doesn't exist; /api/grievances/ derives the citizen from the JWT.
       const { data } = await api.get(`/api/grievances/?page=1`).catch(() => ({ data: [] }));
@@ -76,19 +127,38 @@ export default function ExploreScreen() {
         : Array.isArray(raw?.items)   ? raw.items
         : Array.isArray(raw?.results) ? raw.results
         : [];
-      const ct: Record<string, number> = {};
+
+      // Only categories this citizen has actually filed a complaint in —
+      // not a fixed hardcoded list that may not even match their
+      // representative's category taxonomy. Keep every complaint regardless
+      // of status (not just "open" ones) — a category shouldn't disappear
+      // from Explore the moment a rep assigns or resolves the complaint;
+      // it should stay, with its status reflected in the card instead.
+      const seen: Record<string, { total: number; open: number; resolved: number }> = {};
       list.forEach((g: any) => {
-        const cat = ([g.categoryId, g.categoryName, g.category_name, g.category]
+        const rawCat = [g.categoryId, g.categoryName, g.category_name, g.category]
           .map((v) => (typeof v === "string" ? v : ""))
-          .find((v) => v && !v.match(/^[a-f\d]{24}$/i)) ?? "").toLowerCase();
+          .find((v) => v && !v.match(/^[a-f\d]{24}$/i)) ?? "";
+        if (!rawCat) return;
+        const key = rawCat.toUpperCase();
         const st  = (g.status || "").toUpperCase();
-        const isOpen = ["NEW", "OPEN", "IN_PROGRESS", "ASSIGNED", "ON_HOLD"].includes(st);
-        if (!isOpen) return;
-        CATEGORIES.forEach((c) => {
-          if (catMatches(cat, c)) ct[c.key] = (ct[c.key] ?? 0) + 1;
-        });
+        const isOpen     = ["NEW", "OPEN", "IN_PROGRESS", "ASSIGNED", "ON_HOLD"].includes(st);
+        const isResolved = ["RESOLVED", "CLOSED"].includes(st);
+        const bucket = seen[key] ?? { total: 0, open: 0, resolved: 0 };
+        bucket.total += 1;
+        if (isOpen) bucket.open += 1;
+        if (isResolved) bucket.resolved += 1;
+        seen[key] = bucket;
       });
-      setCounts(ct);
+      const dynamicCategories: Category[] = Object.entries(seen)
+        .sort((a, b) => b[1].total - a[1].total)
+        .map(([key, c]) => {
+          const label = labelByValue[key] || prettify(key);
+          const { icon, color, bg } = guessIcon(label);
+          return { key, label, total: c.total, openCount: c.open, resolvedCount: c.resolved, icon, color, bg };
+        });
+      setCategories(dynamicCategories);
+
       const top = list
         .filter((g: any) => g.title && ["NEW", "OPEN", "IN_PROGRESS"].includes((g.status || "").toUpperCase()))
         .slice(0, 3)
@@ -134,17 +204,14 @@ export default function ExploreScreen() {
         if (c.title?.toLowerCase().includes(q))       return true;
         if (c.description?.toLowerCase().includes(q)) return true;
         if (cat.includes(q))                           return true;
-        // Label→keywords match: "Garbage" → keywords ["garb","sanit"] → matches "GARBAGE_COLLECTION" or "SANITATION"
-        const matchedCat = CATEGORIES.find((ca) => ca.label.toLowerCase().includes(q));
+        // Label match: "Railways" → matches a complaint filed under "RAILWAYS"
+        const matchedCat = categories.find((ca) => ca.label.toLowerCase().includes(q));
         if (matchedCat && catMatches(cat, matchedCat)) return true;
         return false;
       })
     : [];
 
   const isSearching = search.trim().length > 0;
-  const filteredCategories = CATEGORIES.filter((cat) =>
-    cat.label.toLowerCase().includes(search.toLowerCase())
-  );
 
   const clearSearch = () => setSearch("");
 
@@ -248,22 +315,37 @@ export default function ExploreScreen() {
           <>
             {/* ── Categories ── */}
             <Text style={s.sectionLabel}>{tr("Categories")}</Text>
-            <View style={s.grid}>
-              {CATEGORIES.map((cat) => (
-                <TouchableOpacity
-                  key={cat.key}
-                  style={s.catCard}
-                  onPress={() => setSearch(cat.label)}
-                  activeOpacity={0.75}
-                >
-                  <View style={[s.catIconBox, { backgroundColor: cat.bg }]}>
-                    <Ionicons name={cat.icon} size={22} color={cat.color} />
-                  </View>
-                  <Text style={s.catLabel}>{tr(cat.label)}</Text>
-                  {counts[cat.key] ? <Text style={s.catCount}>{counts[cat.key]} {tr("open")}</Text> : null}
-                </TouchableOpacity>
-              ))}
-            </View>
+            {categories.length === 0 ? (
+              <View style={s.noCategories}>
+                <Ionicons name="folder-open-outline" size={32} color={C.mutedLight} />
+                <Text style={s.noCategoriesText}>
+                  {tr("Categories you've filed complaints in will show up here.")}
+                </Text>
+              </View>
+            ) : (
+              <View style={s.grid}>
+                {categories.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.key}
+                    style={s.catCard}
+                    onPress={() => setSearch(cat.label)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[s.catIconBox, { backgroundColor: cat.bg }]}>
+                      <Ionicons name={cat.icon} size={22} color={cat.color} />
+                    </View>
+                    <Text style={s.catLabel}>{tr(cat.label)}</Text>
+                    <Text style={s.catCount}>
+                      {cat.openCount > 0
+                        ? `${cat.openCount} ${tr("open")}`
+                        : cat.resolvedCount > 0
+                        ? `${cat.resolvedCount} ${tr("resolved")}`
+                        : `${cat.total} ${tr("filed")}`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
             {/* ── Trending ── */}
             {trending.length > 0 && (
@@ -370,6 +452,12 @@ const s = StyleSheet.create({
   },
   catLabel: { fontSize: 14, fontWeight: "700", color: C.ink, marginBottom: 3 },
   catCount: { fontSize: 12, color: C.muted },
+  noCategories: {
+    marginHorizontal: 18, backgroundColor: C.card, borderRadius: 16,
+    borderWidth: 1, borderColor: C.border, alignItems: "center",
+    paddingVertical: 28, paddingHorizontal: 20, gap: 10,
+  },
+  noCategoriesText: { fontSize: 13, color: C.mutedLight, textAlign: "center", lineHeight: 19 },
 
   // Trending
   trendCard: {

@@ -49,7 +49,16 @@ export default function Events() {
   const fetchEvents = useCallback(async () => {
     try {
       const { data } = await api.get('/api/events/?page=1&per_page=30');
-      const list: Event[] = Array.isArray(data) ? data : (data.items ?? data.results ?? data.events ?? data.data ?? []);
+      // The list endpoint wraps its payload as
+      // {success, message, data: {items, total, page, per_page}} — checking
+      // top-level `data.items` (never present) before `data.data` (the
+      // paginated object itself, not an array) previously grabbed the wrong
+      // thing and silently produced an empty list. See the identical fix in
+      // citizen/campaigns.tsx for the full explanation.
+      const payload = data?.data ?? data;
+      const list: any[] = Array.isArray(payload)
+        ? payload
+        : (payload?.items ?? payload?.results ?? payload?.events ?? []);
       setEvents(list.map((e: any) => ({
         id: e._id || e.id,
         eventName: e.eventName || e.event_name || e.title || e.name,
@@ -60,6 +69,18 @@ export default function Events() {
         ward: e.ward,
         status: e.status,
       })));
+      // Seed "already registered" from the server instead of only tracking
+      // it in memory for this session — otherwise it reverts to showing
+      // "Register" every time this screen remounts (e.g. navigating away
+      // and back), even though the registration is still there server-side.
+      const alreadyRegistered = list.filter((e: any) => e.registered).map((e: any) => e._id || e.id);
+      if (alreadyRegistered.length) {
+        setRegisteredIds((prev) => {
+          const next = new Set(prev);
+          alreadyRegistered.forEach((id: string) => next.add(id));
+          return next;
+        });
+      }
     } catch (_) {
       // silent
     } finally {

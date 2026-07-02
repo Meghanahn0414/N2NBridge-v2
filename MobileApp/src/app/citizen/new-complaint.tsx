@@ -49,7 +49,14 @@ export default function NewComplaintScreen() {
   const [photos,       setPhotos]       = useState<(string | null)[]>([null, null, null]);
   const [wardNo,       setWardNo]       = useState("");
   const [anonymous,    setAnonymous]    = useState(false);
-  const [notifChannel, setNotifChannel] = useState("Email");
+  // Multi-select — a citizen can be updated through any combination of
+  // Email / SMS / in-app Notifications, not just one.
+  const [notifChannels, setNotifChannels] = useState<string[]>(["Email"]);
+  const toggleNotifChannel = (key: string) => {
+    setNotifChannels((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
   const [loading,      setLoading]      = useState(false);
   const [errors,       setErrors]       = useState<Record<string, string>>({});
 
@@ -230,13 +237,13 @@ export default function NewComplaintScreen() {
         } catch { /* non-fatal */ }
       }
 
-      // Save notification preference — /api/users/{id} is rep/staff-only and
-      // 403s for a citizen; /api/citizens/me is the citizen-safe equivalent
-      // (note: CitizenProfileUpdate doesn't have a notifPreferences field
-      // yet, so this won't persist until that's added — non-fatal either way).
+      // Save notification preferences — /api/users/{id} is rep/staff-only and
+      // 403s for a citizen; /api/citizens/me is the citizen-safe equivalent.
+      // `channels` is an array so a citizen can be updated via Email, SMS,
+      // and in-app Notifications at once.
       try {
         await api.put(`/api/citizens/me`, {
-          notifPreferences: { channel: notifChannel },
+          notifPreferences: { channels: notifChannels },
         });
       } catch { /* non-fatal */ }
 
@@ -433,24 +440,27 @@ export default function NewComplaintScreen() {
             />
           </View>
 
-          {/* Keep me updated by */}
+          {/* Keep me updated by — multi-select: any combination of channels */}
           <Text style={s.notifTitle}>{tr("Keep me updated by")}</Text>
           <View style={s.notifRow}>
-            {NOTIF_CHANNELS.map(({ key, icon }) => (
-              <TouchableOpacity
-                key={key}
-                style={s.notifOpt}
-                onPress={() => setNotifChannel(key)}
-                activeOpacity={0.7}
-              >
-                <View style={[s.radio, notifChannel === key && s.radioOn]}>
-                  {notifChannel === key && <View style={s.radioDot} />}
-                </View>
-                <Text style={[s.notifOptTxt, notifChannel === key && s.notifOptTxtOn]}>
-                  {tr(key)}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {NOTIF_CHANNELS.map(({ key, icon }) => {
+              const on = notifChannels.includes(key);
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={s.notifOpt}
+                  onPress={() => toggleNotifChannel(key)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[s.checkbox, on && s.checkboxOn]}>
+                    {on && <Ionicons name="checkmark" size={14} color="#fff" />}
+                  </View>
+                  <Text style={[s.notifOptTxt, on && s.notifOptTxtOn]}>
+                    {tr(key)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -573,6 +583,8 @@ const s = StyleSheet.create({
   radio:      { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: "#CBD5E1", alignItems: "center", justifyContent: "center" },
   radioOn:    { borderColor: PRIMARY },
   radioDot:   { width: 10, height: 10, borderRadius: 5, backgroundColor: PRIMARY },
+  checkbox:   { width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: "#CBD5E1", alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
+  checkboxOn: { borderColor: PRIMARY, backgroundColor: PRIMARY },
   notifOptTxt:    { fontSize: 14, color: "#374151" },
   notifOptTxtOn:  { color: PRIMARY, fontWeight: "600" },
 

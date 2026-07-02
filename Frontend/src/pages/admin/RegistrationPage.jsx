@@ -417,8 +417,15 @@ export default function RegistrationPage() {
       }
 
       console.log("[RegistrationPage] Registration response:", registrationResponse.data);
-      const userId = registrationResponse.data?.user?.id ?? registrationResponse.data?.data?.user?.id;
-      
+      // Response shape differs by branch: /api/auth/register wraps the new
+      // account as { user: { id, ... } }, but /api/staff/ (Field Officer /
+      // Manager) and /api/auth/representative/register return the created
+      // record flattened at the top level ({ id, ... }, no "user" wrapper).
+      // Only checking .user.id meant userId always came back undefined for
+      // staff registrations, silently skipping the photo upload below.
+      const rdata = registrationResponse.data?.data ?? registrationResponse.data;
+      const userId = rdata?.user?.id ?? rdata?.id ?? rdata?._id;
+
       console.log("[RegistrationPage] Full registration response:", registrationResponse);
       console.log("[RegistrationPage] Extracted userId:", userId);
       console.log("[RegistrationPage] photoFile exists:", !!photoFile);
