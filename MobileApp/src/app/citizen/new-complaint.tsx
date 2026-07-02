@@ -15,19 +15,14 @@ import { useT } from "../../i18n/useT";
 const PRIMARY   = "#1D3A8A";
 const PRIMARY_L = "#2B5BD7";
 
-const CATEGORIES = [
-  { key: "Roads",       icon: "🛣️" },
-  { key: "Water",       icon: "💧" },
-  { key: "Power",       icon: "⚡" },
-  { key: "Waste",       icon: "🗑️" },
-  { key: "Noise",       icon: "🔊" },
-  { key: "Other",       icon: "📋" },
+const DEFAULT_CATEGORIES = [
+  { value: "ROAD_ISSUE", label: "Roads", icon: "🛣️" },
+  { value: "WATER_SUPPLY", label: "Water", icon: "💧" },
+  { value: "ELECTRICITY", label: "Power", icon: "⚡" },
+  { value: "GARBAGE", label: "Waste", icon: "🗑️" },
+  { value: "NOISE_POLLUTION", label: "Noise", icon: "🔊" },
+  { value: "OTHER", label: "Other", icon: "📋" },
 ];
-
-const CATEGORY_MAP: Record<string, string> = {
-  Roads: "ROAD_ISSUE", Water: "WATER_SUPPLY", Power: "ELECTRICITY",
-  Waste: "GARBAGE",   Noise: "NOISE_POLLUTION", Other: "OTHER",
-};
 
 const NOTIF_CHANNELS = [
   { key: "Email",         icon: "mail-outline" as const },
@@ -42,7 +37,8 @@ export default function NewComplaintScreen() {
   const user = useAuthStore((s) => s.user);
   const profileComplete = useAuthStore((s) => s.profileComplete);
 
-  const [category,     setCategory]     = useState("Roads");
+  const [categories,   setCategories]   = useState(DEFAULT_CATEGORIES);
+  const [category,     setCategory]     = useState(DEFAULT_CATEGORIES[0].value);
   const [showAllCats,  setShowAllCats]  = useState(false);
   const [description,  setDescription]  = useState("");
   const [address,      setAddress]      = useState("");
@@ -70,7 +66,29 @@ export default function NewComplaintScreen() {
     }
   }, [photoUri]);
 
-  const catLabel = (key: string) => tr(key);
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const { data } = await api.get("/api/lookups/grievance-categories", {
+          params: { rep_type: "MLA" },
+        });
+        const payload = data?.data ?? data;
+        if (Array.isArray(payload) && payload.length > 0) {
+          setCategories(payload);
+          setCategory(payload[0].value);
+        }
+      } catch (err) {
+        console.error("Unable to load MLA categories", err);
+      }
+    }
+
+    loadCategories();
+  }, []);
+
+  const catLabel = (key: string) => {
+    const match = categories.find((item) => item.value === key);
+    return match?.label ?? tr(key);
+  };
 
   /* ── Photo handling ── */
   const pickPhoto = async (slot: number) => {
@@ -132,8 +150,8 @@ export default function NewComplaintScreen() {
       // Backend's GrievanceCreate requires `title` (str) — there's no
       // dedicated title field in this form, so generate one from the
       // category + description. category_id must be a grievance_categories
-      // ObjectId (for SLA lookup), not the CATEGORY_MAP enum string — that
-      // enum string belongs in the free-text `category` field instead.
+      // ObjectId (for SLA lookup), not a free-text label — that label
+      // belongs in the free-text `category` field instead.
       // isAnonymous / gpsLocation / citizenId / wardId aren't fields the
       // backend model accepts at all; location is a flat {lat, lng}, and the
       // ward number (no backend slot for it) gets folded into the address
@@ -145,7 +163,7 @@ export default function NewComplaintScreen() {
       const payload: Record<string, any> = {
         title,
         description: trimmedDesc,
-        category:    CATEGORY_MAP[category] || category,
+        category:    catLabel(category),
         address:     fullAddress,
         priority:    "Medium",
       };
@@ -193,7 +211,7 @@ export default function NewComplaintScreen() {
     }
   };
 
-  const visibleCats = showAllCats ? CATEGORIES : CATEGORIES.slice(0, 3);
+  const visibleCats = showAllCats ? categories : categories.slice(0, 3);
 
   return (
     <KeyboardAvoidingView
@@ -229,14 +247,14 @@ export default function NewComplaintScreen() {
 
           {/* Category chips */}
           <View style={s.chipRow}>
-            {visibleCats.map(({ key }) => (
+            {visibleCats.map(({ value, label }) => (
               <TouchableOpacity
-                key={key}
-                style={[s.chip, category === key && s.chipOn]}
-                onPress={() => setCategory(key)}
+                key={value}
+                style={[s.chip, category === value && s.chipOn]}
+                onPress={() => setCategory(value)}
               >
-                <Text style={[s.chipTxt, category === key && s.chipTxtOn]}>
-                  {catLabel(key)}
+                <Text style={[s.chipTxt, category === value && s.chipTxtOn]}>
+                  {label}
                 </Text>
               </TouchableOpacity>
             ))}

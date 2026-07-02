@@ -22,8 +22,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
-
-from auth.routes import get_current_user
 from utils.response import success_response
 from utils.tenant import get_tenant_db, require_auth
 

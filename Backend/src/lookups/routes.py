@@ -1,18 +1,12 @@
-from fastapi import APIRouter
-from lookups.service import (
-    get_countries,
-    get_user_roles,
-    get_user_statuses,
-    get_grievance_statuses,
-    get_grievance_priorities,
-    get_alert_priorities,
-    get_alert_statuses,
-    get_alert_types,
-    get_event_statuses,
-    get_event_types,
-    get_communication_channels,
-    get_audience_segments,
-)
+from fastapi import APIRouter, HTTPException
+from lookups.service import (get_alert_priorities, get_alert_statuses,
+                             get_alert_types, get_audience_segments,
+                             get_communication_channels, get_countries,
+                             get_event_statuses, get_event_types,
+                             get_grievance_categories,
+                             get_grievance_priorities, get_grievance_statuses,
+                             get_representative_responsibilities,
+                             get_user_roles, get_user_statuses)
 from utils.response import success_response
 
 router = APIRouter(prefix="/api/lookups", tags=["Lookups"])
@@ -36,6 +30,20 @@ async def list_grievance_statuses():
 @router.get("/grievance-priorities")
 async def list_grievance_priorities():
     return success_response(get_grievance_priorities())
+
+@router.get("/grievance-categories")
+async def list_grievance_categories(rep_type: str = None):
+    try:
+        return success_response(get_grievance_categories(rep_type))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/representative-responsibilities")
+async def list_representative_responsibilities(rep_type: str = None):
+    try:
+        return success_response(get_representative_responsibilities(rep_type))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/alert-priorities")
 async def list_alert_priorities():

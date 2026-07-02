@@ -21,17 +21,15 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
-from pydantic import BaseModel, Field
-from pymongo import ReturnDocument
-
 from auth.otp_service import OTP_STORAGE, OTPService
 from auth.service import AuthService
+from bson import ObjectId
 from config.database import MongoDatabase
 from config.rate_limit import limiter
 from config.security import SecurityManager
 from config.settings import settings
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+from pymongo import ReturnDocument
 from users.model import (
     CitizenCompleteProfileRequest,
     CitizenRegisterRequest,
@@ -46,8 +44,6 @@ from users.model import (
     UserResponse,
     VerifyOtpRequest,
 )
-from users.service import UserService
-from utils.email_service import send_email
 from utils.jwt import TokenManager
 from utils.response import success_response
 
@@ -94,6 +90,36 @@ def _generate_slug(name: str, rep_type: str) -> str:
     clean  = re.sub(r"[^a-z0-9]+", "-", name.lower().strip()).strip("-")
     suffix = rep_type.lower()
     return f"{clean}-{suffix}" if not clean.endswith(f"-{suffix}") else clean
+
+
+@compat_router.post("/login-admin", response_model=TokenResponse, include_in_schema=False)
+@limiter.limit("10/minute")
+async def login_admin(request: Request, login_data: UserLoginRequest):
+    """Admin/Staff login using email/password for privileged roles."""
+    try:
+        result = AuthService.login(login_data)
+    except Exception as e:
+        logger.error(f"[login_admin] Unexpected error during login for {login_data.email}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login failed due to an internal error: {str(e)}"
+        )
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
+
+    allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER"]
+    user_role = result.user.role if result.user else None
+    if user_role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized. Citizens must use citizen login."
+        )
+
+    return result
 
 
 def _generate_db_name(slug: str) -> str:
@@ -1064,22 +1090,6 @@ async def login_compat(request: Request, login_data: UserLoginRequest):
     result = AuthService.login(login_data)
     if not result:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    return result
-
-
-@compat_router.post("/login-admin", response_model=TokenResponse, include_in_schema=False)
-@limiter.limit("10/minute")
-async def login_admin_compat(request: Request, login_data: UserLoginRequest):
-    try:
-        result = AuthService.login(login_data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
-    if not result:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    allowed_roles = {"ADMIN", "REPRESENTATIVE", "STAFF", "CONSTITUENCY_MANAGER",
-                     "FIELD_OFFICER", "MANAGER"}
-    if result.user and result.user.role not in allowed_roles:
-        raise HTTPException(status_code=403, detail="Citizens must use OTP login")
     return result
 
 

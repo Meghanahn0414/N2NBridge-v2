@@ -1,13 +1,8 @@
-from utils.common import (
-    UserRole,
-    UserStatus,
-    PriorityLevel,
-    AlertType,
-    AlertStatus,
-    GrievanceStatus,
-    EventStatus,
-)
 from grievances.model import GrievancePriority
+from lookups.categories import (COUNCILLOR_CATEGORIES, MLA_CATEGORIES,
+                                MP_CATEGORIES, REPRESENTATIVE_RESPONSIBILITIES)
+from utils.common import (AlertStatus, AlertType, EventStatus, GrievanceStatus,
+                          PriorityLevel, UserRole, UserStatus)
 
 COUNTRY_LIST = [
     {"label": "India", "dialCode": "+91", "flag": "🇮🇳"},
@@ -122,6 +117,35 @@ def get_grievance_statuses():
 
 def get_grievance_priorities():
     return enum_to_options(GrievancePriority, PRIORITY_LABELS)
+
+
+def get_grievance_categories(rep_type: str = None):
+    if rep_type is None:
+        return {
+            "MLA": MLA_CATEGORIES,
+            "MP": MP_CATEGORIES,
+            "COUNCILLOR": COUNCILLOR_CATEGORIES,
+        }
+
+    rep_type = rep_type.strip().upper()
+    if rep_type == "MLA":
+        return MLA_CATEGORIES
+    if rep_type == "MP":
+        return MP_CATEGORIES
+    if rep_type == "COUNCILLOR":
+        return COUNCILLOR_CATEGORIES
+
+    raise ValueError("rep_type must be MLA, MP, or COUNCILLOR")
+
+
+def get_representative_responsibilities(rep_type: str = None):
+    if rep_type is None:
+        return REPRESENTATIVE_RESPONSIBILITIES
+
+    rep_type = rep_type.strip().upper()
+    if rep_type not in REPRESENTATIVE_RESPONSIBILITIES:
+        raise ValueError("rep_type must be MLA, MP, or COUNCILLOR")
+    return REPRESENTATIVE_RESPONSIBILITIES[rep_type]
 
 
 def get_alert_priorities():
