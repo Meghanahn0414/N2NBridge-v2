@@ -20,9 +20,15 @@ export default function MLACitizenList() {
   const [search, setSearch]     = useState("");
 
   useEffect(() => {
-    api.get("/api/users/", { params: { per_page: 500, role: "CITIZEN" } })
+    // Citizens live in their own `citizens` collection, never in `users` —
+    // /api/users/?role=CITIZEN was always querying the wrong collection and
+    // silently returning an empty list regardless of how much citizen data
+    // actually existed. /api/citizens/ (rep/staff-only) is the real source.
+    api.get("/api/citizens/", { params: { per_page: 100 } })
       .then((res) => {
-        const list = Array.isArray(res.data?.data) ? res.data.data
+        const payload = res.data?.data;
+        const list = Array.isArray(payload) ? payload
+                   : Array.isArray(payload?.items) ? payload.items
                    : Array.isArray(res.data) ? res.data : [];
         setCitizens(list);
         setFiltered(list);
@@ -40,7 +46,7 @@ export default function MLACitizenList() {
               (u.fullName || "").toLowerCase().includes(q) ||
               (u.email || "").toLowerCase().includes(q) ||
               (u.mobile || "").includes(q) ||
-              (u.citizenId || "").toLowerCase().includes(q)
+              (u.citizen_id || "").toLowerCase().includes(q)
           )
         : citizens
     );
@@ -123,7 +129,7 @@ export default function MLACitizenList() {
 
                   {/* Citizen ID */}
                   <div style={{ padding: "13px 14px", font: "500 12px monospace", color: "#64748b" }}>
-                    {u.citizenId || "—"}
+                    {u.citizen_id || "—"}
                   </div>
 
                   {/* Email */}

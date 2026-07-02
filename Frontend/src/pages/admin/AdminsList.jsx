@@ -12,12 +12,8 @@ export default function AdminsList(){
   const fetchAdmins = async () => {
     try {
       const res = await api.get('/api/users/', { params: { role: 'ADMIN', per_page: 100 } });
-      const list = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.data)
-          ? res.data.data
-          : [];
-
+      // Backend wraps results as { items, total, page, per_page } under .data.
+      const list = res.data?.data?.items ?? [];
       setAdmins(list);
     }catch(err){
       console.error('AdminsList fetch error', err);

@@ -1,7 +1,7 @@
 """
 Citizen Profile Models
 """
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -28,8 +28,10 @@ class CitizenProfileUpdate(BaseModel):
     profileImage:       Optional[str]       = Field(None, description="Profile photo URL")
     assembly_name:      Optional[str]       = Field(None, description="Assembly constituency")
     parliamentary_name: Optional[str]       = Field(None, description="Parliamentary constituency")
-    ward_id:            Optional[str]       = Field(None, description="Ward ID")
+    ward_id:            Optional[str]       = Field(None, description="Ward ID (COUNCILLOR representative lookup)")
+    ward_number:        Optional[str]       = Field(None, description="General ward number (distinct from ward_id above)")
     area_name:          Optional[str]       = Field(None, description="Area name")
     taluk:              Optional[str]       = Field(None, description="Taluk / Tehsil")
     district:           Optional[str]       = Field(None, description="District")
     state:              Optional[str]       = Field(None, description="State")
+    notifPreferences:   Optional[dict[str, Any]] = Field(None, description='Notification preferences, e.g. {"channel": "SMS"}')

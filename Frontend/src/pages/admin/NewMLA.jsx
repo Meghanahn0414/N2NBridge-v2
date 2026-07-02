@@ -9,7 +9,9 @@ export default function NewMLA() {
     fullName: "",
     email: "",
     mobile: "",
-    constituencyId: "",
+    assemblyName: "",
+    district: "",
+    state: "",
     address: "",
     password: "",
     confirmPassword: "",
@@ -18,7 +20,6 @@ export default function NewMLA() {
 
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoFile, setPhotoFile] = useState(null);
-  const [constituencies, setConstituencies] = useState([]);
   const [countries, setCountries] = useState([]);
   const [country, setCountry] = useState(null);
   const [countrySearch, setCountrySearch] = useState("");
@@ -31,9 +32,8 @@ export default function NewMLA() {
   const countryDropdownRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Fetch constituencies and country list on component mount
+  // Fetch country list on component mount
   useEffect(() => {
-    fetchConstituencies();
     fetchCountries();
   }, []);
 
@@ -46,18 +46,6 @@ export default function NewMLA() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const fetchConstituencies = async () => {
-    try {
-      const response = await api.get("/api/users/constituencies");
-      if (response.data && response.data.data) {
-        setConstituencies(response.data.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch constituencies:", err);
-      // Silently fail, constituencies are optional
-    }
-  };
 
   const fetchCountries = async () => {
     try {
@@ -83,10 +71,11 @@ export default function NewMLA() {
       !formData.fullName.trim() ||
       !formData.email.trim() ||
       !formData.mobile.trim() ||
+      !formData.assemblyName.trim() ||
       !formData.password ||
       !formData.confirmPassword
     ) {
-      return "Please fill in all required fields.";
+      return "Please fill in all required fields, including Assembly Name.";
     }
     if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
       return "Please enter a valid email address.";
@@ -168,21 +157,32 @@ export default function NewMLA() {
     let photoUploadError = "";
 
     try {
-      // Step 1: Register user without photo
+      // Step 1: Register the representative. Was posting to the legacy
+      // /api/auth/register shim with a "constituencyId" field that endpoint
+      // never even reads — assembly_name/district/state were silently
+      // dropped, which meant citizens could never find this MLA by
+      // constituency afterward. /api/auth/representative/register is the
+      // endpoint that actually persists those fields.
       const payload = {
-        fullName: formData.fullName.trim(),
+        name: formData.fullName.trim(),
         email: formData.email.trim(),
         mobile: normalizePhone(formData.mobile),
-        role: "REPRESENTATIVE",
-        constituencyId: formData.constituencyId || null,
-        address: formData.address.trim() || null,
+        rep_type: "MLA",
+        location: formData.assemblyName.trim(),
+        assembly_name: formData.assemblyName.trim(),
+        district: formData.district.trim() || null,
+        state: formData.state.trim() || null,
         password: formData.password,
       };
 
-      const response = await api.post("/api/auth/register", payload);
-      const newUserId = response.data.user.id;
+      const response = await api.post("/api/auth/representative/register", payload);
+      const newUserId = response.data?.user?.id ?? response.data?.id;
 
-      // Step 2: Upload photo if selected
+      // Step 2: Upload photo if selected. Note: this MLA's account lives in
+      // its own newly-created tenant database, but this admin session's
+      // token resolves to the master DB — so /api/users/{id}/upload-profile-photo
+      // (tenant-scoped to the caller, not the target user) can't reach it.
+      // Non-fatal either way; registration itself has already succeeded.
       if (photoFile) {
         setUploadingPhoto(true);
         try {
@@ -190,9 +190,9 @@ export default function NewMLA() {
           formDataWithFile.append("file", photoFile);
 
           console.log("[NewMLA] Uploading photo for user:", newUserId, "File:", photoFile.name, "Size:", photoFile.size);
-          
+
           const uploadResponse = await api.post(`/api/users/${newUserId}/upload-profile-photo`, formDataWithFile);
-          
+
           console.log("[NewMLA] Photo uploaded successfully:", uploadResponse.data);
         } catch (uploadErr) {
           const uploadErrorMsg = uploadErr.response?.data?.detail || 
@@ -220,7 +220,9 @@ export default function NewMLA() {
         fullName: "",
         email: "",
         mobile: "",
-        constituencyId: "",
+        assemblyName: "",
+        district: "",
+        state: "",
         address: "",
         password: "",
         confirmPassword: "",
@@ -343,21 +345,44 @@ export default function NewMLA() {
           </div>
 
           {/* Constituency */}
+          {/* Assembly Name — this is what citizens match against to find
+              this MLA, so it's required, not a dropdown of existing ones
+              (there's nothing to select from yet for a brand-new MLA). */}
           <div className="new-mla-group">
-            <label className="new-mla-label">Constituency</label>
-            <select
-              name="constituencyId"
-              value={formData.constituencyId}
+            <label className="new-mla-label">Assembly Name *</label>
+            <input
+              type="text"
+              name="assemblyName"
+              value={formData.assemblyName}
               onChange={handleInputChange}
+              placeholder="Enter assembly constituency name"
               className="new-mla-input"
-            >
-              <option value="">-- Select Constituency (Optional) --</option>
-              {constituencies.map((constituency) => (
-                <option key={constituency._id || constituency.id} value={constituency._id || constituency.id}>
-                  {constituency.name}
-                </option>
-              ))}
-            </select>
+              required
+            />
+          </div>
+
+          <div className="new-mla-group">
+            <label className="new-mla-label">District</label>
+            <input
+              type="text"
+              name="district"
+              value={formData.district}
+              onChange={handleInputChange}
+              placeholder="Enter district (optional)"
+              className="new-mla-input"
+            />
+          </div>
+
+          <div className="new-mla-group">
+            <label className="new-mla-label">State</label>
+            <input
+              type="text"
+              name="state"
+              value={formData.state}
+              onChange={handleInputChange}
+              placeholder="Enter state (optional)"
+              className="new-mla-input"
+            />
           </div>
 
           {/* Address */}

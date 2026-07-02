@@ -77,11 +77,27 @@ async def list_staff(db=Depends(get_tenant_db), user=Depends(require_auth)):
     if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
         raise HTTPException(status_code=403, detail="Unauthorized")
     staff = list(db.staff.find({"is_deleted": {"$ne": True}}).sort("name", 1))
+    logger.info(
+        f"list_staff: tenant_db={db.name} caller_role={user.get('role')} "
+        f"admin_user_id={user.get('admin_user_id')} count={len(staff)}"
+    )
     return success_response([_doc(s) for s in staff], "Staff retrieved")
 
 
 @router.post("/")
 async def add_staff(body: StaffCreate, db=Depends(get_tenant_db), user=Depends(require_auth)):
+    raw_user_id = user.get("admin_user_id") or user.get("user_id")
+    admin_doc_check = None
+    try:
+        admin_doc_check = MongoDatabase.get_db().users.find_one({"_id": ObjectId(raw_user_id)})
+    except Exception:
+        pass
+    logger.info(
+        f"add_staff: tenant_db={db.name} caller_role={user.get('role')} "
+        f"raw_user_id={raw_user_id} caller_email={(admin_doc_check or {}).get('email')} "
+        f"caller_managedDbName={(admin_doc_check or {}).get('managedDbName')} "
+        f"name={body.name!r} designation={body.designation!r}"
+    )
     _rep_only(user)
     mobile = body.mobile.strip()
     email  = body.email.strip().lower()
@@ -126,10 +142,10 @@ async def add_staff(body: StaffCreate, db=Depends(get_tenant_db), user=Depends(r
     db.users.update_one(
         {"mobile": mobile},
         {"$setOnInsert": {
-            "fullName":     name,
+            "fullName":     body.name,
             "email":        email,
             "mobile":       mobile,
-            "passwordHash": SecurityManager.hash_password(password),
+            "passwordHash": SecurityManager.hash_password(body.password),
             "role":         "STAFF",
             "designation":  doc["designation"],
             "status":       "ACTIVE",

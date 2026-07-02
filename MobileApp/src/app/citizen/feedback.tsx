@@ -27,13 +27,13 @@ export default function Feedback() {
   const load = useCallback(async () => {
     if (!user) return;
     try {
-      const { data } = await api.get(
-        `/api/grievances/citizen/${user.id}?page=1&per_page=100`
-      );
-      const items: any[] = Array.isArray(data)
-        ? data
-        : (data.items ?? data.results ?? data.data ?? []);
-      const resolved = items.filter((c) => ["RESOLVED", "CLOSED"].includes(c.status));
+      // /api/grievances/citizen/{id} doesn't exist — GET /api/grievances/
+      // derives the citizen from the JWT and returns {items,...} nested
+      // inside the standard {success,message,data} envelope. Status values
+      // are stored Title Case ("Resolved"/"Closed"), not upper case.
+      const { data } = await api.get(`/api/grievances/?page=1&per_page=100`);
+      const items: any[] = data?.data?.items ?? [];
+      const resolved = items.filter((c) => ["Resolved", "Closed"].includes(c.status));
       const mapped: Complaint[] = resolved.map((c: any) => ({
         id: c._id || c.id,
         title: c.title || c.subject || c.heading || "",

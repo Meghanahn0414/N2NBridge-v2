@@ -338,16 +338,20 @@ async def rep_stats(db=Depends(get_tenant_db), user=Depends(require_auth)):
 
 @rep_router.get("/")
 async def rep_list_grievances(
-    page:     int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
-    status:   Optional[str] = None,
-    priority: Optional[str] = None,
-    category: Optional[str] = None,
-    search:   Optional[str] = None,
+    page:        int = Query(1, ge=1),
+    per_page:    int = Query(20, ge=1, le=100),
+    status:      Optional[str] = None,
+    priority:    Optional[str] = None,
+    category:    Optional[str] = None,
+    search:      Optional[str] = None,
+    assigned_to: Optional[str] = None,
     db=Depends(get_tenant_db),
     user=Depends(require_auth),
 ):
-    """Representative/Staff: full grievance queue with filters."""
+    """Representative/Staff: full grievance queue with filters. `assigned_to`
+    (a staff id) narrows the queue to just that person's own workload — used
+    by the Field Officer's own grievances page, which previously had no way
+    to filter server-side and silently showed the entire tenant's queue."""
     if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
         raise HTTPException(status_code=403, detail="Unauthorized")
     q: dict = {"is_deleted": {"$ne": True}}
@@ -357,6 +361,8 @@ async def rep_list_grievances(
         q["priority"] = priority
     if category:
         q["category"] = {"$regex": category, "$options": "i"}
+    if assigned_to:
+        q["assigned_to"] = assigned_to
     if search:
         q["$or"] = [
             {"title":       {"$regex": search, "$options": "i"}},
@@ -366,8 +372,36 @@ async def rep_list_grievances(
     skip  = (page - 1) * per_page
     items = list(db.grievances.find(q).sort("created_at", -1).skip(skip).limit(per_page))
     total = db.grievances.count_documents(q)
+    if assigned_to:
+        all_assigned = list(db.grievances.find({"is_deleted": {"$ne": True}, "assigned_to": {"$exists": True, "$ne": None}}, {"assigned_to": 1}))
+        logger.info(
+            f"rep_list_grievances: tenant_db={db.name} filter_assigned_to={assigned_to!r} "
+            f"matched={total} all_assigned_to_values={[str(g.get('assigned_to')) for g in all_assigned]}"
+        )
+
+    # Grievance docs only store citizen_id, not the citizen's name — batch-
+    # fetch the citizens referenced on this page (one query, not N+1) so the
+    # queue table can show a name instead of "Unknown" for every row.
+    citizen_ids = {g["citizen_id"] for g in items if g.get("citizen_id")}
+    citizen_names: dict = {}
+    if citizen_ids:
+        valid_oids = []
+        for cid in citizen_ids:
+            try:
+                valid_oids.append(ObjectId(cid))
+            except Exception:
+                continue
+        for c in db.citizens.find({"_id": {"$in": valid_oids}}, {"name": 1}):
+            citizen_names[str(c["_id"])] = c.get("name", "")
+
+    result_items = []
+    for g in items:
+        doc = _doc(g)
+        doc["citizenName"] = citizen_names.get(doc.get("citizen_id"), "")
+        result_items.append(doc)
+
     return success_response(
-        {"items": [_doc(g) for g in items], "total": total, "page": page, "per_page": per_page},
+        {"items": result_items, "total": total, "page": page, "per_page": per_page},
         "Grievances retrieved",
     )
 
@@ -406,9 +440,14 @@ def _update_status(db, grievance_id: str, new_status: str, remarks: str, actor_i
 
 @rep_router.patch("/{grievance_id}/acknowledge")
 async def acknowledge(grievance_id: str, body: RemarksBody = Body(RemarksBody()), db=Depends(get_tenant_db), user=Depends(require_auth)):
+    # "Acknowledged" as a separate status from "Assigned" was redundant —
+    # a complaint is already shown as Assigned the moment it's assigned, so
+    # this endpoint (kept for the URL/route staff already call) now just
+    # confirms that same "Assigned" status rather than introducing a
+    # second, confusingly similar status name.
     if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
         raise HTTPException(status_code=403, detail="Unauthorized")
-    _update_status(db, grievance_id, "Acknowledged", body.remarks or "Acknowledged", user["user_id"])
+    _update_status(db, grievance_id, "Assigned", body.remarks or "Assigned", user["user_id"])
     return success_response(None, "Grievance acknowledged")
 
 
@@ -456,6 +495,24 @@ async def reject_grievance(grievance_id: str, body: RemarksBody = Body(RemarksBo
     return success_response(None, "Grievance rejected")
 
 
+@rep_router.post("/{grievance_id}/remark")
+async def add_remark(grievance_id: str, body: RemarksBody = Body(RemarksBody()), db=Depends(get_tenant_db), user=Depends(require_auth)):
+    """
+    Add a remark/message to a grievance's history WITHOUT changing its
+    status — for reply/messaging use cases where acknowledge/progress/
+    resolve/close/reject (each of which forces a specific status
+    transition) would be the wrong tool. Doesn't touch `status` or
+    `updated_at`/`closed_at` on the grievance document itself.
+    """
+    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    g = db.grievances.find_one({"_id": _oid(grievance_id)}, {"status": 1})
+    if not g:
+        raise HTTPException(status_code=404, detail="Grievance not found")
+    _add_history(db, grievance_id, g.get("status", ""), body.remarks or "", user["user_id"])
+    return success_response(None, "Remark added")
+
+
 @rep_router.post("/{grievance_id}/assign")
 async def assign_grievance(grievance_id: str, body: AssignRequest, db=Depends(get_tenant_db), user=Depends(require_auth)):
     """Assign grievance to a staff member."""
@@ -469,9 +526,9 @@ async def assign_grievance(grievance_id: str, body: AssignRequest, db=Depends(ge
     now = datetime.now(timezone.utc)
     db.grievances.update_one(
         {"_id": _oid(grievance_id)},
-        {"$set": {"assigned_to": staff_id, "status": "Acknowledged", "updated_at": now}},
+        {"$set": {"assigned_to": staff_id, "status": "Assigned", "updated_at": now}},
     )
-    _add_history(db, grievance_id, "Acknowledged", f"Assigned to {staff_name}", user["user_id"])
+    _add_history(db, grievance_id, "Assigned", f"Assigned to {staff_name}", user["user_id"])
     # Notify staff
     db.notifications.insert_one({
         "user_id":      staff_id,

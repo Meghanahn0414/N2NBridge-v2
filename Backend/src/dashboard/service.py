@@ -15,22 +15,21 @@ class DashboardService:
     """Dashboard business logic"""
     
     @staticmethod
-    def get_recent_activity(limit: int = 10) -> list:
+    def get_recent_activity(db, limit: int = 10) -> list:
         """Get recent system activity"""
-        db = MongoDatabase.get_db()
         activities = []
         
         # Get recent grievances
         recent_grievances = list(db.grievances.find(
-            {"isDeleted": False}
-        ).sort("createdAt", -1).limit(limit))
-        
+            {"is_deleted": {"$ne": True}}
+        ).sort("created_at", -1).limit(limit))
+
         for g in recent_grievances:
             grievance = GrievanceService._populate_citizen_name(g)
             citizen_name = grievance.get("citizenName")
 
             activities.append({
-                "time": grievance.get("createdAt"),
+                "time": grievance.get("created_at"),
                 "type": "COMPLAINT",
                 "message": f"Complaint #{str(grievance.get('_id', ''))[:8]} created by {citizen_name or 'Unknown'}",
                 "icon": "FaClipboardList"
@@ -88,10 +87,8 @@ class DashboardService:
         return activities[:limit]
     
     @staticmethod
-    def get_team_performance() -> list:
+    def get_team_performance(db) -> list:
         """Get team performance data"""
-        db = MongoDatabase.get_db()
-
         officers = list(db.users.find(
             {"role": {"$in": ["FIELD_OFFICER", "OFFICER", "CONSTITUENCY_MANAGER"]}, "isDeleted": False}
         ))
@@ -103,17 +100,20 @@ class DashboardService:
             assigned_tasks  = db.tasks.count_documents({"assignedTo": officer_id})
             completed_tasks = db.tasks.count_documents({"assignedTo": officer_id, "status": "COMPLETED"})
 
-            assigned_grievances = db.grievances.count_documents({"assignedOfficerId": officer_id})
+            # Grievances store the assignee under `assigned_to` (snake_case),
+            # not `assignedOfficerId` — see grievances/routes.py's assign
+            # endpoint (`{"$set": {"assigned_to": staff_id, ...}}`).
+            assigned_grievances = db.grievances.count_documents({"assigned_to": officer_id})
             resolved_grievances = db.grievances.count_documents(
-                {"assignedOfficerId": officer_id, "status": "RESOLVED"}
+                {"assigned_to": officer_id, "status": "RESOLVED"}
             )
 
             resolved = list(db.grievances.aggregate([
                 {"$match": {
-                    "assignedOfficerId": officer_id, "status": "RESOLVED",
-                    "updatedAt": {"$exists": True}, "createdAt": {"$exists": True}
+                    "assigned_to": officer_id, "status": "RESOLVED",
+                    "updated_at": {"$exists": True}, "created_at": {"$exists": True}
                 }},
-                {"$project": {"resolutionTime": {"$subtract": ["$updatedAt", "$createdAt"]}}},
+                {"$project": {"resolutionTime": {"$subtract": ["$updated_at", "$created_at"]}}},
                 {"$group": {"_id": None, "avgTime": {"$avg": "$resolutionTime"}}}
             ]))
             avg_time_ms   = resolved[0]["avgTime"] if resolved else 0
@@ -132,9 +132,9 @@ class DashboardService:
                 rating_components.append((resolved_grievances / assigned_grievances) * 5)
 
             satisfaction = list(db.grievances.aggregate([
-                {"$match": {"assignedOfficerId": officer_id,
-                            "satisfactionRating": {"$exists": True, "$ne": None}}},
-                {"$group": {"_id": None, "avgRating": {"$avg": "$satisfactionRating"}}}
+                {"$match": {"assigned_to": officer_id,
+                            "feedback.rating": {"$exists": True, "$ne": None}}},
+                {"$group": {"_id": None, "avgRating": {"$avg": "$feedback.rating"}}}
             ]))
             if satisfaction and satisfaction[0].get("avgRating"):
                 rating_components.append(satisfaction[0]["avgRating"])
@@ -156,13 +156,12 @@ class DashboardService:
         return team_data
     
     @staticmethod
-    def get_grievance_trends(days: int = 7) -> dict:
+    def get_grievance_trends(db, days: int = 7) -> dict:
         """
         Get complaint count per day for the last N days.
         FIX: Use IST (UTC+5:30) day boundaries so the chart shows
         Indian calendar days, not UTC days (which are offset by 5h30m).
         """
-        db  = MongoDatabase.get_db()
         IST = timedelta(hours=5, minutes=30)
 
         # Current time in IST
@@ -177,17 +176,16 @@ class DashboardService:
             end_utc   = datetime(day_ist.year, day_ist.month, day_ist.day, 23, 59, 59) - IST
 
             count = db.grievances.count_documents({
-                "createdAt": {"$gte": start_utc, "$lte": end_utc},
-                "isDeleted": False,
+                "created_at": {"$gte": start_utc, "$lte": end_utc},
+                "is_deleted": {"$ne": True},
             })
             trend_list.append((day_ist.strftime("%d %b"), count))
 
         return dict(trend_list)
     
     @staticmethod
-    def get_category_complaints() -> dict:
+    def get_category_complaints(db) -> dict:
         """Real complaint counts per category broken down by status."""
-        db = MongoDatabase.get_db()
         _NORMALIZE = {
             "Water": "Water Supply", "Roads": "Road Issue", "Road": "Road Issue",
             "Waste": "Garbage", "Electricity": "Power Outage",
@@ -197,7 +195,7 @@ class DashboardService:
             "SANITATION": "Sanitation", "PARKS": "Parks & Recreation",
         }
         rows = list(db.grievances.aggregate([
-            {"$match": {"isDeleted": False}},
+            {"$match": {"is_deleted": {"$ne": True}}},
             {"$group": {
                 "_id": {
                     "category": {"$ifNull": ["$category", "$categoryId"]},
@@ -230,7 +228,7 @@ class DashboardService:
         return result
 
     @staticmethod
-    def get_system_health() -> str:
+    def get_system_health(db) -> str:
         """
         Health score formula:
           resolution_rate   = resolved / total × 100       (0–100)
@@ -241,16 +239,15 @@ class DashboardService:
         are open as a proportion of all complaints, not an arbitrary cap.
         Example: 80% resolved, 10% critical open → 80 − 5 = 75%
         """
-        db = MongoDatabase.get_db()
         try:
-            total = db.grievances.count_documents({"isDeleted": False})
+            total = db.grievances.count_documents({"is_deleted": {"$ne": True}})
             if total == 0:
                 return "N/A"
-            resolved      = db.grievances.count_documents({"isDeleted": False, "status": "RESOLVED"})
+            resolved      = db.grievances.count_documents({"is_deleted": {"$ne": True}, "status": "RESOLVED"})
             critical_open = db.grievances.count_documents({
-                "isDeleted": False,
-                "priority": {"$in": ["CRITICAL", "HIGH"]},
-                "status":   {"$nin": ["RESOLVED", "CLOSED"]},
+                "is_deleted": {"$ne": True},
+                "priority":   {"$in": ["CRITICAL", "HIGH"]},
+                "status":     {"$nin": ["RESOLVED", "CLOSED"]},
             })
             resolution_rate  = (resolved / total) * 100
             critical_rate    = critical_open / total          # proportion 0–1
@@ -262,29 +259,31 @@ class DashboardService:
             return "N/A"
     
     @staticmethod
-    def get_admin_dashboard() -> dict:
+    def get_admin_dashboard(db) -> dict:
         """Get admin dashboard data — every sub-call is safe-wrapped so a single
         failure (e.g. mixed datetime/str sort, DB timeout) returns partial data
-        instead of a 500 for the whole dashboard."""
+        instead of a 500 for the whole dashboard. `db` is the calling Admin's
+        own managed tenant (see dashboard/routes.py) — this used to run
+        against the master DB, where none of this data lives."""
         sc = DashboardService._safe_call
 
-        metrics = sc(AnalyticsService.get_performance_metrics, default={}, label="performance_metrics")
+        metrics = sc(AnalyticsService.get_performance_metrics, db, default={}, label="performance_metrics")
         active_users_data = metrics.get("activeUsers", {"active": 0, "trend": 0})
 
         return {
             "metrics": metrics,
             "overview": {
-                "grievances": sc(AnalyticsService.get_grievance_stats, default={}, label="overview_grievances"),
-                "alerts":     sc(AnalyticsService.get_alert_stats,    default={}, label="overview_alerts"),
-                "users":      sc(AnalyticsService.get_user_stats,     default={}, label="overview_users"),
-                "events":     sc(AnalyticsService.get_event_stats,    default={}, label="overview_events"),
+                "grievances": sc(AnalyticsService.get_grievance_stats, db, default={}, label="overview_grievances"),
+                "alerts":     sc(AnalyticsService.get_alert_stats,    db, default={}, label="overview_alerts"),
+                "users":      sc(AnalyticsService.get_user_stats,     db, default={}, label="overview_users"),
+                "events":     sc(AnalyticsService.get_event_stats,    db, default={}, label="overview_events"),
             },
-            "recentActivity":  sc(DashboardService.get_recent_activity, 10, default=[], label="recent_activity"),
-            "teamPerformance": sc(DashboardService.get_team_performance,    default=[], label="team_performance"),
-            "grievanceTrends": sc(DashboardService.get_grievance_trends, 7, default={}, label="grievance_trends"),
+            "recentActivity":  sc(DashboardService.get_recent_activity, db, 10, default=[], label="recent_activity"),
+            "teamPerformance": sc(DashboardService.get_team_performance,    db, default=[], label="team_performance"),
+            "grievanceTrends": sc(DashboardService.get_grievance_trends, db, 7, default={}, label="grievance_trends"),
             "activeUsers":     active_users_data.get("active", 0) if isinstance(active_users_data, dict) else active_users_data,
-            "systemHealth":    sc(DashboardService.get_system_health,       default="N/A", label="system_health"),
-            "categoryComplaints": sc(DashboardService.get_category_complaints, default={}, label="category_complaints"),
+            "systemHealth":    sc(DashboardService.get_system_health,   db,   default="N/A", label="system_health"),
+            "categoryComplaints": sc(DashboardService.get_category_complaints, db, default={}, label="category_complaints"),
         }
     
     @staticmethod
@@ -412,11 +411,13 @@ class DashboardService:
         }
 
     @staticmethod
-    def get_mla_dashboard() -> dict:
-        """Get MLA dashboard data"""
-        db = MongoDatabase.get_db()
+    def get_mla_dashboard(db) -> dict:
+        """Get MLA dashboard data. `db` is the calling Representative's own
+        tenant (see dashboard/routes.py) — this used to run entirely against
+        the master DB, where none of a representative's actual data lives,
+        so every card here always came back empty/zero."""
         metrics = DashboardService._safe_call(
-            AnalyticsService.get_performance_metrics, default={}, label="performance_metrics"
+            AnalyticsService.get_performance_metrics, db, default={}, label="performance_metrics"
         )
 
         status_counts = metrics.get("grievances", {}).get("byStatus", {})
@@ -434,7 +435,7 @@ class DashboardService:
         registered_citizens = user_roles.get("CITIZEN", 0)
         active_officers = user_roles.get("FIELD_OFFICER", 0) + user_roles.get("OFFICER", 0)
         health_score = DashboardService._safe_call(
-            DashboardService.get_system_health, default="N/A", label="system_health"
+            DashboardService.get_system_health, db, default="N/A", label="system_health"
         )
         avg_satisfaction = 0
 
@@ -459,7 +460,7 @@ class DashboardService:
             return "LOW"
 
         ward_stats_raw = list(db.grievances.aggregate([
-            {"$match": {"isDeleted": False, "wardId": {"$exists": True, "$nin": [None, ""]}}},
+            {"$match": {"is_deleted": {"$ne": True}, "wardId": {"$exists": True, "$nin": [None, ""]}}},
             {"$group": {
                 "_id": "$wardId",
                 "count": {"$sum": 1},
@@ -477,7 +478,7 @@ class DashboardService:
 
         recent_alerts = [Helper.convert_mongo_doc(alert) for alert in db.alerts.find({}).sort("createdAt", -1).limit(5)]
         recent_complaints = []
-        for complaint in db.grievances.find({"isDeleted": False}).sort("createdAt", -1).limit(50):
+        for complaint in db.grievances.find({"is_deleted": {"$ne": True}}).sort("created_at", -1).limit(50):
             complaint = GrievanceService._populate_citizen_name(complaint)
             # Resolve category name from categoryId if not already human-readable
             if complaint.get("categoryId") and not complaint.get("categoryName"):
@@ -494,7 +495,7 @@ class DashboardService:
             recent_complaints.append(Helper.convert_mongo_doc(complaint))
 
         recent_activity = DashboardService._safe_call(
-            DashboardService.get_recent_activity, 10, default=[], label="recent_activity"
+            DashboardService.get_recent_activity, db, 10, default=[], label="recent_activity"
         )
 
         summary = {
@@ -510,16 +511,16 @@ class DashboardService:
         }
 
         sc = DashboardService._safe_call
-        team_performance = sc(DashboardService.get_team_performance, default=[], label="team_performance")
+        team_performance = sc(DashboardService.get_team_performance, db, default=[], label="team_performance")
 
         return {
             "summary": summary,
             "metrics": metrics,
             "overview": {
-                "grievances": sc(AnalyticsService.get_grievance_stats, default={}, label="overview_grievances"),
-                "alerts":     sc(AnalyticsService.get_alert_stats,    default={}, label="overview_alerts"),
-                "users":      sc(AnalyticsService.get_user_stats,     default={}, label="overview_users"),
-                "events":     sc(AnalyticsService.get_event_stats,    default={}, label="overview_events"),
+                "grievances": sc(AnalyticsService.get_grievance_stats, db, default={}, label="overview_grievances"),
+                "alerts":     sc(AnalyticsService.get_alert_stats,    db, default={}, label="overview_alerts"),
+                "users":      sc(AnalyticsService.get_user_stats,     db, default={}, label="overview_users"),
+                "events":     sc(AnalyticsService.get_event_stats,    db, default={}, label="overview_events"),
             },
             "wardStats":        ward_stats,
             "recentAlerts":     recent_alerts,
@@ -527,37 +528,45 @@ class DashboardService:
             "teamPerformance":  team_performance,
             # teamSummary — aggregates previously computed in TeamPerformanceDashboard.jsx
             "teamSummary":      sc(DashboardService.get_team_summary, team_performance, default={"averageRating": "0.0", "totalOfficers": 0}, label="team_summary"),
-            "grievanceTrends":  sc(DashboardService.get_grievance_trends, 7, default={}, label="grievance_trends"),
+            "grievanceTrends":  sc(DashboardService.get_grievance_trends, db, 7, default={}, label="grievance_trends"),
             "recentActivity":   recent_activity,
             "systemHealth":     health_score,
-            "categoryComplaints": sc(DashboardService.get_category_complaints, default={}, label="category_complaints"),
+            "categoryComplaints": sc(DashboardService.get_category_complaints, db, default={}, label="category_complaints"),
             # recommendations & riskScores — previously computed in AIInsights.jsx frontend
             "recommendations":  sc(DashboardService.get_ai_recommendations, metrics, summary, default=[], label="recommendations"),
             "riskScores":       sc(DashboardService.get_risk_scores, summary, default=[], label="risk_scores"),
         }
     
     @staticmethod
-    def get_officer_dashboard(officer_id: str) -> dict:
-        """Get officer dashboard data"""
-        db = MongoDatabase.get_db()
-        
+    def get_officer_dashboard(officer_id: str, db=None) -> dict:
+        """
+        Get officer dashboard data. `db` must be the officer's own TENANT
+        database (resolved from their JWT's db_name) — this used to default
+        to MongoDatabase.get_db() (the master DB), where grievances/tasks/
+        alerts never exist at all (they only ever live in tenant DBs), so
+        this always returned empty regardless of how much real data existed
+        for that officer.
+        """
+        if db is None:
+            db = MongoDatabase.get_db()
+
         # Get assigned tasks
         tasks = [Helper.convert_mongo_doc(task) for task in db.tasks.find({
             "assignedTo": officer_id,
             "status": {"$ne": "COMPLETED"}
         }).limit(10)]
-        
+
         # Get assigned grievances (all statuses so frontend can count RESOLVED separately)
         grievances = [Helper.convert_mongo_doc(grievance) for grievance in db.grievances.find({
-            "assignedOfficerId": officer_id,
-        }).sort("createdAt", -1).limit(50)]
-        
+            "assigned_to": officer_id,
+        }).sort("created_at", -1).limit(50)]
+
         # Get pending alerts
         alerts = [Helper.convert_mongo_doc(alert) for alert in db.alerts.find({
             "assignedTo": officer_id,
             "status": {"$ne": "RESOLVED"}
         }).limit(10)]
-        
+
         return {
             "pendingTasks": len(tasks),
             "pendingGrievances": len(grievances),
@@ -574,8 +583,8 @@ class DashboardService:
         
         # Get citizen's grievances
         grievances = [Helper.convert_mongo_doc(grievance) for grievance in db.grievances.find({
-            "citizenId": citizen_id,
-            "isDeleted": False
+            "citizen_id": citizen_id,
+            "is_deleted": {"$ne": True}
         })]
         
         # Get grievance summary

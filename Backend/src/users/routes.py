@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from bson import ObjectId
+from config.database import MongoDatabase
 from config.security import SecurityManager
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from users.model import UserUpdate
@@ -123,20 +124,132 @@ async def search_citizens(
 
 # ── List all users in tenant ───────────────────────────────────────────────────
 
+def _cross_tenant_citizens(master, per_page: int, only_db_name: Optional[str] = None) -> list[dict]:
+    """
+    ADMIN view of CITIZEN role: citizens don't live in `users` at all (they're
+    in each representative's own tenant `citizens` collection). `only_db_name`
+    restricts this to the ONE representative this admin registered — a scoped
+    admin should only ever see their own team's data, never other admins'
+    representatives. Looping "every tenant DB" only happens if only_db_name
+    isn't given (kept for potential platform-wide/Super Admin use later).
+    """
+    items: list[dict] = []
+    rep_query = {"db_name": only_db_name} if only_db_name else {}
+    for rep in master.representatives.find(rep_query, {"db_name": 1, "name": 1}):
+        db_name = rep.get("db_name")
+        if not db_name:
+            continue
+        try:
+            tenant_db = MongoDatabase.get_tenant_db(db_name)
+            for c in tenant_db.citizens.find({"is_deleted": {"$ne": True}}).limit(per_page):
+                doc = _doc(c)
+                doc["fullName"] = doc.get("name") or doc.get("fullName")
+                doc["citizenId"] = doc.get("citizen_id") or doc.get("id")
+                doc["representative"] = rep.get("name")
+                items.append(doc)
+        except Exception as exc:
+            logger.warning(f"Skipping tenant {db_name} in cross-tenant citizen list: {exc}")
+    return items
+
+
+def _cross_tenant_representatives(master, rep_type: Optional[str] = None, only_db_name: Optional[str] = None) -> list[dict]:
+    """
+    ADMIN view of REPRESENTATIVE role: representatives are indexed directly
+    in the master `representatives` collection (one doc per tenant), so no
+    need to open each tenant DB individually. `rep_type` optionally narrows
+    to MLA / MP / COUNCILLOR only (sidebar's separate MP / Councillor lists).
+    `only_db_name` restricts to the one representative this admin registered.
+    """
+    q: dict = {}
+    if rep_type:
+        q["rep_type"] = rep_type.upper()
+    if only_db_name:
+        q["db_name"] = only_db_name
+    items = []
+    for rep in master.representatives.find(q):
+        doc = _doc(rep)
+        doc["fullName"] = doc.get("name")
+        doc["role"] = "REPRESENTATIVE"
+        doc["constituencyId"] = doc.get("assembly_name") or doc.get("parliamentary_name") or doc.get("ward_id")
+        doc["district"] = doc.get("district")
+        items.append(doc)
+    return items
+
+
 @router.get("/")
 async def list_users(
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(20, ge=1, le=1000),
     role: Optional[str] = None,
+    rep_type: Optional[str] = None,
     db=Depends(get_tenant_db),
     user=Depends(require_auth),
 ):
-    """List representative + staff in this tenant."""
-    if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
+    """
+    List users. Representative/staff callers see their own tenant's users
+    (unchanged). ADMIN callers get a cross-tenant view, since an admin's own
+    "tenant" is the master DB, which doesn't hold citizens/representatives
+    from any specific representative's database — those are scattered across
+    every tenant DB (see _cross_tenant_citizens / _cross_tenant_representatives).
+    `rep_type` (MLA | MP | COUNCILLOR) narrows the REPRESENTATIVE list for
+    the sidebar's separate MP / Councillor pages.
+    """
+    # A scoped Admin whose login has been resolved to their managed tenant
+    # (see utils/tenant.py's _resolve_admin_managed_tenant) shows up here as
+    # role=REPRESENTATIVE with admin_user_id set — this endpoint still wants
+    # its own ADMIN-specific cross-tenant/isolation view for them (citizens,
+    # the representative record itself, and field officers/managers), not
+    # the plain single-tenant REPRESENTATIVE branch below.
+    is_resolved_admin = bool(user.get("admin_user_id"))
+    caller_role = "ADMIN" if is_resolved_admin else user.get("role")
+    if caller_role not in ("REPRESENTATIVE", "STAFF", "ADMIN"):
         raise HTTPException(status_code=403, detail="Unauthorized")
+
+    role_filter = (role or "").upper()
+
+    if caller_role == "ADMIN":
+        master = MongoDatabase.get_db()
+
+        # Every Admin is scoped to exactly one MLA/MP/Councillor they
+        # registered (or none yet) — they should only ever see that one
+        # representative's data, never another admin's. `db` (get_tenant_db)
+        # already resolves to that one managed tenant once it's set (same
+        # resolution this branch needs), so reuse it directly instead of
+        # re-deriving managed_db_name from scratch.
+        managed_db_name = user.get("db_name") if is_resolved_admin else None
+
+        if role_filter == "CITIZEN":
+            items = [_doc(c) for c in db.citizens.find({"is_deleted": {"$ne": True}})] if managed_db_name else []
+        elif role_filter == "REPRESENTATIVE":
+            items = _cross_tenant_representatives(master, rep_type, only_db_name=managed_db_name) if managed_db_name else []
+        else:
+            # Field Officers/Managers live in this tenant's `staff`
+            # collection (not `users` — see staff/routes.py), matched by
+            # designation rather than a `role` field.
+            items = []
+            if managed_db_name:
+                designation_map = {"FIELD_OFFICER": "Field Officer", "CONSTITUENCY_MANAGER": "Manager"}
+                sq: dict = {"is_deleted": {"$ne": True}}
+                if role_filter in designation_map:
+                    sq["designation"] = designation_map[role_filter]
+                elif role_filter:
+                    sq["designation"] = "__none__"  # unrecognized role filter -> no staff match
+                items = [_doc(s) for s in db.staff.find(sq).sort("created_at", -1)]
+            # No specific role filter ("All Roles") — this admin's own
+            # registered representative (the MLA/MP/Councillor itself)
+            # should show up here too.
+            if not role_filter and managed_db_name:
+                items = _cross_tenant_representatives(master, only_db_name=managed_db_name) + items
+        total = len(items)
+        skip  = (page - 1) * per_page
+        return success_response(
+            {"items": items[skip:skip + per_page], "total": total, "page": page, "per_page": per_page},
+            "Users retrieved",
+        )
+
     q: dict = {"isDeleted": {"$ne": True}}
-    if role:
-        q["role"] = role.upper()
+    if role_filter:
+        q["role"] = role_filter
     skip  = (page - 1) * per_page
     docs  = list(db.users.find(q).sort("createdAt", -1).skip(skip).limit(per_page))
     total = db.users.count_documents(q)

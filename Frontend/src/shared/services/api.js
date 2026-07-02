@@ -24,9 +24,18 @@ async function request(method, url, { params, data, headers } = {}) {
 	}
 
 	// Don't set Content-Type for FormData - let browser handle it
-	const defaultHeaders = isFormData 
+	const defaultHeaders = isFormData
 		? { Accept: "application/json" }
 		: { Accept: "application/json", "Content-Type": "application/json" };
+
+	// `token` was being read from storage above and even logged, but never
+	// actually attached to the request — every call through this service was
+	// going out unauthenticated. That's why endpoints requiring a real login
+	// (get_current_user) hard-401, and tenant-scoped ones (require_auth) fall
+	// back to "no db_name" 400s.
+	if (token) {
+		defaultHeaders.Authorization = `Bearer ${token}`;
+	}
 
 	const res = await fetch(buildUrl(url) + query, {
 		method,

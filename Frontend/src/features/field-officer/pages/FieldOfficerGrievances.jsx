@@ -6,13 +6,24 @@ import { ROUTES } from '../../../app/routes/RouteConstants';
 import '../../../styles/field-officer.css';
 import FieldPageHeader from '../components/FieldPageHeader';
 
-const STATUS_OPTIONS = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+// Backend statuses are Title Case with spaces ("Open", "Assigned",
+// "In Progress", "Resolved", "Closed", "Rejected") — "Acknowledged" used to
+// be a separate status but was folded into "Assigned" (a complaint is
+// already shown as Assigned the moment it's assigned; a distinct
+// "Acknowledged" step was redundant). Only Assigned/In Progress/Resolved/
+// Closed are settable transitions via the PATCH endpoints (see
+// grievanceService.js's updateGrievance).
+const STATUS_OPTIONS = ['Assigned', 'In Progress', 'Resolved', 'Closed'];
+// All statuses a grievance can actually be in, for the filter buttons
+// (includes Open, which isn't officer-settable but does occur).
+const FILTER_STATUSES = ['Open', 'Assigned', 'In Progress', 'Resolved', 'Closed', 'Rejected'];
 const STATUS_COLORS = {
-  OPEN: '#fef3c7',
-  IN_PROGRESS: '#dbeafe',
-  RESOLVED: '#d1fae5',
-  CLOSED: '#f3f4f6',
-  REJECTED: '#fee2e2',
+  Open: '#fef3c7',
+  Assigned: '#ede9fe',
+  'In Progress': '#dbeafe',
+  Resolved: '#d1fae5',
+  Closed: '#f3f4f6',
+  Rejected: '#fee2e2',
 };
 
 export default function FieldOfficerGrievances() {
@@ -47,8 +58,8 @@ export default function FieldOfficerGrievances() {
       setGrievances(prev =>
         prev.map(g => (g._id === grievanceId || g.id === grievanceId) ? { ...g, status: newStatus } : g)
       );
-    } catch {
-      alert('Failed to update status.');
+    } catch (err) {
+      alert(err?.response?.data?.detail || err?.message || 'Failed to update status.');
     } finally {
       setUpdating(null);
     }
@@ -67,10 +78,10 @@ export default function FieldOfficerGrievances() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
         {[
-          { label: 'Total',       count: grievances.length,                                          icon: '📋', bg: '#EEF2FF' },
-          { label: 'Open',        count: grievances.filter(g => g.status === 'OPEN').length,         icon: '📂', bg: '#FEF3C7' },
-          { label: 'In Progress', count: grievances.filter(g => g.status === 'IN_PROGRESS').length,  icon: '⏳', bg: '#DBEAFE' },
-          { label: 'Resolved',    count: grievances.filter(g => g.status === 'RESOLVED').length,     icon: '✅', bg: '#D1FAE5' },
+          { label: 'Total',       count: grievances.length,                                                                          icon: '📋', bg: '#EEF2FF' },
+          { label: 'Open',        count: grievances.filter(g => ['Open', 'Assigned'].includes(g.status)).length,                     icon: '📂', bg: '#FEF3C7' },
+          { label: 'In Progress', count: grievances.filter(g => g.status === 'In Progress').length,                                   icon: '⏳', bg: '#DBEAFE' },
+          { label: 'Resolved',    count: grievances.filter(g => ['Resolved', 'Closed'].includes(g.status)).length,                   icon: '✅', bg: '#D1FAE5' },
         ].map(s => (
           <div key={s.label} style={{ background: '#fff', border: '1px solid #EAEDF4', borderRadius: 18, padding: '18px 20px', boxShadow: '0 14px 30px -22px rgba(20,35,60,.3)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -84,7 +95,7 @@ export default function FieldOfficerGrievances() {
 
       {/* Filter */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        {['ALL', ...STATUS_OPTIONS].map(s => (
+        {['ALL', ...FILTER_STATUSES].map(s => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
@@ -130,7 +141,7 @@ export default function FieldOfficerGrievances() {
                   {g.category && <span>📌 {g.category.replace(/_/g, ' ')}</span>}
                   {g.address && <span>📍 {g.address}</span>}
                   {g.complaintNumber && <span style={{ fontFamily: 'monospace' }}>#{g.complaintNumber}</span>}
-                  {g.createdAt && <span>Filed: {new Date(g.createdAt).toLocaleDateString()}</span>}
+                  {g.created_at && <span>Filed: {new Date(g.created_at).toLocaleDateString()}</span>}
                 </div>
               </div>
               <div style={{ minWidth: '160px' }}>

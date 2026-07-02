@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerAdmin } from "./authService";
-import api from "../../shared/services/api";
+import { setAuthToken, setAuthRole, setAuthUser } from "../../services/authStorage";
 import { normalizePhone as normalizePhoneUtil } from "../../utils/phoneUtils";
 
 const INDIAN_STATES = [
@@ -13,6 +13,13 @@ const INDIAN_STATES = [
   "Uttarakhand", "West Bengal",
 ];
 
+const SCOPES = [
+  { value: "MLA", label: "MLA" },
+  { value: "MP", label: "MP" },
+  { value: "COUNCILLOR", label: "Councillor" },
+  { value: "OTHER", label: "Other" },
+];
+
 const INITIAL_FORM = {
   firstName: "",
   lastName: "",
@@ -21,7 +28,8 @@ const INITIAL_FORM = {
   phone: "",
   state: "",
   district: "",
-  secretKey: "",
+  scope: "MLA",
+  otherScopeName: "",
   password: "",
   confirmPassword: "",
 };
@@ -71,7 +79,9 @@ export default function AdminSignup() {
     if (!form.lastName.trim())     e.lastName     = "Required";
     if (!form.email.includes("@")) e.email        = "Invalid email";
     if (form.phone.replace(/\D/g, "").length !== 10) e.phone = "Must be 10 digits";
-    if (form.secretKey && form.secretKey.length < 6) e.secretKey = "Min 6 characters";
+    if (!form.scope) e.scope = "Select what you'll be managing";
+    if (form.scope === "OTHER" && !form.otherScopeName.trim())
+                                   e.otherScopeName = "Enter what you'll be managing";
     if (form.password.length < 8)  e.password     = "Min 8 characters";
     if (form.password !== form.confirmPassword)
                                    e.confirmPassword = "Passwords do not match";
@@ -92,30 +102,31 @@ export default function AdminSignup() {
         form.countryCode
       );
 
+      // "Other" isn't a real representative type the rest of the app knows
+      // how to handle (citizen registration/lookup only understand MLA/MP/
+      // COUNCILLOR) — so a custom entry still registers as COUNCILLOR under
+      // the hood, with the typed name kept as a display label.
+      const isOther = form.scope === "OTHER";
       const registrationData = {
         fullName: `${form.firstName.trim()} ${form.lastName.trim()}`,
         email: form.email.trim(),
         mobile: normalizedMobile,
         password: form.password,
         role: "ADMIN",
-        state: form.state,
-        district: form.district.trim(),
+        scope: isOther ? "COUNCILLOR" : form.scope,
+        scopeLabel: isOther ? form.otherScopeName.trim() : undefined,
       };
 
       const response = await registerAdmin(registrationData);
-      const userId = response?.user?.id;
 
-      if (userId && form.secretKey.trim()) {
-        try {
-          await api.post(`/api/admin/verify-secret-key`, { secretKey: form.secretKey });
-        } catch {
-          // secret key verification failure is non-blocking for now
-        }
-      }
-
-      setSubmitted(true);
-      setForm(INITIAL_FORM);
-      setFormKey(Date.now());
+      // Every admin picks a scope (MLA/MP/Councillor) right on this form now,
+      // so registration always logs them straight in and lands on the normal
+      // admin dashboard — registering their one representative is reachable
+      // from there whenever they're ready, not forced immediately.
+      setAuthToken(response.accessToken);
+      setAuthRole(response.user?.role || "ADMIN");
+      setAuthUser(response.user);
+      navigate("/admin");
     } catch (err) {
       const msg = err.message || "";
       if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("duplicate")) {
@@ -237,43 +248,43 @@ export default function AdminSignup() {
               />
             </div>
           </Field>
-          {/* <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label="State (optional)" error={errors.state}>
-              <select
-                value={form.state}
-                onChange={(e) => update("state", e.target.value)}
-                style={{ ...inputStyle(errors.state), width: "100%" }}
-              >
-                <option value="">Select state</option>
-                {INDIAN_STATES.map((state) => (
-                  <option key={state} value={state}>{state}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="District (optional)" error={errors.district}>
-              <input
-                type="text"
-                placeholder="District"
-                value={form.district}
-                onChange={(e) => update("district", e.target.value)}
-                style={inputStyle(errors.district)}
-              />
-            </Field>
-          </div>
-          <SectionLabel title="Security" />
-          <Field label="Secret Key (optional)" error={errors.secretKey}>
-            <PasswordInput
-              placeholder="Enter admin secret key (optional)"
-              value={form.secretKey}
-              show={show.secretKey}
-              error={errors.secretKey}
-              onChange={(v) => update("secretKey", v)}
-              onToggle={() => toggleShow("secretKey")}
-            />
+          <SectionLabel title="What will you manage?" />
+          <Field label="Representative Type" error={errors.scope}>
+            <select
+              value={form.scope}
+              onChange={(e) => update("scope", e.target.value)}
+              style={inputStyle(errors.scope)}
+            >
+              {SCOPES.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+
+            {form.scope === "OTHER" && (
+              <div style={{ marginTop: 10 }}>
+                <input
+                  type="text"
+                  placeholder="Enter what you'll be managing"
+                  value={form.otherScopeName}
+                  onChange={(e) => update("otherScopeName", e.target.value)}
+                  style={inputStyle(errors.otherScopeName)}
+                  autoComplete="off"
+                />
+                {errors.otherScopeName && (
+                  <p style={{ color: "#ef4444", fontSize: 11, marginTop: 4 }}>{errors.otherScopeName}</p>
+                )}
+              </div>
+            )}
+
             <div style={styles.secretKeyBox}>
-              Optional: enter the admin secret key if you have one, otherwise leave blank.
+              You'll be able to register your one{" "}
+              {form.scope === "OTHER"
+                ? (form.otherScopeName.trim() || "representative")
+                : SCOPES.find((s) => s.value === form.scope)?.label}
+              {" "}from your Admin Portal after signing up.
             </div>
-          </Field> */}
+          </Field>
+          <SectionLabel title="Security" />
           <Field label="Password" error={errors.password}>
             <PasswordInput
               name={fieldNames.password}

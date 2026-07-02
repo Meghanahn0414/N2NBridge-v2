@@ -36,7 +36,8 @@ export default function FieldOfficerList() {
   const fetchUsers = async () => {
     try {
       const res = await api.get("/api/users/", { params: { role: "FIELD_OFFICER", per_page: 100 } });
-      const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      // Backend wraps results as { items, total, page, per_page } under .data.
+      const list = res.data?.data?.items ?? [];
       setUsers(list);
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || "Failed to load field officers");

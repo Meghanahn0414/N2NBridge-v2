@@ -44,7 +44,7 @@ export default function NotificationsScreen() {
   const fetchNotifs = useCallback(async () => {
     try {
       const { data } = await api.get("/api/notifications?page=1&per_page=50");
-      const list = Array.isArray(data) ? data : (data.items ?? data.data ?? []);
+      const list = data?.data?.items ?? [];
       setNotifs(list.map((n: any) => ({
         id: n._id || n.id,
         title: n.title,
@@ -53,7 +53,8 @@ export default function NotificationsScreen() {
         isRead: n.isRead || n.read,
         createdAt: n.createdAt || n.created_at,
       })));
-      await api.post("/api/notifications/mark-all-read").catch(() => {});
+      // Was /api/notifications/mark-all-read — real path is /read-all.
+      await api.post("/api/notifications/read-all").catch(() => {});
     } catch (_) {}
     finally { setLoading(false); setRefreshing(false); }
   }, []);
@@ -90,7 +91,9 @@ export default function NotificationsScreen() {
 
   const markOneRead = async (id: string) => {
     setNotifs((prev) => prev.filter((n) => n.id !== id));
-    api.post(`/api/notifications/${id}/mark-read`).catch(() => {});
+    // Was /api/notifications/{id}/mark-read (wrong path + verb) — real
+    // route is PATCH /api/notifications/{id}/read.
+    api.patch(`/api/notifications/${id}/read`).catch(() => {});
   };
 
   const renderItem = ({ item }: { item: Notif }) => {

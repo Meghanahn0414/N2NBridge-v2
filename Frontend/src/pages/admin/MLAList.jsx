@@ -26,17 +26,23 @@ function initials(name) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-export default function MLAList() {
+// repType: null (all representatives, sidebar's "Representatives" page) |
+// "MLA" | "MP" | "COUNCILLOR" (sidebar's dedicated MP / Councillor pages).
+export default function MLAList({ repType = null, title = null, subtitle = null, constituencyLabel = "Constituency" }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { fetchUsers(); }, [repType]);
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/api/users/', { params: { role: 'REPRESENTATIVE', per_page: 100 } });
-      const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      const params = { role: 'REPRESENTATIVE', per_page: 100 };
+      if (repType) params.rep_type = repType;
+      const res = await api.get('/api/users/', { params });
+      // Backend wraps results as { items, total, page, per_page } under .data.
+      const list = res.data?.data?.items ?? [];
       setUsers(list);
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || 'Failed to load representatives');
@@ -45,13 +51,16 @@ export default function MLAList() {
     }
   };
 
+  const pageTitle = title || "Representatives";
+  const emptyLabel = repType === "MP" ? "No MPs found" : repType === "COUNCILLOR" ? "No councillors found" : "No representatives found";
+
   return (
     <div style={styles.page}>
-      <PageHeader subtitle="Registered Representatives" />
+      <PageHeader subtitle={subtitle || "Registered Representatives"} />
       <div style={styles.body}>
         <div style={styles.card}>
           <div style={styles.cardHeader}>
-            <h3 style={styles.cardTitle}>Representatives</h3>
+            <h3 style={styles.cardTitle}>{pageTitle}</h3>
             {!loading && !error && <span style={styles.badge}>{users.length} Total</span>}
           </div>
 
@@ -66,13 +75,13 @@ export default function MLAList() {
                   <th style={styles.th}>Name</th>
                   <th style={styles.th}>Email</th>
                   <th style={styles.th}>Mobile</th>
-                  <th style={styles.th}>Constituency</th>
+                  <th style={styles.th}>{constituencyLabel}</th>
                   <th style={styles.th}>District</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length === 0 ? (
-                  <tr><td colSpan={6} style={styles.empty}>No representatives found</td></tr>
+                  <tr><td colSpan={6} style={styles.empty}>{emptyLabel}</td></tr>
                 ) : (
                   users.map((u, i) => {
                     const fullName = u.fullName || u.name || '—';

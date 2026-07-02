@@ -147,20 +147,31 @@ export default function NewComplaintScreen() {
     if (!user?.id) { Alert.alert(tr("Error"), tr("Please log in again.")); return; }
     setLoading(true);
     try {
-      const payload: Record<string, any> = {
-        citizenId:   user.id,
-        categoryId:  category,
-        description: description.trim(),
-        address:     address.trim(),
-        priority:    "MEDIUM",
-        isAnonymous: anonymous,
-      };
-      if (wardNo.trim()) payload.wardId = wardNo.trim();
-      if (latitude && longitude)
-        payload.gpsLocation = { type: "Point", coordinates: [longitude, latitude] };
+      // Backend's GrievanceCreate requires `title` (str) — there's no
+      // dedicated title field in this form, so generate one from the
+      // category + description. category_id must be a grievance_categories
+      // ObjectId (for SLA lookup), not a free-text label — that label
+      // belongs in the free-text `category` field instead.
+      // isAnonymous / gpsLocation / citizenId / wardId aren't fields the
+      // backend model accepts at all; location is a flat {lat, lng}, and the
+      // ward number (no backend slot for it) gets folded into the address
+      // so it isn't silently dropped.
+      const trimmedDesc = description.trim();
+      const title = `${category}: ${trimmedDesc.slice(0, 50)}${trimmedDesc.length > 50 ? "…" : ""}`;
+      const fullAddress = wardNo.trim() ? `${address.trim()} (Ward ${wardNo.trim()})` : address.trim();
 
-      const { data } = await api.post("/api/grievances", payload);
-      const complaintId = data.id || data._id || data.complaintNumber;
+      const payload: Record<string, any> = {
+        title,
+        description: trimmedDesc,
+        category:    catLabel(category),
+        address:     fullAddress,
+        priority:    "Medium",
+      };
+      if (latitude && longitude) payload.location = { lat: latitude, lng: longitude };
+
+      const { data } = await api.post("/api/grievances/", payload);
+      const payloadRes = data?.data ?? data;
+      const complaintId = payloadRes.id || payloadRes._id || payloadRes.grievance_no;
 
       // Upload photos
       for (const uri of photos.filter(Boolean) as string[]) {
@@ -177,9 +188,12 @@ export default function NewComplaintScreen() {
         } catch { /* non-fatal */ }
       }
 
-      // Save notification preference to user profile
+      // Save notification preference — /api/users/{id} is rep/staff-only and
+      // 403s for a citizen; /api/citizens/me is the citizen-safe equivalent
+      // (note: CitizenProfileUpdate doesn't have a notifPreferences field
+      // yet, so this won't persist until that's added — non-fatal either way).
       try {
-        await api.put(`/api/users/${user.id}`, {
+        await api.put(`/api/citizens/me`, {
           notifPreferences: { channel: notifChannel },
         });
       } catch { /* non-fatal */ }

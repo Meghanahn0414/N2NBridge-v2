@@ -52,10 +52,10 @@ export default function CitizenList() {
   const fetchUsers = async () => {
     try {
       const res = await api.get('/api/users/', { params: { per_page: 100, role: 'CITIZEN' } });
-      if (res.data) {
-        const list = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        setUsers(list);
-      }
+      // Backend wraps results as { items, total, page, per_page } under
+      // .data, not a bare array.
+      const list = res.data?.data?.items ?? [];
+      setUsers(list);
     } catch {
       setError('Failed to load citizens');
     } finally {
@@ -109,7 +109,7 @@ export default function CitizenList() {
                           </div>
                         </td>
                         <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#64748b' }}>
-                          {u.citizenId || u._id || u.id || '—'}
+                          {u.citizen_id || u._id || u.id || '—'}
                         </td>
                         <td style={styles.td}>{u.email || '—'}</td>
                         <td style={styles.td}>{formatPhoneDisplay(u.mobile)}</td>

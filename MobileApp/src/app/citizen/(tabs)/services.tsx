@@ -67,8 +67,9 @@ export default function ExploreScreen() {
 
   const fetchStats = useCallback(async () => {
     try {
-      // Fetch only this citizen's own complaints
-      const { data } = await api.get(`/api/grievances/citizen/${user?.id}?page=1`).catch(() => ({ data: [] }));
+      // Fetch only this citizen's own complaints — /api/grievances/citizen/{id}
+      // doesn't exist; /api/grievances/ derives the citizen from the JWT.
+      const { data } = await api.get(`/api/grievances/?page=1`).catch(() => ({ data: [] }));
       // Handle all common nesting: [], { items }, { data: [] }, { data: { items } }
       const raw  = data?.data ?? data;
       const list: any[] = Array.isArray(raw) ? raw
