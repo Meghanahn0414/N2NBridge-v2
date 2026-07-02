@@ -1,4 +1,4 @@
-#!d:\CRM\CRM-01\Backend\.venv\Scripts\python.exe
+#!D:\N2N\N2NBridge-v2\Backend\.venv\Scripts\python.exe
 
 import sys
 import json
