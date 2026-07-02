@@ -130,6 +130,21 @@ export default function NewComplaintScreen() {
   };
 
   /* ── GPS ── */
+  // No maps/geocoding integration exists elsewhere in this app, so we hit
+  // OSM's free Nominatim reverse-geocoding API directly — it needs no API
+  // key and works from web (unlike expo-location's reverseGeocodeAsync,
+  // which is native-only and throws on Platform.OS === "web").
+  const reverseGeocode = async (lat: number, lng: number) => {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+      { headers: { Accept: "application/json" } }
+    );
+    if (!res.ok) throw new Error("reverse geocode failed");
+    const data = await res.json();
+    if (!data?.display_name) throw new Error("no address found");
+    return data.display_name as string;
+  };
+
   const getGPS = async () => {
     setGpsLoading(true);
     try {
@@ -139,10 +154,19 @@ export default function NewComplaintScreen() {
         return;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setLatitude(loc.coords.latitude);
-      setLongitude(loc.coords.longitude);
-      setAddress(`${loc.coords.latitude.toFixed(5)}, ${loc.coords.longitude.toFixed(5)}`);
+      const { latitude: lat, longitude: lng } = loc.coords;
+      setLatitude(lat);
+      setLongitude(lng);
       setErrors((e) => ({ ...e, address: "" }));
+
+      try {
+        const readableAddress = await reverseGeocode(lat, lng);
+        setAddress(readableAddress);
+      } catch {
+        // Nominatim lookup failed — fall back to coordinates so the field
+        // is still valid rather than left blank.
+        setAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      }
     } catch {
       Alert.alert(tr("Error"), tr("Could not get your location. Please enter manually."));
     } finally {

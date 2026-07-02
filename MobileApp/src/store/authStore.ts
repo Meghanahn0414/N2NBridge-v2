@@ -8,11 +8,8 @@ interface User {
   email: string;
   role: string;
   age?: number;
-<<<<<<< HEAD
   repType?: "MLA" | "MP" | "COUNCILLOR";
-=======
   mobile?: string;
->>>>>>> 57042d3e8b1d47f6c72cdf30a35921a6510b0dd8
 }
 
 interface AuthState {
