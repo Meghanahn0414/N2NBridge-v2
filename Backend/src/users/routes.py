@@ -58,14 +58,34 @@ def _rep_only(user: dict):
 
 # ── /me must be before /{id} ──────────────────────────────────────────────────
 
+def _staff_as_user_doc(s: dict) -> dict:
+    """Map a tenant_db.staff doc (snake_case fields, own _id) onto the same
+    shape /me returns for tenant_db.users (Field Officers/Managers live in
+    `staff`, not `users` — see auth/service.py's login() for why)."""
+    return {
+        "id":        str(s["_id"]),
+        "fullName":  s.get("name"),
+        "mobile":    s.get("mobile"),
+        "email":     s.get("email"),
+        "role":      s.get("role") or "STAFF",
+        "title":     s.get("designation"),
+        "status":    s.get("status", "ACTIVE"),
+        "createdAt": s["created_at"].isoformat() if isinstance(s.get("created_at"), datetime) else s.get("created_at"),
+        "updatedAt": s["updated_at"].isoformat() if isinstance(s.get("updated_at"), datetime) else s.get("updated_at"),
+    }
+
+
 @router.get("/me")
 async def get_my_profile(db=Depends(get_tenant_db), user=Depends(require_auth)):
     """Get the logged-in user's profile (representative or staff)."""
     uid = user.get("user_id")
     doc = db.users.find_one({"_id": _oid(uid), "isDeleted": {"$ne": True}})
-    if not doc:
-        raise HTTPException(status_code=404, detail="User not found")
-    return success_response(_doc(doc), "Profile retrieved")
+    if doc:
+        return success_response(_doc(doc), "Profile retrieved")
+    staff_doc = db.staff.find_one({"_id": _oid(uid), "is_deleted": {"$ne": True}})
+    if staff_doc:
+        return success_response(_staff_as_user_doc(staff_doc), "Profile retrieved")
+    raise HTTPException(status_code=404, detail="User not found")
 
 
 @router.put("/me")
@@ -81,10 +101,22 @@ async def update_my_profile(
         raise HTTPException(status_code=400, detail="No fields to update")
     update["updatedAt"] = datetime.now(timezone.utc)
     result = db.users.update_one({"_id": _oid(uid)}, {"$set": update})
-    if result.matched_count == 0:
+    if result.matched_count > 0:
+        doc = db.users.find_one({"_id": _oid(uid)})
+        return success_response(_doc(doc), "Profile updated")
+
+    staff_update: dict = {"updated_at": datetime.now(timezone.utc)}
+    if "fullName" in update:
+        staff_update["name"] = update["fullName"]
+    if "mobile" in update:
+        staff_update["mobile"] = update["mobile"]
+    if "email" in update:
+        staff_update["email"] = update["email"]
+    staff_result = db.staff.update_one({"_id": _oid(uid)}, {"$set": staff_update})
+    if staff_result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
-    doc = db.users.find_one({"_id": _oid(uid)})
-    return success_response(_doc(doc), "Profile updated")
+    staff_doc = db.staff.find_one({"_id": _oid(uid)})
+    return success_response(_staff_as_user_doc(staff_doc), "Profile updated")
 
 
 # ── Citizens search ────────────────────────────────────────────────────────────

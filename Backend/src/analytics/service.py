@@ -1,9 +1,9 @@
 """
 Analytics Service
 """
-from config.database import MongoDatabase
-from datetime import datetime, timedelta
 import logging
+# from config.database import MongoDatabase
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
