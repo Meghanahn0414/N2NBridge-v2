@@ -21,30 +21,19 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
-from pymongo import ReturnDocument
-
 from auth.otp_service import OTP_STORAGE, OTPService
 from auth.service import AuthService
+from bson import ObjectId
 from config.database import MongoDatabase
 from config.rate_limit import limiter
 from config.security import SecurityManager
-from users.model import (
-    CitizenRegisterRequest,
-    OtpResponse,
-    RepresentativeRegisterRequest,
-    SendOtpRequest,
-    StaffRegisterRequest,
-    TokenResponse,
-    UserCreate,
-    UserLoginRequest,
-    UserPasswordChange,
-    UserResponse,
-    VerifyOtpRequest,
-)
-from users.service import UserService
-from utils.email_service import send_email
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+from pymongo import ReturnDocument
+from users.model import (CitizenRegisterRequest, OtpResponse,
+                         RepresentativeRegisterRequest, SendOtpRequest,
+                         StaffRegisterRequest, TokenResponse, UserCreate,
+                         UserLoginRequest, UserPasswordChange, UserResponse,
+                         VerifyOtpRequest)
 from utils.jwt import TokenManager
 from utils.response import success_response
 
@@ -93,10 +82,10 @@ def _generate_slug(name: str, rep_type: str) -> str:
     return f"{clean}-{suffix}" if not clean.endswith(f"-{suffix}") else clean
 
 
-@router.post("/login-admin", response_model=TokenResponse)
+@compat_router.post("/login-admin", response_model=TokenResponse, include_in_schema=False)
 @limiter.limit("10/minute")
 async def login_admin(request: Request, login_data: UserLoginRequest):
-    """Admin/Staff login using email/password (ADMIN, REPRESENTATIVE, CONSTITUENCY_MANAGER, FIELD_OFFICER)"""
+    """Admin/Staff login using email/password for privileged roles."""
     try:
         result = AuthService.login(login_data)
     except Exception as e:
@@ -112,7 +101,6 @@ async def login_admin(request: Request, login_data: UserLoginRequest):
             detail="Invalid email or password"
         )
 
-    # Block citizens — they must use OTP login
     allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER"]
     user_role = result.user.role if result.user else None
     if user_role not in allowed_roles:
@@ -122,6 +110,8 @@ async def login_admin(request: Request, login_data: UserLoginRequest):
         )
 
     return result
+
+
 def _generate_db_name(slug: str) -> str:
     return slug.replace("-", "_") + "_db"
 
@@ -132,68 +122,6 @@ def _next_rep_code(master_db, rep_type: str) -> str:
     return f"{prefix}{count + 1:05d}"
 
 
-        user_id = AuthService.register_user(user_data.dict(), None)
-        if not user_id:
-            logger.error("[REGISTER] register_user returned None - likely email or mobile already exists")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to register user - Email or mobile number may already be registered"
-            )
-        
-        logger.info(f"[REGISTER] User registered successfully: {user_id}")
-        # Send registration details to the user's email, if SMTP is configured
-        subject = "Your N2N account has been created"
-        body_lines = [
-            f"Hello {user_data.fullName},",
-            "",
-            "Your N2N account has been created successfully with the following details:",
-            f"Email: {user_data.email}",
-            f"Role: {user_data.role}",
-            f"Password: {user_data.password}",
-        ]
-        if user_data.role == "CONSTITUENCY_MANAGER" and getattr(user_data, "managerId", None):
-            body_lines.append(f"Manager ID: {user_data.managerId}")
-        if user_data.role == "FIELD_OFFICER" and getattr(user_data, "fieldOfficerId", None):
-            body_lines.append(f"Field Officer ID: {user_data.fieldOfficerId}")
-        if getattr(user_data, "constituencyId", None):
-            body_lines.append(f"Constituency ID: {user_data.constituencyId}")
-        if getattr(user_data, "assignedArea", None):
-            body_lines.append(f"Assigned Area: {user_data.assignedArea}")
-        if getattr(user_data, "managerId", None) and user_data.role != "CONSTITUENCY_MANAGER":
-            body_lines.append(f"Manager ID: {user_data.managerId}")
-        body_lines.extend([
-            "",
-            "Use the password above to log in.",
-            "If you did not request this account, please contact your N2N administrator.",
-            "",
-            "Best regards,",
-            "N2N Team",
-        ])
-        email_body = "\n".join(body_lines)
-        email_sent = send_email(user_data.email, subject, email_body)
-        if not email_sent:
-            logger.warning(f"[REGISTER] Failed to send registration email to {user_data.email}")
-
-        # Create token for newly registered user
-        token = TokenManager.create_token(user_id, user_data.role)
-        
-        # Return simple response with token
-        return {
-            "accessToken": token,
-            "user": {
-                "id": str(user_id),
-                "email": user_data.email,
-                "fullName": user_data.fullName,
-                "role": user_data.role
-            },
-            "emailSent": email_sent
-        }
-    except HTTPException as he:
-        logger.error(f"[REGISTER] HTTP Exception: {he.detail}")
-        raise
-    except Exception as e:
-        logger.error(f"[REGISTER] Unexpected error: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Registration failed")
 def _ensure_unique_slug(master_db, base_slug: str) -> str:
     slug = base_slug
     n    = 2
@@ -818,22 +746,6 @@ async def login_compat(request: Request, login_data: UserLoginRequest):
     result = AuthService.login(login_data)
     if not result:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    return result
-
-
-@compat_router.post("/login-admin", response_model=TokenResponse, include_in_schema=False)
-@limiter.limit("10/minute")
-async def login_admin_compat(request: Request, login_data: UserLoginRequest):
-    try:
-        result = AuthService.login(login_data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
-    if not result:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    allowed_roles = {"ADMIN", "REPRESENTATIVE", "STAFF", "CONSTITUENCY_MANAGER",
-                     "FIELD_OFFICER", "MANAGER"}
-    if result.user and result.user.role not in allowed_roles:
-        raise HTTPException(status_code=403, detail="Citizens must use OTP login")
     return result
 
 
