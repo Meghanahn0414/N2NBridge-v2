@@ -16,10 +16,10 @@ import { API_BASE } from "../config";
 // wired to any backend filter/routing; the OTP login flow below is identical
 // no matter which one (or none) is selected.
 type RepCategory = "councillor" | "mla" | "mp";
-const REP_CATEGORIES: { key: RepCategory; icon: string; label: string }[] = [
-  { key: "councillor", icon: "👥", label: "Councillor" },
-  { key: "mla",        icon: "🖋️", label: "MLA" },
-  { key: "mp",         icon: "🏛️", label: "MP" },
+const REP_CATEGORIES: { key: RepCategory; icon: string; label: string; labelKey: string }[] = [
+  { key: "councillor", icon: "👥", label: "Councillor", labelKey: "auth.catCouncillor" },
+  { key: "mla",        icon: "🖋️", label: "MLA",        labelKey: "auth.catMla" },
+  { key: "mp",         icon: "🏛️", label: "MP",         labelKey: "auth.catMp" },
 ];
 
 const ROLE_ROUTES: Record<string, string> = {
@@ -101,7 +101,7 @@ export default function LoginScreen() {
   // ── Send OTP ──
   async function handleSendOtp() {
     if (!value.trim()) {
-      Alert.alert("Error", method === "phone" ? "Enter your phone number" : "Enter your email");
+      Alert.alert(tr('common.error'), method === "phone" ? tr('auth.errEnterPhone') : tr('auth.errEnterEmail'));
       return;
     }
     setLoading(true);
@@ -112,7 +112,7 @@ export default function LoginScreen() {
       });
       setStep("otp");
     } catch (err: any) {
-      Alert.alert("Error", err?.response?.data?.detail ?? "Failed to send OTP. Try again.");
+      Alert.alert(tr('common.error'), err?.response?.data?.detail ?? tr('auth.errSendOtpFailed'));
     } finally {
       setLoading(false);
     }
@@ -120,7 +120,7 @@ export default function LoginScreen() {
 
   // ── Verify OTP ──
   async function handleVerifyOtp() {
-    if (!otp.trim()) { Alert.alert("Error", "Enter the OTP"); return; }
+    if (!otp.trim()) { Alert.alert(tr('common.error'), tr('auth.errEnterOtp')); return; }
     setLoading(true);
     try {
       const { data } = await axios.post(`${API_BASE}/api/auth/verify-otp`, {
@@ -184,7 +184,7 @@ export default function LoginScreen() {
         router.replace((ROLE_ROUTES[role] ?? "/citizen/") as any);
       }
     } catch (err: any) {
-      Alert.alert("Verification Failed", err?.response?.data?.detail ?? "Invalid or expired OTP.");
+      Alert.alert(tr('auth.verificationFailed'), err?.response?.data?.detail ?? tr('auth.errInvalidOtp'));
     } finally {
       setLoading(false);
     }
@@ -251,11 +251,11 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <Text style={s.welcome}>
-          {step === "input" ? "Raise it with your representative" : tr('auth.enterOtp')}
+          {step === "input" ? tr('auth.welcomeHeading') : tr('auth.enterOtp')}
         </Text>
         <Text style={s.sub}>
           {step === "input"
-            ? "Sign in to file grievances directly with your Councillor, MLA or MP — and track every response."
+            ? tr('auth.welcomeSubtitle')
             : `${tr('auth.otpSent')} ${value}. ${tr('auth.enterItBelow')}`}
         </Text>
 
@@ -274,7 +274,7 @@ export default function LoginScreen() {
                     activeOpacity={0.8}
                   >
                     <Text style={s.categoryIcon}>{cat.icon}</Text>
-                    <Text style={[s.categoryLabel, active && s.categoryLabelActive]}>{cat.label}</Text>
+                    <Text style={[s.categoryLabel, active && s.categoryLabelActive]}>{tr(cat.labelKey)}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -335,7 +335,7 @@ export default function LoginScreen() {
 
             <View style={s.verifiedRow}>
               <Text style={s.verifiedIcon}>🛡️</Text>
-              <Text style={s.verifiedText}>Verified by your constituency record</Text>
+              <Text style={s.verifiedText}>{tr('auth.verifiedByConstituency')}</Text>
             </View>
           </>
         )}

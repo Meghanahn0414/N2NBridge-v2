@@ -226,6 +226,12 @@
   "auth": {
     "welcomeBack": "Welcome back",
     "signIn": "Sign in to pick up where you left off.",
+    "welcomeHeading": "Raise it with your representative",
+    "welcomeSubtitle": "Sign in to file grievances directly with your Councillor, MLA or MP — and track every response.",
+    "catCouncillor": "Councillor",
+    "catMla": "MLA",
+    "catMp": "MP",
+    "verifiedByConstituency": "Verified by your constituency record",
     "phone": "Phone",
     "email": "Email",
     "phoneNumber": "Phone Number",
@@ -241,7 +247,13 @@
     "createAccount": "Create account",
     "verifying": "Verifying...",
     "sending": "Sending...",
-    "signInBtn": "Sign in"
+    "signInBtn": "Sign in",
+    "errEnterPhone": "Enter your phone number",
+    "errEnterEmail": "Enter your email",
+    "errSendOtpFailed": "Failed to send OTP. Try again.",
+    "errEnterOtp": "Enter the OTP",
+    "errInvalidOtp": "Invalid or expired OTP.",
+    "verificationFailed": "Verification Failed"
   },
   "sos": {
     "title": "Emergency SOS",

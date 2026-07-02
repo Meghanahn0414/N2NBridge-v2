@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "N2N",
-    "slug": "MobileApp",
+    "slug": "N2N",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/n2n-logo-icon.png",
@@ -54,7 +54,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "efb54fc4-129b-4475-b157-f479c8413698"
+        "projectId": "9ce74aef-9b2e-476f-9b2c-a3354acaa35b"
       }
     },
     "owner": "fatimakonnur1234567"

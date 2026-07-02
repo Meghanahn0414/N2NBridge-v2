@@ -18,19 +18,19 @@ export const API_BASE =
   (() => {
     // Native Android/iOS: window.location is undefined → skip straight to Render
     if (Platform.OS !== "web")
-      return "https://testing-repository-grevienace-1.onrender.com";
+      return "https://n2nbridge-v2.onrender.com";
     const { hostname } = window.location;
     // Any localhost/loopback access → local backend directly (port-agnostic)
     if (hostname === "localhost" || hostname === "127.0.0.1")
       return "http://localhost:8000";
     // LAN IP, Render, or any other host → Render cloud
-    return "https://testing-repository-grevienace-1.onrender.com";
+    return "https://n2nbridge-v2.onrender.com";
   })();
 
 // Frontend web app URL (used for WebView for admin/MLA/field/manager roles)
 export const WEB_APP_URL =
   process.env.EXPO_PUBLIC_WEB_URL?.replace(/\/$/, "") ||
-  "https://testing-repository-grevienace-1.onrender.com";
+  "https://n2nbridge-v2.onrender.com";
 
 // Maps each role to its web app route
 export const ROLE_WEB_ROUTES: Record<string, string> = {
