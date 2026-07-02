@@ -33,6 +33,7 @@ from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
+from mla.sentiment_service import _score_grievance, flush_sentiment_cache
 from pydantic import BaseModel, Field
 from utils.response import success_response
 from utils.tenant import get_tenant_db, require_auth
@@ -300,12 +301,28 @@ async def submit_feedback(grievance_id: str, body: FeedbackCreate, db=Depends(ge
         "created_at":    datetime.now(timezone.utc),
     }
     db.feedback.insert_one(doc)
-    # Store on grievance too for quick access
+    feedback_field = {"rating": doc["rating"], "comments": doc["comment"]}
+
+    # Recompute this grievance's sentiment score now that a rating exists.
+    # _ensure_sentiment_scores() (mla/sentiment_service.py) only scores
+    # grievances that DON'T already have an aiAnalysis.sentimentScore — most
+    # grievances get auto-scored from their description text alone the first
+    # time any MLA dashboard loads, long before the citizen ever rates them.
+    # Without this, a citizen's star rating submitted afterward was silently
+    # ignored forever, so the Popularity/Mood dashboards kept showing a
+    # rated, resolved grievance as "Neutral" even after a 5-star rating.
+    new_score = _score_grievance(g.get("description", ""), feedback_field, doc["rating"])
     db.grievances.update_one(
         {"_id": _oid(grievance_id)},
-        {"$set": {"feedback": {"rating": doc["rating"], "comments": doc["comment"]},
-                  "updated_at": datetime.now(timezone.utc)}},
+        {"$set": {
+            "feedback": feedback_field,
+            "aiAnalysis.sentimentScore": new_score,
+            "aiAnalysis.analyzedAt": datetime.now(timezone.utc),
+            "aiAnalysis.ratingIncorporated": True,
+            "updated_at": datetime.now(timezone.utc),
+        }},
     )
+    flush_sentiment_cache()  # drop cached MLA dashboard results so this shows up immediately
     return success_response(None, "Feedback submitted")
 
 

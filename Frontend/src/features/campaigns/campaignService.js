@@ -8,8 +8,16 @@ export async function fetchCampaigns(page = 1, perPage = 100, filters = {}) {
     if (filters.status && filters.status !== "ALL") {
       params.status = filters.status;
     }
-    const response = await api.get(CAMPAIGN_ENDPOINT, { params });
-    return Array.isArray(response.data) ? response.data : response.data?.data || [];
+    const response = await api.get(`${CAMPAIGN_ENDPOINT}/`, { params });
+    // list_campaigns returns {success, data: {items, total, page, per_page}}.
+    // This used to unwrap to the paginated object itself (truthy, so the
+    // `|| []` fallback never kicked in) instead of its .items array, which
+    // meant campaigns.length / campaigns.filter(...) in the callers silently
+    // got undefined/threw. Handle both the paginated envelope and a bare array.
+    const payload = response.data?.data;
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.items)) return payload.items;
+    return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     console.error("Error fetching campaigns:", error);
     throw error;
@@ -28,7 +36,7 @@ export async function fetchCampaignById(campaignId) {
 
 export async function createCampaign(campaignData) {
   try {
-    const response = await api.post(CAMPAIGN_ENDPOINT, campaignData);
+    const response = await api.post(`${CAMPAIGN_ENDPOINT}/`, campaignData);
     return response.data;
   } catch (error) {
     console.error("Error creating campaign:", error);

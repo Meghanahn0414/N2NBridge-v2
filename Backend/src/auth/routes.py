@@ -111,7 +111,13 @@ async def login_admin(request: Request, login_data: UserLoginRequest):
             detail="Invalid email or password"
         )
 
-    allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER"]
+    # Field Officer / Manager accounts authenticate with the literal backend
+    # role "STAFF" (see AuthService.login's tenant_db.staff fallback) — the
+    # frontend only translates that to FIELD_OFFICER/CONSTITUENCY_MANAGER
+    # client-side, for routing, after login succeeds. Without "STAFF" here,
+    # every Field Officer/Manager login was rejected with 403 before ever
+    # reaching that translation.
+    allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER", "STAFF"]
     user_role = result.user.role if result.user else None
     if user_role not in allowed_roles:
         raise HTTPException(

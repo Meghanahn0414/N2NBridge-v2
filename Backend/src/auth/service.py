@@ -42,33 +42,45 @@ class AuthService:
             # Fetch user from the tenant DB. Representatives live in
             # tenant_db.users (camelCase fields: fullName, passwordHash,
             # isDeleted). Field Officers/Managers registered via
-            # /api/staff/ live in a SEPARATE tenant_db.staff collection
-            # with different field names (name, password_hash, is_deleted)
-            # — without this fallback, a staff account could be created but
-            # could never actually log in (always "user not found").
+            # /api/staff/ live in tenant_db.staff (different field names:
+            # name, password_hash, is_deleted) with their OWN _id — the one
+            # every assignment (assigned_to on a grievance, workload
+            # lookups, etc.) actually stores. Checking .staff FIRST is
+            # deliberate: an older version of /api/staff/ also inserted a
+            # duplicate doc into .users (with a DIFFERENT auto-generated
+            # _id) "so JWT-based auth works" — but that meant login resolved
+            # to the .users copy's _id, which never matched what grievances
+            # were actually assigned to, so an officer's own dashboard/
+            # grievance queries always came back empty. Checking .staff
+            # first makes login resolve to the SAME _id assignment uses,
+            # self-healing that mismatch for any staff member who already
+            # has both docs, with no data migration needed. Representatives
+            # never have a .staff doc, so this is a no-op for them — they
+            # still resolve via the .users fallback below.
             tenant_db = MongoDatabase.get_tenant_db(db_name)
-            user = tenant_db.users.find_one({"email": login_data.email, "isDeleted": {"$ne": True}})
+            is_staff_account = False
+            staff_doc = tenant_db.staff.find_one({"email": login_data.email, "is_deleted": {"$ne": True}})
+            if staff_doc:
+                is_staff_account = True
+                user = {
+                    "_id":          staff_doc["_id"],
+                    "fullName":     staff_doc.get("name"),
+                    "mobile":       staff_doc.get("mobile"),
+                    "email":        staff_doc.get("email"),
+                    "role":         staff_doc.get("role") or "STAFF",
+                    "title":        staff_doc.get("designation"),
+                    "status":       staff_doc.get("status", "ACTIVE"),
+                    "passwordHash": staff_doc.get("password_hash", ""),
+                    "createdAt":    staff_doc.get("created_at"),
+                    "updatedAt":    staff_doc.get("updated_at"),
+                }
+            else:
+                user = tenant_db.users.find_one({"email": login_data.email, "isDeleted": {"$ne": True}})
             logger.info(
                 f"AuthService.login: email={login_data.email!r} db_name={db_name} "
-                f"found_in_users={'YES id=' + str(user['_id']) if user else 'no'}"
+                f"found_in_staff={is_staff_account} "
+                f"found={'YES id=' + str(user['_id']) if user else 'no'}"
             )
-            is_staff_account = False
-            if not user:
-                staff_doc = tenant_db.staff.find_one({"email": login_data.email, "is_deleted": {"$ne": True}})
-                if staff_doc:
-                    is_staff_account = True
-                    user = {
-                        "_id":          staff_doc["_id"],
-                        "fullName":     staff_doc.get("name"),
-                        "mobile":       staff_doc.get("mobile"),
-                        "email":        staff_doc.get("email"),
-                        "role":         staff_doc.get("role") or "STAFF",
-                        "title":        staff_doc.get("designation"),
-                        "status":       staff_doc.get("status", "ACTIVE"),
-                        "passwordHash": staff_doc.get("password_hash", ""),
-                        "createdAt":    staff_doc.get("created_at"),
-                        "updatedAt":    staff_doc.get("updated_at"),
-                    }
             if not user:
                 logger.warning(f"Login: user not found in tenant DB ({db_name}): {login_data.email}")
                 return None

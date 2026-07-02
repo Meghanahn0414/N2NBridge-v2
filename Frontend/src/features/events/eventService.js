@@ -14,7 +14,15 @@ export async function fetchEvents(page = 1, perPage = 100, filters = {}) {
       params.status = filters.status;
     }
     const response = await api.get(`${EVENT_ENDPOINT}/`, { params });
-    return Array.isArray(response.data) ? response.data : response.data?.data || [];
+    // list_events returns {success, data: {items, total, page, per_page}}.
+    // Previously this unwrapped to `data` (the paginated object) instead of
+    // `data.items` (the actual array), so callers doing eventsData.length /
+    // [...eventsData] would get undefined/throw. Handle both the paginated
+    // envelope and a bare array, for safety.
+    const payload = response.data?.data;
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.items)) return payload.items;
+    return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     throw extractError(error);
   }
@@ -31,7 +39,7 @@ export async function fetchEventById(eventId) {
 
 export async function createEvent(eventData) {
   try {
-    const response = await api.post(EVENT_ENDPOINT, eventData);
+    const response = await api.post(`${EVENT_ENDPOINT}/`, eventData);
     return response.data;
   } catch (error) {
     throw extractError(error);
