@@ -156,6 +156,10 @@ export default function CampaignDetailScreen() {
   const typeKey = campaign.type?.toUpperCase() ?? "DEFAULT";
   const icon    = TYPE_ICONS[typeKey] ?? TYPE_ICONS.DEFAULT;
   const color   = TYPE_COLORS[typeKey] ?? TYPE_COLORS.DEFAULT;
+  // Campaigns tagged type="Event" read as events to a citizen, even though
+  // they're stored as campaign documents — match the wording used on the
+  // Programs & Campaigns list and on real events (db.events) for consistency.
+  const isEventType = typeKey === "EVENT";
 
   return (
     <View style={s.root}>
@@ -301,7 +305,7 @@ export default function CampaignDetailScreen() {
                 color="#fff"
               />
               <Text style={s.joinBtnText}>
-                {joined ? tr("Joined") : tr("Join Campaign")}
+                {joined ? tr("Joined") : tr(isEventType ? "Join Event" : "Join Campaign")}
               </Text>
             </>
           )}

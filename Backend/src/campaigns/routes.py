@@ -197,19 +197,60 @@ async def citizen_count(db=Depends(get_tenant_db), user=Depends(require_auth)):
 
 @router.get("/audience-wards")
 async def audience_wards(db=Depends(get_tenant_db), user=Depends(require_auth)):
-    """Distinct wards/areas among THIS representative's own registered
-    citizens, used to populate the ward-targeting dropdown when composing a
-    campaign. Only citizens who actually registered under this MLA/MP/
-    Councillor's tenant show up here — get_tenant_db already scopes `db` to
-    this rep's own database, so there's no cross-tenant leakage."""
+    """Distinct audience segments among THIS representative's own registered
+    citizens, used to populate the audience-targeting dropdown when composing
+    a broadcast/campaign. Only citizens who actually registered under this
+    rep's tenant show up here — get_tenant_db already scopes `db` to this
+    rep's own database, so there's no cross-tenant leakage.
+
+    The segmentation field depends on the representative's own type (stored
+    on their `users` doc as `title`): an MP's citizens are grouped by
+    `parliamentary_name`, an MLA's by `assembly_name`, and a Councillor's by
+    ward (ward_id, falling back to ward_number/area_name for legacy data) —
+    each role only ever has one of those fields meaningfully populated on its
+    citizens, since that's what the citizen-registration flow copies down
+    from the rep's own record at signup time.
+    """
     if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
         raise HTTPException(status_code=403, detail="Unauthorized")
-    # A citizen's `ward_id` (a Councillor ward code, e.g. "WARD-012") is the
-    # field actually populated by the mobile app's profile form — via a
-    # standalone "Ward" picker available regardless of whether the citizen's
-    # primary rep_type is MLA/MP/COUNCILLOR (see edit-profile.tsx). Older/
-    # legacy data may instead have ward_number or area_name set directly, so
-    # fall back to those if ward_id is blank.
+
+    rep_doc = db.users.find_one({"role": "REPRESENTATIVE"}, {"title": 1})
+    rep_type = ((rep_doc or {}).get("title") or "").upper()
+
+    if rep_type == "MP":
+        group_field, scope, scope_label = "parliamentary_name", "parliamentary", "Parliamentary Constituency"
+    elif rep_type == "MLA":
+        group_field, scope, scope_label = "assembly_name", "assembly", "Assembly"
+    else:
+        group_field, scope, scope_label = None, "ward", "Ward"
+
+    logger.info(
+        f"audience_wards: tenant_db={db.name} rep_doc_found={rep_doc is not None} "
+        f"rep_type={rep_type!r} group_field={group_field!r} "
+        f"total_citizens={db.citizens.count_documents({'is_deleted': {'$ne': True}})}"
+    )
+
+    if group_field:
+        # MLA / MP — single flat string field, no code→name lookup needed.
+        sample = list(db.citizens.find({"is_deleted": {"$ne": True}}, {group_field: 1, "name": 1}).limit(5))
+        logger.info(f"audience_wards: sample citizens for {group_field!r}: {sample}")
+        pipeline = [
+            {"$match": {"is_deleted": {"$ne": True}, group_field: {"$nin": [None, ""]}}},
+            {"$group": {"_id": f"${group_field}", "count": {"$sum": 1}}},
+            {"$sort": {"_id": 1}},
+        ]
+        rows = list(db.citizens.aggregate(pipeline))
+        wards = [{"id": r["_id"], "name": r["_id"], "count": r["count"]} for r in rows]
+        return success_response(
+            {"wards": wards, "scope": scope, "scopeLabel": scope_label},
+            f"{scope_label} list retrieved",
+        )
+
+    # Councillor (or unknown rep type) — ward-based, as before. A citizen's
+    # `ward_id` (a Councillor ward code, e.g. "WARD-012") is the field
+    # actually populated by the mobile app's profile form. Older/legacy data
+    # may instead have ward_number or area_name set directly, so fall back to
+    # those if ward_id is blank.
     pipeline = [
         {"$match": {"is_deleted": {"$ne": True}}},
         {"$project": {"ward": {"$ifNull": [
@@ -225,12 +266,12 @@ async def audience_wards(db=Depends(get_tenant_db), user=Depends(require_auth)):
     ]
     rows = list(db.citizens.aggregate(pipeline))
     if not rows:
-        return success_response({"wards": []}, "Wards retrieved")
+        return success_response({"wards": [], "scope": scope, "scopeLabel": scope_label}, "Wards retrieved")
 
     # Resolve friendly display names: a citizen's `ward_id` is a Councillor
     # ward code, and only the Councillor's own representative record knows
-    # its human-readable `ward_name` — MLA/MP tenants have no local copy of
-    # that name, so look it up from the master `representatives` collection.
+    # its human-readable `ward_name` — look it up from the master
+    # `representatives` collection.
     ward_ids = [r["_id"] for r in rows]
     master = MongoDatabase.get_db()
     name_by_id = {
@@ -249,7 +290,7 @@ async def audience_wards(db=Depends(get_tenant_db), user=Depends(require_auth)):
         }
         for r in rows
     ]
-    return success_response({"wards": wards}, "Wards retrieved")
+    return success_response({"wards": wards, "scope": scope, "scopeLabel": scope_label}, "Wards retrieved")
 
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -360,7 +401,16 @@ async def launch_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depe
         cit_q: dict = {"is_deleted": {"$ne": True}}
         ward_id = c.get("wardId")
         if ward_id:
-            cit_q["$or"] = [{"ward_id": ward_id}, {"ward_number": ward_id}, {"area_name": ward_id}]
+            # `wardId` on the campaign holds whatever segment value the audience
+            # dropdown returned — a ward code/name for a Councillor, or an
+            # assembly/parliamentary constituency name for an MLA/MP. Only one
+            # of these fields is ever meaningfully populated on this tenant's
+            # citizens, so matching all of them is safe and avoids re-deriving
+            # rep_type here.
+            cit_q["$or"] = [
+                {"ward_id": ward_id}, {"ward_number": ward_id}, {"area_name": ward_id},
+                {"assembly_name": ward_id}, {"parliamentary_name": ward_id},
+            ]
         citizens = list(db.citizens.find(cit_q, {"_id": 1}))
         notifs = [{
             "user_id":      str(cit["_id"]),
@@ -391,7 +441,10 @@ async def notify_campaign(campaign_id: str, db=Depends(get_tenant_db), user=Depe
     cit_q: dict = {"is_deleted": {"$ne": True}}
     ward_id = c.get("wardId")
     if ward_id:
-        cit_q["$or"] = [{"ward_number": ward_id}, {"area_name": ward_id}]
+        cit_q["$or"] = [
+            {"ward_id": ward_id}, {"ward_number": ward_id}, {"area_name": ward_id},
+            {"assembly_name": ward_id}, {"parliamentary_name": ward_id},
+        ]
     citizens = list(db.citizens.find(cit_q, {"_id": 1}))
     notifs = [{
         "user_id":      str(cit["_id"]),

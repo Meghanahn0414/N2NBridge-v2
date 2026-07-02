@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { fetchCampaigns, createCampaign, uploadCampaignImage } from "../../../features/campaigns/campaignService";
+import { fetchEvents, createEvent, publishEvent } from "../../../features/events/eventService";
 import MIcon from "../../../components/MIcon";
 
 const MS = ({ children, style }) => <MIcon name={children} style={style} />;
@@ -43,6 +44,7 @@ export default function CommunicationCenter() {
   const [selectedAudience, setSelectedAudience] = useState(["All constituents"]);
   const [selectedWardId, setSelectedWardId] = useState("");   // "" = all constituents
   const [wards, setWards] = useState([]);
+  const [audienceScopeLabel, setAudienceScopeLabel] = useState("Ward");
   const [selectedChannels, setSelectedChannels] = useState(["Push", "In-app feed"]);
   const [segmentInputVisible, setSegmentInputVisible] = useState(false);
   const [segmentInputValue, setSegmentInputValue] = useState("");
@@ -50,6 +52,13 @@ export default function CommunicationCenter() {
   const [statusMessage, setStatusMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
+  // "Event"-category broadcasts are saved as real events (db.events, via
+  // /api/events/) instead of campaigns, so that they show up identically
+  // here and on the Event Management page — previously an "Event"-type
+  // broadcast was just a campaign document tagged type="Event", which never
+  // touched the events collection at all, so the two pages showed different
+  // things for what looked like the same concept.
+  const [events, setEvents] = useState([]);
   const [drafts, setDrafts] = useState([]);
   const [citizenCount, setCitizenCount] = useState(null);
   const [showDrafts, setShowDrafts] = useState(false);
@@ -158,6 +167,42 @@ export default function CommunicationCenter() {
     setStatusMessage("");
 
     try {
+      if (broadcastType === "event") {
+        // "Event"-category broadcasts are real events (db.events via
+        // /api/events/), not campaigns — so they show up identically on the
+        // Event Management page. create_event always saves as DRAFT server-
+        // side; publish it right away unless the user explicitly chose
+        // "Save Draft", mirroring how campaigns are marked ACTIVE/DRAFT here.
+        const created = await createEvent({
+          eventName: title.trim(),
+          description: message.trim(),
+          eventType: "Broadcast",
+          venue: location.trim() || "",
+          eventDate: dateTime ? new Date(dateTime).toISOString() : new Date().toISOString(),
+          // No capacity field in this composer (audience is targeted by
+          // ward/constituency, not a headcount) — use a high ceiling so
+          // registration is effectively unlimited.
+          capacity: 100000,
+          qrEnabled: true,
+          organizerId: "system",
+          wardId: selectedWardId || undefined,
+        });
+        const newEventId = created?.data?.id || created?.data?._id;
+        if (status === "ACTIVE" && newEventId) {
+          await publishEvent(newEventId);
+        }
+        clearForm();
+        await fetchEvents(1, 100).then((data) => setEvents(Array.isArray(data) ? data : []));
+        setStatusMessage(
+          status === "DRAFT"
+            ? "Draft saved successfully."
+            : isScheduled
+            ? "Event scheduled and published successfully."
+            : "Event published successfully."
+        );
+        return;
+      }
+
       await createCampaign({
         name: title.trim(),
         type: BROADCAST_TYPE_LABELS[broadcastType] || "Awareness",
@@ -196,17 +241,21 @@ export default function CommunicationCenter() {
       setLoading(true);
       setError(null);
       try {
-        const [campaignData, countRes, wardsRes] = await Promise.allSettled([
+        const [campaignData, countRes, wardsRes, eventData] = await Promise.allSettled([
           fetchCampaigns(1, 100),
           import("../../../shared/services/api").then(m => m.default.get("/api/campaigns/citizen-count")),
           import("../../../shared/services/api").then(m => m.default.get("/api/campaigns/audience-wards")),
+          fetchEvents(1, 100),
         ]);
         if (campaignData.status === "fulfilled") setCampaigns(Array.isArray(campaignData.value) ? campaignData.value : []);
         if (countRes.status === "fulfilled") setCitizenCount(countRes.value?.data?.count ?? null);
         if (wardsRes.status === "fulfilled") {
           const wd = wardsRes.value?.data?.wards || wardsRes.value?.data?.data || [];
           setWards(Array.isArray(wd) ? wd : []);
+          const label = wardsRes.value?.data?.scopeLabel;
+          if (label) setAudienceScopeLabel(label);
         }
+        if (eventData.status === "fulfilled") setEvents(Array.isArray(eventData.value) ? eventData.value : []);
       } catch (err) {
         setError(err?.response?.data?.message || err?.message || "Unable to load campaigns");
       } finally {
@@ -217,9 +266,34 @@ export default function CommunicationCenter() {
     loadCampaigns();
   }, []);
 
-  const publishedCampaigns = campaigns.filter((c) => c.status === "ACTIVE" || c.status === "COMPLETED");
-  const activeCampaigns = campaigns.filter((c) => c.status === "ACTIVE");
-  const scheduledCampaigns = campaigns.filter((campaign) => {
+  // Normalize a real event into the same shape the "Recently published" cards
+  // (and the reach/scheduled panels) already expect from a campaign, so an
+  // "Event"-category broadcast reads identically here whether it was created
+  // via this page or via Event Management.
+  const normalizedEvents = events.map((e) => ({
+    id: e.id || e._id,
+    name: e.eventName,
+    message: e.description,
+    type: "Event",
+    status: e.status === "PUBLISHED" || e.status === "ONGOING" ? "ACTIVE" : (e.status || "DRAFT"),
+    reach: e.registrationCount || 0,
+    engagement: null,
+    roi: null,
+    coverImage: undefined,
+    startDate: e.eventDate,
+    targetAudience: e.wardId ? [e.wardId] : ["All constituents"],
+  }));
+
+  const allBroadcasts = [...campaigns, ...normalizedEvents];
+
+  const publishedCampaigns = allBroadcasts.filter((c) => c.status === "ACTIVE" || c.status === "COMPLETED");
+  const activeCampaigns = allBroadcasts.filter((c) => c.status === "ACTIVE");
+  // Split out for the "This will reach" panel so events aren't lumped in
+  // under the word "campaigns" — they're a different collection with their
+  // own semantics (registrations/capacity), not just another campaign type.
+  const activeCampaignsOnly = campaigns.filter((c) => c.status === "ACTIVE").length;
+  const activeEventsOnly = normalizedEvents.filter((e) => e.status === "ACTIVE").length;
+  const scheduledCampaigns = allBroadcasts.filter((campaign) => {
     if (!campaign.startDate) return false;
     return new Date(campaign.startDate) > new Date();
   });
@@ -229,7 +303,7 @@ export default function CommunicationCenter() {
   const totalReach = sumReach > 0 ? sumReach : (activeCampaigns.length > 0 && citizenCount != null ? citizenCount : 0);
 
   const bestTimeToSend = (() => {
-    const times = campaigns
+    const times = allBroadcasts
       .map((campaign) => (campaign.startDate ? new Date(campaign.startDate) : null))
       .filter(Boolean);
 
@@ -501,7 +575,7 @@ export default function CommunicationCenter() {
                 setSelectedWardId(val);
                 if (val) {
                   const w = wards.find(w => (w._id || w.id) === val);
-                  setSelectedAudience([w?.name || "Ward residents"]);
+                  setSelectedAudience([w?.name || `${audienceScopeLabel} residents`]);
                 } else {
                   setSelectedAudience(["All constituents"]);
                 }
@@ -516,7 +590,7 @@ export default function CommunicationCenter() {
             {selectedWardId && (
               <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#2B5BD7", marginBottom: 12 }}>
                 <MS style={{ fontSize: 14, verticalAlign: "middle" }}>info</MS>
-                {" "}Notifications will only be sent to citizens registered in this ward.
+                {" "}Notifications will only be sent to citizens registered in this {audienceScopeLabel.toLowerCase()}.
               </div>
             )}
             <label style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C", display: "block", marginBottom: 10 }}>Delivery Channels</label>
@@ -685,7 +759,12 @@ export default function CommunicationCenter() {
               <span className="notranslate" translate="no" style={{ font: "400 46px 'Newsreader'", color: "#fff", lineHeight: .9 }}>{totalReach.toLocaleString()}</span>
               <span style={{ font: "500 14px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "rgba(255,255,255,.8)", marginBottom: 6 }}>residents</span>
             </div>
-            <div style={{ font: "500 12px 'Hanken Grotesk'", color: "rgba(255,255,255,.78)", margin: "8px 0 18px" }}>{activeCampaigns.length} active broadcast campaign{activeCampaigns.length === 1 ? "" : "s"}</div>
+            <div style={{ font: "500 12px 'Hanken Grotesk'", color: "rgba(255,255,255,.78)", margin: "8px 0 18px" }}>
+              {activeCampaignsOnly > 0 && `${activeCampaignsOnly} active campaign${activeCampaignsOnly === 1 ? "" : "s"}`}
+              {activeCampaignsOnly > 0 && activeEventsOnly > 0 && " · "}
+              {activeEventsOnly > 0 && `${activeEventsOnly} active event${activeEventsOnly === 1 ? "" : "s"}`}
+              {activeCampaignsOnly === 0 && activeEventsOnly === 0 && "No active broadcasts"}
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {channelCards.map((card, index) => {
                 const width = activeCampaigns.length ? Math.max(15, (card.value / activeCampaigns.length) * 100) : 15;

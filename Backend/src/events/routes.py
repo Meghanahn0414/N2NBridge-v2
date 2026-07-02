@@ -184,7 +184,13 @@ async def publish_event(event_id: str, db=Depends(get_tenant_db), user=Depends(r
         cit_q: dict = {"is_deleted": {"$ne": True}}
         ward_id = e.get("wardId")
         if ward_id:
-            cit_q["$or"] = [{"ward_number": ward_id}, {"ward_id": ward_id}, {"area_name": ward_id}]
+            # `wardId` may hold a Councillor ward code/name, or an MLA/MP's
+            # assembly/parliamentary constituency name — see the matching
+            # comment in campaigns/routes.py's launch_campaign.
+            cit_q["$or"] = [
+                {"ward_id": ward_id}, {"ward_number": ward_id}, {"area_name": ward_id},
+                {"assembly_name": ward_id}, {"parliamentary_name": ward_id},
+            ]
         citizens = list(db.citizens.find(cit_q, {"_id": 1}))
         event_name = e.get("eventName") or e.get("title", "")
         event_date = e.get("eventDate").isoformat() if e.get("eventDate") else e.get("date", "")
