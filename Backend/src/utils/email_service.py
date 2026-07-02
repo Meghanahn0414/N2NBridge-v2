@@ -65,6 +65,53 @@ def send_email(email: str, subject: str, body: str) -> bool:
         return False
 
 
+ROLE_DISPLAY_NAMES = {
+    "MLA": "MLA (Member of Legislative Assembly)",
+    "MP": "MP (Member of Parliament)",
+    "COUNCILLOR": "Councillor",
+    "ADMIN": "Admin",
+    "FIELD_OFFICER": "Field Officer",
+    "CONSTITUENCY_MANAGER": "Constituency Manager",
+    "STAFF": "Staff",
+}
+
+
+def send_welcome_email(email: str, name: str, role: str, password: str = None) -> bool:
+    """
+    Sent once, right after a new account is created, for every registration
+    path: representative self-registration (MLA/MP/Councillor), admin self-
+    registration, and Field Officer / Constituency Manager accounts created
+    on someone's behalf by a Rep or Admin.
+
+    `password` is only included for the two roles that don't set their own
+    password (Field Officer / Constituency Manager, created by someone
+    else) — MLA/MP/Councillor/Admin registrants typed their own password
+    during signup and already know it, so it's left out for them.
+    """
+    role_label = ROLE_DISPLAY_NAMES.get((role or "").upper(), role or "User")
+    subject = f"Welcome to N2N — Your {role_label} account is ready"
+
+    credentials_block = f"""
+Your login details:
+  Role:     {role_label}
+  Email:    {email}
+"""
+    if password:
+        credentials_block += f"  Password: {password}\n\nFor security, please log in and change your password as soon as possible.\n"
+
+    body = f"""
+Hello {name or ''},
+
+Your {role_label} account has been created on N2N.
+{credentials_block}
+If you didn't expect this email or believe it was sent in error, please contact your administrator.
+
+Best regards,
+N2N Team
+    """
+    return send_email(email, subject, body)
+
+
 def send_otp_via_email(email: str, otp: str) -> bool:
     """
     Send OTP via Email

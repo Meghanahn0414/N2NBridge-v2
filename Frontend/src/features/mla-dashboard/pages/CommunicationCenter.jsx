@@ -186,6 +186,10 @@ export default function CommunicationCenter() {
           qrEnabled: true,
           organizerId: "system",
           wardId: selectedWardId || undefined,
+          // Was previously dropped entirely for events — only the campaign
+          // branch below sent it — so selecting "Email" here had no effect;
+          // the event was published with no channels recorded at all.
+          channels: selectedChannels,
         });
         const newEventId = created?.data?.id || created?.data?._id;
         if (status === "ACTIVE" && newEventId) {

@@ -82,9 +82,20 @@ async def get_my_profile(db=Depends(get_tenant_db), user=Depends(require_auth)):
     doc = db.users.find_one({"_id": _oid(uid), "isDeleted": {"$ne": True}})
     if doc:
         return success_response(_doc(doc), "Profile retrieved")
-    staff_doc = db.staff.find_one({"_id": _oid(uid), "is_deleted": {"$ne": True}})
-    if staff_doc:
-        return success_response(_staff_as_user_doc(staff_doc), "Profile retrieved")
+
+    # Field Officers / Managers / PAs / Volunteers live in db.staff, not
+    # db.users — this endpoint was documented as working for "representative
+    # or staff" but only ever queried db.users, so every staff caller
+    # (e.g. the Field Officer's "My Profile" page) 404'd here even with a
+    # valid token. Fall back to db.staff and normalize field names to match
+    # what UserResponse/the frontend profile pages expect.
+    staff = db.staff.find_one({"_id": _oid(uid), "is_deleted": {"$ne": True}})
+    if staff:
+        out = _doc(staff)
+        out.setdefault("fullName", out.get("name"))
+        out.setdefault("createdAt", out.get("created_at"))
+        return success_response(out, "Profile retrieved")
+
     raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -308,10 +319,20 @@ async def upload_profile_photo(
         logger.error(f"Photo upload failed: {exc}")
         raise HTTPException(status_code=500, detail="Upload failed")
 
+    now = datetime.now(timezone.utc)
     result = db.users.update_one(
         {"_id": _oid(user_id)},
-        {"$set": {"profileImage": file_url, "updatedAt": datetime.now(timezone.utc)}},
+        {"$set": {"profileImage": file_url, "updatedAt": now}},
     )
+    if result.matched_count == 0:
+        # Staff (Field Officers / Managers / PAs / Volunteers) live in
+        # db.staff, not db.users — same class of bug as get_my_profile
+        # originally had. Fall back so a staff member's photo actually saves
+        # instead of 404ing even though the upload itself succeeded.
+        result = db.staff.update_one(
+            {"_id": _oid(user_id)},
+            {"$set": {"profileImage": file_url, "updated_at": now}},
+        )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     return success_response({"profileImage": file_url}, "Profile photo updated")

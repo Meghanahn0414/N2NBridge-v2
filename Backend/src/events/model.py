@@ -3,7 +3,7 @@ Event Model and Schemas
 """
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -32,6 +32,10 @@ class EventCreate(EventBase):
     """Event creation"""
     organizerId: str
     wardId: Optional[str] = None
+    # Delivery channels picked in the Broadcasts composer (Push / In-app feed
+    # / Email) — mirrors campaigns/model.py's CampaignCreate.channels, so the
+    # same "Delivery Channels" UI works identically for both broadcast types.
+    channels: Optional[List[str]] = []
 
 
 class EventUpdate(BaseModel):

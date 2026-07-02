@@ -20,6 +20,7 @@ from config.database import MongoDatabase
 from config.security import SecurityManager
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
+from utils.email_service import send_welcome_email
 from utils.response import success_response
 from utils.tenant import get_tenant_db, require_auth
 
@@ -31,6 +32,7 @@ class StaffCreate(BaseModel):
     password:    str
     designation: Optional[str] = Field("Staff", description="PA | Field Officer | Manager | Volunteer")
     role:        Optional[str] = "STAFF"
+    profileImage: Optional[str] = Field(None, description="Photo URL, uploaded up front during registration")
 
 class StaffUpdate(BaseModel):
     name:        Optional[str]      = None
@@ -39,6 +41,7 @@ class StaffUpdate(BaseModel):
     email:       Optional[EmailStr] = None
     status:      Optional[str]      = None
     password:    Optional[str]      = None
+    profileImage: Optional[str]     = None
 
 router = APIRouter(prefix="/api/staff", tags=["Staff"])
 logger = logging.getLogger(__name__)
@@ -115,6 +118,7 @@ async def add_staff(body: StaffCreate, db=Depends(get_tenant_db), user=Depends(r
         "email":        email,
         "password_hash": SecurityManager.hash_password(body.password),
         "role":         (body.role or "STAFF").upper(),
+        "profileImage": body.profileImage,
         "status":       "Active",
         "is_deleted":   False,
         "created_by":   user.get("user_id"),
@@ -147,6 +151,19 @@ async def add_staff(body: StaffCreate, db=Depends(get_tenant_db), user=Depends(r
         }},
         upsert=True,
     )
+
+    # Created by the representative on this person's behalf — they never
+    # typed this password themselves, so it needs to be emailed to them or
+    # they have no way to log in.
+    #
+    # `body.role` is the backend permission level, which is always "STAFF"
+    # regardless of job title — the actual title (Field Officer / Manager /
+    # PA / Volunteer) is `body.designation`, which is what should show up
+    # in the email, not the generic permission role.
+    try:
+        send_welcome_email(email, body.name, body.designation or "Staff", password=body.password)
+    except Exception as e:
+        logger.warning(f"Welcome email failed for staff {email}: {e}")
 
     doc["_id"] = result.inserted_id
     return success_response(_doc(doc), "Staff added successfully")

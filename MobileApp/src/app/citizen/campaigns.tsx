@@ -115,23 +115,38 @@ export default function Campaigns() {
       let eventItems: Campaign[] = [];
       if (eventsRes.status === 'fulfilled') {
         const raw = extractItems(eventsRes.value.data, ['events']);
-        eventItems = raw
+        const upcoming = raw.filter((e: any) => {
           // Same "still upcoming" filter as the dedicated Events screen —
           // a published event that already happened isn't worth showing here.
-          .filter((e: any) => {
-            const eventDate = e.eventDate || e.event_date || e.date;
-            return !eventDate || new Date(eventDate) >= today;
-          })
-          .map((e: any) => ({
-            id: e._id || e.id,
-            name: e.eventName || e.event_name || e.title || e.name,
-            description: e.description,
-            type: e.eventType || e.type,
-            status: e.status,
-            startDate: e.eventDate || e.event_date || e.date,
-            location: e.venue || e.location,
-            kind: 'event' as const,
-          }));
+          const eventDate = e.eventDate || e.event_date || e.date;
+          return !eventDate || new Date(eventDate) >= today;
+        });
+        eventItems = upcoming.map((e: any) => ({
+          id: e._id || e.id,
+          name: e.eventName || e.event_name || e.title || e.name,
+          description: e.description,
+          type: e.eventType || e.type,
+          status: e.status,
+          startDate: e.eventDate || e.event_date || e.date,
+          location: e.venue || e.location,
+          kind: 'event' as const,
+        }));
+
+        // The backend now tells us, per event, whether this citizen already
+        // registered — seed local state from that instead of only relying
+        // on the in-memory Set from a handleRegister call in this session,
+        // which reset to empty on every remount (navigating away and back)
+        // even though the registration was still there server-side.
+        const alreadyRegistered = upcoming
+          .filter((e: any) => e.registered)
+          .map((e: any) => e._id || e.id);
+        if (alreadyRegistered.length) {
+          setRegisteredIds((prev) => {
+            const next = new Set(prev);
+            alreadyRegistered.forEach((id: string) => next.add(id));
+            return next;
+          });
+        }
       }
 
       console.log('[campaigns.tsx] final eventItems count:', eventItems.length, 'campaignItems count:', campaignItems.length);

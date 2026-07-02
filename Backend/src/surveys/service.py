@@ -1,12 +1,20 @@
 """
-Survey Service
+Survey Service — Multi-Tenant
+
+Every method takes the caller's own tenant `db` (resolved by
+utils.tenant.get_tenant_db from their JWT / X-DB-NAME) instead of reaching
+for the shared master database. Previously this service always used
+MongoDatabase.get_db() (crm_master) for surveys/survey_responses, so a
+survey created by one representative's Admin was stored in a single global
+collection and visible to every citizen across every tenant, regardless of
+who they're actually registered under — see surveys/routes.py for the
+matching fix (get_tenant_db/require_auth instead of get_current_user).
 """
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
 from bson import ObjectId
-from config.database import MongoDatabase
 from utils.helper import Helper
 
 logger = logging.getLogger(__name__)
@@ -19,8 +27,7 @@ class SurveyService:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def create_survey(data: dict, created_by: str) -> str:
-        db = MongoDatabase.get_db()
+    def create_survey(db, data: dict, created_by: str) -> str:
         data["status"] = "ACTIVE"
         data["createdBy"] = created_by
         data["responseCount"] = 0
@@ -29,8 +36,7 @@ class SurveyService:
         return str(result.inserted_id)
 
     @staticmethod
-    def list_surveys(status: Optional[str] = None) -> list:
-        db = MongoDatabase.get_db()
+    def list_surveys(db, status: Optional[str] = None) -> list:
         query = {"isDeleted": False}
         if status:
             query["status"] = status
@@ -42,8 +48,7 @@ class SurveyService:
         return surveys
 
     @staticmethod
-    def get_survey(survey_id: str) -> Optional[dict]:
-        db = MongoDatabase.get_db()
+    def get_survey(db, survey_id: str) -> Optional[dict]:
         try:
             s = db.surveys.find_one({"_id": ObjectId(survey_id), "isDeleted": False})
             if s:
@@ -55,8 +60,7 @@ class SurveyService:
             return None
 
     @staticmethod
-    def update_survey(survey_id: str, data: dict, updated_by: str) -> bool:
-        db = MongoDatabase.get_db()
+    def update_survey(db, survey_id: str, data: dict, updated_by: str) -> bool:
         data["updatedAt"] = datetime.utcnow()
         data["updatedBy"] = updated_by
         result = db.surveys.update_one(
@@ -66,8 +70,7 @@ class SurveyService:
         return result.modified_count > 0
 
     @staticmethod
-    def delete_survey(survey_id: str, deleted_by: str) -> bool:
-        db = MongoDatabase.get_db()
+    def delete_survey(db, survey_id: str, deleted_by: str) -> bool:
         result = db.surveys.update_one(
             {"_id": ObjectId(survey_id)},
             {"$set": {"isDeleted": True, "updatedAt": datetime.utcnow(), "updatedBy": deleted_by}}
@@ -79,24 +82,23 @@ class SurveyService:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def already_responded(survey_id: str, citizen_id: str) -> bool:
-        db = MongoDatabase.get_db()
+    def already_responded(db, survey_id: str, citizen_id: str) -> bool:
         return db.survey_responses.find_one(
             {"surveyId": survey_id, "citizenId": citizen_id}
         ) is not None
 
     @staticmethod
-    def submit_response(survey_id: str, citizen_id: str, answers: list) -> str:
-        db = MongoDatabase.get_db()
-
-        # Pull age and wardId from citizen profile for demographic split
+    def submit_response(db, survey_id: str, citizen_id: str, answers: list) -> str:
+        # Pull age and ward from the citizen's own profile for demographic
+        # split. Citizens live in `db.citizens` (never `db.users`, which is
+        # representative + staff only), keyed by `ward_id` — not `wardId`.
         age = None
         ward_id = None
         try:
-            user = db.users.find_one({"_id": ObjectId(citizen_id)}, {"age": 1, "wardId": 1})
-            if user:
-                age = user.get("age")
-                ward_id = user.get("wardId")
+            citizen = db.citizens.find_one({"_id": ObjectId(citizen_id)}, {"age": 1, "ward_id": 1})
+            if citizen:
+                age = citizen.get("age")
+                ward_id = citizen.get("ward_id")
         except Exception:
             pass
 
@@ -116,8 +118,7 @@ class SurveyService:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def get_analytics(days: int = 90) -> dict:
-        db = MongoDatabase.get_db()
+    def get_analytics(db, days: int = 90) -> dict:
         since = datetime.utcnow() - timedelta(days=days)
 
         responses = list(db.survey_responses.find({"submittedAt": {"$gte": since}}))
