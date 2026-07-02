@@ -261,10 +261,11 @@ export default function ConstituentsDashboard() {
   };
 
   /* ── Derived values ──
-     verified/engaged/advocates/wards aren't computed by the backend at all
+     verified/engaged/advocates aren't computed by the backend at all
      (GET /api/campaigns/constituents/stats only returns total/new30d/
-     newPct/active30d/genders/growth/topCitizens) — those cards stay at
-     their fallback until that aggregation is actually built server-side. */
+     newPct/active30d/genders/growth/topCitizens/residentGroups) — those
+     cards stay at their fallback until that aggregation is actually built
+     server-side. */
   const total     = stats?.total     ?? 0;
   const verified  = stats?.verified  ?? 0;
   const active30d = stats?.active30d ?? 0;
@@ -273,7 +274,7 @@ export default function ConstituentsDashboard() {
   const engaged   = stats?.engaged   ?? 0;
   const advocates = stats?.advocates ?? 0;
   const growth    = stats?.growth    ?? [];
-  const wards     = stats?.wards     ?? [];
+  const residentGroups = stats?.residentGroups ?? [];
   // Backend calls this topCitizens, not topResidents — same shape
   // (name/initials/mobile/complaints), just a naming mismatch.
   const topResidents = stats?.topCitizens ?? stats?.topResidents ?? [];
@@ -282,14 +283,20 @@ export default function ConstituentsDashboard() {
   const { line, area, dots } = buildGrowthPath(growth);
   const labels = growthLabels(growth);
 
-  /* Derive segments from ward data — top wards become "segments" */
-  const wardTotal = wards.reduce((s, w) => s + w.count, 0);
-  const segments = wards.length > 0
-    ? wards.slice(0, 5).map((w, i) => ({
-        icon: ["location_on", "place", "location_on", "place", "location_on"][i] || "location_on",
-        label: w.ward,
-        count: w.count,
-        engPct: pct(w.count, wardTotal > 0 ? wardTotal : 1),
+  /* Derive segments from residentGroups — residents grouped by the kind of
+     grievance category they've reported (Road, Water, Electricity, etc.).
+     This used to try grouping by ward instead, but nothing on the backend
+     ever populated a "wards" field, so this card always fell back to a
+     hardcoded, permanently-0 "Families & parents"/"Long-term residents"
+     placeholder regardless of real data. Grievance category is always
+     populated (ward is sparse, especially for MLA/MP citizens), so it's a
+     reliable real segmentation axis. */
+  const segments = residentGroups.length > 0
+    ? residentGroups.slice(0, 5).map((g, i) => ({
+        icon: g.icon || "group",
+        label: g.label,
+        count: g.count,
+        engPct: g.pct,
         color: i < 3 ? "#2B5BD7" : "#C9871F",
         bg:    i < 3 ? "#E7EEFF" : "#FCF1E0",
         iconColor: i < 3 ? "#2B5BD7" : "#C9871F",
@@ -389,7 +396,7 @@ export default function ConstituentsDashboard() {
               { metric: 'New (30 days)',    value: fmt(new30d) },
               { metric: 'Engaged',          value: fmt(engaged) },
               { metric: 'Advocates',        value: fmt(advocates) },
-              ...wards.slice(0, 10).map(w => ({ metric: `Ward: ${w.ward}`, value: String(w.count) })),
+              ...residentGroups.slice(0, 10).map(g => ({ metric: g.label, value: String(g.count) })),
             ]}
             columns={[
               { key: 'metric', label: 'Metric' },
@@ -527,14 +534,14 @@ export default function ConstituentsDashboard() {
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
-                <InfoTip text="Resident Groups shows the number of citizens registered in each ward and their share of the total base.">
+                <InfoTip text="Resident Groups shows how many of your citizens have reported each kind of grievance, and their share of the total base.">
                   <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Resident Groups</div>
                 </InfoTip>
                 <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>
-                  {wards.length > 0 ? "Residents grouped by ward" : "Who makes up your base"}
+                  {residentGroups.length > 0 ? "Residents grouped by grievance category" : "Who makes up your base"}
                 </div>
               </div>
-              <InfoTip text="Size is resident count; share is the percentage of total residents represented by each ward.">
+              <InfoTip text="Size is resident count; share is the percentage of total residents in each group.">
                 <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#9AA3B5" }}>Size · Share</span>
               </InfoTip>
             </div>

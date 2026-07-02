@@ -34,11 +34,30 @@ type ComplaintDetail = {
   photos?: string[];
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  NEW: "#3B82F6", OPEN: "#3B82F6",
-  ASSIGNED: "#F59E0B", IN_PROGRESS: "#F59E0B", ON_HOLD: "#F59E0B",
-  RESOLVED: "#10B981", CLOSED: "#10B981",
+// Backend's real status vocabulary is Title Case with spaces — "Open",
+// "Assigned", "In Progress", "Resolved", "Closed", "Rejected" — NOT the
+// ALL_CAPS_UNDERSCORE convention this screen used to assume. Matching keyed
+// off `.toUpperCase()` alone (e.g. "In Progress" → "IN PROGRESS") never hit
+// "IN_PROGRESS" in the old lookup tables, so every timeline dot rendered as
+// pending/grey no matter the real status. Everything below now compares
+// case-insensitively against the actual values instead.
+const STATUS_COLOR_MAP: Record<string, string> = {
+  open: "#3B82F6",
+  assigned: "#F59E0B",
+  "in progress": "#F59E0B",
+  "on hold": "#F59E0B",
+  resolved: "#10B981",
+  closed: "#10B981",
+  rejected: "#EF4444",
 };
+
+function normStatus(s?: string | null): string {
+  return (s || "Open").trim();
+}
+
+function getStatusColor(status?: string | null): string {
+  return STATUS_COLOR_MAP[normStatus(status).toLowerCase()] ?? "#64748B";
+}
 
 // STATUS_LABEL and TIMELINE_LABEL will be computed inside the component using tr()
 const toAbsoluteUrl = (url: string | null | undefined): string | null => {
@@ -69,20 +88,21 @@ function extractPhotos(g: any): string[] {
 }
 
 const TRACKER_STEP_KEYS = [
-  { status: "NEW",         labelKey: "complaints.complaintSubmitted", noteKey: "complaints.receivedNote" },
-  { status: "ASSIGNED",    labelKey: "complaints.assigned",           noteKey: "complaints.assignedNote" },
-  { status: "IN_PROGRESS", labelKey: "complaints.inProgress",        noteKey: "complaints.investigatingNote" },
-  { status: "RESOLVED",    labelKey: "complaints.resolved",          noteKey: "complaints.resolvedNote" },
+  { status: "Open",        labelKey: "complaints.complaintSubmitted", noteKey: "complaints.receivedNote" },
+  { status: "Assigned",    labelKey: "complaints.assigned",           noteKey: "complaints.assignedNote" },
+  { status: "In Progress", labelKey: "complaints.inProgress",         noteKey: "complaints.investigatingNote" },
+  { status: "Resolved",    labelKey: "complaints.resolved",           noteKey: "complaints.resolvedNote" },
 ];
 
-const STATUS_ORDER = ["NEW", "OPEN", "ASSIGNED", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "CLOSED"];
+const STATUS_ORDER = ["Open", "Assigned", "In Progress", "Resolved", "Closed"];
 
-function statusRank(s: string) {
-  return STATUS_ORDER.indexOf((s || "NEW").toUpperCase());
+function statusRank(s?: string | null) {
+  const norm = normStatus(s).toLowerCase();
+  return STATUS_ORDER.findIndex((x) => x.toLowerCase() === norm);
 }
 
 function buildTimeline(g: any, tr: (key: string) => string): TimelineItem[] {
-  const currentRank = statusRank(g.status || "NEW");
+  const currentRank = statusRank(g.status);
 
   const historyMap: Record<string, any> = {};
   const rawHistory: any[] = Array.isArray(g.history)
@@ -91,17 +111,20 @@ function buildTimeline(g: any, tr: (key: string) => string): TimelineItem[] {
     ? g.statusHistory
     : [];
   for (const h of rawHistory) {
-    const key = (h.newStatus || h.status || "").toUpperCase();
+    const key = normStatus(h.newStatus || h.status).toLowerCase();
     if (key) historyMap[key] = h;
   }
 
   return TRACKER_STEP_KEYS.map((step) => {
     const rank = statusRank(step.status);
-    const isDone = rank <= currentRank;
-    const h = historyMap[step.status];
+    // "Closed" reuses "Resolved"'s rank position in STATUS_ORDER logic below
+    // via currentRank already accounting for it — a currentRank of -1 (status
+    // not recognized at all, e.g. "Rejected") should never mark a step done.
+    const isDone = rank !== -1 && currentRank !== -1 && rank <= currentRank;
+    const h = historyMap[step.status.toLowerCase()];
     return {
       status: isDone ? step.status : "PENDING",
-      timestamp: step.status === "NEW"
+      timestamp: step.status === "Open"
         ? (g.createdAt || g.created_at)
         : h?.createdAt || h?.updatedAt || null,
       note: h?.remarks || h?.message || tr(step.noteKey as any),
@@ -146,17 +169,18 @@ export default function ComplaintDetailScreen() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const getStatusLabel = (statusKey: string): string => {
+  const getStatusLabel = (status?: string | null): string => {
     const map: Record<string, string> = {
-      NEW: tr('complaints.open'),
-      OPEN: tr('complaints.open'),
-      ASSIGNED: tr('complaints.assigned'),
-      IN_PROGRESS: tr('complaints.inProgress'),
-      ON_HOLD: tr('complaints.onHold'),
-      RESOLVED: tr('complaints.resolved'),
-      CLOSED: tr('complaints.closed'),
+      open: tr('complaints.open'),
+      assigned: tr('complaints.assigned'),
+      "in progress": tr('complaints.inProgress'),
+      "on hold": tr('complaints.onHold'),
+      resolved: tr('complaints.resolved'),
+      closed: tr('complaints.closed'),
+      rejected: tr('complaints.rejected'),
     };
-    return map[statusKey] ?? statusKey.replace(/_/g, " ");
+    const norm = normStatus(status);
+    return map[norm.toLowerCase()] ?? norm;
   };
 
   const formatDate = (dt?: string) => {
@@ -167,7 +191,7 @@ export default function ComplaintDetailScreen() {
   const handleShare = async () => {
     const refNum = complaint?.complaintNumber || `RD-${(complaint?.id || "").slice(-6).toUpperCase()}`;
     const title  = complaint?.title || complaint?.description || tr('complaintDetail.defaultTitle');
-    const status = getStatusLabel((complaint?.status || "NEW").toUpperCase());
+    const status = getStatusLabel(complaint?.status);
     try {
       await Share.share({
         title: `${tr('complaintDetail.defaultTitle')} #${refNum}`,
@@ -203,13 +227,13 @@ export default function ComplaintDetailScreen() {
     );
   }
 
-  const statusKey  = (complaint.status || "NEW").toUpperCase();
-  const sc         = STATUS_COLOR[statusKey] ?? "#64748B";
+  const statusKey  = normStatus(complaint.status);
+  const sc         = getStatusColor(statusKey);
   const statusText = getStatusLabel(statusKey);
 
   const timeline: TimelineItem[] = complaint.timeline?.length
     ? complaint.timeline
-    : [{ status: complaint.status || "NEW", timestamp: complaint.createdAt }];
+    : [{ status: statusKey, timestamp: complaint.createdAt }];
 
   const metaParts = [
     complaint.address,
@@ -298,7 +322,7 @@ export default function ComplaintDetailScreen() {
         <View style={s.timelineBlock}>
           {timeline.map((item, i) => {
             const isPending = item.status === "PENDING";
-            const tColor    = isPending ? "#CBD5E1" : (STATUS_COLOR[item.status] ?? "#3B82F6");
+            const tColor    = isPending ? "#CBD5E1" : getStatusColor(item.status);
             const isLast    = i === timeline.length - 1;
             const date      = item.timestamp;
             const title     = item.label || item.status?.replace(/_/g, " ") || tr('complaintDetail.defaultUpdate');
@@ -335,7 +359,7 @@ export default function ComplaintDetailScreen() {
         </View>
 
         {/* ── Rate response (resolved only) ── */}
-        {["RESOLVED", "CLOSED"].includes(statusKey) && (
+        {["resolved", "closed"].includes(statusKey.toLowerCase()) && (
           <View style={s.rateCard}>
             <Text style={s.sectionHeading}>{tr('complaints.rateResponse')}</Text>
             <View style={s.starsRow}>

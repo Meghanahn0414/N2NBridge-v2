@@ -56,7 +56,7 @@ export default function EventManagement() {
       setError(null);
       const [eventsData, campaignsRes] = await Promise.all([
         fetchEvents(targetPage, PAGE_SIZE, {}),
-        import('../../../shared/services/api').then(m => m.default.get('/api/campaigns/?per_page=1000')).catch(() => null),
+        import('../../../shared/services/api').then(m => m.default.get(`/api/campaigns/?per_page=${PAGE_SIZE}`)).catch(() => null),
       ]);
 
       // Map campaigns to the same shape as events

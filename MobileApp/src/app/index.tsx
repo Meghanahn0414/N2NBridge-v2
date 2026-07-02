@@ -147,6 +147,15 @@ export default function LoginScreen() {
       // non-placeholder email only.
       const realEmail = u.email && !u.email.startsWith("otp-") ? u.email : "";
 
+      // Same idea for mobile — a fresh placeholder account has no real
+      // number on file yet, only whatever the citizen just typed to send
+      // the OTP. Prefer the backend's value (a returning citizen's real,
+      // saved number) and fall back to what was typed here so the profile
+      // completion form isn't left blank for a first-time phone signup.
+      const realMobile = u.mobile && !u.mobile.startsWith("otp-")
+        ? u.mobile
+        : (method === "phone" ? value.trim().replace(/\D/g, "") : "");
+
       // Backend's OtpResponse model returns the token as `accessToken`, not
       // `token` — this was reading the wrong field, so setAuth() was always
       // storing `undefined` as the session token. Once navigation reached
@@ -155,16 +164,22 @@ export default function LoginScreen() {
       // that's the "Your city, in your hands" page showing up after every
       // OTP verification.
       setAuth(data.accessToken, {
-        id:    u._id || u.id,
-        name:  u.fullName || u.name || u.full_name || realEmail,
-        email: u.email,
+        id:     u._id || u.id,
+        name:   u.fullName || u.name || u.full_name || realEmail,
+        email:  u.email,
+        mobile: realMobile,
         role,
       });
       // Sync the store so the rest of the app is also up to date
       useAuthStore.getState().setProfileComplete(hasProfile);
 
       if (role === "CITIZEN" && !hasProfile) {
-        router.replace("/citizen/edit-profile?required=1" as any);
+        // Carry the representative category chip picked on this screen
+        // through to the completion form so it doesn't have to be picked
+        // twice — it's otherwise decorative here (doesn't affect the OTP
+        // call itself), so this is the only place its value is used.
+        const repTypeParam = repCategory ? `&repType=${repCategory.toUpperCase()}` : "";
+        router.replace(`/citizen/edit-profile?required=1${repTypeParam}` as any);
       } else {
         router.replace((ROLE_ROUTES[role] ?? "/citizen/") as any);
       }

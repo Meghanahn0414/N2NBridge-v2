@@ -16,28 +16,21 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from bson import ObjectId
+from events.model import EventCreate, EventUpdate
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from utils.response import success_response
 from utils.tenant import get_tenant_db, require_auth
 
-
-class EventCreate(BaseModel):
-    title:         str
-    venue:         Optional[str] = ""
-    date:          Optional[str] = ""
-    description:   Optional[str] = ""
-    status:        Optional[str] = "Upcoming"
-    max_attendees: Optional[int] = None
-    image_url:     Optional[str] = ""
-
-class EventUpdate(BaseModel):
-    title:         Optional[str] = None
-    venue:         Optional[str] = None
-    date:          Optional[str] = None
-    description:   Optional[str] = None
-    max_attendees: Optional[int] = None
-    image_url:     Optional[str] = None
+# NOTE: EventCreate/EventUpdate used to be defined locally here with a
+# different shape (title/venue/date/description/max_attendees/image_url)
+# than events/model.py's real ones (eventName/eventType/eventDate/capacity/
+# organizerId/wardId/qrEnabled) — which is what EventManagement.jsx has
+# always sent via features/events/eventService.js. Every event creation was
+# failing Pydantic validation with a 422 for the missing required `title`
+# field. Same bug class as campaigns/routes.py, fixed the same way: import
+# the correct models instead of shadowing them. Docs still also store
+# title/date/venue/location aliases so older read-only views (EventList.jsx,
+# FieldOfficerEvents.jsx) that fall back to those field names keep working.
 
 router = APIRouter(prefix="/api/events", tags=["Events"])
 logger = logging.getLogger(__name__)
@@ -77,10 +70,15 @@ async def list_events(
     if status:
         q["status"] = status
     skip  = (page - 1) * per_page
-    items = list(db.events.find(q).sort("date", -1).skip(skip).limit(per_page))
+    items = list(db.events.find(q).sort("eventDate", -1).skip(skip).limit(per_page))
     total = db.events.count_documents(q)
+    out = []
+    for e in items:
+        d = _doc(e)
+        d["registrationCount"] = db.event_registrations.count_documents({"event_id": d["id"]})
+        out.append(d)
     return success_response(
-        {"items": [_doc(e) for e in items], "total": total, "page": page, "per_page": per_page},
+        {"items": out, "total": total, "page": page, "per_page": per_page},
         "Events retrieved",
     )
 
@@ -91,7 +89,8 @@ async def get_event(event_id: str, db=Depends(get_tenant_db), user=Depends(requi
     if not e:
         raise HTTPException(status_code=404, detail="Event not found")
     data = _doc(e)
-    data["registration_count"] = db.event_registrations.count_documents({"event_id": event_id})
+    data["registrationCount"] = db.event_registrations.count_documents({"event_id": event_id})
+    data["registration_count"] = data["registrationCount"]  # legacy alias
     return success_response(data, "Event retrieved")
 
 
@@ -101,21 +100,32 @@ async def create_event(body: EventCreate, db=Depends(get_tenant_db), user=Depend
         raise HTTPException(status_code=403, detail="Unauthorized")
     now = datetime.now(timezone.utc)
     doc = {
-        "title":         body.title,
-        "venue":         body.venue or "",
-        "date":          body.date or "",
-        "description":   body.description or "",
-        "status":        body.status or "Upcoming",
-        "max_attendees": body.max_attendees,
-        "image_url":     body.image_url or "",
-        "is_deleted":    False,
-        "created_by":    user.get("user_id"),
-        "created_at":    now,
-        "updated_at":    now,
+        "eventName":    body.eventName,
+        "description":  body.description or "",
+        "eventType":    body.eventType or "Other",
+        "venue":        body.venue or "",
+        "eventDate":    body.eventDate,
+        "capacity":     body.capacity,
+        "qrEnabled":    body.qrEnabled if body.qrEnabled is not None else True,
+        "organizerId":  body.organizerId,
+        "wardId":       body.wardId,
+        "status":       "DRAFT",
+        # Compat aliases for older read-only views (EventList.jsx,
+        # FieldOfficerEvents.jsx) that still look for title/date/location.
+        "title":        body.eventName,
+        "date":         body.eventDate.isoformat() if body.eventDate else "",
+        "location":     body.venue or "",
+        "max_attendees": body.capacity,
+        "is_deleted":   False,
+        "created_by":   user.get("user_id"),
+        "createdAt":    now,
+        "updatedAt":    now,
     }
     result = db.events.insert_one(doc)
     doc["_id"] = result.inserted_id
-    return success_response(_doc(doc), "Event created")
+    resp = _doc(doc)
+    resp["registrationCount"] = 0
+    return success_response(resp, "Event created")
 
 
 @router.put("/{event_id}")
@@ -125,12 +135,23 @@ async def update_event(event_id: str, body: EventUpdate, db=Depends(get_tenant_d
     update = body.model_dump(exclude_unset=True)
     if not update:
         raise HTTPException(status_code=400, detail="No valid fields to update")
-    update["updated_at"] = datetime.now(timezone.utc)
+    # Keep compat aliases in sync with whichever canonical fields changed.
+    if "eventName" in update:
+        update["title"] = update["eventName"]
+    if "eventDate" in update:
+        update["date"] = update["eventDate"].isoformat() if update["eventDate"] else ""
+    if "venue" in update:
+        update["location"] = update["venue"]
+    if "capacity" in update:
+        update["max_attendees"] = update["capacity"]
+    update["updatedAt"] = datetime.now(timezone.utc)
     result = db.events.update_one({"_id": _oid(event_id)}, {"$set": update})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Event not found")
     e = db.events.find_one({"_id": _oid(event_id)})
-    return success_response(_doc(e), "Event updated")
+    data = _doc(e)
+    data["registrationCount"] = db.event_registrations.count_documents({"event_id": event_id})
+    return success_response(data, "Event updated")
 
 
 @router.delete("/{event_id}")
@@ -139,7 +160,7 @@ async def delete_event(event_id: str, db=Depends(get_tenant_db), user=Depends(re
         raise HTTPException(status_code=403, detail="Unauthorized")
     result = db.events.update_one(
         {"_id": _oid(event_id)},
-        {"$set": {"is_deleted": True, "updated_at": datetime.now(timezone.utc)}},
+        {"$set": {"is_deleted": True, "updatedAt": datetime.now(timezone.utc)}},
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -153,18 +174,24 @@ async def publish_event(event_id: str, db=Depends(get_tenant_db), user=Depends(r
     now = datetime.now(timezone.utc)
     result = db.events.update_one(
         {"_id": _oid(event_id)},
-        {"$set": {"status": "Published", "published_at": now, "updated_at": now}},
+        {"$set": {"status": "PUBLISHED", "publishedAt": now, "updatedAt": now}},
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Event not found")
-    # Notify all citizens
+    # Notify all citizens (or just the targeted ward, if set)
     e = db.events.find_one({"_id": _oid(event_id)})
     if e:
-        citizens = list(db.citizens.find({"is_deleted": {"$ne": True}}, {"_id": 1}))
+        cit_q: dict = {"is_deleted": {"$ne": True}}
+        ward_id = e.get("wardId")
+        if ward_id:
+            cit_q["$or"] = [{"ward_number": ward_id}, {"ward_id": ward_id}, {"area_name": ward_id}]
+        citizens = list(db.citizens.find(cit_q, {"_id": 1}))
+        event_name = e.get("eventName") or e.get("title", "")
+        event_date = e.get("eventDate").isoformat() if e.get("eventDate") else e.get("date", "")
         notifs = [{
             "user_id":      str(cit["_id"]),
-            "title":        f"New Event: {e.get('title')}",
-            "message":      f"{e.get('venue', '')} — {e.get('date', '')}",
+            "title":        f"New Event: {event_name}",
+            "message":      f"{e.get('venue', '')} — {event_date}",
             "type":         "Event",
             "reference_id": event_id,
             "is_read":      False,
@@ -183,14 +210,15 @@ async def cancel_event(event_id: str, db=Depends(get_tenant_db), user=Depends(re
     e = db.events.find_one({"_id": _oid(event_id)})
     if not e:
         raise HTTPException(status_code=404, detail="Event not found")
-    db.events.update_one({"_id": _oid(event_id)}, {"$set": {"status": "Cancelled", "updated_at": now}})
+    db.events.update_one({"_id": _oid(event_id)}, {"$set": {"status": "CANCELLED", "updatedAt": now}})
+    event_name = e.get("eventName") or e.get("title", "")
     # Notify registered citizens
     regs = list(db.event_registrations.find({"event_id": event_id}, {"citizen_id": 1}))
     if regs:
         notifs = [{
             "user_id":      r["citizen_id"],
             "title":        "Event Cancelled",
-            "message":      f"The event '{e.get('title')}' has been cancelled.",
+            "message":      f"The event '{event_name}' has been cancelled.",
             "type":         "Event",
             "reference_id": event_id,
             "is_read":      False,

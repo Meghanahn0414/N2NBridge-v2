@@ -90,16 +90,22 @@ function deriveCareerData(insights, analytics, grievances = []) {
     ? { rank: myWard?.rank ?? null, total: peerRanking.totalWards ?? null, wardName: myWard?.wardName ?? null }
     : null;
 
+  // Grievance status values are Title Case ("Open", "Assigned", "In Progress",
+  // "Resolved", "Closed", "Rejected") — this used to read byStatus.RESOLVED
+  // (all-caps, matches nothing) and filter g.status against ALL-CAPS/NEW
+  // literals that don't exist in this app's status vocabulary, so "resolved"
+  // and the open-road/open-transit counts below were always 0 regardless of
+  // real data.
   const byStatus    = analytics?.grievances?.byStatus || {};
-  const resolved    = byStatus.RESOLVED ?? 0;
+  const resolved    = byStatus.Resolved ?? 0;
   const total       = analytics?.grievances?.total    ?? 0;
 
   const openRoad = grievances.filter(g =>
-    ["NEW", "OPEN", "ASSIGNED"].includes(g.status) &&
+    ["Open", "Assigned", "In Progress"].includes(g.status) &&
     (g.categoryId || g.category || "").toUpperCase().includes("ROAD")
   ).length;
   const openTransit = grievances.filter(g =>
-    ["NEW", "OPEN", "ASSIGNED"].includes(g.status) &&
+    ["Open", "Assigned", "In Progress"].includes(g.status) &&
     (g.categoryId || g.category || "").toUpperCase().includes("TRANSIT")
   ).length;
 
@@ -455,14 +461,18 @@ function ElectionScenarios({ strong, comp, atRisk }) {
 
 // ── Grievance status breakdown ─────────────────────────────────
 function GrievanceStatusCard({ byStatus }) {
+  // byStatus keys are the raw grievance status values — Title Case with
+  // spaces ("Open", "In Progress", ...), not ALL_CAPS_UNDERSCORE. The old
+  // ALL_CAPS_UNDERSCORE keys here (plus a "NEW"/"ON_HOLD" that don't even
+  // exist in this app's status vocabulary) never matched anything, so this
+  // card always showed "No grievances found" regardless of real data.
   const rows = [
-    { key: "NEW",         label: "New",         color: "#2B5BD7", bg: "#EEF2FF" },
-    { key: "ASSIGNED",    label: "Assigned",     color: "#C9871F", bg: "#FEF3C7" },
-    { key: "IN_PROGRESS", label: "In progress",  color: "#6B4FD8", bg: "#EDEAFB" },
-    { key: "ON_HOLD",     label: "On hold",      color: "#8590A6", bg: "#F3F5FA" },
-    { key: "RESOLVED",    label: "Resolved",     color: "#1E8A5B", bg: "#E6F4EC" },
-    { key: "CLOSED",      label: "Closed",       color: "#1E8A5B", bg: "#E6F4EC" },
-    { key: "REJECTED",    label: "Rejected",     color: "#C8453A", bg: "#FEF2F2" },
+    { key: "Open",        label: "Open",        color: "#2B5BD7", bg: "#EEF2FF" },
+    { key: "Assigned",    label: "Assigned",     color: "#C9871F", bg: "#FEF3C7" },
+    { key: "In Progress", label: "In progress",  color: "#6B4FD8", bg: "#EDEAFB" },
+    { key: "Resolved",    label: "Resolved",     color: "#1E8A5B", bg: "#E6F4EC" },
+    { key: "Closed",      label: "Closed",       color: "#1E8A5B", bg: "#E6F4EC" },
+    { key: "Rejected",    label: "Rejected",     color: "#C8453A", bg: "#FEF2F2" },
   ].map(r => ({ ...r, count: byStatus?.[r.key] ?? 0 }))
    .filter(r => r.count > 0);
 
@@ -690,7 +700,7 @@ export default function CareerOutlook() {
                 />
                 <StatCard
                   iconName="task_alt" iconBg="#FCF1E0" iconColor="#C9871F"
-                  label="Complaints Closed"
+                  label="Complaints Resolved"
                   tooltip="Resolved grievances out of all reported complaints; resolution rate is a key constituent satisfaction signal."
                   value={data?.resolved != null ? `${data.resolved}/${data.total}` : "—"}
                   sub={data?.total > 0 ? `${Math.round((data.resolved / data.total) * 100)}% resolution rate` : "No data"}

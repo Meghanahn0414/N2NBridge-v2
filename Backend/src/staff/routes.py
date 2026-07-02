@@ -124,7 +124,16 @@ async def add_staff(body: StaffCreate, db=Depends(get_tenant_db), user=Depends(r
     result = db.staff.insert_one(doc)
     staff_id = str(result.inserted_id)
 
-    # Register in master user_registry so login resolves this tenant DB
+    # Register in master user_registry so login resolves this tenant DB.
+    # user_id here is the db.staff _id — AuthService.login() now checks
+    # tenant_db.staff BEFORE tenant_db.users, so that's the id the citizen's
+    # JWT ends up carrying too. (This used to ALSO write a duplicate doc
+    # into db.users "so JWT-based auth works" — but db.users gets its own,
+    # different auto-generated _id, which never matched what
+    # assign_grievance stores in assigned_to. That meant an officer's JWT
+    # and their assigned grievances pointed at two different ids, so their
+    # own dashboard/grievance queries always came back empty. Removed —
+    # login resolves correctly via .staff alone now.)
     master   = MongoDatabase.get_db()
     db_name  = user.get("db_name", "")
     master.user_registry.update_one(
@@ -135,23 +144,6 @@ async def add_staff(body: StaffCreate, db=Depends(get_tenant_db), user=Depends(r
             "db_name": db_name,
             "role":    "STAFF",
             "user_id": staff_id,
-        }},
-        upsert=True,
-    )
-    # Also add to tenant users collection so JWT-based auth works
-    db.users.update_one(
-        {"mobile": mobile},
-        {"$setOnInsert": {
-            "fullName":     body.name,
-            "email":        email,
-            "mobile":       mobile,
-            "passwordHash": SecurityManager.hash_password(body.password),
-            "role":         "STAFF",
-            "designation":  doc["designation"],
-            "status":       "ACTIVE",
-            "isDeleted":    False,
-            "createdAt":    now,
-            "updatedAt":    now,
         }},
         upsert=True,
     )

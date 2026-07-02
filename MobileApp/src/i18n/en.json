@@ -57,6 +57,7 @@
     "resolved": "Resolved",
     "closed": "Closed",
     "onHold": "On Hold",
+    "rejected": "Rejected",
     "high": "High",
     "medium": "Medium",
     "low": "Low",
@@ -101,7 +102,7 @@
     "noCampaigns": "No campaigns available",
     "fileComplaintSub": "Report a civic issue",
     "myComplaintsSub": "Track your submissions",
-    "campaignsSub": "Active government programs",
+    "campaignsSub": "Active programs",
     "feedbackSub": "Rate services & officers",
     "emergencySub": "Raise an urgent alert",
     "myProfileSub": "View & update your info",
@@ -276,9 +277,9 @@
   },
   "campaigns": {
     "title": "Programs & Campaigns",
-    "subtitle": "Active government initiatives",
+    "subtitle": "Active initiatives",
     "noActive": "No active campaigns",
-    "noActiveText": "No government programs or campaigns are currently active."
+    "noActiveText": "No programs or campaigns are currently active."
   },
   "feedback": {
     "title": "Feedback",

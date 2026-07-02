@@ -348,7 +348,13 @@ export default function ExecutiveDashboard() {
   const peers     = insights?.peerRanking     || null;
 
   // KPI values
-  const resolved  = analytics?.grievances?.byStatus?.RESOLVED ?? null;
+  // byStatus keys are the raw grievance status values (Title Case: "Open",
+  // "In Progress", "Resolved", ...) — this used to read the ALL-CAPS
+  // "RESOLVED" key, which never matched, so "Resolved Complaints" always
+  // showed "—" regardless of real data. Same bug already fixed in
+  // CareerOutlook.jsx and analytics/service.py; this file had its own
+  // separate copy of it.
+  const resolved  = analytics?.grievances?.byStatus?.Resolved ?? null;
   const total     = analytics?.grievances?.total ?? null;
   const avgTime   = analytics?.resolutionTime?.avgResolutionTime ?? null;
   const citizens  = analytics?.users?.byRole?.CITIZEN ?? null;
@@ -634,7 +640,7 @@ export default function ExecutiveDashboard() {
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Support by Area</div>
-                <InfoTip text="Support by Area = approval percentage by ward area, plotted from low to high on the gradient." />
+                <InfoTip text="Support by Area = approval percentage by area (ward for Councillors, assembly constituency for MLAs, parliamentary constituency for MPs), plotted from low to high on the gradient." />
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                 <span style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>Low</span>
@@ -643,13 +649,13 @@ export default function ExecutiveDashboard() {
               </div>
             </div>
             <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginBottom:6 }}>
-              {peers?.totalWards ?? 0} ward areas
+              {peers?.totalWards ?? 0} area{(peers?.totalWards ?? 0) === 1 ? "" : "s"}
             </div>
             {peers?.hasData && peers.wards?.some(w => (w.total ?? 0) > 0 && (w.total ?? 0) < 5) && (
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:14, padding:"7px 10px", background:"#FEF3E2", border:"1px solid #FBE3B8", borderRadius:9 }}>
                 <MS style={{ fontSize:13, color:"#C9871F", flexShrink:0 }}>warning</MS>
                 <span style={{ font:"500 10.5px 'Hanken Grotesk'", color:"#92620E", lineHeight:1.35 }}>
-                  Wards marked with very few grievances shouldn't be read as a firm approval score yet.
+                  Areas marked with very few grievances shouldn't be read as a firm approval score yet.
                 </span>
               </div>
             )}

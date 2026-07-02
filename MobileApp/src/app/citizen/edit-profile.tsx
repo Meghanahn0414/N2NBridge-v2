@@ -90,8 +90,15 @@ const ADDRESS_FIELDS: FieldConfig[] = [
 export default function EditProfileScreen() {
   const tr = useT();
   const router      = useRouter();
-  const params      = useLocalSearchParams<{ required?: string }>();
+  const params      = useLocalSearchParams<{ required?: string; repType?: string }>();
   const isRequired  = params.required === "1";
+  // Representative category chip picked on the login screen, carried over
+  // so it doesn't have to be picked twice on this form.
+  const repTypeParam = (params.repType || "").toUpperCase();
+  const initialRepType: RepCategory | null =
+    (["COUNCILLOR", "MLA", "MP"] as const).includes(repTypeParam as any)
+      ? (repTypeParam as RepCategory)
+      : null;
   const { user, setAuth, setProfileComplete, updateUser } = useAuthStore();
   const [loading,        setLoading]        = useState(true);
   const [saving,         setSaving]         = useState(false);
@@ -103,7 +110,7 @@ export default function EditProfileScreen() {
   const [pendingPhoto,   setPendingPhoto]   = useState<{ uri: string } | null>(null);
   const [focusedField,   setFocusedField]   = useState<string | null>(null);
   const [form,           setForm]           = useState(INITIAL_FORM);
-  const [repType,        setRepType]        = useState<RepCategory | null>(null);
+  const [repType,        setRepType]        = useState<RepCategory | null>(initialRepType);
   const [repArea,        setRepArea]        = useState("");
   const [areaOptions,    setAreaOptions]    = useState<ConstituencyOption[]>([]);
   const [areaLoading,    setAreaLoading]    = useState(false);
@@ -211,7 +218,7 @@ export default function EditProfileScreen() {
       setForm({
         fullName: user?.name || "",
         email:    realEmail(user?.email) || "",
-        mobile:   "",
+        mobile:   user?.mobile || "",
         age:      user?.age != null ? String(user.age) : "",
         address:  "",
       });
@@ -245,7 +252,7 @@ export default function EditProfileScreen() {
         setForm({
           fullName: user?.name || "",
           email:    realEmail(user?.email) || "",
-          mobile:   "",
+          mobile:   user?.mobile || "",
           age:      user?.age != null ? String(user.age) : "",
           address:  "",
         });

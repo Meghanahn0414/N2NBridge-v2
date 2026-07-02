@@ -168,6 +168,17 @@ def _ensure_sentiment_scores(db, limit: int = 500) -> None:
                     # get re-scored on every single request forever — this was the
                     # main cause of 15-30s dashboard load times. Removed; scores are
                     # now truly persisted once computed.
+
+                    # One-time backfill: grievances that already have a citizen
+                    # star rating but were auto-scored from description text
+                    # alone BEFORE POST /feedback started recomputing the score
+                    # (see grievances/routes.py submit_feedback). Marked done via
+                    # aiAnalysis.ratingIncorporated once picked up, so this branch
+                    # stops matching them afterwards and doesn't re-run forever.
+                    {
+                        "feedback.rating": {"$exists": True, "$ne": None},
+                        "aiAnalysis.ratingIncorporated": {"$ne": True},
+                    },
                 ],
             },
             {"_id": 1, "description": 1, "feedback": 1},
@@ -197,6 +208,7 @@ def _ensure_sentiment_scores(db, limit: int = 500) -> None:
                     "$set": {
                         "aiAnalysis.sentimentScore": score,
                         "aiAnalysis.analyzedAt": now,
+                        "aiAnalysis.ratingIncorporated": bool(rating),
                     }
                 },
             )
@@ -321,16 +333,28 @@ def get_approval_by_group(db, days: int = 90) -> dict:
                 "aiAnalysis.sentimentScore": {"$exists": True, "$ne": None},
             }
         },
-        # Convert citizenId string → ObjectId so $lookup can match users._id
+        # Convert citizen_id string → ObjectId so $lookup can match citizens._id.
+        # NOTE: this used to read "$citizenId" (camelCase) and look up against
+        # the "users" collection — but grievances actually store the field as
+        # "citizen_id" (snake_case, see grievances/routes.py), and citizens
+        # live in their own "citizens" collection, not "users" (that's
+        # reps/staff). Both mismatches meant citizenObjId was always null, the
+        # $lookup always matched nothing, age was always missing, and this
+        # card showed "Age data unavailable" unconditionally regardless of
+        # how much real citizen age data existed.
         {
             "$addFields": {
                 "citizenObjId": {
                     "$cond": {
                         "if": {"$and": [
-                            {"$ne": ["$citizenId", None]},
-                            {"$ne": ["$citizenId", ""]},
+                            {"$ne": ["$citizen_id", None]},
+                            {"$ne": ["$citizen_id", ""]},
                         ]},
-                        "then": {"$toObjectId": "$citizenId"},
+                        # $convert (not $toObjectId) so a malformed/legacy
+                        # citizen_id (e.g. an "otp-..." placeholder) can't
+                        # throw and break the whole aggregation — it just
+                        # resolves to null and that grievance is skipped.
+                        "then": {"$convert": {"input": "$citizen_id", "to": "objectId", "onError": None, "onNull": None}},
                         "else": None,
                     }
                 }
@@ -338,7 +362,7 @@ def get_approval_by_group(db, days: int = 90) -> dict:
         },
         {
             "$lookup": {
-                "from": "users",
+                "from": "citizens",
                 "localField": "citizenObjId",
                 "foreignField": "_id",
                 "as": "citizen",
@@ -348,13 +372,7 @@ def get_approval_by_group(db, days: int = 90) -> dict:
         {
             "$project": {
                 "sentimentScore": "$aiAnalysis.sentimentScore",
-                # age may be on citizen directly OR nested under profile
-                "age": {
-                    "$ifNull": [
-                        "$citizen.age",
-                        "$citizen.profile.age",
-                    ]
-                },
+                "age": "$citizen.age",
             }
         },
     ]
@@ -446,7 +464,7 @@ def _normalize_category_key(raw_key: Any) -> str:
         return "ELECTRICITY"
     if "WATER" in normalized:
         return "WATER_SUPPLY"
-    if "ROAD" in normalized or "POTHOLE" in normalized or "STREET" in normalized:
+    if "ROAD" in normalized or "POTHOLE" in normalized or "STREET" in normalized or "HIGHWAY" in normalized:
         return "ROAD_ISSUE"
     if "GARB" in normalized or "WASTE" in normalized or "SANIT" in normalized or "TRASH" in normalized:
         return "GARBAGE"
@@ -475,6 +493,10 @@ def get_moving_numbers(db, days: int = 90) -> dict:
                             ]
                         }
                     },
+                    # Sampled titles — used so the "Other issues" bucket (which
+                    # is inherently non-specific) can show the actual grievance
+                    # name(s) instead of a meaningless generic label.
+                    "titles": {"$push": "$title"},
                 }
             },
         ]
@@ -485,9 +507,10 @@ def get_moving_numbers(db, days: int = 90) -> dict:
                 continue
             # Normalise to a known CATEGORY_META key; unknown values map to OTHER
             cat_key = _normalize_category_key(raw_key)
-            existing = result.get(cat_key, {"total": 0, "resolved": 0})
+            existing = result.get(cat_key, {"total": 0, "resolved": 0, "titles": []})
             existing["total"]    += doc["total"]
             existing["resolved"] += doc["resolved"]
+            existing["titles"]   += [t for t in doc.get("titles", []) if t]
             result[cat_key] = existing
         return result
 
@@ -496,10 +519,25 @@ def get_moving_numbers(db, days: int = 90) -> dict:
 
     logger.info(f"Moving numbers — current period categories: {list(current.keys())}")
 
+    def _titled_label(default_label: str, titles: list, total: int) -> str:
+        """"Other issues" tells a rep nothing useful — show the actual
+        grievance name(s) instead. Known categories (Road repairs, Water
+        supply, etc.) already have a meaningful label, so leave those alone."""
+        titles = [t.strip() for t in titles if t and t.strip()]
+        if not titles:
+            return default_label
+        shown = titles[:2]
+        shortened = [t if len(t) <= 42 else t[:39] + "…" for t in shown]
+        extra = total - len(shown)
+        label = ", ".join(shortened)
+        if extra > 0:
+            label += f" +{extra} more"
+        return label
+
     drivers = []
     for cat_key, meta in CATEGORY_META.items():
-        cur = current.get(cat_key,  {"total": 0, "resolved": 0})
-        prv = previous.get(cat_key, {"total": 0, "resolved": 0})
+        cur = current.get(cat_key,  {"total": 0, "resolved": 0, "titles": []})
+        prv = previous.get(cat_key, {"total": 0, "resolved": 0, "titles": []})
 
         if cur["total"] == 0 and prv["total"] == 0:
             continue
@@ -517,9 +555,13 @@ def get_moving_numbers(db, days: int = 90) -> dict:
             sub_parts.append(f"{cur['resolved']} resolved")
         sub = " · ".join(sub_parts) if sub_parts else "No reports"
 
+        label = meta["label"]
+        if cat_key == "OTHER":
+            label = _titled_label(meta["label"], cur.get("titles", []), cur["total"])
+
         drivers.append({
             "key":    cat_key,
-            "label":  meta["label"],
+            "label":  label,
             "icon":   meta["icon"],
             "impact": impact,
             "sub":    sub,
@@ -546,6 +588,25 @@ def get_peer_ranking(db, days: int = 90) -> dict:
     _ensure_sentiment_scores(db)
 
     since = datetime.utcnow() - timedelta(days=days)
+    master = MongoDatabase.get_db()
+
+    # Which field actually varies meaningfully across THIS representative's
+    # own citizens depends on the rep's own type:
+    #   COUNCILLOR → ward_id             (required at citizen registration
+    #                                      for a Councillor tenant, so it's
+    #                                      always populated)
+    #   MLA        → assembly_name       (ward_id is only an OPTIONAL
+    #   MP         → parliamentary_name   standalone picker for MLA/MP
+    #                                      citizens — most never set it, so
+    #                                      grouping by ward_id there left
+    #                                      this card permanently empty)
+    rep_doc  = master.representatives.find_one({"db_name": db.name}, {"rep_type": 1}) or {}
+    rep_type = (rep_doc.get("rep_type") or "").upper()
+    area_field = {
+        "COUNCILLOR": "ward_id",
+        "MLA":        "assembly_name",
+        "MP":         "parliamentary_name",
+    }.get(rep_type, "ward_id")
 
     pipeline = [
         {
@@ -553,12 +614,36 @@ def get_peer_ranking(db, days: int = 90) -> dict:
                 "is_deleted": {"$ne": True},
                 "created_at": {"$gte": since},
                 "aiAnalysis.sentimentScore": {"$exists": True, "$ne": None},
-                "wardId": {"$exists": True, "$ne": None},
             }
         },
         {
+            "$addFields": {
+                "citizenObjId": {
+                    "$cond": {
+                        "if": {"$and": [
+                            {"$ne": ["$citizen_id", None]},
+                            {"$ne": ["$citizen_id", ""]},
+                        ]},
+                        "then": {"$convert": {"input": "$citizen_id", "to": "objectId", "onError": None, "onNull": None}},
+                        "else": None,
+                    }
+                }
+            }
+        },
+        {
+            "$lookup": {
+                "from": "citizens",
+                "localField": "citizenObjId",
+                "foreignField": "_id",
+                "as": "citizen",
+            }
+        },
+        {"$unwind": {"path": "$citizen", "preserveNullAndEmptyArrays": True}},
+        {"$addFields": {"areaId": f"$citizen.{area_field}"}},
+        {"$match": {"areaId": {"$nin": [None, ""]}}},
+        {
             "$group": {
-                "_id": "$wardId",
+                "_id": "$areaId",
                 "total": {"$sum": 1},
                 "positive": {
                     "$sum": {
@@ -571,33 +656,39 @@ def get_peer_ranking(db, days: int = 90) -> dict:
 
     docs = list(db.grievances.aggregate(pipeline))
 
+    # Resolve friendly names. For COUNCILLOR (ward_id), the id is just a
+    # ward code — look up the human-readable name from the Councillor's own
+    # representative record. For MLA/MP, the id (assembly_name /
+    # parliamentary_name) already IS the human-readable name.
+    name_by_id = {}
+    if area_field == "ward_id":
+        area_ids = [doc["_id"] for doc in docs if doc.get("_id")]
+        if area_ids:
+            name_by_id = {
+                rep["ward_id"]: rep.get("ward_name")
+                for rep in master.representatives.find(
+                    {"rep_type": "COUNCILLOR", "ward_id": {"$in": area_ids}},
+                    {"ward_id": 1, "ward_name": 1},
+                )
+                if rep.get("ward_id")
+            }
+
     wards = []
     for doc in docs:
-        ward_id = doc["_id"]
-        if not ward_id:
+        area_id = doc["_id"]
+        if not area_id:
             continue
         total = doc["total"]
         approval_pct = round(doc["positive"] / total * 100) if total > 0 else 0
-        # Try to resolve a friendly ward name from the wards collection
-        ward_name = None
-        try:
-            from bson import ObjectId as _ObjId
-            ward_doc = db.wards.find_one(
-                {"_id": _ObjId(str(ward_id))},
-                {"wardName": 1, "name": 1}
-            )
-            if ward_doc:
-                ward_name = ward_doc.get("wardName") or ward_doc.get("name")
-        except Exception:
-            pass
-        if not ward_name:
-            # Use the raw wardId if it looks like a human-readable label,
+        area_name = name_by_id.get(area_id) if area_field == "ward_id" else str(area_id)
+        if not area_name:
+            # Use the raw id if it looks like a human-readable label,
             # otherwise fall back to a positional label added after sorting
-            ward_name = str(ward_id) if len(str(ward_id)) < 30 else None
+            area_name = str(area_id) if len(str(area_id)) < 30 else None
 
         wards.append({
-            "wardId":      str(ward_id),
-            "wardName":    ward_name,
+            "wardId":      str(area_id),
+            "wardName":    area_name,
             "approvalPct": approval_pct,
             "total":       total,
         })

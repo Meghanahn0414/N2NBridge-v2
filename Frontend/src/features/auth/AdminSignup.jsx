@@ -34,14 +34,6 @@ const INITIAL_FORM = {
   confirmPassword: "",
 };
 
-const FlagStrip = () => (
-  <div style={{ display: "flex", flexDirection: "column", width: 6, height: 36, borderRadius: 9999, overflow: "hidden" }}>
-    <div style={{ flex: 1, background: "#fb923c" }} />
-    <div style={{ flex: 1, background: "#fff" }} />
-    <div style={{ flex: 1, background: "#16a34a" }} />
-  </div>
-);
-
 export default function AdminSignup() {
   const navigate = useNavigate();
 
@@ -163,18 +155,6 @@ export default function AdminSignup() {
 
   return (
     <div style={styles.page}>
-      {/* Branding */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-        <FlagStrip />
-        <div style={{ textAlign: "center" }}>
-          <div style={{ color: "#1e3a8a", fontWeight: 700, fontSize: 15, letterSpacing: "0.05em" }}>
-            N2N
-          </div>
-          <div style={{ color: "#64748b", fontSize: 11 }}>Admin Registration</div>
-        </div>
-        <FlagStrip />
-      </div>
-
       {/* Card */}
       <div style={styles.card}>
         {/* Card header */}

@@ -244,7 +244,7 @@ class AnalyticsService:
         `since`, when provided, scopes this to grievances resolved (updatedAt)
         on/after that timestamp, so it responds to the dashboard's date-range picker.
         """
-        match = {"status": {"$in": ["RESOLVED", "CLOSED"]}, "is_deleted": {"$ne": True}}
+        match = {"status": {"$in": ["Resolved", "Closed"]}, "is_deleted": {"$ne": True}}
         if since is not None:
             match = {**match, "updated_at": {"$gte": since}}
 
@@ -331,7 +331,7 @@ class AnalyticsService:
             })
             resolved_count = db.grievances.count_documents({
                 "is_deleted": {"$ne": True},
-                "status":     {"$in": ["RESOLVED", "CLOSED"]},
+                "status":     {"$in": ["Resolved", "Closed"]},
                 "updated_at": {"$gte": start_utc, "$lt": end_utc},
             })
 
@@ -349,22 +349,31 @@ class AnalyticsService:
 
         resolved_in_period = db.grievances.count_documents({
             "is_deleted": {"$ne": True},
-            "status":     {"$in": ["RESOLVED", "CLOSED"]},
+            "status":     {"$in": ["Resolved", "Closed"]},
             "updated_at": {"$gte": since},
         })
 
         prev_since   = since - timedelta(days=days)
         resolved_prev = db.grievances.count_documents({
             "is_deleted": {"$ne": True},
-            "status":     {"$in": ["RESOLVED", "CLOSED"]},
+            "status":     {"$in": ["Resolved", "Closed"]},
             "updated_at": {"$gte": prev_since, "$lt": since},
         })
         trend = AnalyticsService.calculate_trend(resolved_in_period, resolved_prev)
 
         # Scope total/byStatus/byPriority/byCategory to the selected date range so
         # the dashboard's date-range picker actually changes what these cards show.
+        # NOTE: byStatus's raw aggregation groups by the real $status values,
+        # which are Title Case ("Open", "In Progress", "Resolved", "Closed",
+        # "Rejected") — a previous version of this override wrote an
+        # ALL-CAPS "RESOLVED" key here (and the resolved_in_period query
+        # above matched ALL-CAPS "RESOLVED"/"CLOSED" too), so this override
+        # both computed 0 and wrote to a key nothing downstream ever read
+        # correctly. "Resolved" here intentionally combines Resolved+Closed
+        # and is scoped by resolution date (updated_at) rather than the rest
+        # of byStatus's creation-date (created_at) scoping — that's by design.
         base_stats = AnalyticsService.get_grievance_stats(db, since=since)
-        base_stats["byStatus"]["RESOLVED"] = resolved_in_period
+        base_stats["byStatus"]["Resolved"] = resolved_in_period
         base_stats["trend"] = trend
         base_stats["trendSeries"] = AnalyticsService.get_grievance_monthly_trend(db, 6)
 

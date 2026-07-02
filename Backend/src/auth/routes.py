@@ -111,7 +111,13 @@ async def login_admin(request: Request, login_data: UserLoginRequest):
             detail="Invalid email or password"
         )
 
-    allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER"]
+    # Field Officer / Manager accounts authenticate with the literal backend
+    # role "STAFF" (see AuthService.login's tenant_db.staff fallback) — the
+    # frontend only translates that to FIELD_OFFICER/CONSTITUENCY_MANAGER
+    # client-side, for routing, after login succeeds. Without "STAFF" here,
+    # every Field Officer/Manager login was rejected with 403 before ever
+    # reaching that translation.
+    allowed_roles = ["ADMIN", "REPRESENTATIVE", "CONSTITUENCY_MANAGER", "FIELD_OFFICER", "STAFF"]
     user_role = result.user.role if result.user else None
     if user_role not in allowed_roles:
         raise HTTPException(
@@ -157,6 +163,69 @@ def _citizen_to_user_response(citizen: dict) -> dict:
         "createdAt": citizen.get("created_at"),
         "updatedAt": citizen.get("updated_at"),
     }
+
+
+def _find_existing_citizen(master, email: Optional[str], mobile: Optional[str]):
+    """
+    Returns (db_name, citizen_doc) for a RETURNING citizen who already
+    completed their profile in some representative's tenant, or None if this
+    is a genuinely new citizen.
+
+    Citizens never got a master.user_registry entry the way Admin/Rep/Staff
+    accounts do (see citizen_register / complete_citizen_profile below, which
+    now write one). Without this, every plain OTP re-login in
+    verify_otp_compat had no way to find a citizen's existing tenant record —
+    it always fell back to creating a brand-new, blank master.users
+    placeholder (empty fullName, no db_name), which is why a citizen who'd
+    already registered and filed real grievances could log back in and see
+    an empty "No reports yet" dashboard under their own email as the display
+    name.
+
+    Checks the registry first (fast path, populated going forward). Falls
+    back to scanning each active representative's tenant `citizens`
+    collection by email/mobile for accounts created before the registry
+    started being populated — self-healing, and backfills the registry once
+    found so the fast path works next time.
+    """
+    contact_or = []
+    if email:
+        contact_or.append({"email": email})
+    if mobile:
+        contact_or.append({"mobile": mobile})
+    if not contact_or:
+        return None
+
+    entry = master.user_registry.find_one({"role": "CITIZEN", "$or": contact_or})
+    if entry and entry.get("db_name") and entry.get("user_id"):
+        try:
+            tenant_db = MongoDatabase.get_tenant_db(entry["db_name"])
+            citizen = tenant_db.citizens.find_one(
+                {"_id": ObjectId(entry["user_id"]), "is_deleted": {"$ne": True}}
+            )
+            if citizen:
+                return entry["db_name"], citizen
+        except Exception:
+            pass
+
+    for rep in master.representatives.find({"status": "ACTIVE"}, {"db_name": 1}):
+        db_name = rep.get("db_name")
+        if not db_name:
+            continue
+        tenant_db = MongoDatabase.get_tenant_db(db_name)
+        citizen = tenant_db.citizens.find_one({"is_deleted": {"$ne": True}, "$or": contact_or})
+        if citizen and (citizen.get("name") or "").strip():
+            master.user_registry.update_one(
+                {"role": "CITIZEN", "user_id": str(citizen["_id"])},
+                {"$set": {
+                    "email":   citizen.get("email") or email,
+                    "mobile":  citizen.get("mobile") or mobile,
+                    "db_name": db_name, "role": "CITIZEN",
+                    "user_id": str(citizen["_id"]),
+                }},
+                upsert=True,
+            )
+            return db_name, citizen
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -794,6 +863,18 @@ async def citizen_register(request: CitizenRegisterRequest):
         token      = TokenManager.create_token(citizen_id, "CITIZEN", db_name)
         logger.info(f"Citizen registered/logged in: {citizen_id} in {db_name}")
 
+        # So a returning citizen's next plain OTP login (verify_otp_compat)
+        # can find this tenant record directly via _find_existing_citizen
+        # instead of creating a disconnected blank placeholder.
+        master.user_registry.update_one(
+            {"role": "CITIZEN", "user_id": citizen_id},
+            {"$set": {
+                "email":   citizen.get("email"), "mobile": citizen.get("mobile"),
+                "db_name": db_name, "role": "CITIZEN", "user_id": citizen_id,
+            }},
+            upsert=True,
+        )
+
         citizen_payload = {**citizen, "_id": str(citizen["_id"])}
         return OtpResponse(
             success=True,
@@ -956,6 +1037,18 @@ async def complete_citizen_profile(
     token = TokenManager.create_token(citizen_id, "CITIZEN", db_name)
     logger.info(f"Citizen profile completed, migrated to tenant {db_name}: {citizen_id}")
 
+    # So a returning citizen's next plain OTP login (verify_otp_compat) can
+    # find this tenant record directly via _find_existing_citizen instead of
+    # creating a disconnected blank placeholder.
+    master.user_registry.update_one(
+        {"role": "CITIZEN", "user_id": citizen_id},
+        {"$set": {
+            "email":   citizen.get("email"), "mobile": citizen.get("mobile"),
+            "db_name": db_name, "role": "CITIZEN", "user_id": citizen_id,
+        }},
+        upsert=True,
+    )
+
     return success_response({
         "accessToken": token,
         "user": UserResponse(
@@ -1063,6 +1156,35 @@ async def verify_otp_compat(request: VerifyOtpRequest):
 
         db  = MongoDatabase.get_db()
         now = datetime.utcnow()
+
+        # Returning citizen who already completed their profile in a
+        # representative's tenant? Resolve straight to that record and issue
+        # a properly tenant-scoped token — skip the blank master.users
+        # placeholder below entirely, so they land back on their real
+        # dashboard (with their real grievances) instead of an empty one
+        # under a fresh, disconnected identity.
+        existing = _find_existing_citizen(
+            db,
+            normalized_email if is_email else None,
+            normalized_mobile if is_mobile else None,
+        )
+        if existing:
+            existing_db_name, existing_citizen = existing
+            existing_citizen_id = str(existing_citizen["_id"])
+            token = TokenManager.create_token(existing_citizen_id, "CITIZEN", existing_db_name)
+            logger.info(
+                f"Citizen returning login resolved to existing tenant record: "
+                f"{existing_citizen_id} in {existing_db_name}"
+            )
+            return OtpResponse(
+                success=True,
+                message="OTP verified successfully",
+                accessToken=token,
+                role="CITIZEN",
+                user=UserResponse(**_citizen_to_user_response(
+                    {**existing_citizen, "_id": existing_citizen_id}
+                )),
+            )
 
         if is_mobile:
             lookup_filter = {"mobile": normalized_mobile, "role": "CITIZEN", "isDeleted": {"$ne": True}}
