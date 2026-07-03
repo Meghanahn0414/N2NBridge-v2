@@ -87,16 +87,20 @@ class MongoDatabase:
         return cls._client[db_name]
 
     @classmethod
-    def setup_tenant_db(cls, db_name: str):
+    def drop_tenant_db(cls, db_name: str):
         """
-        Initialise a brand-new tenant database: create all collections and
-        indexes.  Call this once when a representative registers.
+        Remove a tenant database if registration fails after it was created.
+        This helps avoid orphaned tenant databases from partially completed
+        representative registration attempts.
         """
-        db = cls.get_tenant_db(db_name)
-        cls._create_tenant_collections(db)
-        cls._create_tenant_indexes(db)
-        logger.info(f"Tenant DB initialised: {db_name}")
-        return db
+        if cls._client is None:
+            from config.settings import settings
+            cls.connect(settings.MONGODB_URL, settings.MONGODB_MASTER_DB)
+        try:
+            cls._client.drop_database(db_name)
+            logger.info(f"Dropped orphaned tenant DB: {db_name}")
+        except Exception as e:
+            logger.warning(f"Failed to drop orphaned tenant DB {db_name}: {e}")
 
     @classmethod
     def close(cls):

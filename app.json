@@ -2,11 +2,11 @@
   "expo": {
     "extra": {
       "eas": {
-        "projectId": "9ce74aef-9b2e-476f-9b2c-a3354acaa35b"
+        "projectId": "92f306b0-44d7-468d-a34c-45bb2e4233eb"
       }
     },
     "android": {
-      "package": "N2N"
+      "package": "com.fatima237.mobileapp"
     }
   }
 }
