@@ -193,6 +193,41 @@ export default function ComplaintManagement() {
     { label: "Resolved",    value: stats.resolved,    icon: "✅",  iconBg: "#F0FDF4", sub: "Successfully closed" },
   ];
 
+  // // Same status-key mapping as `calculateStats` above (Title Case, no
+  // // ALL_CAPS) — same colors used for the equivalent donut on the MLA/Rep
+  // // ExecutiveDashboard, kept consistent across the app.
+  // const overviewItems = [
+  //   { label: "New",         value: stats.open,       color: "#2563EB" },
+  //   { label: "Assigned",    value: stats.assigned,   color: "#FBBF24" },
+  //   { label: "In Progress", value: stats.inProgress, color: "#F97316" },
+  //   { label: "Resolved",    value: stats.resolved,   color: "#22C55E" },
+  // ];
+  // const overviewTotal = overviewItems.reduce((sum, item) => sum + item.value, 0);
+  // // Full pie (solid wedges from center, percentage labels inside each
+  // // slice) — not a ring/donut. angle 0 = 12 o'clock, growing clockwise.
+  // const pieRadius = 70;
+  // const pieCenter = 80;
+  // const polarPoint = (angleDeg, r) => {
+  //   const rad = (angleDeg * Math.PI) / 180;
+  //   return { x: pieCenter + r * Math.sin(rad), y: pieCenter - r * Math.cos(rad) };
+  // };
+  // const describeWedge = (startAngle, endAngle) => {
+  //   const p1 = polarPoint(startAngle, pieRadius);
+  //   const p2 = polarPoint(endAngle, pieRadius);
+  //   const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  //   return `M ${pieCenter} ${pieCenter} L ${p1.x} ${p1.y} A ${pieRadius} ${pieRadius} 0 ${largeArc} 1 ${p2.x} ${p2.y} Z`;
+  // };
+  // let pieCursor = 0;
+  // const pieSlices = overviewItems.map((item) => {
+  //   const pct = overviewTotal > 0 ? item.value / overviewTotal : 0;
+  //   const startAngle = pieCursor * 360;
+  //   pieCursor += pct;
+  //   const endAngle = pieCursor * 360;
+  //   const midAngle = (startAngle + endAngle) / 2;
+  //   const labelPos = polarPoint(midAngle, pieRadius * 0.62);
+  //   return { ...item, pct, startAngle, endAngle, labelPos };
+  // });
+
   return (
     <div style={{ background: "#F3F5FA", minHeight: "100%", fontFamily: "'Hanken Grotesk',system-ui,sans-serif" }}>
 
@@ -202,6 +237,55 @@ export default function ComplaintManagement() {
         <h1 style={{ margin: "4px 0 2px", font: "400 30px 'Newsreader','Georgia',serif", color: "#16233C" }}>Grievance Overview</h1>
         <p style={{ margin: 0, font: "500 13px 'Hanken Grotesk',sans-serif", color: "#8590A6" }}>Monitor, Manage, and Resolve Citizen Complaints</p>
       </div>
+
+      {/* {/* Grievance Overview donut — same ring-chart design as the MLA/Rep
+          ExecutiveDashboard's "Grievance Overview" card, added here since
+          this page's header already carries that title but previously had
+          no visual breakdown, only flat KPI numbers below. */}
+      {/* <div style={{ padding: "20px 32px 0" }}>
+        <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)", maxWidth: 480 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 24, alignItems: "center" }}>
+            <div style={{ position: "relative", width: 160, height: 160 }}>
+              <svg viewBox="0 0 160 160" style={{ width: "100%", height: "100%" }}>
+                {overviewTotal > 0 ? (
+                  pieSlices.map((slice) => (
+                    slice.pct > 0 && (
+                      <g key={slice.label}>
+                        <path d={describeWedge(slice.startAngle, slice.endAngle)} fill={slice.color} stroke="#fff" strokeWidth="1.5" />
+                        {slice.pct >= 0.04 && (
+                          <text x={slice.labelPos.x} y={slice.labelPos.y} textAnchor="middle" dominantBaseline="middle"
+                            style={{ font: "700 13px 'Hanken Grotesk'", fill: "#fff" }}>
+                            {Math.round(slice.pct * 100)}%
+                          </text>
+                        )}
+                      </g>
+                    )
+                  ))
+                ) : (
+                  <circle cx={pieCenter} cy={pieCenter} r={pieRadius} fill="#EAEDF4" />
+                )}
+              </svg>
+            </div>
+            <div style={{ display: "grid", gap: 12 }}> 
+              {overviewItems.map(item => (
+                <div key={item.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: item.color, display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ font: "500 13px 'Hanken Grotesk'", color: "#5A6678" }}>{item.label}</span>
+                  </div>
+                  <span style={{ font: "700 13px 'Hanken Grotesk'", color: "#16233C" }}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={() => document.getElementById('grievance-table-anchor')?.scrollIntoView({ behavior: 'smooth' })}
+            style={{ marginTop: 20, width: "100%", height: 44, background: "#2563EB", color: "#fff", border: "none", borderRadius: 14, font: "700 13px 'Hanken Grotesk'", cursor: "pointer" }}
+          >
+            View All Grievances
+          </button>
+        </div>
+      </div> */}
 
       {/* KPI Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 16, padding: "20px 32px 0" }}>
@@ -217,7 +301,7 @@ export default function ComplaintManagement() {
         ))}
       </div>
 
-      <div style={{ padding: "20px 32px 0" }}>
+      <div id="grievance-table-anchor" style={{ padding: "20px 32px 0" }}>
 
       {/* Filters */}
       <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 16, padding: "16px 20px", marginBottom: 16, display: "flex", gap: 12, alignItems: "center", boxShadow: "0 4px 12px -6px rgba(20,35,60,.1)" }}>

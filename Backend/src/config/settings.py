@@ -110,5 +110,20 @@ class Settings(BaseSettings):
     # ── AI / Anthropic ─────────────────────────────────────────────────────────
     ANTHROPIC_API_KEY: Optional[str] = None
 
+    # ── Directory Service (per-representative own-domain/own-Atlas deployments) ─
+    # DEPLOYMENT_MODE=SINGLE_TENANT means this server instance belongs to
+    # exactly one representative, with its own MONGODB_URL/domain — see
+    # DirectoryService/README.md and utils/directory_client.py. Leave unset
+    # (defaults to MULTI_TENANT) for the shared-Atlas / discovery-module setup.
+    DEPLOYMENT_MODE: str = os.getenv("DEPLOYMENT_MODE", "MULTI_TENANT")
+    # Address of the one shared DirectoryService instance — same value across
+    # every representative's deployment.
+    DIRECTORY_SERVICE_URL: Optional[str] = os.getenv("DIRECTORY_SERVICE_URL")
+    # This specific deployment's own public URL — different per representative.
+    REP_SERVER_URL: Optional[str] = os.getenv("REP_SERVER_URL")
+    # Shared secret so DirectoryService only accepts registrations from real
+    # representative deployments — same value across every deployment.
+    DIRECTORY_REGISTER_KEY: Optional[str] = os.getenv("DIRECTORY_REGISTER_KEY")
+
 
 settings = Settings()

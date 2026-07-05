@@ -37,6 +37,7 @@ from config.settings import settings  # noqa: E402
 from dashboard.routes import router as dashboard_router  # noqa: E402
 from discovery.routes import router as discovery_router  # noqa: E402
 from events.routes import router as events_router  # noqa: E402
+from utils.directory_client import register_with_directory  # noqa: E402
 from grievances.routes import rep_router as grievances_rep_router  # noqa: E402
 from grievances.routes import router as grievances_router  # noqa: E402
 from lookups.routes import router as lookups_router  # noqa: E402
@@ -67,6 +68,18 @@ async def lifespan(app: FastAPI):
         raise
 
     await init_cache()
+
+    # Self-register with the central Directory Service — only relevant when
+    # DEPLOYMENT_MODE=SINGLE_TENANT (this specific deployment belongs to one
+    # representative with their own domain/Atlas). Safe no-op otherwise: see
+    # utils/directory_client.py's own guard on DEPLOYMENT_MODE.
+    try:
+        register_with_directory()
+    except Exception as e:
+        # Never let directory registration failures block the app from
+        # starting — this representative's own server should stay usable
+        # even if the shared Directory Service is unreachable.
+        logger.error(f"Directory Service registration failed: {e}", exc_info=True)
 
     yield
 
