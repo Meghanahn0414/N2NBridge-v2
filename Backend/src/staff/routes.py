@@ -33,6 +33,15 @@ class StaffCreate(BaseModel):
     designation: Optional[str] = Field("Staff", description="PA | Field Officer | Manager | Volunteer")
     role:        Optional[str] = "STAFF"
     profileImage: Optional[str] = Field(None, description="Photo URL, uploaded up front during registration")
+    # Generated client-side on the registration form (MGR-xxxx / FO-xxxx) and
+    # shown to the user as if it would be saved — it never was, because this
+    # model had nowhere to put it, so every Manager/Field Officer list page
+    # showed "—" for an ID the form had already displayed. Accept whichever
+    # one the caller sends; unused one just stays None.
+    managerId:      Optional[str] = None
+    fieldOfficerId: Optional[str] = None
+    address:        Optional[str] = None
+    assignedArea:   Optional[str] = None
 
 class StaffUpdate(BaseModel):
     name:        Optional[str]      = None
@@ -42,6 +51,8 @@ class StaffUpdate(BaseModel):
     status:      Optional[str]      = None
     password:    Optional[str]      = None
     profileImage: Optional[str]     = None
+    address:      Optional[str]     = None
+    assignedArea: Optional[str]     = None
 
 router = APIRouter(prefix="/api/staff", tags=["Staff"])
 logger = logging.getLogger(__name__)
@@ -119,6 +130,10 @@ async def add_staff(body: StaffCreate, db=Depends(get_tenant_db), user=Depends(r
         "password_hash": SecurityManager.hash_password(body.password),
         "role":         (body.role or "STAFF").upper(),
         "profileImage": body.profileImage,
+        "managerId":       body.managerId,
+        "fieldOfficerId":  body.fieldOfficerId,
+        "address":         body.address,
+        "assignedArea":    body.assignedArea,
         "status":       "Active",
         "is_deleted":   False,
         "created_by":   user.get("user_id"),

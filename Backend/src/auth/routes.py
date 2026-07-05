@@ -280,72 +280,82 @@ def _create_representative_account(body: RepresentativeRegisterRequest) -> dict:
     db_name   = _generate_db_name(slug)
     rep_code  = _next_rep_code(master, rep_type)
 
-    tenant_db     = MongoDatabase.setup_tenant_db(db_name)
-    now           = datetime.utcnow()
-    password_hash = SecurityManager.hash_password(password)
-
-    rep_doc = {
-        "fullName":           name,
-        "email":              email,
-        "mobile":             mobile,
-        "passwordHash":       password_hash,
-        "role":               "REPRESENTATIVE",
-        "title":              rep_type,
-        "status":             "ACTIVE",
-        "isDeleted":          False,
-        "assembly_name":      assembly_name,
-        "parliamentary_name": parliamentary_name,
-        "ward_id":            ward_id,
-        "ward_name":          ward_name,
-        "taluk":              taluk,
-        "district":           district,
-        "state":              state,
-        "createdAt":          now,
-        "updatedAt":          now,
-    }
+    tenant_db = None
+    tenant_created = False
+    master_rep_inserted = False
     try:
+        tenant_db = MongoDatabase.get_tenant_db(db_name)
+        tenant_created = True
+        now           = datetime.utcnow()
+        password_hash = SecurityManager.hash_password(password)
+
+        rep_doc = {
+            "fullName":           name,
+            "email":              email,
+            "mobile":             mobile,
+            "passwordHash":       password_hash,
+            "role":               "REPRESENTATIVE",
+            "title":              rep_type,
+            "status":             "ACTIVE",
+            "isDeleted":          False,
+            "assembly_name":      assembly_name,
+            "parliamentary_name": parliamentary_name,
+            "ward_id":            ward_id,
+            "ward_name":          ward_name,
+            "taluk":              taluk,
+            "district":           district,
+            "state":              state,
+            "createdAt":          now,
+            "updatedAt":          now,
+        }
         insert_result = tenant_db.users.insert_one(rep_doc)
+        user_id       = str(insert_result.inserted_id)
+
+        master.representatives.insert_one({
+            "slug":               slug,
+            "rep_code":           rep_code,
+            "db_name":            db_name,
+            "name":               name,
+            "rep_type":           rep_type,
+            "email":              email,
+            "mobile":             mobile,
+            "status":             "ACTIVE",
+            "assembly_name":      assembly_name,
+            "parliamentary_name": parliamentary_name,
+            "ward_id":            ward_id,
+            "ward_name":          ward_name,
+            "taluk":              taluk,
+            "district":           district,
+            "state":              state,
+            "created_at":         now,
+        })
+        master_rep_inserted = True
+        master.user_registry.insert_one({
+            "email":   email,
+            "mobile":  mobile,
+            "db_name": db_name,
+            "role":    "REPRESENTATIVE",
+            "user_id": user_id,
+        })
     except DuplicateKeyError:
-        # Can happen if a previous registration attempt got as far as
-        # creating this tenant DB + user document but failed before writing
-        # the master.representatives entry (e.g. a mid-request crash or dev
-        # server restart) — the "already registered" check above only looks
-        # at master.representatives, so it doesn't catch this orphaned
-        # tenant-side record on retry, and the raw Mongo error would
-        # otherwise surface as an opaque 500.
+        if master_rep_inserted:
+            master.representatives.delete_one({"db_name": db_name})
+        if tenant_created:
+            MongoDatabase.drop_tenant_db(db_name)
         raise HTTPException(
             status_code=400,
             detail="This email or mobile is already registered. If you believe this "
                    "is a leftover from a previous failed attempt, please use a "
                    "different email/mobile or contact support.",
         )
+    except Exception as e:
+        if master_rep_inserted:
+            master.representatives.delete_one({"db_name": db_name})
+        if tenant_created:
+            MongoDatabase.drop_tenant_db(db_name)
+        logger.error(f"Representative registration failed for {email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Representative registration failed")
     user_id       = str(insert_result.inserted_id)
-
-    master.representatives.insert_one({
-        "slug":               slug,
-        "rep_code":           rep_code,
-        "db_name":            db_name,
-        "name":               name,
-        "rep_type":           rep_type,
-        "email":              email,
-        "mobile":             mobile,
-        "status":             "ACTIVE",
-        "assembly_name":      assembly_name,
-        "parliamentary_name": parliamentary_name,
-        "ward_id":            ward_id,
-        "ward_name":          ward_name,
-        "taluk":              taluk,
-        "district":           district,
-        "state":              state,
-        "created_at":         now,
-    })
-    master.user_registry.insert_one({
-        "email":   email,
-        "mobile":  mobile,
-        "db_name": db_name,
-        "role":    "REPRESENTATIVE",
-        "user_id": user_id,
-    })
 
     token = TokenManager.create_token(user_id, "REPRESENTATIVE", db_name)
     logger.info(f"Representative registered: {name} ({rep_type}), DB: {db_name}")
@@ -1403,37 +1413,53 @@ async def register_compat(user_data: UserCreate, current_user: Optional[dict] = 
     slug      = _ensure_unique_slug(master, base_slug)
     db_name   = _generate_db_name(slug)
     rep_code  = _next_rep_code(master, rep_type)
-    tenant_db = MongoDatabase.setup_tenant_db(db_name)
-    now       = datetime.utcnow()
 
-    rep_doc = {
-        "fullName": name, "email": user_data.email, "mobile": user_data.mobile,
-        "passwordHash": SecurityManager.hash_password(user_data.password),
-        "role": "REPRESENTATIVE", "title": rep_type,
-        "status": "ACTIVE", "isDeleted": False,
-        "createdAt": now, "updatedAt": now,
-    }
+    tenant_created = False
+    master_rep_inserted = False
     try:
+        tenant_db = MongoDatabase.get_tenant_db(db_name)
+        tenant_created = True
+        now       = datetime.utcnow()
+
+        rep_doc = {
+            "fullName": name, "email": user_data.email, "mobile": user_data.mobile,
+            "passwordHash": SecurityManager.hash_password(user_data.password),
+            "role": "REPRESENTATIVE", "title": rep_type,
+            "status": "ACTIVE", "isDeleted": False,
+            "createdAt": now, "updatedAt": now,
+        }
         insert_result = tenant_db.users.insert_one(rep_doc)
+        user_id = str(insert_result.inserted_id)
+
+        master.representatives.insert_one({
+            "slug": slug, "rep_code": rep_code, "db_name": db_name,
+            "name": name, "rep_type": rep_type,
+            "email": user_data.email, "mobile": user_data.mobile,
+            "status": "ACTIVE", "created_at": now,
+        })
+        master_rep_inserted = True
+        master.user_registry.insert_one({
+            "email": user_data.email, "mobile": user_data.mobile,
+            "db_name": db_name, "role": "REPRESENTATIVE", "user_id": user_id,
+        })
     except DuplicateKeyError:
+        if master_rep_inserted:
+            master.representatives.delete_one({"db_name": db_name})
+        if tenant_created:
+            MongoDatabase.drop_tenant_db(db_name)
         raise HTTPException(
             status_code=400,
             detail="This email or mobile is already registered. If you believe this "
                    "is a leftover from a previous failed attempt, please use a "
                    "different email/mobile or contact support.",
         )
-    user_id = str(insert_result.inserted_id)
-
-    master.representatives.insert_one({
-        "slug": slug, "rep_code": rep_code, "db_name": db_name,
-        "name": name, "rep_type": rep_type,
-        "email": user_data.email, "mobile": user_data.mobile,
-        "status": "ACTIVE", "created_at": now,
-    })
-    master.user_registry.insert_one({
-        "email": user_data.email, "mobile": user_data.mobile,
-        "db_name": db_name, "role": "REPRESENTATIVE", "user_id": user_id,
-    })
+    except Exception as e:
+        if master_rep_inserted:
+            master.representatives.delete_one({"db_name": db_name})
+        if tenant_created:
+            MongoDatabase.drop_tenant_db(db_name)
+        logger.error(f"Legacy representative registration failed for {user_data.email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Representative registration failed")
 
     try:
         send_welcome_email(user_data.email, name, rep_type)

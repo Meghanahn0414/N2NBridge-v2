@@ -710,7 +710,7 @@ export default function CareerOutlook() {
                   label="Events Organized"
                   tooltip="Published entries from the Events feature (out of Draft status) plus published Communication Center campaigns of type 'Event'."
                   value={data?.eventsOrganized != null ? data.eventsOrganized.toLocaleString() : "—"}
-                  sub="Constituent engagement" subColor="#1E7A50"
+                  sub="Total Events" subColor="#1E7A50"
                 />
               </>
             )}

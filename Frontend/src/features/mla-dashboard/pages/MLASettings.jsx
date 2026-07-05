@@ -67,6 +67,15 @@ export default function MLASettings() {
     broadcastStats: false, weeklyDigest: false,
   });
 
+  // ── Dirty tracking ── each Save button starts disabled (nothing to save
+  // yet, right after load), flips on the moment a field in its own section
+  // changes, and flips back off once that section's save actually succeeds
+  // — so the button can't be clicked again with no new changes, and stays
+  // clickable if the save fails so the user can retry.
+  const [profileDirty, setProfileDirty] = useState(false);
+  const [contactDirty, setContactDirty] = useState(false);
+  const [notifsDirty,  setNotifsDirty]  = useState(false);
+
 
   // ── Security ──
   const [currentPw,       setCurrentPw]       = useState("");
@@ -123,13 +132,17 @@ export default function MLASettings() {
     toastTimer.current = setTimeout(() => setToast({ msg:"", isError:false }), 3000);
   }
 
-  async function saveSection(payload) {
+  async function saveSection(payload, onSuccess) {
     setSaving(true);
     try {
       const res = await api.put("/api/users/me", payload);
       const u = res.data?.data ?? res.data;
       updateAuthUser({ fullName: u?.fullName, title: u?.title, email: u?.email });
       showToast("Changes saved");
+      // Only clear the dirty flag (disabling the button) once the save has
+      // actually succeeded — if it fails, the button stays enabled so the
+      // user can retry without having to touch a field again first.
+      onSuccess?.();
     } catch (err) {
       const msg = err?.response?.data?.detail || err?.response?.data?.message || "Failed to save — please try again";
       showToast(msg, true);
@@ -144,15 +157,15 @@ export default function MLASettings() {
     bio:                bio.trim()         || undefined,
     showApprovalRating: showApproval,
     showResolvedCount:  showResolved,
-  });
+  }, () => setProfileDirty(false));
 
   const handleSaveContact = () => saveSection({
     email:         email.trim()         || undefined,
     officePhone:   officePhone.trim()   || undefined,
     officeAddress: officeAddress.trim() || undefined,
-  });
+  }, () => setContactDirty(false));
 
-  const handleSaveNotifs = () => saveSection({ notifPreferences: notifs });
+  const handleSaveNotifs = () => saveSection({ notifPreferences: notifs }, () => setNotifsDirty(false));
 
   const handleUpdatePassword = async () => {
     setPwError("");
@@ -201,13 +214,13 @@ export default function MLASettings() {
     outline:"none", boxSizing:"border-box", background:"#FAFBFD",
     opacity: fetching ? 0.55 : 1, transition:"opacity 0.2s",
   };
-  const saveBtnStyle = {
+  const saveBtnStyle = (dirty) => ({
     height:42, padding:"0 22px", border:"none", borderRadius:11,
-    background: saving ? "#8FAEEC" : "#2B5BD7",
+    background: saving ? "#8FAEEC" : (dirty ? "#2B5BD7" : "#C7D1E6"),
     color:"#fff", font:"700 14px 'Hanken Grotesk'",
-    cursor: (saving || fetching) ? "not-allowed" : "pointer",
+    cursor: (saving || fetching || !dirty) ? "not-allowed" : "pointer",
     display:"inline-flex", alignItems:"center", gap:8,
-  };
+  });
   const card = {
     background:"#fff", border:"1px solid #EAEDF4", borderRadius:22,
     padding:28, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)",
@@ -228,8 +241,11 @@ export default function MLASettings() {
     <div style={{ font:"700 17px 'Hanken Grotesk'", color:"#16233C", marginBottom:22 }}>{children}</div>
   );
 
-  const SaveBtn = ({ onClick, label = "Save changes" }) => (
-    <button style={saveBtnStyle} onClick={onClick} disabled={saving || fetching}>
+  // `dirty` defaults to true so buttons that don't track it (e.g. "Update
+  // password", which isn't a "did anything change" form the same way) keep
+  // their old always-clickable-while-not-saving behavior.
+  const SaveBtn = ({ onClick, label = "Save changes", dirty = true }) => (
+    <button style={saveBtnStyle(dirty)} onClick={onClick} disabled={saving || fetching || !dirty}>
       {saving ? <><MS style={{ fontSize:16 }}>hourglass_empty</MS>Saving…</> : label}
     </button>
   );
@@ -312,19 +328,19 @@ export default function MLASettings() {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
                 <div>
                   <label style={lbl}>Display name</label>
-                  <input value={displayName} onChange={e => setDisplayName(e.target.value)}
+                  <input value={displayName} onChange={e => { setDisplayName(e.target.value); setProfileDirty(true); }}
                     placeholder="Your name" style={inp} disabled={fetching} />
                 </div>
                 <div>
                   <label style={lbl}>Title / Role</label>
-                  <input value={title} onChange={e => setTitle(e.target.value)}
+                  <input value={title} onChange={e => { setTitle(e.target.value); setProfileDirty(true); }}
                     placeholder="e.g. City Councilor" style={inp} disabled={fetching} />
                 </div>
               </div>
 
               <div style={{ marginBottom:22 }}>
                 <label style={lbl}>Bio</label>
-                <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3}
+                <textarea value={bio} onChange={e => { setBio(e.target.value); setProfileDirty(true); }} rows={3}
                   placeholder="Write a short bio…" disabled={fetching}
                   style={{ ...inp, height:"auto", padding:"12px 14px", resize:"vertical" }} />
               </div>
@@ -341,12 +357,12 @@ export default function MLASettings() {
                   <div key={t.key} style={{ display:"flex", alignItems:"center",
                     justifyContent:"space-between", marginBottom:12 }}>
                     <span style={{ font:"500 13px 'Hanken Grotesk'", color:"#5A6678" }}>{t.label}</span>
-                    <Toggle on={t.val} onChange={t.set} />
+                    <Toggle on={t.val} onChange={v => { t.set(v); setProfileDirty(true); }} />
                   </div>
                 ))}
               </div>
 
-              <SaveBtn onClick={handleSaveProfile} />
+              <SaveBtn onClick={handleSaveProfile} dirty={profileDirty} />
             </section>
           )}
 
@@ -361,14 +377,14 @@ export default function MLASettings() {
                   <label style={{ ...lbl, display:"flex", alignItems:"center", gap:6 }}>
                     <MS style={{ fontSize:15, color:"#8590A6" }}>mail</MS>Email
                   </label>
-                  <input value={email} onChange={e => setEmail(e.target.value)}
+                  <input value={email} onChange={e => { setEmail(e.target.value); setContactDirty(true); }}
                     placeholder="you@example.com" style={inp} disabled={fetching} />
                 </div>
                 <div>
                   <label style={{ ...lbl, display:"flex", alignItems:"center", gap:6 }}>
                     <MS style={{ fontSize:15, color:"#8590A6" }}>call</MS>Office phone
                   </label>
-                  <input value={officePhone} onChange={e => setOfficePhone(e.target.value)}
+                  <input value={officePhone} onChange={e => { setOfficePhone(e.target.value); setContactDirty(true); }}
                     placeholder="Office number" style={inp} disabled={fetching} />
                 </div>
               </div>
@@ -377,11 +393,11 @@ export default function MLASettings() {
                 <label style={{ ...lbl, display:"flex", alignItems:"center", gap:6 }}>
                   <MS style={{ fontSize:15, color:"#8590A6" }}>location_on</MS>Office address
                 </label>
-                <input value={officeAddress} onChange={e => setOfficeAddress(e.target.value)}
+                <input value={officeAddress} onChange={e => { setOfficeAddress(e.target.value); setContactDirty(true); }}
                   placeholder="Office address" style={inp} disabled={fetching} />
               </div>
 
-              <SaveBtn onClick={handleSaveContact} />
+              <SaveBtn onClick={handleSaveContact} dirty={contactDirty} />
             </section>
           )}
 
@@ -404,12 +420,12 @@ export default function MLASettings() {
                     <div style={{ font:"700 14px 'Hanken Grotesk'", color:"#16233C" }}>{n.label}</div>
                     <div style={{ font:"500 12px 'Hanken Grotesk'", color:"#8590A6", marginTop:2 }}>{n.sub}</div>
                   </div>
-                  <Toggle on={notifs[n.key]} onChange={v => setNotifs(prev => ({ ...prev, [n.key]:v }))} />
+                  <Toggle on={notifs[n.key]} onChange={v => { setNotifs(prev => ({ ...prev, [n.key]:v })); setNotifsDirty(true); }} />
                 </div>
               ))}
 
               <div style={{ marginTop:22 }}>
-                <SaveBtn onClick={handleSaveNotifs} label="Save preferences" />
+                <SaveBtn onClick={handleSaveNotifs} label="Save preferences" dirty={notifsDirty} />
               </div>
             </section>
           )}

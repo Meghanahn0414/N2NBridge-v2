@@ -380,6 +380,7 @@ export default function ExploreScreen() {
                 { icon: "clipboard-outline"     as const, label: "Surveys",             route: "/citizen/surveys",       color: "#0891B2", bg: "#E0F7FA" },
                 { icon: "star-outline"          as const, label: "Rate a service",      route: "/citizen/feedback",      color: "#C9871F", bg: "#FEF3C7" },
                 { icon: "people-outline"        as const, label: "My representative",   route: "/citizen/mla-profile",   color: "#1E8A5B", bg: "#E6F4EC" },
+                { icon: "search-outline"        as const, label: "Discover representatives", route: "/citizen/representatives", color: "#6B4FD8", bg: "#EDEAFB" },
                 { icon: "warning-outline"       as const, label: "Emergency SOS",       route: "/citizen/sos",           color: "#C8453A", bg: "#FEF2F2" },
               ].map((item, idx, arr) => (
                 <TouchableOpacity

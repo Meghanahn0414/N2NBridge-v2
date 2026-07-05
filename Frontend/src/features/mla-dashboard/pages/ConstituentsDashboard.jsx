@@ -507,18 +507,18 @@ export default function ConstituentsDashboard() {
           />
           <KpiCard
             iconBg="#EDEAFB" iconColor="#6B4FD8" iconEl={<MIcon name="bolt" style={{ fontSize: 20, color: "#6B4FD8" }} />}
-            label="Active Residents·30d"
-            labelTooltip="Residents who have engaged with services or filed reports in the last 30 days."
+            label="Active Citizens"
+            labelTooltip="Citizens who have engaged with services or filed reports in the last month."
             value={stats ? fmt(active30d) : "—"}
-            valueTooltip={stats ? `${fmt(active30d)} active residents in 30 days` : "No data"}
+            valueTooltip={stats ? `${fmt(active30d)} active citizens in 30 days` : "No data"}
             sub={`${pct(active30d, total)}% of registered`}
             subTooltip="Share of the total registered base active in the past month."
             subGreen
           />
           <KpiCard
             iconBg="#FCF1E0" iconColor="#C9871F" iconEl={<MIcon name="person_add" style={{ fontSize: 20, color: "#C9871F" }} />}
-            label="New Residents·30d"
-            labelTooltip="Residents registered in the last 30 days."
+            label="New Citizens"
+            labelTooltip="Citizens registered in the last month."
             value={stats ? `${fmt(new30d)}` : "—"}
             valueTooltip={stats ? `${fmt(new30d)} new registrations` : "No data"}
             sub={newPct >= 0 ? `+${newPct}% vs. previous month` : `${newPct}% vs. previous month`}
@@ -558,7 +558,6 @@ export default function ConstituentsDashboard() {
             <InfoTip text="Resident Growth Trend shows new registrations over the last 12 months and the current total base." >
               <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Resident Growth Trend</div>
             </InfoTip>
-            <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 6 }}>Residents joining, last 12 months</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 14 }}>
               <span style={{ font: "400 38px 'Newsreader', Georgia, serif", color: "#16233C", lineHeight: .9 }}>{fmt(total)}</span>
               {growthTotal > 0 && (

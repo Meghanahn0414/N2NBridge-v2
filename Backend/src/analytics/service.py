@@ -375,7 +375,12 @@ class AnalyticsService:
         base_stats = AnalyticsService.get_grievance_stats(db, since=since)
         base_stats["byStatus"]["Resolved"] = resolved_in_period
         base_stats["trend"] = trend
-        base_stats["trendSeries"] = AnalyticsService.get_grievance_monthly_trend(db, 6)
+        # Trend chart used to always show a fixed last-6-calendar-months window,
+        # ignoring the `days` the caller picked on the date-range dropdown —
+        # bucket it to the same window instead (30d -> 1 month, 90d -> 3,
+        # 180d -> 6, 365d -> 12), clamped to a sane 1-24 month range.
+        trend_months = max(1, min(24, round(days / 30)))
+        base_stats["trendSeries"] = AnalyticsService.get_grievance_monthly_trend(db, trend_months)
 
         return {
             "grievances":           base_stats,

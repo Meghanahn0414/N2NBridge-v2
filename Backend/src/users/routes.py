@@ -290,6 +290,23 @@ async def list_users(
             "Users retrieved",
         )
 
+    # Field Officers/Managers live in this tenant's `staff` collection, not
+    # `users` (same bridge the ADMIN branch above needs) — an elevated
+    # REPRESENTATIVE caller listing role=CONSTITUENCY_MANAGER/FIELD_OFFICER
+    # here always got an empty result from db.users even though the records
+    # exist, which is why the Field Officer form's "Manager" dropdown could
+    # come back empty for a Representative account too.
+    designation_map = {"FIELD_OFFICER": "Field Officer", "CONSTITUENCY_MANAGER": "Manager"}
+    if role_filter in designation_map:
+        sq = {"is_deleted": {"$ne": True}, "designation": designation_map[role_filter]}
+        staff_docs = list(db.staff.find(sq).sort("created_at", -1))
+        total = len(staff_docs)
+        skip  = (page - 1) * per_page
+        return success_response(
+            {"items": [_doc(s) for s in staff_docs[skip:skip + per_page]], "total": total, "page": page, "per_page": per_page},
+            "Users retrieved",
+        )
+
     q: dict = {"isDeleted": {"$ne": True}}
     if role_filter:
         q["role"] = role_filter

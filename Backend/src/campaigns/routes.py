@@ -79,7 +79,7 @@ def _oid(val: str) -> ObjectId:
 # ── Citizen stats (used by Constituents dashboard) ─────────────────────────────
 
 @router.get("/constituents/stats")
-async def constituents_stats(db=Depends(get_tenant_db), user=Depends(require_auth)):
+async def constituents_stats(days: int = 365, db=Depends(get_tenant_db), user=Depends(require_auth)):
     """Aggregate citizen statistics for the representative dashboard."""
     if user.get("role") not in ("REPRESENTATIVE", "STAFF"):
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -114,10 +114,11 @@ async def constituents_stats(db=Depends(get_tenant_db), user=Depends(require_aut
     ]
     genders = {g["_id"]: g["count"] for g in db.citizens.aggregate(gender_pipeline)}
 
-    # Growth — last 12 months
-    twelve_ago = now - timedelta(days=365)
+    # Growth — windowed to the caller's selected date range (the Overview
+    # page's header calendar), defaulting to the last 12 months.
+    growth_since = now - timedelta(days=days)
     growth_pipeline = [
-        {"$match": {**base, "created_at": {"$gte": twelve_ago}}},
+        {"$match": {**base, "created_at": {"$gte": growth_since}}},
         {"$group": {"_id": {"year": {"$year": "$created_at"}, "month": {"$month": "$created_at"}}, "count": {"$sum": 1}}},
         {"$sort": {"_id.year": 1, "_id.month": 1}},
     ]

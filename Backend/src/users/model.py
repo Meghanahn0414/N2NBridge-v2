@@ -132,6 +132,15 @@ class UserUpdate(BaseModel):
     officeAddress:      Optional[str]      = Field(None, description="Office address")
     assembly_name:      Optional[str]      = None
     parliamentary_name: Optional[str]      = None
+    # These four were already sent by the Settings page (Profile and
+    # Notifications sections) but had no field here to land in — Pydantic
+    # silently drops unrecognized fields, so model_dump(exclude_unset=True)
+    # in update_my_profile came back completely empty and 400'd with "No
+    # fields to update", even though the request itself was fine.
+    title:              Optional[str]      = Field(None, description="Display title/role shown on the profile")
+    showApprovalRating: Optional[bool]     = None
+    showResolvedCount:  Optional[bool]     = None
+    notifPreferences:   Optional[dict]     = Field(None, description='e.g. {"newGrievance": true, "weeklyDigest": false}')
     ward_id:            Optional[str]      = None
     ward_name:          Optional[str]      = None
     taluk:              Optional[str]      = None

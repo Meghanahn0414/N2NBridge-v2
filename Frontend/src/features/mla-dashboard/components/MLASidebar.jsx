@@ -90,7 +90,9 @@ export default function MLASidebar({ user, openComplaints = 0 }) {
             { label: "Overview",       icon: <RiDashboardLine />, to: ROUTES.mlaExecutiveDashboard },
             { label: "Popularity",     icon: <RiBarChart2Line />, to: ROUTES.mlaCitizenSentiment },
             { label: "Career Outlook", icon: <RiTimeLine />,      to: ROUTES.mlaCareerOutlook },
-            { label: "Constituents",   icon: <RiGroupLine />,     to: ROUTES.mlaConstituents },
+            // Constituents was merged into Overview — its cards (resident KPIs,
+            // groups, growth, engagement funnel) now live on ExecutiveDashboard,
+            // so this no longer needs its own nav entry.
           ].map((item) => (
             <NavItem key={item.label} {...item} />
           ))}
