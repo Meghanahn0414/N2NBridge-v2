@@ -35,6 +35,7 @@ from config.database import MongoDatabase  # noqa: E402
 from config.rate_limit import limiter  # noqa: E402
 from config.settings import settings  # noqa: E402
 from dashboard.routes import router as dashboard_router  # noqa: E402
+from discovery.routes import router as discovery_router  # noqa: E402
 from events.routes import router as events_router  # noqa: E402
 from grievances.routes import rep_router as grievances_rep_router  # noqa: E402
 from grievances.routes import router as grievances_router  # noqa: E402
@@ -186,6 +187,7 @@ app.include_router(lookups_router)
 app.include_router(citizens_router)
 app.include_router(mla_router)
 app.include_router(surveys_router)
+app.include_router(discovery_router)
 
 
 # ── Global exception handler ───────────────────────────────────────────────────
