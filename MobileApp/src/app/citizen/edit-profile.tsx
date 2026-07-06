@@ -687,31 +687,37 @@ export default function EditProfileScreen() {
                   <View style={s.divider} />
                 </View>
               ))}
-              <View style={s.fieldRow}>
-                <View style={s.fieldIconWrap}>
-                  <Ionicons name="map-outline" size={18} color={C.muted} />
+              {/* Ward only applies to Councillor constituents — MLA/MP citizens
+                  already identify their representative via Assembly/Parliamentary
+                  Constituency above, so this field is redundant (and confusing)
+                  for them. */}
+              {repType !== "MLA" && repType !== "MP" && (
+                <View style={s.fieldRow}>
+                  <View style={s.fieldIconWrap}>
+                    <Ionicons name="map-outline" size={18} color={C.muted} />
+                  </View>
+                  <View style={s.fieldInputWrap}>
+                    <Text style={s.fieldLabel}>Ward</Text>
+                    <TouchableOpacity
+                      style={s.input}
+                      activeOpacity={0.7}
+                      onPress={() => setShowWardPicker(true)}
+                    >
+                      <Text style={{ fontSize: 15, color: wardId ? C.text : "#CBD5E1" }}>
+                        {wardId
+                          ? (wardOptions.find((o) => o.value === wardId)?.label || wardId)
+                          : "Select your ward"}
+                      </Text>
+                    </TouchableOpacity>
+                    {wardLoading && <Text style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Loading…</Text>}
+                    {!wardLoading && !!wardId && wardAutoFilled && (
+                      <Text style={{ fontSize: 12, color: C.primary, marginTop: 4 }}>
+                        Auto-detected from your address — tap to change.
+                      </Text>
+                    )}
+                  </View>
                 </View>
-                <View style={s.fieldInputWrap}>
-                  <Text style={s.fieldLabel}>Ward</Text>
-                  <TouchableOpacity
-                    style={s.input}
-                    activeOpacity={0.7}
-                    onPress={() => setShowWardPicker(true)}
-                  >
-                    <Text style={{ fontSize: 15, color: wardId ? C.text : "#CBD5E1" }}>
-                      {wardId
-                        ? (wardOptions.find((o) => o.value === wardId)?.label || wardId)
-                        : "Select your ward"}
-                    </Text>
-                  </TouchableOpacity>
-                  {wardLoading && <Text style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Loading…</Text>}
-                  {!wardLoading && !!wardId && wardAutoFilled && (
-                    <Text style={{ fontSize: 12, color: C.primary, marginTop: 4 }}>
-                      Auto-detected from your address — tap to change.
-                    </Text>
-                  )}
-                </View>
-              </View>
+              )}
             </View>
           </View>
 
