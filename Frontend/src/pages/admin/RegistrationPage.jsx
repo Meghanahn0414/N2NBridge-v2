@@ -135,12 +135,16 @@ export default function RegistrationPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // /api/users/ (manager lookup) and /api/lookups/user-roles are
-    // admin-facing; a Representative registering their own team doesn't
-    // need either — the role list is fixed to REP_TEAM_ROLES above.
-    if (isRepresentative) return;
+    // /api/lookups/user-roles is admin-facing only — a Representative's
+    // role list is already fixed to teamRoles above, so it doesn't need it.
+    // The manager list is a different story: a Representative registering a
+    // Field Officer still needs to populate that Field Officer's "Manager"
+    // assignment dropdown with their own team's Managers, so this was
+    // wrongly skipped for exactly the caller who needed it most — the
+    // dropdown always showed "Select manager" with no options for any
+    // Representative/scoped-Admin account.
     fetchManagers();
-    fetchRoles();
+    if (!isRepresentative) fetchRoles();
   }, []);
 
 
@@ -344,9 +348,14 @@ export default function RegistrationPage() {
         setFormData(initialFormState);
         setPhotoFile(null);
         setPhotoPreview("");
-        setRole("");
         setSelectedCountry(COUNTRIES[0]);
         setLoading(false);
+        // This branch returned before ever reaching the navigate() call at
+        // the bottom of this function, so registering an MLA/MP/Councillor
+        // here (the admin's own representative) never took you to Roles &
+        // Permissions the way every other role below does.
+        navigate(ROUTES.rolePermissions, { state: { selectedRole: role } });
+        setRole("");
         return;
       }
 
@@ -391,6 +400,21 @@ export default function RegistrationPage() {
           mobile: selectedCountry.dial + formData.mobile.trim(),
           password: formData.password,
           designation: role === "CONSTITUENCY_MANAGER" ? "Manager" : "Field Officer",
+          // Generated above in handleRoleChange and shown on the form as if
+          // it would be saved — it wasn't, because this payload never sent
+          // it and /api/staff/ had nowhere to store it either (now fixed on
+          // both ends). Only send the one that applies to this role.
+          ...(role === "CONSTITUENCY_MANAGER" ? { managerId: formData.managerId.trim() } : {}),
+          ...(role === "FIELD_OFFICER" ? { fieldOfficerId: formData.fieldOfficerId.trim() } : {}),
+          // Same gap as managerId/fieldOfficerId above — the Address field
+          // is right there on the form for every role, but this payload
+          // never carried it through for Field Officer/Manager staff
+          // registrations, so it was always silently dropped.
+          ...(formData.address.trim() ? { address: formData.address.trim() } : {}),
+          // Same gap again — Assigned Area is filled in on the Field
+          // Officer form but was never part of this payload, so it was
+          // always dropped before it ever reached /api/staff/.
+          ...(role === "FIELD_OFFICER" && formData.assignedArea.trim() ? { assignedArea: formData.assignedArea.trim() } : {}),
         };
         console.log("[RegistrationPage] Submitting team member to /api/staff/:", { ...staffPayload, password: "***" });
         registrationResponse = await api.post("/api/staff/", staffPayload);
@@ -460,12 +484,12 @@ export default function RegistrationPage() {
       setRole("");
       setSelectedCountry(COUNTRIES[0]);
 
-      // Navigate back to the appropriate list page after successful registration
-      if (role === "CONSTITUENCY_MANAGER") {
-        navigate(ROUTES.managerList);
-      } else {
-        navigate(ROUTES.rolePermissions, { state: { selectedRole: role } });
-      }
+      // Navigate to Roles & Permissions after successful registration, with
+      // the just-registered role's card pre-selected (see roleIdMap in
+      // RolePermissions.jsx). Was previously sending Manager registrations
+      // to the Manager list page instead, so only Field Officer/rep
+      // registrations ever landed on Roles & Permissions.
+      navigate(ROUTES.rolePermissions, { state: { selectedRole: role } });
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.response?.data?.detail || err.message || "Failed to register user.";
       setError(errorMessage);

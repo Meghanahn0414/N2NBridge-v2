@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthRole } from "../../../services/authStorage";
 import api from "../../../shared/services/api";
+import { ROUTES } from "../../../app/routes/RouteConstants";
+import "../styles/mla-layout.css";
 import MIcon from "../../../components/MIcon";
 import ExportButton from "../../../components/ExportButton";
 
@@ -13,8 +15,9 @@ const DATE_OPTIONS = [
 ];
 
 
-const INSIGHTS_KEY  = "mla_insights_cache";
-const ANALYTICS_KEY = "mla_analytics_cache";
+const INSIGHTS_KEY     = "mla_insights_cache";
+const ANALYTICS_KEY    = "mla_analytics_cache";
+const CONSTITUENTS_KEY = "mla_constituents_cache";
 
 function readCache(key) {
   try { const v = sessionStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
@@ -76,6 +79,40 @@ function useAnalytics(days) {
       .finally(() => { if (requestId === requestIdRef.current) setLoading(false); });
   }, [days]);
   return { data, loading };
+}
+
+// Resident/constituent stats — merged in from the old standalone Constituents
+// page (GET /api/campaigns/constituents/stats). Kept as its own hook (rather
+// than folded into useAnalytics) since it's a different endpoint with its own
+// cache key and doesn't depend on the date-range picker above.
+function useConstituents(days) {
+  const cached = readCache(CONSTITUENTS_KEY);
+  const [stats, setStats]     = useState(cached);
+  const [loading, setLoading] = useState(!cached);
+  const [error, setError]     = useState(null);
+
+  const load = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    api.get("/api/campaigns/constituents/stats", { params: { days } })
+      .then((r) => {
+        const fresh = r.data?.data ?? r.data;
+        if (fresh) writeCache(CONSTITUENTS_KEY, fresh);
+        setStats(fresh);
+      })
+      .catch((e) => {
+        console.error("[Constituents] stats fetch failed:", e);
+        setError("Could not load resident data. Check that the backend is running.");
+      })
+      .finally(() => setLoading(false));
+  }, [days]);
+
+  // Resident Growth Trend's window follows the header's date-range picker
+  // (same `days` the Grievance Trend / analytics cards use), so this needs
+  // to refetch whenever that selection changes.
+  useEffect(() => { load(); }, [load]);
+
+  return { stats, loading, error, reload: load };
 }
 
 function fmtResolutionTime(ms) {
@@ -304,10 +341,121 @@ function NotificationBell() {
   );
 }
 
+/* ── Resident helpers (ported from the old Constituents page) ───────── */
+function fmt(n) {
+  if (n == null) return "—";
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  return n.toString();
+}
+
+function pctOf(part, total) {
+  if (!total) return 0;
+  return Math.round((part / total) * 100);
+}
+
+const AVATAR_COLORS = ["#2B5BD7", "#1E8A5B", "#6B4FD8", "#C9871F", "#C8453A"];
+
+function buildGrowthPath(growth, w = 360, h = 170) {
+  if (!growth || growth.length < 2) return { line: "", area: "", dots: [] };
+  const counts = growth.map((g) => g.count);
+  const maxVal = Math.max(...counts, 1);
+  const minY = 20, maxY = h - 20;
+  const pts = growth.map((g, i) => {
+    const x = (i / (growth.length - 1)) * w;
+    const y = maxY - ((g.count / maxVal) * (maxY - minY));
+    return [Math.round(x), Math.round(y)];
+  });
+  const line = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  const last = pts[pts.length - 1];
+  return { line, area, dots: last };
+}
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function growthLabels(growth) {
+  if (!growth || growth.length === 0) return ["—", "—", "—", "Now"];
+  const first = growth[0];
+  const mid1 = growth[Math.floor(growth.length / 3)];
+  const mid2 = growth[Math.floor((2 * growth.length) / 3)];
+  return [
+    MONTHS[(first.month - 1) % 12],
+    MONTHS[(mid1.month - 1) % 12],
+    MONTHS[(mid2.month - 1) % 12],
+    "Now",
+  ];
+}
+
+function SegmentRow({ icon, label, count, engPct, color = "#2B5BD7", bg = "#E7EEFF", iconColor = "#2B5BD7" }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 12, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <MIcon name={icon} style={{ fontSize: 20, color: iconColor }} />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+          <InfoTip text={`Residents in ${label} ward with ${engPct}% segment share.`}>
+            <span style={{ font: "700 14px 'Hanken Grotesk'", color: "#16233C" }}>{label}</span>
+          </InfoTip>
+          <InfoTip text={`${fmt(count)} residents in ${label} district, representing ${engPct}% of the total.`}>
+            <span style={{ font: "600 13px 'Hanken Grotesk'", color: "#5A6678" }}>
+              {fmt(count)} · <span style={{ color: engPct >= 60 ? "#1E7A50" : "#B5781A" }}>{engPct}%</span>
+            </span>
+          </InfoTip>
+        </div>
+        <div style={{ height: 7, borderRadius: 5, background: "#EEF1F7" }}>
+          <div style={{ width: `${engPct}%`, height: "100%", borderRadius: 5, background: color }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FunnelBar({ label, value, total, widthPct, bg, textDark }) {
+  const displayPct = Math.round(widthPct);
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+        <InfoTip text={`Out of ${fmt(total)} registered residents, ${fmt(value)} are in the ${label} stage.`}>
+          <span style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C" }}>{label}</span>
+        </InfoTip>
+        <InfoTip text={`${displayPct}% of the total resident base is in this stage.`}>
+          <span style={{ font: "700 13px 'Hanken Grotesk'", color: "#16233C" }}>{fmt(value)}</span>
+        </InfoTip>
+      </div>
+      <div style={{ height: 38, width: `${widthPct}%`, borderRadius: 10, background: bg, display: "flex", alignItems: "center", padding: "0 14px" }}>
+        <InfoTip text={`${displayPct}% of total residents are in ${label}.`}>
+          <span style={{ font: "700 12px 'Hanken Grotesk'", color: textDark ? "#16233C" : "#fff" }}>{displayPct}%</span>
+        </InfoTip>
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({ iconBg, iconColor, iconEl, label, value, sub, subGreen, labelTooltip, valueTooltip, subTooltip }) {
+  return (
+    <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 18, padding: "18px 20px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {/* notranslate prevents GT from wrapping the emoji in <font> and duplicating it */}
+          <span className="notranslate" translate="no" style={{ fontSize: 20, color: iconColor, lineHeight: 1, display: "block" }}>{iconEl}</span>
+        </div>
+        <InfoTip text={labelTooltip || label}>
+          <span style={{ font: "600 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: "#8590A6", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        </InfoTip>
+      </div>
+      <InfoTip text={valueTooltip || `${label} value`}>
+        <div style={{ fontFamily: "'Newsreader','Noto Sans Kannada',serif", fontSize: "clamp(20px,2.5vw,30px)", fontWeight: 400, color: "#16233C", lineHeight: 1.2 }}>{value}</div>
+      </InfoTip>
+      <InfoTip text={subTooltip || sub}>
+        <div style={{ font: "500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color: subGreen ? "#1E7A50" : "#8590A6", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>
+      </InfoTip>
+    </div>
+  );
+}
+
 const KPI = [
   { icon: "task_alt",   iconBg: "#E7EEFF", iconColor: "#2B5BD7", label: "Resolved Complaints",    sparkColor: "#2B5BD7", tooltip: "Resolved Complaints = count of grievances with status RESOLVED during the selected date range." },
   { icon: "bolt",       iconBg: "#E6F4EC", iconColor: "#1E8A5B", label: "Avg. Resolution Time",   sparkColor: "#1E8A5B", tooltip: "Avg. Resolution Time = mean time from complaint creation to resolution for resolved cases in the selected period." },
-  { icon: "groups",     iconBg: "#EDEAFB", iconColor: "#6B4FD8", label: "Registered Citizens",    sparkColor: "#6B4FD8", tooltip: "Registered Citizens = total number of citizen accounts in the system at the time of reporting." },
   { icon: "how_to_vote",iconBg: "#FCF1E0", iconColor: "#C9871F", label: "Events Organized",    sparkColor: "#C9871F", tooltip: "Events Organized = published entries from the Events feature (out of Draft status) plus published Communication Center campaigns of type \"Event\"." },
 ];
 
@@ -340,7 +488,8 @@ export default function ExecutiveDashboard() {
 
   const { data: insights, loading: insightsLoading } = useMLAInsights(selectedDays);
   const { data: analytics, loading: analyticsLoading } = useAnalytics(selectedDays);
-  const isRefreshing = insightsLoading || analyticsLoading;
+  const { stats: residentStats, loading: residentsLoading, error: residentsError, reload: reloadResidents } = useConstituents(selectedDays);
+  const isRefreshing = insightsLoading || analyticsLoading || residentsLoading;
 
   const sentiment = insights?.publicSentiment || null;
   const byGroup   = insights?.approvalByGroup || null;
@@ -357,7 +506,6 @@ export default function ExecutiveDashboard() {
   const resolved  = analytics?.grievances?.byStatus?.Resolved ?? null;
   const total     = analytics?.grievances?.total ?? null;
   const avgTime   = analytics?.resolutionTime?.avgResolutionTime ?? null;
-  const citizens  = analytics?.users?.byRole?.CITIZEN ?? null;
   const eventsOrganized = analytics?.events?.publishedEvents ?? null;
 
   // First card: "12/33" — resolved out of total
@@ -368,7 +516,6 @@ export default function ExecutiveDashboard() {
   const KPI_VALUES = [
     { value: resolvedDisplay, trend: analytics?.grievances?.trend },
     { value: avgTime != null ? fmtResolutionTime(avgTime) : "—", trend: null },
-    { value: citizens  != null ? citizens  : "—", trend: analytics?.users?.trend },
     { value: eventsOrganized != null ? eventsOrganized : "—", trend: analytics?.events?.trend },
   ];
 
@@ -446,6 +593,105 @@ export default function ExecutiveDashboard() {
   const LOW_SAMPLE_THRESHOLD = 30;
   const satisfactionSampleIsLow = hasSatisfactionData && (approvalResponses ?? 0) < LOW_SAMPLE_THRESHOLD;
 
+  /* ── Resident / constituent data (merged from the old Constituents page) ──
+     `verified` is intentionally not surfaced anywhere below: GET
+     /api/campaigns/constituents/stats never computes it, so it's always 0 —
+     showing it (or a "% profile complete" derived from it) would be a fake
+     number, not real data, so that card and sub-label were dropped rather
+     than merged in. */
+  const residentsTotal = residentStats?.total     ?? 0;
+  const active30d      = residentStats?.active30d ?? 0;
+  const new30d         = residentStats?.new30d    ?? 0;
+  const newPct         = residentStats?.newPct    ?? 0;
+  const engaged         = residentStats?.engaged   ?? 0;
+  const advocates       = residentStats?.advocates ?? 0;
+  const growth          = residentStats?.growth    ?? [];
+  const residentGroups  = residentStats?.residentGroups ?? [];
+  // Backend calls this topCitizens, not topResidents — same shape
+  // (name/initials/mobile/complaints), just a naming mismatch.
+  const topResidents = residentStats?.topCitizens ?? residentStats?.topResidents ?? [];
+
+  const { line, area, dots } = buildGrowthPath(growth);
+  const growthChartLabels = growthLabels(growth);
+
+  const segments = residentGroups.length > 0
+    ? residentGroups.slice(0, 5).map((g, i) => ({
+        icon: g.icon || "group",
+        label: g.label,
+        count: g.count,
+        engPct: g.pct,
+        color: i < 3 ? "#2B5BD7" : "#C9871F",
+        bg:    i < 3 ? "#E7EEFF" : "#FCF1E0",
+        iconColor: i < 3 ? "#2B5BD7" : "#C9871F",
+      }))
+    : [
+        { icon: "group",    label: "Families & parents",   count: 0, engPct: 0, color: "#2B5BD7", bg: "#E7EEFF", iconColor: "#2B5BD7" },
+        { icon: "place",    label: "Long-term residents",  count: 0, engPct: 0, color: "#2B5BD7", bg: "#E7EEFF", iconColor: "#2B5BD7" },
+      ];
+
+  const growthTotal  = growth.reduce((s, g) => s + g.count, 0);
+  const priorTotal   = residentsTotal - growthTotal;
+  const hasBaseline  = priorTotal > 0;
+  const growthPct    = hasBaseline ? Math.round((growthTotal / priorTotal) * 100) : null;
+
+  /* ── Resident search (moved from the topbar of the old Constituents page) ── */
+  const [searchQ, setSearchQ]             = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showSearch, setShowSearch]       = useState(false);
+  const searchRef   = useRef(null);
+  const searchTimer = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowSearch(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSearchChange = (e) => {
+    const q = e.target.value;
+    setSearchQ(q);
+    setShowSearch(true);
+    clearTimeout(searchTimer.current);
+    if (!q.trim()) { setSearchResults([]); return; }
+    searchTimer.current = setTimeout(() => {
+      setSearchLoading(true);
+      api.get("/api/users/citizens/search", { params: { q, limit: 8 } })
+        .then((r) => setSearchResults(r.data?.results || []))
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearchLoading(false));
+    }, 280);
+  };
+
+  /* ── Message a segment (moved from the old Constituents page) ── */
+  const [showMsgModal, setShowMsgModal] = useState(false);
+  const [msgWard, setMsgWard]           = useState("");
+  const [msgText, setMsgText]           = useState("");
+  const [msgSending, setMsgSending]     = useState(false);
+  const [msgSent, setMsgSent]           = useState(false);
+
+  const handleSendMessage = async () => {
+    if (!msgText.trim()) return;
+    setMsgSending(true);
+    try {
+      await api.post("/api/campaigns/", {
+        name:    `Segment message — ${msgWard || "All residents"}`,
+        type:    "Awareness",
+        message: msgText.trim(),
+        status:  "ACTIVE",
+        wardId:  msgWard || undefined,
+      });
+      setMsgSent(true);
+      setTimeout(() => { setShowMsgModal(false); setMsgSent(false); setMsgText(""); setMsgWard(""); }, 1800);
+    } catch {
+      alert("Failed to send. Please try again.");
+    } finally {
+      setMsgSending(false);
+    }
+  };
+
   return (
     <>
       <style>{`@keyframes mla-spin { to { transform: rotate(360deg); } }`}</style>
@@ -464,6 +710,55 @@ export default function ExecutiveDashboard() {
             </span>
           )}
 
+          {/* Resident search */}
+          <div ref={searchRef} style={{ position: "relative" }}>
+            <div style={{ height: 40, background: "#fff", border: `1px solid ${showSearch ? "#2B5BD7" : "#E1E6F0"}`, borderRadius: 13, display: "flex", alignItems: "center", gap: 9, padding: "0 14px", width: 210, transition: "border-color 0.15s" }}>
+              <MIcon name="search" style={{ fontSize: 16, color: "#9AA3B5" }} />
+              <input
+                value={searchQ}
+                onChange={handleSearchChange}
+                onFocus={() => setShowSearch(true)}
+                placeholder="Find Citizen"
+                style={{ border: "none", outline: "none", font: "500 13px 'Hanken Grotesk'", color: "#16233C", background: "transparent", width: "100%" }}
+              />
+              {searchQ && (
+                <button onClick={() => { setSearchQ(""); setSearchResults([]); }} style={{ border: "none", background: "none", cursor: "pointer", color: "#9AA3B5", fontSize: 15, padding: 0, flexShrink: 0 }}>✕</button>
+              )}
+            </div>
+            {showSearch && (searchQ.trim() || searchResults.length > 0) && (
+              <div style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, width: 320, background: "#fff", border: "1px solid #E1E6F0", borderRadius: 16, boxShadow: "0 16px 40px rgba(20,35,60,0.13)", zIndex: 100, overflow: "hidden" }}>
+                {searchLoading ? (
+                  <div style={{ padding: "16px 18px", font: "500 13px 'Hanken Grotesk'", color: "#8590A6" }}>Searching…</div>
+                ) : searchResults.length === 0 ? (
+                  <div style={{ padding: "16px 18px", font: "500 13px 'Hanken Grotesk'", color: "#8590A6" }}>No residents found for "{searchQ}"</div>
+                ) : (
+                  <>
+                    <div style={{ padding: "10px 16px 6px", font: "600 11px 'Hanken Grotesk'", color: "#8590A6", textTransform: "uppercase", letterSpacing: ".05em" }}>
+                      {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}
+                    </div>
+                    {searchResults.map((r, i) => (
+                      <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderTop: i === 0 ? "none" : "1px solid #F3F5FA", cursor: "pointer", transition: "background 0.1s" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "#F3F5FA"}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                        onClick={() => { setShowSearch(false); setSearchQ(""); }}
+                      >
+                        <div className="notranslate" translate="no" style={{ width: 36, height: 36, borderRadius: "50%", background: AVATAR_COLORS[i % AVATAR_COLORS.length], display: "flex", alignItems: "center", justifyContent: "center", font: "700 13px 'Hanken Grotesk'", color: "#fff", flexShrink: 0 }}>
+                          {r.initials}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="notranslate" translate="no" style={{ font: "700 14px 'Hanken Grotesk'", color: "#16233C", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
+                          <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>
+                            {[r.ward && `Ward ${r.ward}`, r.age && `Age ${r.age}`, r.gender].filter(Boolean).join(" · ") || r.mobile}
+                          </div>
+                        </div>
+                        <span style={{ font: "500 12px 'Hanken Grotesk'", color: "#9AA3B5", flexShrink: 0 }}>{r.mobile}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           {/* Date filter dropdown */}
           <div ref={dateRef} style={{ position:"relative" }}>
             <button onClick={() => setShowDateMenu(v => !v)}
@@ -501,8 +796,11 @@ export default function ExecutiveDashboard() {
               { metric: 'At Risk',                 value: atRiskProb  != null ? `${atRiskProb}%`  : '—' },
               { metric: 'Resolved Grievances',     value: resolved    != null ? String(resolved)  : '—' },
               { metric: 'Total Grievances',        value: total       != null ? String(total)      : '—' },
-              { metric: 'Citizens',                value: citizens    != null ? String(citizens)   : '—' },
               { metric: 'Events Organized',        value: eventsOrganized != null ? String(eventsOrganized) : '—' },
+              { metric: 'Total Registered Residents', value: fmt(residentsTotal) },
+              { metric: 'Active Residents (30d)',  value: fmt(active30d) },
+              { metric: 'New Residents (30d)',     value: fmt(new30d) },
+              ...residentGroups.slice(0, 10).map(g => ({ metric: g.label, value: String(g.count) })),
             ]}
             columns={[
               { key: 'metric', label: 'Metric' },
@@ -515,10 +813,85 @@ export default function ExecutiveDashboard() {
         </div>
       </header>
 
+      {/* Message a segment modal */}
+      {showMsgModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(14,22,38,0.45)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowMsgModal(false); }}
+        >
+          <div style={{ width: 480, background: "#fff", borderRadius: 22, boxShadow: "0 24px 60px rgba(14,22,38,0.2)", overflow: "hidden" }}>
+            <div style={{ padding: "22px 26px 18px", borderBottom: "1px solid #EAEDF4" }}>
+              <div style={{ font: "700 18px 'Hanken Grotesk'", color: "#16233C" }}>Message a segment</div>
+              <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#8590A6", marginTop: 3 }}>Send a broadcast to residents in a specific ward</div>
+            </div>
+
+            {msgSent ? (
+              <div style={{ padding: "40px 26px", textAlign: "center" }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}><MIcon name="check_circle" style={{ fontSize: 40, color: "#1E8A5B" }} /></div>
+                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#1E8A5B" }}>Broadcast sent!</div>
+                <div style={{ font: "500 13px 'Hanken Grotesk'", color: "#8590A6", marginTop: 4 }}>Residents will receive the notification</div>
+              </div>
+            ) : (
+              <div style={{ padding: "22px 26px" }}>
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C", display: "block", marginBottom: 8 }}>Target ward</label>
+                  <select
+                    value={msgWard}
+                    onChange={e => setMsgWard(e.target.value)}
+                    style={{ width: "100%", height: 44, borderRadius: 11, border: "1px solid #E1E6F0", padding: "0 14px", font: "500 14px 'Hanken Grotesk'", color: "#16233C", background: "#fff", outline: "none", cursor: "pointer" }}
+                  >
+                    <option value="">All residents</option>
+                    {(residentStats?.wards || []).map(w => (
+                      <option key={w.ward} value={w.ward}>{w.ward} ({w.count} residents)</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: 22 }}>
+                  <label style={{ font: "600 13px 'Hanken Grotesk'", color: "#16233C", display: "block", marginBottom: 8 }}>Message</label>
+                  <textarea
+                    value={msgText}
+                    onChange={e => setMsgText(e.target.value)}
+                    placeholder="Type your message to residents…"
+                    rows={4}
+                    style={{ width: "100%", borderRadius: 11, border: "1px solid #E1E6F0", padding: "12px 14px", font: "500 14px 'Hanken Grotesk'", color: "#16233C", resize: "vertical", outline: "none", boxSizing: "border-box" }}
+                  />
+                  <div style={{ font: "500 11px 'Hanken Grotesk'", color: "#9AA3B5", marginTop: 4, textAlign: "right" }}>
+                    Sending to: <strong style={{ color: "#2B5BD7" }}>{msgWard ? `${residentStats?.wards?.find(w => w.ward === msgWard)?.count ?? "?"} residents in ${msgWard}` : `all ${residentStats?.total ?? ""} residents`}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setShowMsgModal(false)} style={{ flex: 1, height: 44, border: "2px solid #E1E6F0", borderRadius: 11, background: "#F3F5FA", color: "#5A6678", font: "600 14px 'Hanken Grotesk'", cursor: "pointer" }}>
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!msgText.trim() || msgSending}
+                    style={{ flex: 2, height: 44, border: "none", borderRadius: 11, background: !msgText.trim() ? "#B8C7F0" : "#2B5BD7", color: "#fff", font: "700 14px 'Hanken Grotesk'", cursor: !msgText.trim() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: msgText.trim() ? "0 8px 20px -8px rgba(43,91,215,.6)" : "none" }}
+                  >
+                    {msgSending ? "Sending…" : " Send broadcast"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div ref={dashboardRef} style={{ ...pg, padding:"28px 34px 40px", display:"flex", flexDirection:"column", gap:20, opacity: isRefreshing ? 0.45 : 1, transition:"opacity 0.25s ease", pointerEvents: isRefreshing ? "none" : "auto" }}>
 
-        {/* KPI strip */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(220px, 1fr))", gap:20 }}>
+        {/* Resident data error banner */}
+        {residentsError && (
+          <div style={{ padding: "12px 18px", background: "#FBEAE8", border: "1px solid #F4C5C2", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ font: "500 13px 'Hanken Grotesk'", color: "#C8453A" }}>{residentsError}</span>
+            <button onClick={reloadResidents} style={{ marginLeft: 16, padding: "6px 14px", borderRadius: 8, background: "#C8453A", color: "#fff", border: "none", font: "600 12px 'Hanken Grotesk'", cursor: "pointer" }}>Retry</button>
+          </div>
+        )}
+
+        {/* KPI strip — grievance / office metrics. Fixed 4-column grid (not
+            auto-fit) so all four cards always stay on one line instead of
+            wrapping to a second row on narrower screens. */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:20 }}>
           {KPI.map((k, i) => {
             const kv = KPI_VALUES[i];
             const trendVal = (kv.trend != null && kv.trend !== 0) ? kv.trend : null;
@@ -547,8 +920,7 @@ export default function ExecutiveDashboard() {
                     height:"100%", borderRadius:3, background: k.sparkColor,
                     width: i === 0 && resolved != null && total != null ? `${Math.min(100, (resolved / total) * 100)}%`
                          : i === 0 && resolved != null ? `${Math.min(100, (resolved / 50) * 100)}%`
-                         : i === 2 && citizens  != null ? `${Math.min(100, (citizens / 100) * 100)}%`
-                         : i === 3 && eventsOrganized != null ? `${Math.min(100, (eventsOrganized / 20) * 100)}%`
+                         : i === 2 && eventsOrganized != null ? `${Math.min(100, (eventsOrganized / 20) * 100)}%`
                          : "40%",
                     opacity: 0.5,
                   }} />
@@ -556,6 +928,61 @@ export default function ExecutiveDashboard() {
               </div>
             );
           })}
+
+          {/* Total Registered Citizens — same card markup as the KPI.map cards
+              above (icon box + trend top row, big value, label + info tip,
+              proportional trend bar) so all four look identical. */}
+          {(() => {
+            const citizensTrendVal = residentStats && newPct !== 0 ? newPct : null;
+            const citizensTrendLabel = citizensTrendVal != null ? `${citizensTrendVal > 0 ? "↑" : "↓"} ${Math.abs(citizensTrendVal)}%` : "—";
+            const citizensTrendColor = citizensTrendVal != null ? (citizensTrendVal > 0 ? "#1E8A5B" : "#C8453A") : "#C0C7D4";
+            const activeShare = residentStats ? Math.min(100, pctOf(active30d, residentsTotal)) : 0;
+            return (
+              <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:18, padding:"18px 20px", boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+                  <div style={{ width:38, height:38, borderRadius:11, background:"#E7EEFF", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <MS style={{ fontSize:21, color:"#2B5BD7" }}>groups</MS>
+                  </div>
+                  <span style={{ font:"600 12px 'Hanken Grotesk'", color:citizensTrendColor }}>{citizensTrendLabel}</span>
+                </div>
+                <div style={{ fontFamily:"'Newsreader','Noto Sans Kannada',serif", fontSize:"clamp(18px,2vw,28px)", fontWeight:400, color:"#16233C", lineHeight:1.2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{residentStats ? fmt(residentsTotal) : "—"}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, font:"500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#8590A6", marginTop:4, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                  <span>Total Registered Citizens</span>
+                  <InfoTip text="Total registered residents in your constituency." />
+                </div>
+                <div style={{ marginTop:12, height:4, borderRadius:3, background:"#F0F2F7", overflow:"hidden" }}>
+                  <div style={{ height:"100%", borderRadius:3, background:"#2B5BD7", width:`${activeShare}%`, opacity:0.5 }} />
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* KPI strip — resident metrics (merged from Constituents; Verified
+            Residents dropped as it's never computed, always 0) — Total
+            Registered Citizens moved up into the grid above; only the
+            commented-out extra resident cards remain here for now. */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:20 }}>
+          {/* <KpiCard
+            iconBg="#EDEAFB" iconColor="#6B4FD8" iconEl={<MIcon name="bolt" style={{ fontSize: 20, color: "#6B4FD8" }} />}
+            label="Active Citizens"
+            labelTooltip="Citizens who have engaged with services or filed reports in the last month."
+            value={residentStats ? fmt(active30d) : "—"}
+            valueTooltip={residentStats ? `${fmt(active30d)} active residents in 30 days` : "No data"}
+            sub={`${pctOf(active30d, residentsTotal)}% of registered`}
+            subTooltip="Share of the total registered base active in the past month."
+            subGreen
+          />
+          <KpiCard
+            iconBg="#FCF1E0" iconColor="#C9871F" iconEl={<MIcon name="person_add" style={{ fontSize: 20, color: "#C9871F" }} />}
+            label="New Citizens"
+            labelTooltip="Citizens registered in last month"
+            value={residentStats ? `${fmt(new30d)}` : "—"}
+            valueTooltip={residentStats ? `${fmt(new30d)} new registrations` : "No data"}
+            sub={newPct >= 0 ? `+${newPct}% vs. previous month` : `${newPct}% vs. previous month`}
+            subTooltip="Month-over-month growth rate for recent registrations."
+            subGreen={newPct >= 0}
+          /> */}
         </div>
 
 
@@ -566,8 +993,8 @@ export default function ExecutiveDashboard() {
           <div style={{ background:"#fff", borderRadius:22, padding:24, border:"1px solid #EAEDF4", boxShadow:"0 14px 30px -22px rgba(20,35,60,.18)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18, flexWrap:"wrap", gap:10 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>Grievance Trend (Last 6 Months)</div>
-                <InfoTip text="Received = grievances created in each calendar month. Resolved = grievances marked RESOLVED or CLOSED in each calendar month (by the date they were resolved, not created). Always shows the last 6 calendar months regardless of the date-range filter above." />
+                <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>Grievance Trend</div>
+                <InfoTip text={`Received = grievances created in each calendar month. Resolved = grievances marked RESOLVED or CLOSED in each calendar month (by the date they were resolved, not created). Bucketed to match therange selected above.`} />
               </div>
               <div style={{ display:"flex", gap:14 }}>
                 <span style={{ display:"flex", alignItems:"center", gap:6, font:"600 12px 'Hanken Grotesk'", color:"#475569" }}>
@@ -807,6 +1234,159 @@ export default function ExecutiveDashboard() {
 
             return null;
           })}
+        </div>
+
+        {/* Row: Resident Groups + Resident Growth Trend (merged from Constituents) */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 20 }}>
+
+          <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+              <div>
+                <InfoTip text="Citizen Groups shows how many of your citizens have reported each kind of grievance, and their share of the total base.">
+                  <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Citizen Groups</div>
+                </InfoTip>
+                <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>
+                  {residentGroups.length > 0 ? "Citizens grouped by grievance category" : "Who makes up your base"}
+                </div>
+              </div>
+              <InfoTip text="Size is citizen count; share is the percentage of total citizens in each group.">
+                <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#9AA3B5" }}>Size · Share</span>
+              </InfoTip>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {!residentStats
+                ? [1, 2, 3].map((i) => <div key={i} style={{ height: 42, background: "#F3F5FA", borderRadius: 10 }} />)
+                : segments.map((s) => <SegmentRow key={s.label} {...s} />)
+              }
+            </div>
+          </div>
+
+          <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
+            <InfoTip text={`Citizen Growth Trend shows new registrations within the range selected above, plus the current total base.`} >
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Citizen Growth Trend</div>
+            </InfoTip>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 14 }}>
+              <span style={{ font: "400 38px 'Newsreader', Georgia, serif", color: "#16233C", lineHeight: .9 }}>{fmt(residentsTotal)}</span>
+              {growthTotal > 0 && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#E6F4EC", color: "#1E7A50", font: "700 12px 'Hanken Grotesk'", padding: "4px 9px", borderRadius: 20, marginBottom: 5 }}>
+                  {growthPct !== null ? `↑ ${growthPct}%` : `+${fmt(growthTotal)} this year`}
+                </span>
+              )}
+            </div>
+
+            <svg viewBox="0 0 360 170" style={{ width: "100%", height: "auto", display: "block" }} preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="cFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2B5BD7" stopOpacity="0.18" />
+                  <stop offset="100%" stopColor="#2B5BD7" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <line x1="0" y1="50" x2="360" y2="50" stroke="#EEF1F7" />
+              <line x1="0" y1="110" x2="360" y2="110" stroke="#EEF1F7" />
+              {growth.length >= 2 ? (
+                <>
+                  <path d={area} fill="url(#cFill)" />
+                  <path d={line} fill="none" stroke="#2B5BD7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                  {dots && <circle cx={dots[0]} cy={dots[1]} r="5.5" fill="#2B5BD7" stroke="#fff" strokeWidth="3" />}
+                </>
+              ) : (
+                <>
+                  <path d="M0,150 L60,140 L120,125 L180,108 L240,88 L300,62 L360,30 L360,170 L0,170 Z" fill="url(#cFill)" />
+                  <polyline points="0,150 60,140 120,125 180,108 240,88 300,62 360,30" fill="none" stroke="#2B5BD7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="360" cy="30" r="5.5" fill="#2B5BD7" stroke="#fff" strokeWidth="3" />
+                </>
+              )}
+            </svg>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+              {growthChartLabels.map((l, i) => (
+                <span key={i} style={{ font: `${i === 3 ? "700" : "600"} 11px 'Hanken Grotesk'`, color: i === 3 ? "#2B5BD7" : "#9AA3B5" }}>{l}</span>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: "auto", paddingTop: 16, borderTop: "1px solid #F0F2F7" }}>
+              <MIcon name="campaign" style={{ fontSize: 16, color: "#1E7A50" }} />
+              <span style={{ font: "500 12px 'Hanken Grotesk'", color: "#5A6678" }}>
+                {new30d > 0
+                  ? `${fmt(new30d)} new residents joined in the last 30 days`
+                  : "Track registrations month by month"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Row: Resident Engagement Journey + Top Active Residents (merged from Constituents) */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 20 }}>
+
+          <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
+            <InfoTip text="Resident Engagement Journey visualizes the funnel from all registered residents to active users and advocates." >
+              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 3 }}>Citizen Engagement Journey</div>
+            </InfoTip>
+            <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>How Citizens move from signed-up to advocate</div>
+            {residentsLoading
+              ? <div style={{ height: 180, background: "#F3F5FA", borderRadius: 10 }} />
+              : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <FunnelBar label="Registered"             value={residentsTotal} total={residentsTotal} widthPct={100}                        bg="#1B3C8F" />
+                  <FunnelBar label="Active (filed report)"  value={active30d} total={residentsTotal} widthPct={Math.max(pctOf(active30d, residentsTotal), 8)}  bg="#2B5BD7" />
+                  <FunnelBar label="Engaged (2+ reports)"   value={engaged}   total={residentsTotal} widthPct={Math.max(pctOf(engaged, residentsTotal), 6)}    bg="#5C84E0" />
+                  <FunnelBar label="Advocates (5+ reports)" value={advocates} total={residentsTotal} widthPct={Math.max(pctOf(advocates, residentsTotal), 4)}  bg="#8FAEEC" textDark />
+                </div>
+              )
+            }
+          </div>
+
+          <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "24px 26px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+              <div>
+                <InfoTip text="Top Active Citizens highlights the most engaged citizens by recent report activity." >
+                  <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Top Active Citizens</div>
+                </InfoTip>
+                <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>Your strongest advocates this quarter</div>
+              </div>
+              <span
+                onClick={() => navigate(ROUTES.mlaCitizenList)}
+                style={{ font: "600 13px 'Hanken Grotesk'", color: "#2B5BD7", cursor: "pointer", textDecoration: "none" }}
+                onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
+                onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}
+              >View directory</span>
+            </div>
+
+            {residentsLoading ? (
+              [1, 2, 3, 4].map((i) => (
+                <div key={i} style={{ height: 56, background: "#F3F5FA", borderRadius: 10, marginBottom: 8 }} />
+              ))
+            ) : topResidents.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {topResidents.map((r, i) => (
+                  <div key={r.name} style={{ display: "flex", alignItems: "center", gap: 13, padding: "12px 0", borderBottom: i < topResidents.length - 1 ? "1px solid #F4F6FA" : "none" }}>
+                    <div className="notranslate" translate="no" style={{ width: 40, height: 40, borderRadius: "50%", background: AVATAR_COLORS[i % AVATAR_COLORS.length], display: "flex", alignItems: "center", justifyContent: "center", font: "700 14px 'Hanken Grotesk'", color: "#fff", flexShrink: 0 }}>
+                      {r.initials}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="notranslate" translate="no" style={{ font: "700 14px 'Hanken Grotesk'", color: "#16233C" }}>{r.name}</div>
+                      <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>Ward: {r.ward || "—"}</div>
+                    </div>
+                    {i === 0 && (
+                      <span className="notranslate" translate="no" style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#FCF1E0", color: "#B5781A", font: "700 11px 'Hanken Grotesk'", padding: "4px 10px", borderRadius: 20, flexShrink: 0 }}>
+                        🔥 Top Advocate
+                      </span>
+                    )}
+                    {i > 0 && (
+                      <span style={{ font: "600 12px 'Hanken Grotesk'", color: "#5A6678", flexShrink: 0 }}>
+                        {r.complaints} report{r.complaints !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    <span style={{ font: "700 13px 'Hanken Grotesk'", color: "#16233C", width: 60, textAlign: "right", flexShrink: 0 }}>
+                      {r.complaints * 10} pts
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", padding: "32px 0", color: "#8590A6", font: "500 13px 'Hanken Grotesk'" }}>
+                No engagement data yet
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Row: Citizen Satisfaction */}

@@ -55,7 +55,9 @@ import GovernmentSchemeDashboard from "../../features/mla-dashboard/pages/Govern
 import AIInsights from "../../features/mla-dashboard/pages/AIInsights";
 import DailyBriefing from "../../features/mla-dashboard/pages/DailyBriefing";
 import MLASettings from "../../features/mla-dashboard/pages/MLASettings";
-import ConstituentsDashboard from "../../features/mla-dashboard/pages/ConstituentsDashboard";
+// ConstituentsDashboard was merged into ExecutiveDashboard (Overview page) —
+// its cards now live there, and ROUTES.mlaConstituents below just redirects
+// old links/bookmarks to the merged page instead of rendering it standalone.
 import MLACitizenList from "../../features/mla-dashboard/pages/MLACitizenList";
 import ReportsDashboard from "../../features/mla-dashboard/pages/ReportsDashboard";
 import CareerOutlook from "../../features/mla-dashboard/pages/CareerOutlook";
@@ -198,7 +200,8 @@ function AppRoutesContent() {
             <Route path={ROUTES.mlaGovernmentSchemes}   element={<GovernmentSchemeDashboard />} />
             <Route path={ROUTES.mlaAIInsights}          element={<AIInsights />} />
             <Route path={ROUTES.mlaDailyBriefing}       element={<DailyBriefing />} />
-            <Route path={ROUTES.mlaConstituents}        element={<ConstituentsDashboard />} />
+            {/* Constituents cards now live on the Overview page (ExecutiveDashboard) — redirect any old link/bookmark there */}
+            <Route path={ROUTES.mlaConstituents}        element={<Navigate to={ROUTES.mlaExecutiveDashboard} replace />} />
             <Route path={ROUTES.mlaCitizenList}         element={<MLACitizenList />} />
             <Route path={ROUTES.mlaReports}            element={<ReportsDashboard />} />
             <Route path={ROUTES.mlaCareerOutlook}      element={<CareerOutlook />} />

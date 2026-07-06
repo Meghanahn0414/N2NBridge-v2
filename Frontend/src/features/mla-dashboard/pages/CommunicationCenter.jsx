@@ -19,8 +19,10 @@ const AUDIENCE_OPTIONS = [
 ];
 
 const CHANNEL_OPTIONS = [
-  { key: "Push", icon: "notifications_active", label: "Push", sub: "Instant" },
-  { key: "In-app feed", icon: "dynamic_feed", label: "In-app feed", sub: "Pinned 48h" },
+  // Push is mandatory — every broadcast always goes out as a notification,
+  // so it's excluded from toggling (see toggleChannel below) and always
+  // stays checked.
+  { key: "Push", icon: "notifications_active", label: "Notification", sub: "Instant", required: true },
   { key: "Email", icon: "mail", label: "Email", sub: "Digest" },
 ];
 
@@ -45,7 +47,7 @@ export default function CommunicationCenter() {
   const [selectedWardId, setSelectedWardId] = useState("");   // "" = all constituents
   const [wards, setWards] = useState([]);
   const [audienceScopeLabel, setAudienceScopeLabel] = useState("Ward");
-  const [selectedChannels, setSelectedChannels] = useState(["Push", "In-app feed"]);
+  const [selectedChannels, setSelectedChannels] = useState(["Push"]);
   const [segmentInputVisible, setSegmentInputVisible] = useState(false);
   const [segmentInputValue, setSegmentInputValue] = useState("");
   const [selectedRecentTab, setSelectedRecentTab] = useState("All");
@@ -108,6 +110,7 @@ export default function CommunicationCenter() {
   };
 
   const toggleChannel = (key) => {
+    if (key === "Push") return; // mandatory — cannot be unchecked
     setSelectedChannels((prev) =>
       prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
     );
@@ -124,7 +127,7 @@ export default function CommunicationCenter() {
     setUploadError("");
     setSelectedAudience(["All constituents"]);
     setSelectedWardId("");
-    setSelectedChannels(["Push", "In-app feed"]);
+    setSelectedChannels(["Push"]);
   };
 
   const handleCoverImageChange = async (event) => {
@@ -286,6 +289,12 @@ export default function CommunicationCenter() {
     coverImage: undefined,
     startDate: e.eventDate,
     targetAudience: e.wardId ? [e.wardId] : ["All constituents"],
+    // Was dropped here entirely — the event IS saved with its channels on
+    // the backend (events/model.py), but this normalization step fed the
+    // "This will reach" channel breakdown a `channels: undefined` object for
+    // every event, so a published event's Push/Email counts never showed up
+    // even though the event genuinely used those channels.
+    channels: e.channels || [],
   }));
 
   const allBroadcasts = [...campaigns, ...normalizedEvents];
@@ -352,10 +361,10 @@ export default function CommunicationCenter() {
       ).length,
     },
     {
-      icon: "dynamic_feed",
-      label: "In-app feed",
+      icon: "mail",
+      label: "Email",
       value: activeCampaigns.filter((campaign) =>
-        campaign.channels?.some((channel) => /feed|in-app/i.test(channel))
+        campaign.channels?.some((channel) => /email/i.test(channel))
       ).length,
     },
   ];
@@ -601,6 +610,7 @@ export default function CommunicationCenter() {
             <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
               {CHANNEL_OPTIONS.map((channel) => {
                 const active = selectedChannels.includes(channel.key);
+                const locked = Boolean(channel.required);
                 return (
                   <div
                     key={channel.key}
@@ -614,16 +624,16 @@ export default function CommunicationCenter() {
                       display: "flex",
                       alignItems: "center",
                       gap: 10,
-                      cursor: "pointer",
+                      cursor: locked ? "default" : "pointer",
                     }}
                   >
                     <MS style={{ fontSize: 20, color: active ? "#2B5BD7" : "#9AA3B5" }}>{channel.icon}</MS>
                     <div style={{ flex: 1 }}>
                       <div style={{ font: "700 13px 'Hanken Grotesk'", color: "#16233C" }}>{channel.label}</div>
-                      <div style={{ font: "500 11px 'Hanken Grotesk'", color: "#8590A6" }}>{channel.sub}</div>
+                      <div style={{ font: "500 11px 'Hanken Grotesk'", color: "#8590A6" }}>{locked ? "Always on" : channel.sub}</div>
                     </div>
                     <MS style={{ fontSize: 19, color: active ? "#2B5BD7" : "#C2CADA" }}>
-                      {active ? "check_circle" : "radio_button_unchecked"}
+                      {locked ? "lock" : active ? "check_circle" : "radio_button_unchecked"}
                     </MS>
                   </div>
                 );
