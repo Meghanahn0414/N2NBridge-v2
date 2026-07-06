@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev":     "concurrently -n BACKEND,FRONTEND,MOBILE -c bgBlue,bgGreen,bgMagenta \"npm run backend\" \"npm run frontend\" \"npm run mobile\"",
+    "dev": "concurrently -n BACKEND,FRONTEND,MOBILE -c bgBlue,bgGreen,bgMagenta \"npm run backend\" \"npm run frontend\" \"npm run mobile\"",
     "backend": "cd Backend && uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
     "frontend": "cd Frontend && npm run dev",
-    "mobile":  "cd MobileApp && npx expo start --web --port 19006 --clear"
+    "mobile": "cd MobileApp && npx expo start --web --port 19006 --clear"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "mongodb": "^7.4.0"
   }
 }
