@@ -30,7 +30,7 @@ from auth.routes import (  # noqa: E402
 )
 from campaigns.routes import router as campaigns_router  # noqa: E402
 from citizens.routes import router as citizens_router  # noqa: E402
-from config.cache import close_cache, init_cache  # noqa: E402
+from config.cache import close_cache, get_redis, init_cache  # noqa: E402
 from config.database import MongoDatabase  # noqa: E402
 from config.rate_limit import limiter  # noqa: E402
 from config.settings import settings  # noqa: E402
@@ -59,15 +59,19 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup: DB + Redis cache. Shutdown: clean close."""
     logger.info("Starting CRM Management System...")
+    app.state.startup_dependencies = {"database": "checking", "cache": "checking"}
+
     try:
         # Connect to master DB (crm_master); tenant DBs are accessed on-demand
         MongoDatabase.connect(settings.MONGODB_URL, settings.MONGODB_MASTER_DB)
+        app.state.startup_dependencies["database"] = "ok"
         logger.info(f"Master database connected: {settings.MONGODB_MASTER_DB}")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        raise
+        app.state.startup_dependencies["database"] = "unavailable"
+        logger.warning(f"Failed to connect to MongoDB on startup (will retry on first request): {e}")
 
     await init_cache()
+    app.state.startup_dependencies["cache"] = "ok" if get_redis() is not None else "unavailable"
 
     # Self-register with the central Directory Service — only relevant when
     # DEPLOYMENT_MODE=SINGLE_TENANT (this specific deployment belongs to one
@@ -97,6 +101,7 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
     lifespan=lifespan,
 )
+app.state.startup_dependencies = {"database": "ok", "cache": "ok"}
 
 # ── Rate limiter ───────────────────────────────────────────────────────────────
 app.state.limiter = limiter
@@ -173,10 +178,14 @@ async def root():
 
 @app.get("/api/health", tags=["Health"])
 async def health_check():
+    dependencies = getattr(app.state, "startup_dependencies", {"database": "unknown", "cache": "unknown"})
+    is_healthy = dependencies.get("database") == "ok" and dependencies.get("cache") == "ok"
+
     return {
-        "status": "healthy",
+        "status": "healthy" if is_healthy else "degraded",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "service": settings.API_TITLE,
+        "dependencies": dependencies,
     }
 
 
