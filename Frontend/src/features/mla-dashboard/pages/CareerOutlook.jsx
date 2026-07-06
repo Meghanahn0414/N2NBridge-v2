@@ -3,6 +3,7 @@ import api from "../../../shared/services/api";
 import MLAPageHeader from "../components/MLAPageHeader";
 import MIcon from "../../../components/MIcon";
 import ExportButton from "../../../components/ExportButton";
+import { getRepRolePrefix } from "../../../services/authStorage";
 
 function MS({ children, style }) {
   return <MIcon name={children} style={style} />;
@@ -637,7 +638,7 @@ export default function CareerOutlook() {
       <MLAPageHeader subtitle={`Your trajectory toward the ${new Date(ELECTION_DATE).getFullYear()} election`} title="Career Outlook">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <ExportButton
-            filename="career-outlook"
+            filename={`${getRepRolePrefix()}-career-outlook`}
             pdfRef={contentRef}
             data={data ? [
               { metric: 'Approval Rating',      value: data.approvalPct != null ? `${data.approvalPct}%` : '—' },

@@ -6,6 +6,7 @@ import '../../../styles/mla-dashboard/AIInsights.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
 import ExportButton from '../../../components/ExportButton';
+import { getRepRolePrefix } from '../../../services/authStorage';
 
 const formatNumber = (value) => {
   if (value == null || value === '') return '-';
@@ -110,7 +111,7 @@ export default function AIInsights() {
         <div className="detail-buttons">
           <button type="button" className="btn-primary" onClick={handleViewDetailedAnalysis}>View Detailed Analysis</button>
           <ExportButton
-            filename="ai-insights"
+            filename={`${getRepRolePrefix()}-ai-insights`}
             pdfRef={pageRef}
             data={recommendations}
             columns={[

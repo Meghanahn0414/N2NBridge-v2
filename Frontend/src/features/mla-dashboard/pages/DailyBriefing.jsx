@@ -7,6 +7,7 @@ import '../../../styles/mla-dashboard/DailyBriefing.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
 import ExportButton from '../../../components/ExportButton';
+import { getRepRolePrefix } from '../../../services/authStorage';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
@@ -204,7 +205,7 @@ export default function DailyBriefing() {
       <div className="mla-section">
         <div className="detail-buttons">
           <ExportButton
-            filename="daily-briefing"
+            filename={`${getRepRolePrefix()}-daily-briefing`}
             pdfRef={pageRef}
             data={[
               { metric: 'Total Complaints',      value: briefing.newComplaints },

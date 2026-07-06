@@ -90,8 +90,13 @@ const ADDRESS_FIELDS: FieldConfig[] = [
 export default function EditProfileScreen() {
   const tr = useT();
   const router      = useRouter();
-  const params      = useLocalSearchParams<{ required?: string; repType?: string }>();
+  const params      = useLocalSearchParams<{ required?: string; repType?: string; postLogin?: string }>();
   const isRequired  = params.required === "1";
+  // Set when index.tsx routed a *returning* citizen here automatically after
+  // login (as opposed to them tapping "Edit" from Profile/Settings) — there's
+  // no prior screen to go "back" to in that case, so save should continue
+  // into the app instead.
+  const isPostLogin = params.postLogin === "1";
   // Representative category chip picked on the login screen, carried over
   // so it doesn't have to be picked twice on this form.
   const repTypeParam = (params.repType || "").toUpperCase();
@@ -245,6 +250,22 @@ export default function EditProfileScreen() {
           age:      p.age != null ? String(p.age) : "",
           address:  p.address || "",
         });
+      })
+      .finally(() => {
+        // Also show which representative this citizen is already linked to
+        // (read-only, since changing it isn't what this form does) so the
+        // "Your Representative" section isn't blank for a returning citizen
+        // routed here via postLogin — separate call/catch so a failure here
+        // never blocks the rest of the profile from loading.
+        if (isPostLogin) {
+          api.get(`/api/citizens/my-representative-type`)
+            .then(({ data }) => {
+              const r = data?.data ?? data;
+              if (r?.rep_type) setRepType(r.rep_type as RepCategory);
+              if (r?.area) setRepArea(r.area);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {
         const realEmail = (e: string | null | undefined) =>
@@ -423,7 +444,11 @@ export default function EditProfileScreen() {
       setProfileComplete(true);
       const savedAge = form.age.trim() ? Number(form.age.trim()) : undefined;
       updateUser({ name: form.fullName.trim(), ...(savedAge != null && { age: savedAge }) });
-      showMsg("Success", "Profile updated successfully!", () => router.back());
+      showMsg("Success", "Profile updated successfully!", () => {
+        if (isPostLogin) router.replace("/citizen/" as any);
+        else if (router.canGoBack?.()) router.back();
+        else router.replace("/citizen/" as any);
+      });
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       const msg = Array.isArray(detail)
@@ -490,21 +515,21 @@ export default function EditProfileScreen() {
 
           {/* ── Gradient banner ── */}
           <View style={s.banner}>
-            {!isRequired && (
+            {!isRequired && !isPostLogin && (
               <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
                 <Ionicons name="arrow-back" size={20} color="#fff" />
               </TouchableOpacity>
             )}
             <View style={s.bannerTextWrap}>
               <Text style={s.bannerTitle}>
-                {isRequired ? tr('profile.completeProfile') : tr('profile.editProfile')}
+                {(isRequired || isPostLogin) ? tr('profile.completeProfile') : tr('profile.editProfile')}
               </Text>
               <Text style={s.bannerSub}>
-                {isRequired ? tr('profile.fillDetails') : tr('profile.updateInfo')}
+                {(isRequired || isPostLogin) ? tr('profile.fillDetails') : tr('profile.updateInfo')}
               </Text>
             </View>
 
-            {isRequired && (
+            {(isRequired || isPostLogin) && (
               <View style={s.stepDots}>
                 {[0, 1, 2].map((i) => (
                   <View key={i} style={[s.dot, i === 0 && s.dotActive]} />
@@ -557,8 +582,17 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
-          {/* ── Your Representative (first-time completion only) ── */}
-          {isRequired && (
+          {/* ── Your Representative ──
+              First-time completion: editable, resolves which representative's
+              tenant this citizen belongs to.
+              Returning citizen (postLogin): read-only display of the
+              representative they're already linked to — pre-filled from
+              GET /api/citizens/my-representative-type above. Changing which
+              representative a citizen is linked to isn't done from this form
+              (see MobileApp's separate "Link a representative" flow), so the
+              chips/area field are non-interactive here to avoid implying an
+              edit that wouldn't actually be saved. */}
+          {(isRequired || isPostLogin) && (
             <View style={s.section}>
               <View style={s.sectionHeader}>
                 <View style={s.sectionDot} />
@@ -571,9 +605,12 @@ export default function EditProfileScreen() {
                     return (
                       <TouchableOpacity
                         key={cat.key}
-                        style={[s.repCard, active && s.repCardActive]}
-                        onPress={() => { setRepType(cat.key); setRepArea(""); setAreaSearch(""); }}
-                        activeOpacity={0.85}
+                        style={[s.repCard, active && s.repCardActive, isPostLogin && !active && { opacity: 0.5 }]}
+                        onPress={() => {
+                          if (isPostLogin) return;
+                          setRepType(cat.key); setRepArea(""); setAreaSearch("");
+                        }}
+                        activeOpacity={isPostLogin ? 1 : 0.85}
                       >
                         <Ionicons
                           name={cat.icon as any}
@@ -599,17 +636,22 @@ export default function EditProfileScreen() {
                             <Text style={s.fieldLabel}>{cat.areaLabel} *</Text>
                             <TouchableOpacity
                               style={s.input}
-                              activeOpacity={0.7}
-                              onPress={() => setShowAreaPicker(true)}
+                              activeOpacity={isPostLogin ? 1 : 0.7}
+                              onPress={() => { if (!isPostLogin) setShowAreaPicker(true); }}
                             >
                               <Text style={{ fontSize: 15, color: repArea ? C.text : "#CBD5E1" }}>
                                 {repArea || cat.areaPlaceholder}
                               </Text>
                             </TouchableOpacity>
-                            {areaLoading && <Text style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Loading…</Text>}
-                            {!areaLoading && areaOptions.length === 0 && (
+                            {!isPostLogin && areaLoading && <Text style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Loading…</Text>}
+                            {!isPostLogin && !areaLoading && areaOptions.length === 0 && (
                               <Text style={{ fontSize: 12, color: "#DC2626", marginTop: 4 }}>
                                 No {cat.label} registered yet for any constituency.
+                              </Text>
+                            )}
+                            {isPostLogin && (
+                              <Text style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
+                                To change your representative, use "Link a representative" from Services.
                               </Text>
                             )}
                           </View>
@@ -786,7 +828,7 @@ export default function EditProfileScreen() {
                     color="#fff"
                   />
                   <Text style={s.saveBtnText}>
-                    {isRequired ? tr('profile.saveContinue') : tr('profile.saveChanges')}
+                    {(isRequired || isPostLogin) ? tr('profile.saveContinue') : tr('profile.saveChanges')}
                   </Text>
                 </>
               )}

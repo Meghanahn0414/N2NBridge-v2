@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import api from "../../../shared/services/api";
 import MIcon from "../../../components/MIcon";
 import ExportButton from "../../../components/ExportButton";
+import { getRepRolePrefix } from "../../../services/authStorage";
 
 function MS({ children, style }) {
   return <MIcon name={children} style={style} />;
@@ -521,7 +522,7 @@ export default function CitizenSentimentDashboard() {
             ))}
           </div>
           <ExportButton
-            filename={`citizen-sentiment-${period}`}
+            filename={`${getRepRolePrefix()}-citizen-sentiment-${period}`}
             pdfRef={pageRef}
             data={[
               { metric: 'Approval Rating',  value: curApproval != null ? `${curApproval}%` : '—' },

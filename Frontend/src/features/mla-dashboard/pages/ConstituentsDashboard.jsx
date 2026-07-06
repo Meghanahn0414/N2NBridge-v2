@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../shared/services/api";
-import { getAuthUser } from "../../../services/authStorage";
+import { getAuthUser, getRepRolePrefix } from "../../../services/authStorage";
 import { ROUTES } from "../../../app/routes/RouteConstants";
 import "../styles/mla-layout.css";
 import MIcon from "../../../components/MIcon";
@@ -387,7 +387,7 @@ export default function ConstituentsDashboard() {
             <MIcon name="campaign" style={{ fontSize: 18, color: "#fff" }} /> Message a segment
           </button>
           <ExportButton
-            filename="constituents"
+            filename={`${getRepRolePrefix()}-constituents`}
             pdfRef={pageRef}
             data={[
               { metric: 'Total Residents',  value: fmt(total) },

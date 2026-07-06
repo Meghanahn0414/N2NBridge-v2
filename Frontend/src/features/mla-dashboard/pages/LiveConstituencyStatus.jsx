@@ -6,6 +6,7 @@ import '../../../styles/mla-dashboard/LiveConstituencyStatus.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
 import ExportButton from '../../../components/ExportButton';
+import { getRepRolePrefix } from '../../../services/authStorage';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
@@ -122,7 +123,7 @@ export default function LiveConstituencyStatus() {
           <button type="button" className="btn-primary" onClick={handleViewAlerts}>View All Alerts</button>
           <button type="button" className="btn-primary" onClick={handleViewEvents}>View All Events</button>
           <ExportButton
-            filename="constituency-status"
+            filename={`${getRepRolePrefix()}-constituency-status`}
             pdfRef={pageRef}
             data={[
               { category: 'Complaints - New',         value: stats.complaints.new },

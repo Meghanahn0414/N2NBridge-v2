@@ -6,7 +6,7 @@ registration, unchanged — search, follow, and read public content from ANY
 representative in the system (MLA, MP, or COUNCILLOR), not just their own.
 
 Identity note: every tenant database holds exactly one REPRESENTATIVE user
-(see utils/directory_client.py's `db.users.find_one({"role": "REPRESENTATIVE"})`
+(see utils/lookup_client.py's `db.users.find_one({"role": "REPRESENTATIVE"})`
 and citizens/routes.py's my_representatives — both assume this). So db_name
 alone uniquely identifies a representative; there's no separate "rep_id"
 needed, and using the master registry's own _id as if it were the tenant

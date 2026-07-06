@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { storage } from "../utils/storage";
-import type { RepType } from "../services/directoryApi";
+import type { RepType } from "../services/lookupApi";
 
 /**
  * A citizen can now be linked to several representatives at once — their

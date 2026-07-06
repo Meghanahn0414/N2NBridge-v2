@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import { useRepresentativesStore } from "../store/representativesStore";
-import type { RepType } from "./directoryApi";
+import type { RepType } from "./lookupApi";
 
 /**
  * Unlike services/api.ts (one fixed API_BASE + one global token), each

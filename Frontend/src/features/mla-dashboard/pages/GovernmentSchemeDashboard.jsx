@@ -6,6 +6,7 @@ import '../../../styles/mla-dashboard/GovernmentSchemeDashboard.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
 import ExportButton from '../../../components/ExportButton';
+import { getRepRolePrefix } from '../../../services/authStorage';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value.toLocaleString());
 
@@ -141,7 +142,7 @@ export default function GovernmentSchemeDashboard() {
       {/* Quick Actions */}
       <div className="mla-section">
         <div className="detail-buttons">
-          <ExportButton filename="government-schemes" pdfRef={pageRef} data={schemes} columns={SCHEME_EXPORT_COLUMNS} />
+          <ExportButton filename={`${getRepRolePrefix()}-government-schemes`} pdfRef={pageRef} data={schemes} columns={SCHEME_EXPORT_COLUMNS} />
           <button type="button" className="btn-primary" onClick={handleViewSchemeReports}>View Scheme Reports</button>
           <button type="button" className="btn-primary" onClick={handleScheduleApproval}>Schedule Approval Meeting</button>
         </div>

@@ -270,7 +270,7 @@ export default function CitizenDashboard() {
         {recent.length === 0 ? (
           <View style={s.emptyCard}>
             <View style={s.emptyIconBox}>
-              <Ionicons name="inbox-outline" size={44} color={C.mutedLight} />
+              <Ionicons name="file-tray-outline" size={44} color={C.mutedLight} />
             </View>
             <Text style={s.emptyTitle}>{tr("No reports yet")}</Text>
             <Text style={s.emptyBody}>{tr("Tap 'Report an issue' to submit your first complaint.")}</Text>

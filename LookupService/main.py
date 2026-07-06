@@ -1,5 +1,5 @@
 """
-N2N Directory Service — FastAPI Application
+N2N Lookup Service — FastAPI Application
 
 The one fixed, always-reachable service that maps a citizen's chosen
 constituency (Ward ID / Assembly Name / Parliamentary Name) to the
@@ -22,8 +22,8 @@ _src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")
 sys.path.insert(0, _src_path)
 
 from config import settings          # noqa: E402
-from database import DirectoryDatabase  # noqa: E402
-from routes import router as directory_router  # noqa: E402
+from database import LookupDatabase  # noqa: E402
+from routes import router as lookup_router  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,15 +34,15 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting N2N Directory Service...")
-    DirectoryDatabase.connect(settings.MONGODB_URL, settings.MONGODB_DB)
+    logger.info("Starting N2N Lookup Service...")
+    LookupDatabase.connect(settings.MONGODB_URL, settings.MONGODB_DB)
     yield
-    logger.info("Shutting down N2N Directory Service...")
-    DirectoryDatabase.close()
+    logger.info("Shutting down N2N Lookup Service...")
+    LookupDatabase.close()
 
 
 app = FastAPI(
-    title="N2N Directory Service",
+    title="N2N Lookup Service",
     description="Maps representative constituencies to their independently deployed servers.",
     version="1.0.0",
     docs_url="/api/docs",
@@ -59,12 +59,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(directory_router)
+app.include_router(lookup_router)
 
 
 @app.get("/", tags=["Root"])
 async def root():
-    return {"name": "N2N Directory Service", "status": "operational", "docs": "/api/docs"}
+    return {"name": "N2N Lookup Service", "status": "operational", "docs": "/api/docs"}
 
 
 @app.get("/api/health", tags=["Health"])

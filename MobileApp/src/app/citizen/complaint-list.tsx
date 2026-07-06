@@ -224,7 +224,7 @@ export default function ComplaintListScreen() {
           ListEmptyComponent={
             <View style={s.empty}>
               <View style={s.emptyIconBox}>
-                <Ionicons name="inbox-outline" size={48} color={C.mutedLight} />
+                <Ionicons name="file-tray-outline" size={48} color={C.mutedLight} />
               </View>
               <Text style={s.emptyTitle}>{tr("No reports found")}</Text>
               <Text style={s.emptyText}>
