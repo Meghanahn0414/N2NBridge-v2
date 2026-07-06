@@ -236,11 +236,24 @@ export default function Header({ onMobileMenuClick }) {
         // JavaScript's Date constructor will correctly parse it and convert to local time
         return new Date(s);
       }
-      // Prefer interpreting naive timestamps (no timezone) as local time to avoid unintended UTC shifts.
+      // Naive timestamps (no timezone) coming from THIS backend are always
+      // UTC, not local — every createdAt is set via Python's
+      // datetime.utcnow() (see Backend/src/notifications/service.py:23,108,138
+      // and the same pattern across grievances/campaigns/events), which is
+      // naive-but-UTC. Treating a naive string as local time (the previous
+      // behavior here) silently applied the wrong offset: a notification
+      // created seconds ago in IST (UTC+5:30) would come back as
+      // "...T05:30:00" and get misread as 5:30 AM local when real local time
+      // was 11:00 AM — overshooting "time ago" by exactly the timezone
+      // offset (e.g. showing "5h ago" for something that just happened).
+      // MobileApp's CitizenDashboard.tsx already gets this right with its
+      // own parseUTC() helper (appends "Z" to naive strings) — mirror that
+      // convention here instead of assuming local time.
       // matches YYYY-MM-DD[ T]HH:MM:SS optionally with fractional seconds, but without a timezone offset or Z
       const naiveIso = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/;
       if (naiveIso.test(s)) {
-        // Parse components and construct a local Date object (year, monthIndex, day, hour, minute, second, ms)
+        // Parse components and construct the Date from UTC (year, monthIndex,
+        // day, hour, minute, second, ms) — NOT the local-time constructor.
         const main = s.split('.')[0];
         const frac = s.includes('.') ? s.split('.')[1] : null;
         const parts = main.replace('T', ' ').split(/[- :]/).map((p) => parseInt(p, 10));
@@ -251,7 +264,7 @@ export default function Header({ onMobileMenuClick }) {
         const minute = parts[4] || 0;
         const second = parts[5] || 0;
         const ms = frac ? Math.round(Number('0.' + frac) * 1000) : 0;
-        return new Date(year, month, day, hour, minute, second, ms);
+        return new Date(Date.UTC(year, month, day, hour, minute, second, ms));
       }
       // Otherwise let Date parse the string (respects timezone offsets if present)
       return new Date(s);

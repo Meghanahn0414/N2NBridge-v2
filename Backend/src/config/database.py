@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from typing import Optional
 import logging
 
+import certifi
 from pymongo import ASCENDING, DESCENDING, GEOSPHERE, MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 
@@ -43,18 +44,26 @@ class MongoDatabase:
             # to waitQueueTimeoutMS and fail with 500s while waiting for a free
             # connection. Raised to comfortably cover that concurrency; still far
             # below what a single local MongoDB instance can handle.
-            cls._client = MongoClient(
-                connection_string,
-                serverSelectionTimeoutMS=5000,
-                connectTimeoutMS=10000,
-                socketTimeoutMS=30000,
-                maxPoolSize=50 if is_production else 30,
-                minPoolSize=2,
-                maxIdleTimeMS=60000,
-                waitQueueTimeoutMS=5000,
-                retryWrites=True,
-                retryReads=True,
-            )
+            client_kwargs = {
+                'serverSelectionTimeoutMS': 5000,
+                'connectTimeoutMS': 10000,
+                'socketTimeoutMS': 30000,
+                'maxPoolSize': 50 if is_production else 30,
+                'minPoolSize': 2,
+                'maxIdleTimeMS': 60000,
+                'waitQueueTimeoutMS': 5000,
+                'retryWrites': True,
+                'retryReads': True,
+            }
+            if connection_string.startswith('mongodb+srv://') or 'tls=true' in connection_string or 'ssl=true' in connection_string:
+                # Fixes "SSL: TLSV1_ALERT_INTERNAL_ERROR" connecting to Atlas
+                # from Windows — Python's ssl module sometimes can't validate
+                # Atlas's certificate chain using the OS certificate store
+                # alone. Pointing pymongo at certifi's bundled CA file instead
+                # is the standard fix.
+                client_kwargs['tlsCAFile'] = certifi.where()
+
+            cls._client = MongoClient(connection_string, **client_kwargs)
             cls._client.admin.command("ping")
             cls._master_db = cls._client[master_db_name]
             logger.info(f"Connected to MongoDB. Master DB: {master_db_name}")

@@ -268,7 +268,15 @@ function NotificationBell() {
 
   const timeAgo = (iso) => {
     if (!iso) return "";
-    const diff = Date.now() - new Date(iso).getTime();
+    // Same fix as Header.jsx's parseNotificationDate: this backend's
+    // createdAt values come from Python's datetime.utcnow() — naive but
+    // always UTC. A plain `new Date(iso)` on a string with no "Z"/offset is
+    // parsed as LOCAL time by the browser, which silently applies the wrong
+    // offset (e.g. undercounts elapsed time by 5.5h in IST), making
+    // just-created notifications appear hours old. Append "Z" when the
+    // string has no timezone marker so it's parsed as UTC.
+    const hasTz = /Z$|[+-]\d{2}:?\d{2}$/.test(iso);
+    const diff = Date.now() - new Date(hasTz ? iso : iso + "Z").getTime();
     const m = Math.floor(diff / 60000);
     if (m < 1) return "just now";
     if (m < 60) return `${m}m ago`;
@@ -411,7 +419,13 @@ function SegmentRow({ icon, label, count, engPct, color = "#2B5BD7", bg = "#E7EE
 }
 
 function FunnelBar({ label, value, total, widthPct, bg, textDark }) {
-  const displayPct = Math.round(widthPct);
+  // widthPct is deliberately floored (Math.max(pctOf(...), 4-8)) so a 0%
+  // stage still renders a visible sliver of bar — that's fine for the bar's
+  // WIDTH, but the label was reusing that same floored number as the
+  // percentage TEXT, so a genuinely 0% stage (e.g. no one has filed 2+
+  // reports yet) displayed the floor value ("6%", "4%") instead of "0%".
+  // The label must always reflect the real, unclamped percentage.
+  const displayPct = pctOf(value, total);
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -558,16 +572,23 @@ export default function ExecutiveDashboard() {
       .map(([label, value]) => ({ label, value }))
     : [];
 
-  // Bucketed from the real GrievanceStatus enum (NEW, ASSIGNED, IN_PROGRESS,
-  // ON_HOLD, RESOLVED, CLOSED, REJECTED) — there is no PENDING/ESCALATED status
-  // in the schema, so those mock categories are replaced with real ones below.
+  // byStatus keys are the RAW values actually written to grievance.status —
+  // Title Case with spaces ("Open", "Assigned", "In Progress", "Resolved",
+  // "Closed"), set directly in Backend/src/grievances/routes.py (create:
+  // "Open" at line 255, assign: "Assigned" at line 611, etc.) — NOT the
+  // ALL-CAPS GrievanceStatus enum values (NEW/ASSIGNED/IN_PROGRESS/...) from
+  // grievances/model.py, which that enum's create() helper sets but which
+  // isn't the code path actually wired to the citizen-facing create route.
+  // Reading grievanceStats.NEW/.ASSIGNED/etc. here always returned undefined
+  // — which is exactly why every bucket showed 0 while the total (a plain
+  // count_documents, unaffected by status casing) showed the real count.
   const grievanceStats = analytics?.grievances?.byStatus || {};
   const totalGrievances = analytics?.grievances?.total ?? 0;
   const overviewItems = [
-    { label: "New", value: grievanceStats.NEW ?? 0, color: "#2563EB" },
-    { label: "Assigned", value: grievanceStats.ASSIGNED ?? 0, color: "#FBBF24" },
-    { label: "In Progress", value: (grievanceStats.IN_PROGRESS ?? 0) + (grievanceStats.ON_HOLD ?? 0), color: "#F97316" },
-    { label: "Resolved", value: (grievanceStats.RESOLVED ?? 0) + (grievanceStats.CLOSED ?? 0), color: "#22C55E" },
+    { label: "New", value: grievanceStats["Open"] ?? 0, color: "#2563EB" },
+    { label: "Assigned", value: grievanceStats["Assigned"] ?? 0, color: "#FBBF24" },
+    { label: "In Progress", value: (grievanceStats["In Progress"] ?? 0) + (grievanceStats["On Hold"] ?? 0), color: "#F97316" },
+    { label: "Resolved", value: (grievanceStats["Resolved"] ?? 0) + (grievanceStats["Closed"] ?? 0), color: "#22C55E" },
   ];
   const overviewTotal = overviewItems.reduce((sum, item) => sum + item.value, 0);
 
@@ -1139,38 +1160,57 @@ export default function ExecutiveDashboard() {
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:20, alignItems:"start" }}>
           {dashboardCards.map(card => {
             if (card.type === "overview") {
-              const donutRadius = 64;
-              const circumference = 2 * Math.PI * donutRadius;
-              let offset = 0;
+              // Full pie (solid wedges from center, percentage labels inside
+              // each slice) — not a ring/donut. angle 0 = 12 o'clock, growing
+              // clockwise.
+              const pieRadius = 70;
+              const pieCenter = 80;
+              const polarPoint = (angleDeg, r) => {
+                const rad = (angleDeg * Math.PI) / 180;
+                return { x: pieCenter + r * Math.sin(rad), y: pieCenter - r * Math.cos(rad) };
+              };
+              const describeWedge = (startAngle, endAngle) => {
+                const p1 = polarPoint(startAngle, pieRadius);
+                const p2 = polarPoint(endAngle, pieRadius);
+                const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+                return `M ${pieCenter} ${pieCenter} L ${p1.x} ${p1.y} A ${pieRadius} ${pieRadius} 0 ${largeArc} 1 ${p2.x} ${p2.y} Z`;
+              };
+              let pieCursor = 0;
+              const pieSlices = overviewItems.map((item) => {
+                const pct = overviewTotal > 0 ? item.value / overviewTotal : 0;
+                const startAngle = pieCursor * 360;
+                pieCursor += pct;
+                const endAngle = pieCursor * 360;
+                const midAngle = (startAngle + endAngle) / 2;
+                const labelPos = polarPoint(midAngle, pieRadius * 0.62);
+                return { ...item, pct, startAngle, endAngle, labelPos };
+              });
               return (
                 <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
                     <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
                   </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"120px 1fr", gap:20, alignItems:"center" }}>
-                    <div style={{ position:"relative", width:120, height:120 }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"160px 1fr", gap:24, alignItems:"center" }}>
+                    <div style={{ position:"relative", width:160, height:160 }}>
                       <svg viewBox="0 0 160 160" style={{ width:"100%", height:"100%" }}>
-                        <circle cx="80" cy="80" r="64" fill="#F8FAFD" />
-                        {overviewItems.map((item, idx) => {
-                          const pct = overviewTotal > 0 ? item.value / overviewTotal : 0;
-                          const dash = Math.round(circumference * pct);
-                          const dashOffset = Math.round(circumference * (1 - offset));
-                          offset += pct;
-                          return (
-                            <circle key={item.label}
-                              cx="80" cy="80" r="64"
-                              fill="none" stroke={item.color}
-                              strokeWidth="16"
-                              strokeDasharray={`${dash} ${circumference - dash}`}
-                              strokeDashoffset={dashOffset}
-                              transform="rotate(-90 80 80)"
-                              strokeLinecap="round"
-                            />
-                          );
-                        })}
-                        <circle cx="80" cy="80" r="44" fill="#fff" />
+                        {overviewTotal > 0 ? (
+                          pieSlices.map((slice) => (
+                            slice.pct > 0 && (
+                              <g key={slice.label}>
+                                <path d={describeWedge(slice.startAngle, slice.endAngle)} fill={slice.color} stroke="#fff" strokeWidth="1.5" />
+                                {slice.pct >= 0.04 && (
+                                  <text x={slice.labelPos.x} y={slice.labelPos.y} textAnchor="middle" dominantBaseline="middle"
+                                    style={{ font: "700 13px 'Hanken Grotesk'", fill: "#fff" }}>
+                                    {Math.round(slice.pct * 100)}%
+                                  </text>
+                                )}
+                              </g>
+                            )
+                          ))
+                        ) : (
+                          <circle cx={pieCenter} cy={pieCenter} r={pieRadius} fill="#EAEDF4" />
+                        )}
                       </svg>
-                      <div style={{ position:"absolute", inset:0, display:"grid", placeItems:"center", font:"700 20px 'Hanken Grotesk'", color:"#16233C" }}>{totalGrievances}</div>
                     </div>
                     <div style={{ display:"grid", gap:12 }}>
                       {overviewItems.map(item => (

@@ -93,6 +93,44 @@ async def health():
     return {"status": "healthy", "service": "N2N Directory Service"}
 
 
+@router.get("/representatives", summary="List every registered representative with full details")
+async def list_representatives(
+    rep_type:        Optional[str] = None,
+    status:          Optional[str] = None,
+    x_directory_key: Optional[str] = Header(None, alias="X-Directory-Key"),
+):
+    """
+    Admin/debug endpoint — returns the full registry (name, rep_type,
+    server_url, constituency identifiers, status) for every representative,
+    or filtered by rep_type/status. Protected by the same shared secret used
+    for /register, since server_url is otherwise not exposed anywhere else.
+
+    Examples:
+      GET /api/directory/representatives                     -> all reps, any type/status
+      GET /api/directory/representatives?rep_type=MLA          -> only MLAs
+      GET /api/directory/representatives?status=ACTIVE          -> only active reps
+    """
+    if x_directory_key != settings.DIRECTORY_REGISTER_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Directory-Key")
+
+    query = {}
+    if rep_type:
+        rep_type = rep_type.strip().upper()
+        if rep_type not in REP_TYPES:
+            raise HTTPException(status_code=400, detail="rep_type must be MLA, MP, or COUNCILLOR")
+        query["rep_type"] = rep_type
+    if status:
+        query["status"] = status.strip().upper()
+
+    db = DirectoryDatabase.get_db()
+    reps = list(db.representatives.find(query).sort([("rep_type", 1), ("name", 1)]))
+
+    return _success({
+        "count": len(reps),
+        "items": [_public_doc(r) for r in reps],
+    }, "Representatives retrieved")
+
+
 @router.get("/constituencies", summary="List registered constituencies for a representative type")
 async def list_constituencies(rep_type: str):
     """Public — no auth. Populates the citizen app's constituency picker."""

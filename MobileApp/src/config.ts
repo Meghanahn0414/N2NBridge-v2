@@ -27,6 +27,16 @@ export const API_BASE =
     return "https://n2nbridge-v2.onrender.com";
   })();
 
+// ─── Directory Service (per-representative own-domain/own-Atlas deployments) ──
+// One fixed, shared address the app always knows — used ONLY to look up which
+// representative's own server to talk to next (constituency list + resolve —
+// see services/directoryApi.ts, which link-representative.tsx already uses).
+// Not used at all in the default shared-Atlas/discovery setup; only needed if
+// representatives are deployed as fully separate instances (own domain, own
+// MONGODB_URL each) — see Backend/DirectoryService and utils/directory_client.py.
+export const DIRECTORY_BASE =
+  process.env.EXPO_PUBLIC_DIRECTORY_URL?.replace(/\/$/, "") || "";
+
 // Frontend web app URL (used for WebView for admin/MLA/field/manager roles)
 export const WEB_APP_URL =
   process.env.EXPO_PUBLIC_WEB_URL?.replace(/\/$/, "") ||
