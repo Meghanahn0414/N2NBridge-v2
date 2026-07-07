@@ -16,7 +16,14 @@ interface AuthState {
   token: string | null;
   user: User | null;
   profileComplete: boolean;
-  setAuth: (token: string, user: User) => void;
+  // Set only for a citizen who logged in via the Lookup Service flow (picked
+  // a representative category + constituency, which resolved to that
+  // representative's own server_url) — services/api.ts reads this and
+  // routes every request there instead of the shared API_BASE. Staff/Admin/
+  // Field/Manager logins (and citizens on the old central-OTP flow) leave
+  // this null, so they keep hitting API_BASE exactly as before.
+  serverUrl: string | null;
+  setAuth: (token: string, user: User, serverUrl?: string | null) => void;
   setProfileComplete: (v: boolean) => void;
   updateUser: (partial: Partial<User>) => void;
   logout: () => void;
@@ -28,7 +35,8 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       profileComplete: false,
-      setAuth: (token, user) => set({ token, user, profileComplete: false }),
+      serverUrl: null,
+      setAuth: (token, user, serverUrl = null) => set({ token, user, profileComplete: false, serverUrl }),
       setProfileComplete: (profileComplete) => set({ profileComplete }),
       updateUser: (partial) => set((s) => ({ user: s.user ? { ...s.user, ...partial } : s.user })),
       logout: () => {
@@ -36,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
         // This prevents a race where rehydrate() on the login screen reads the
         // old token back from storage before the async persist write completes.
         storage.removeItem("jana-seva-auth");
-        set({ token: null, user: null, profileComplete: false });
+        set({ token: null, user: null, profileComplete: false, serverUrl: null });
       },
     }),
     {

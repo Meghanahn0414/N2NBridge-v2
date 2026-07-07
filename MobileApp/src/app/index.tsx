@@ -8,13 +8,19 @@ import { useRouter, useRootNavigationState } from "expo-router";
 import axios from "axios";
 import { storage } from "../utils/storage";
 import { useAuthStore } from "../store/authStore";
+import { useRepresentativesStore } from "../store/representativesStore";
 import { changeLanguage, getCurrentLanguage, initLanguage } from "../i18n";
 import { useT } from "../i18n/useT";
 import { API_BASE } from "../config";
+import {
+  fetchConstituencies, resolveRepresentative,
+  ConstituencyOption, ResolvedRepresentative, RepType,
+} from "../services/lookupApi";
+import { serverApi } from "../services/repApi";
 
-// Purely visual — which representative category chip is highlighted. Not
-// wired to any backend filter/routing; the OTP login flow below is identical
-// no matter which one (or none) is selected.
+// Which representative category chip the citizen picks — this drives the
+// real Lookup Service flow below (fetchConstituencies / resolveRepresentative),
+// not just decoration.
 type RepCategory = "councillor" | "mla" | "mp";
 const REP_CATEGORIES: { key: RepCategory; icon: string; label: string; labelKey: string }[] = [
   { key: "councillor", icon: "👥", label: "Councillor", labelKey: "auth.catCouncillor" },
@@ -31,23 +37,53 @@ const ROLE_ROUTES: Record<string, string> = {
 };
 
 type Method = "phone" | "email";
-type Step   = "input" | "otp";
+
+// ── Citizen sign-in wizard steps ──
+// category → constituency → confirm → contact → otp
+// Matches: pick MLA/MP/Councillor → pick your address/constituency →
+// Lookup Service resolves which representative's own server that is →
+// mobile number → that representative's server sends the OTP → verify.
+type CitizenStep = "category" | "constituency" | "confirm" | "contact" | "otp";
+
+// Representative / Admin / Field Officer / Constituency Manager still sign
+// in the old way — central OTP against the shared Backend, no representative
+// to resolve (they already know their own account).
+type StaffStep = "input" | "otp";
 
 export default function LoginScreen() {
   const tr = useT();
   const router  = useRouter();
   const rootNavState = useRootNavigationState();
   const { setAuth } = useAuthStore();
+  const addRepLink = useRepresentativesStore((s) => s.addLink);
 
   const [ready,   setReady]   = useState(false);
-  const [method,  setMethod]  = useState<Method>("phone");
-  const [value,   setValue]   = useState("");
-  const [otp,     setOtp]     = useState("");
-  const [step,    setStep]    = useState<Step>("input");
-  const [loading,  setLoading]  = useState(false);
   const [lang,     setLang]     = useState(getCurrentLanguage());
   const [langOpen, setLangOpen] = useState(false);
-  const [repCategory, setRepCategory] = useState<RepCategory | null>(null);
+
+  // Which sign-in experience is showing — citizens are the default; staff
+  // reach their (unchanged) central-OTP form via the link at the bottom.
+  const [flowMode, setFlowMode] = useState<"citizen" | "staff">("citizen");
+
+  // ── Citizen wizard state ──
+  const [cStep,     setCStep]     = useState<CitizenStep>("category");
+  const [cRepType,  setCRepType]  = useState<RepType | null>(null);
+  const [cOptions,  setCOptions]  = useState<ConstituencyOption[]>([]);
+  const [cFilter,   setCFilter]   = useState("");
+  const [cChosen,   setCChosen]   = useState<ConstituencyOption | null>(null);
+  const [cResolved, setCResolved] = useState<ResolvedRepresentative | null>(null);
+  const [cMethod,   setCMethod]   = useState<Method>("phone");
+  const [cContact,  setCContact]  = useState("");
+  const [cOtp,      setCOtp]      = useState("");
+  const [cLoading,  setCLoading]  = useState(false);
+  const [cError,    setCError]    = useState<string | null>(null);
+
+  // ── Staff (Rep/Admin/Field/Manager) state — same central-OTP flow as before ──
+  const [staffStep,   setStaffStep]   = useState<StaffStep>("input");
+  const [staffMethod, setStaffMethod] = useState<Method>("phone");
+  const [staffValue,  setStaffValue]  = useState("");
+  const [staffOtp,     setStaffOtp]    = useState("");
+  const [loading,      setLoading]     = useState(false);
 
   const handleLangChange = async (l: 'en' | 'kn' | 'hi' | 'te') => {
     await changeLanguage(l);
@@ -107,19 +143,157 @@ export default function LoginScreen() {
     </View>
   );
 
-  // ── Send OTP ──
-  async function handleSendOtp() {
-    if (!value.trim()) {
-      Alert.alert(tr('common.error'), method === "phone" ? tr('auth.errEnterPhone') : tr('auth.errEnterEmail'));
+  // ─────────────────────────────────────────────
+  // ── Citizen wizard handlers ──
+  // ─────────────────────────────────────────────
+
+  async function pickCategory(catKey: RepCategory) {
+    const rt = catKey.toUpperCase() as RepType;
+    setCRepType(rt);
+    setCLoading(true);
+    setCError(null);
+    try {
+      const items = await fetchConstituencies(rt);
+      setCOptions(items);
+      setCStep("constituency");
+    } catch (e: any) {
+      setCError(e?.response?.data?.detail || e?.message || "Could not reach the Lookup Service");
+    } finally {
+      setCLoading(false);
+    }
+  }
+
+  async function pickConstituency(opt: ConstituencyOption) {
+    if (!cRepType) return;
+    setCChosen(opt);
+    setCLoading(true);
+    setCError(null);
+    try {
+      const rep = await resolveRepresentative(cRepType, {
+        assemblyName: opt.assembly_name,
+        parliamentaryName: opt.parliamentary_name,
+        wardId: opt.ward_id,
+      });
+      setCResolved(rep);
+      setCStep("confirm");
+    } catch (e: any) {
+      setCError(e?.response?.data?.detail || e?.message || "No active representative found there");
+    } finally {
+      setCLoading(false);
+    }
+  }
+
+  async function sendCitizenOtp() {
+    if (!cResolved) return;
+    if (!cContact.trim()) {
+      Alert.alert(tr('common.error'), cMethod === "phone" ? tr('auth.errEnterPhone') : tr('auth.errEnterEmail'));
+      return;
+    }
+    setCLoading(true);
+    setCError(null);
+    try {
+      await serverApi(cResolved.server_url).post("/api/auth/citizen/send-otp", {
+        type: cMethod, value: cContact.trim(),
+      });
+      setCStep("otp");
+    } catch (e: any) {
+      setCError(e?.response?.data?.detail || e?.message || tr('auth.errSendOtpFailed'));
+    } finally {
+      setCLoading(false);
+    }
+  }
+
+  async function verifyCitizenOtp() {
+    if (!cResolved || !cRepType) return;
+    if (!cOtp.trim()) { Alert.alert(tr('common.error'), tr('auth.errEnterOtp')); return; }
+    setCLoading(true);
+    setCError(null);
+    try {
+      const { data } = await serverApi(cResolved.server_url).post("/api/auth/citizen/register", {
+        value: cContact.trim(),
+        otp:   cOtp.trim(),
+        rep_type: cRepType,
+        assembly_name: cChosen?.assembly_name,
+        parliamentary_name: cChosen?.parliamentary_name,
+        ward_id: cChosen?.ward_id,
+      });
+      const u = data.user;
+
+      const hasProfile = !!(
+        u.fullName &&
+        u.fullName.trim() &&
+        !u.fullName.startsWith("otp-") &&
+        !u.email?.startsWith("otp-")
+      );
+      const realEmail = u.email && !u.email.startsWith("otp-") ? u.email : "";
+      const realMobile = u.mobile && !u.mobile.startsWith("otp-")
+        ? u.mobile
+        : (cMethod === "phone" ? cContact.trim().replace(/\D/g, "") : "");
+
+      setAuth(
+        data.accessToken,
+        {
+          id:     u._id || u.id,
+          name:   u.fullName || u.name || realEmail,
+          email:  u.email,
+          mobile: realMobile,
+          role:   "CITIZEN",
+          repType: cRepType,
+        },
+        cResolved.server_url,
+      );
+      useAuthStore.getState().setProfileComplete(hasProfile);
+
+      // Mirror into the local multi-rep-link store too, so the "Your
+      // Representative" / "Link a representative" screens correctly show
+      // this one as already linked instead of offering to link it again.
+      addRepLink({
+        repType:      cRepType,
+        repCode:      cResolved.rep_code,
+        serverUrl:    cResolved.server_url,
+        token:        data.accessToken,
+        citizenId:    u._id || u.id,
+        name:         u.fullName || realEmail || realMobile,
+        repName:      cResolved.name,
+        constituency: cChosen?.label || "",
+        profileComplete: hasProfile,
+        linkedAt:     new Date().toISOString(),
+      });
+
+      if (!hasProfile) {
+        // Representative + constituency are already resolved and saved on
+        // the citizen record by /api/auth/citizen/register above — tell
+        // edit-profile.tsx not to ask for them again and not to re-resolve
+        // a tenant (see "resolved=1" handling there).
+        router.replace(
+          `/citizen/edit-profile?required=1&repType=${cRepType}&resolved=1&repArea=${encodeURIComponent(cChosen?.label || "")}` as any
+        );
+      } else {
+        router.replace(`/citizen/edit-profile?postLogin=1` as any);
+      }
+    } catch (e: any) {
+      Alert.alert(tr('auth.verificationFailed'), e?.response?.data?.detail || tr('auth.errInvalidOtp'));
+    } finally {
+      setCLoading(false);
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // ── Staff (Rep/Admin/Field/Manager) handlers — unchanged central OTP flow ──
+  // ─────────────────────────────────────────────
+
+  async function handleStaffSendOtp() {
+    if (!staffValue.trim()) {
+      Alert.alert(tr('common.error'), staffMethod === "phone" ? tr('auth.errEnterPhone') : tr('auth.errEnterEmail'));
       return;
     }
     setLoading(true);
     try {
       await axios.post(`${API_BASE}/api/auth/send-otp`, {
-        type: method,
-        value: value.trim(),
+        type: staffMethod,
+        value: staffValue.trim(),
       });
-      setStep("otp");
+      setStaffStep("otp");
     } catch (err: any) {
       Alert.alert(tr('common.error'), err?.response?.data?.detail ?? tr('auth.errSendOtpFailed'));
     } finally {
@@ -127,51 +301,28 @@ export default function LoginScreen() {
     }
   }
 
-  // ── Verify OTP ──
-  async function handleVerifyOtp() {
-    if (!otp.trim()) { Alert.alert(tr('common.error'), tr('auth.errEnterOtp')); return; }
+  async function handleStaffVerifyOtp() {
+    if (!staffOtp.trim()) { Alert.alert(tr('common.error'), tr('auth.errEnterOtp')); return; }
     setLoading(true);
     try {
       const { data } = await axios.post(`${API_BASE}/api/auth/verify-otp`, {
-        value: value.trim(),
-        otp:   otp.trim(),
+        value: staffValue.trim(),
+        otp:   staffOtp.trim(),
       });
       const u = data.user;
-
-      // Persist auth
       const role = u.role as string;
 
-      // Determine profile completeness from the API response, not local storage.
-      // A citizen has no profile if fullName is missing or is a placeholder OTP value.
       const hasProfile = !!(
         u.fullName &&
         u.fullName.trim() &&
         !u.fullName.startsWith("otp-") &&
         !u.email?.startsWith("otp-")
       );
-
-      // Don't let a synthetic OTP placeholder email (e.g. "otp-xxxx@otp.local",
-      // generated server-side for phone-only signups with no email on file)
-      // leak into the display name / profile form — fall back to a real,
-      // non-placeholder email only.
       const realEmail = u.email && !u.email.startsWith("otp-") ? u.email : "";
-
-      // Same idea for mobile — a fresh placeholder account has no real
-      // number on file yet, only whatever the citizen just typed to send
-      // the OTP. Prefer the backend's value (a returning citizen's real,
-      // saved number) and fall back to what was typed here so the profile
-      // completion form isn't left blank for a first-time phone signup.
       const realMobile = u.mobile && !u.mobile.startsWith("otp-")
         ? u.mobile
-        : (method === "phone" ? value.trim().replace(/\D/g, "") : "");
+        : (staffMethod === "phone" ? staffValue.trim().replace(/\D/g, "") : "");
 
-      // Backend's OtpResponse model returns the token as `accessToken`, not
-      // `token` — this was reading the wrong field, so setAuth() was always
-      // storing `undefined` as the session token. Once navigation reached
-      // any /citizen/* route, citizen/_layout.tsx saw no token and bounced
-      // to /citizen/onboarding (an alias of the root onboarding screen) —
-      // that's the "Your city, in your hands" page showing up after every
-      // OTP verification.
       setAuth(data.accessToken, {
         id:     u._id || u.id,
         name:   u.fullName || u.name || u.full_name || realEmail,
@@ -179,21 +330,15 @@ export default function LoginScreen() {
         mobile: realMobile,
         role,
       });
-      // Sync the store so the rest of the app is also up to date
       useAuthStore.getState().setProfileComplete(hasProfile);
 
       if (role === "CITIZEN") {
+        // A citizen landing here (e.g. an old bookmark) still goes through
+        // the normal profile-completion path — representative/constituency
+        // not yet resolved, exactly like before.
         if (!hasProfile) {
-          // Carry the representative category chip picked on this screen
-          // through to the completion form so it doesn't have to be picked
-          // twice — it's otherwise decorative here (doesn't affect the OTP
-          // call itself), so this is the only place its value is used.
-          const repTypeParam = repCategory ? `&repType=${repCategory.toUpperCase()}` : "";
-          router.replace(`/citizen/edit-profile?required=1${repTypeParam}` as any);
+          router.replace(`/citizen/edit-profile?required=1` as any);
         } else {
-          // Returning citizen — still route through edit-profile so they see
-          // (and can confirm/update) their previously saved details every
-          // time they log in, instead of skipping straight into the app.
           router.replace(`/citizen/edit-profile?postLogin=1` as any);
         }
       } else {
@@ -205,6 +350,55 @@ export default function LoginScreen() {
       setLoading(false);
     }
   }
+
+  // ─────────────────────────────────────────────
+
+  function handleBack() {
+    if (flowMode === "staff") {
+      if (staffStep === "otp") { setStaffStep("input"); setStaffOtp(""); return; }
+      if (router.canGoBack?.()) router.back();
+      return;
+    }
+    switch (cStep) {
+      case "otp":           setCStep("contact"); setCOtp(""); setCError(null); return;
+      case "contact":       setCStep("confirm"); setCError(null); return;
+      case "confirm":       setCStep("constituency"); setCError(null); return;
+      case "constituency":  setCStep("category"); setCRepType(null); setCOptions([]); setCFilter(""); setCError(null); return;
+      case "category":
+      default:
+        if (router.canGoBack?.()) router.back();
+    }
+  }
+
+  const filteredCOptions = cOptions.filter((o) =>
+    !cFilter.trim() || o.label.toLowerCase().includes(cFilter.trim().toLowerCase())
+  );
+
+  const heading = (() => {
+    if (flowMode === "staff") {
+      return staffStep === "input"
+        ? { title: tr('auth.welcomeHeading'), sub: tr('auth.welcomeSubtitle') }
+        : { title: tr('auth.enterOtp'), sub: `${tr('auth.otpSent')} ${staffValue}. ${tr('auth.enterItBelow')}` };
+    }
+    switch (cStep) {
+      case "category":
+        return { title: tr('auth.welcomeHeading'), sub: "Who do you want to reach — your Councillor, MLA, or MP?" };
+      case "constituency":
+        return {
+          title: cRepType === "MLA" ? "Select your Assembly Constituency"
+               : cRepType === "MP"  ? "Select your Parliamentary Constituency"
+               : "Select your Ward",
+          sub: "This tells us which representative's office you belong to.",
+        };
+      case "confirm":
+        return { title: "Is this your representative?", sub: "Confirm before we send you a one-time code." };
+      case "contact":
+        return { title: "Verify it's you", sub: "We'll text or email a one-time code to sign you in." };
+      case "otp":
+      default:
+        return { title: tr('auth.enterOtp'), sub: `${tr('auth.otpSent')} ${cContact}. ${tr('auth.enterItBelow')}` };
+    }
+  })();
 
   // ─────────────────────────────────────────────
   const LANG_OPTIONS = [
@@ -255,146 +449,289 @@ export default function LoginScreen() {
 
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
-        {/* Back arrow — always visible; steps back out of OTP, or out of the screen entirely */}
-        <TouchableOpacity
-          style={s.backBtn}
-          onPress={() => {
-            if (step === "otp") { setStep("input"); setOtp(""); return; }
-            if (router.canGoBack?.()) router.back();
-          }}
-        >
+        {/* Back arrow — always visible; steps back within the current wizard, or out of the screen entirely */}
+        <TouchableOpacity style={s.backBtn} onPress={handleBack}>
           <Text style={s.backArrow}>←</Text>
         </TouchableOpacity>
 
-        <Text style={s.welcome}>
-          {step === "input" ? tr('auth.welcomeHeading') : tr('auth.enterOtp')}
-        </Text>
-        <Text style={s.sub}>
-          {step === "input"
-            ? tr('auth.welcomeSubtitle')
-            : `${tr('auth.otpSent')} ${value}. ${tr('auth.enterItBelow')}`}
-        </Text>
+        <Text style={s.welcome}>{heading.title}</Text>
+        <Text style={s.sub}>{heading.sub}</Text>
 
-        {/* ── Input step ── */}
-        {step === "input" && (
+        {/* ══════════════ CITIZEN WIZARD ══════════════ */}
+        {flowMode === "citizen" && (
           <>
-            {/* Representative category — decorative only, doesn't affect the OTP flow below */}
-            <View style={s.categoryRow}>
-              {REP_CATEGORIES.map((cat) => {
-                const active = repCategory === cat.key;
-                return (
-                  <TouchableOpacity
-                    key={cat.key}
-                    style={[s.categoryCard, active && s.categoryCardActive]}
-                    onPress={() => setRepCategory(active ? null : cat.key)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={s.categoryIcon}>{cat.icon}</Text>
-                    <Text style={[s.categoryLabel, active && s.categoryLabelActive]}>{tr(cat.labelKey)}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            {cError && (
+              <View style={s.errorBox}><Text style={s.errorText}>{cError}</Text></View>
+            )}
 
-            <View style={s.toggleRow}>
-              <TouchableOpacity
-                style={[s.toggleBtn, method === "phone" && s.toggleActive]}
-                onPress={() => { setMethod("phone"); setValue(""); }}
-              >
-                <Text style={[s.toggleText, method === "phone" && s.toggleTextActive]}>
-                  📱 {tr('auth.phone')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.toggleBtn, method === "email" && s.toggleActive]}
-                onPress={() => { setMethod("email"); setValue(""); }}
-              >
-                <Text style={[s.toggleText, method === "email" && s.toggleTextActive]}>
-                  ✉️ {tr('auth.email')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={s.label}>
-              {method === "phone" ? tr('auth.phoneNumber') : tr('auth.emailAddress')}
-            </Text>
-            <View style={s.inputRow}>
-              {method === "phone" && (
-                <View style={s.countryCodeBox}>
-                  <Text style={s.countryCodeText}>🇮🇳 +91</Text>
+            {cStep === "category" && (
+              <>
+                <View style={s.categoryRow}>
+                  {REP_CATEGORIES.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.key}
+                      style={s.categoryCard}
+                      onPress={() => pickCategory(cat.key)}
+                      activeOpacity={0.8}
+                      disabled={cLoading}
+                    >
+                      <Text style={s.categoryIcon}>{cat.icon}</Text>
+                      <Text style={s.categoryLabel}>{tr(cat.labelKey)}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              )}
-              {method === "email" && <Text style={s.inputIcon}>✉️</Text>}
-              <TextInput
-                style={s.input}
-                placeholder={method === "phone" ? "98765 43210" : "you@example.com"}
-                placeholderTextColor="#9CA3AF"
-                keyboardType={method === "phone" ? "phone-pad" : "email-address"}
-                autoCapitalize="none"
-                value={value}
-                onChangeText={setValue}
-              />
-              {method === "phone" && value.replace(/\D/g, "").length === 10 && (
-                <Text style={s.checkIcon}>✅</Text>
-              )}
+                {cLoading && <ActivityIndicator color="#1D4ED8" style={{ marginTop: 4, marginBottom: 20 }} />}
+              </>
+            )}
+
+            {cStep === "constituency" && (
+              <>
+                <TextInput
+                  style={s.searchInput}
+                  placeholder="Search..."
+                  placeholderTextColor="#9CA3AF"
+                  value={cFilter}
+                  onChangeText={setCFilter}
+                />
+                {cLoading ? (
+                  <ActivityIndicator color="#1D4ED8" style={{ marginTop: 16 }} />
+                ) : filteredCOptions.length === 0 ? (
+                  <Text style={s.emptyText}>No {cRepType} registered yet for any constituency.</Text>
+                ) : (
+                  filteredCOptions.map((opt, i) => (
+                    <TouchableOpacity key={i} style={s.listRow} onPress={() => pickConstituency(opt)}>
+                      <Text style={s.listRowLabel}>{opt.label}</Text>
+                      <Text style={s.listRowSub}>{opt.rep_name}{opt.district ? ` · ${opt.district}` : ""}</Text>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </>
+            )}
+
+            {cStep === "confirm" && cResolved && (
+              <>
+                <View style={s.confirmCard}>
+                  <Text style={s.confirmName}>{cResolved.name}</Text>
+                  <Text style={s.confirmMeta}>{cResolved.rep_type} · {cChosen?.label}</Text>
+                  {cResolved.district ? <Text style={s.confirmMeta}>{cResolved.district}, {cResolved.state}</Text> : null}
+                </View>
+                <TouchableOpacity style={s.btnPrimary} onPress={() => setCStep("contact")}>
+                  <Text style={s.btnPrimaryText}>Yes, continue</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.resendBtn} onPress={() => setCStep("constituency")}>
+                  <Text style={s.resendText}>Choose a different one</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {cStep === "contact" && (
+              <>
+                <View style={s.toggleRow}>
+                  <TouchableOpacity
+                    style={[s.toggleBtn, cMethod === "phone" && s.toggleActive]}
+                    onPress={() => { setCMethod("phone"); setCContact(""); }}
+                  >
+                    <Text style={[s.toggleText, cMethod === "phone" && s.toggleTextActive]}>
+                      📱 {tr('auth.phone')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.toggleBtn, cMethod === "email" && s.toggleActive]}
+                    onPress={() => { setCMethod("email"); setCContact(""); }}
+                  >
+                    <Text style={[s.toggleText, cMethod === "email" && s.toggleTextActive]}>
+                      ✉️ {tr('auth.email')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={s.label}>
+                  {cMethod === "phone" ? tr('auth.phoneNumber') : tr('auth.emailAddress')}
+                </Text>
+                <View style={s.inputRow}>
+                  {cMethod === "phone" && (
+                    <View style={s.countryCodeBox}>
+                      <Text style={s.countryCodeText}>🇮🇳 +91</Text>
+                    </View>
+                  )}
+                  {cMethod === "email" && <Text style={s.inputIcon}>✉️</Text>}
+                  <TextInput
+                    style={s.input}
+                    placeholder={cMethod === "phone" ? "98765 43210" : "you@example.com"}
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType={cMethod === "phone" ? "phone-pad" : "email-address"}
+                    autoCapitalize="none"
+                    value={cContact}
+                    onChangeText={setCContact}
+                  />
+                  {cMethod === "phone" && cContact.replace(/\D/g, "").length === 10 && (
+                    <Text style={s.checkIcon}>✅</Text>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  style={[s.btnPrimary, cLoading && s.btnDisabled]}
+                  onPress={sendCitizenOtp}
+                  disabled={cLoading}
+                >
+                  {cLoading
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={s.btnPrimaryText}>{tr('auth.sendOtp')}</Text>}
+                </TouchableOpacity>
+
+                <View style={s.verifiedRow}>
+                  <Text style={s.verifiedIcon}>🛡️</Text>
+                  <Text style={s.verifiedText}>{tr('auth.verifiedByConstituency')}</Text>
+                </View>
+              </>
+            )}
+
+            {cStep === "otp" && (
+              <>
+                <Text style={s.label}>{tr('auth.oneTimePassword')}</Text>
+                <View style={s.inputRow}>
+                  <Text style={s.inputIcon}>🔒</Text>
+                  <TextInput
+                    style={[s.input, s.otpInput]}
+                    placeholder="· · · · · ·"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    value={cOtp}
+                    onChangeText={setCOtp}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[s.btnPrimary, cLoading && s.btnDisabled]}
+                  onPress={verifyCitizenOtp}
+                  disabled={cLoading}
+                >
+                  {cLoading
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={s.btnPrimaryText}>{tr('auth.signInBtn')}</Text>}
+                </TouchableOpacity>
+
+                <TouchableOpacity style={s.resendBtn} onPress={sendCitizenOtp} disabled={cLoading}>
+                  <Text style={s.resendText}>{tr('auth.resendOtp')}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <View style={s.footer}>
+              <Text style={s.footerText}>{tr('auth.newToApp')} </Text>
+              <TouchableOpacity onPress={() => router.replace("/onboarding" as any)}>
+                <Text style={s.footerLink}>{tr('auth.createAccount')}</Text>
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={[s.btnPrimary, loading && s.btnDisabled]}
-              onPress={handleSendOtp}
-              disabled={loading}
-            >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={s.btnPrimaryText}>{tr('auth.sendOtp')}</Text>}
+            <TouchableOpacity onPress={() => setFlowMode("staff")} style={s.modeSwitch}>
+              <Text style={s.modeSwitchText}>
+                Representative, Admin, or Staff? <Text style={s.modeSwitchLink}>Sign in here</Text>
+              </Text>
             </TouchableOpacity>
-
-            <View style={s.verifiedRow}>
-              <Text style={s.verifiedIcon}>🛡️</Text>
-              <Text style={s.verifiedText}>{tr('auth.verifiedByConstituency')}</Text>
-            </View>
           </>
         )}
 
-        {/* ── OTP step ── */}
-        {step === "otp" && (
+        {/* ══════════════ STAFF SIGN-IN (unchanged central OTP) ══════════════ */}
+        {flowMode === "staff" && (
           <>
-            <Text style={s.label}>{tr('auth.oneTimePassword')}</Text>
-            <View style={s.inputRow}>
-              <Text style={s.inputIcon}>🔒</Text>
-              <TextInput
-                style={[s.input, s.otpInput]}
-                placeholder="· · · · · ·"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="number-pad"
-                maxLength={6}
-                value={otp}
-                onChangeText={setOtp}
-              />
-            </View>
+            {staffStep === "input" && (
+              <>
+                <View style={s.toggleRow}>
+                  <TouchableOpacity
+                    style={[s.toggleBtn, staffMethod === "phone" && s.toggleActive]}
+                    onPress={() => { setStaffMethod("phone"); setStaffValue(""); }}
+                  >
+                    <Text style={[s.toggleText, staffMethod === "phone" && s.toggleTextActive]}>
+                      📱 {tr('auth.phone')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.toggleBtn, staffMethod === "email" && s.toggleActive]}
+                    onPress={() => { setStaffMethod("email"); setStaffValue(""); }}
+                  >
+                    <Text style={[s.toggleText, staffMethod === "email" && s.toggleTextActive]}>
+                      ✉️ {tr('auth.email')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
-            <TouchableOpacity
-              style={[s.btnPrimary, loading && s.btnDisabled]}
-              onPress={handleVerifyOtp}
-              disabled={loading}
-            >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={s.btnPrimaryText}>{tr('auth.signInBtn')}</Text>}
-            </TouchableOpacity>
+                <Text style={s.label}>
+                  {staffMethod === "phone" ? tr('auth.phoneNumber') : tr('auth.emailAddress')}
+                </Text>
+                <View style={s.inputRow}>
+                  {staffMethod === "phone" && (
+                    <View style={s.countryCodeBox}>
+                      <Text style={s.countryCodeText}>🇮🇳 +91</Text>
+                    </View>
+                  )}
+                  {staffMethod === "email" && <Text style={s.inputIcon}>✉️</Text>}
+                  <TextInput
+                    style={s.input}
+                    placeholder={staffMethod === "phone" ? "98765 43210" : "you@example.com"}
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType={staffMethod === "phone" ? "phone-pad" : "email-address"}
+                    autoCapitalize="none"
+                    value={staffValue}
+                    onChangeText={setStaffValue}
+                  />
+                  {staffMethod === "phone" && staffValue.replace(/\D/g, "").length === 10 && (
+                    <Text style={s.checkIcon}>✅</Text>
+                  )}
+                </View>
 
-            <TouchableOpacity style={s.resendBtn} onPress={handleSendOtp} disabled={loading}>
-              <Text style={s.resendText}>{tr('auth.resendOtp')}</Text>
+                <TouchableOpacity
+                  style={[s.btnPrimary, loading && s.btnDisabled]}
+                  onPress={handleStaffSendOtp}
+                  disabled={loading}
+                >
+                  {loading
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={s.btnPrimaryText}>{tr('auth.sendOtp')}</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+
+            {staffStep === "otp" && (
+              <>
+                <Text style={s.label}>{tr('auth.oneTimePassword')}</Text>
+                <View style={s.inputRow}>
+                  <Text style={s.inputIcon}>🔒</Text>
+                  <TextInput
+                    style={[s.input, s.otpInput]}
+                    placeholder="· · · · · ·"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    value={staffOtp}
+                    onChangeText={setStaffOtp}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[s.btnPrimary, loading && s.btnDisabled]}
+                  onPress={handleStaffVerifyOtp}
+                  disabled={loading}
+                >
+                  {loading
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={s.btnPrimaryText}>{tr('auth.signInBtn')}</Text>}
+                </TouchableOpacity>
+
+                <TouchableOpacity style={s.resendBtn} onPress={handleStaffSendOtp} disabled={loading}>
+                  <Text style={s.resendText}>{tr('auth.resendOtp')}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <TouchableOpacity onPress={() => setFlowMode("citizen")} style={s.modeSwitch}>
+              <Text style={s.modeSwitchText}>
+                Citizen? <Text style={s.modeSwitchLink}>Sign in here</Text>
+              </Text>
             </TouchableOpacity>
           </>
         )}
-
-        <View style={s.footer}>
-          <Text style={s.footerText}>{tr('auth.newToApp')} </Text>
-          <TouchableOpacity onPress={() => router.replace("/onboarding" as any)}>
-            <Text style={s.footerLink}>{tr('auth.createAccount')}</Text>
-          </TouchableOpacity>
-        </View>
 
       </ScrollView>
     </KeyboardAvoidingView>
@@ -411,7 +748,7 @@ const s = StyleSheet.create({
   welcome: { fontSize: 30, fontWeight: "800", color: "#0F172A", marginBottom: 8 },
   sub:     { fontSize: 15, color: "#64748B", lineHeight: 22, marginBottom: 28 },
 
-  categoryRow: { flexDirection: "row", gap: 10, marginBottom: 28 },
+  categoryRow: { flexDirection: "row", gap: 10, marginBottom: 8 },
   categoryCard: {
     flex: 1, alignItems: "center", justifyContent: "center", gap: 6,
     paddingVertical: 16, borderRadius: 14,
@@ -421,6 +758,19 @@ const s = StyleSheet.create({
   categoryIcon:        { fontSize: 20 },
   categoryLabel:        { fontSize: 12, fontWeight: "700", color: "#64748B" },
   categoryLabelActive:  { color: "#1D4ED8" },
+
+  errorBox: { backgroundColor: "#FEF2F2", borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: "#FECACA" },
+  errorText: { color: "#EF4444", fontSize: 13 },
+
+  searchInput: { backgroundColor: "#F8FAFC", borderRadius: 12, borderWidth: 1.5, borderColor: "#E2E8F0", paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, marginBottom: 12, color: "#0F172A" },
+  emptyText: { color: "#64748B", fontSize: 13, textAlign: "center", marginTop: 24 },
+  listRow: { backgroundColor: "#F8FAFC", borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: "#E2E8F0" },
+  listRowLabel: { fontSize: 15, fontWeight: "700", color: "#0F172A" },
+  listRowSub: { fontSize: 12, color: "#64748B", marginTop: 2 },
+
+  confirmCard: { backgroundColor: "#F8FAFC", borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1.5, borderColor: "#E2E8F0", alignItems: "center" },
+  confirmName: { fontSize: 18, fontWeight: "800", color: "#0F172A", marginBottom: 4 },
+  confirmMeta: { fontSize: 13, color: "#64748B" },
 
   countryCodeBox: {
     flexDirection: "row", alignItems: "center",
@@ -463,9 +813,13 @@ const s = StyleSheet.create({
   resendBtn:  { alignItems: "center", paddingVertical: 8 },
   resendText: { color: "#1D4ED8", fontSize: 14, fontWeight: "600" },
 
-  footer:     { flexDirection: "row", justifyContent: "center", marginTop: "auto", paddingTop: 32 },
+  footer:     { flexDirection: "row", justifyContent: "center", marginTop: 8, paddingTop: 16 },
   footerText: { color: "#64748B", fontSize: 14 },
   footerLink: { color: "#1D4ED8", fontSize: 14, fontWeight: "700" },
+
+  modeSwitch:     { alignItems: "center", paddingVertical: 10, marginTop: 12 },
+  modeSwitchText: { color: "#64748B", fontSize: 12.5 },
+  modeSwitchLink: { color: "#1D4ED8", fontWeight: "700" },
 
   langFloatWrap:       { position: "absolute", top: (StatusBar.currentHeight ?? 24) + 8, right: 16, zIndex: 999 },
   langDropBtn:         { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 24, borderWidth: 1.5, borderColor: "#D1D5DB", backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },

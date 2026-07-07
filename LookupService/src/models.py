@@ -24,3 +24,19 @@ class RegisterServerRequest(BaseModel):
     taluk:                Optional[str] = Field(None)
     district:             Optional[str] = Field(None)
     state:                Optional[str] = Field(None)
+
+
+class UpdateRepresentativeRequest(BaseModel):
+    """Admin request to update an existing representative's details."""
+    name:                Optional[str]  = Field(None, description="Representative's display name")
+    server_url:          Optional[str]  = Field(None, description="Representative's server base URL")
+    db_url:              Optional[str]  = Field(None, description="Representative's MongoDB connection string")
+    
+    assembly_name:       Optional[str]  = Field(None, description="For MLA")
+    parliamentary_name:  Optional[str]  = Field(None, description="For MP")
+    ward_id:             Optional[str]  = Field(None, description="For COUNCILLOR")
+    ward_name:           Optional[str]  = Field(None, description="Human-readable ward name")
+    
+    taluk:                Optional[str] = Field(None)
+    district:             Optional[str] = Field(None)
+    state:                Optional[str] = Field(None)

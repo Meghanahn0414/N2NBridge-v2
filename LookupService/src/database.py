@@ -6,6 +6,7 @@ It holds nothing but the routing registry: which representative
 (rep_type + constituency identifier) maps to which server_url.
 """
 import logging
+import os
 from typing import Optional
 
 import certifi
@@ -22,17 +23,21 @@ class LookupDatabase:
     @classmethod
     def connect(cls, connection_string: str, db_name: str):
         try:
-            cls._client = MongoClient(
-                connection_string,
-                serverSelectionTimeoutMS=5000,
-                connectTimeoutMS=10000,
-                socketTimeoutMS=30000,
-                retryWrites=True,
-                retryReads=True,
-                # Same fix as Backend/src/config/database.py — avoids
-                # "SSL: TLSV1_ALERT_INTERNAL_ERROR" against Atlas on Windows.
-                tlsCAFile=certifi.where(),
-            )
+            client_kwargs = {
+                "serverSelectionTimeoutMS": 5000,
+                "connectTimeoutMS": 10000,
+                "socketTimeoutMS": 30000,
+                "retryWrites": True,
+                "retryReads": True,
+            }
+            if (
+                connection_string.startswith("mongodb+srv://")
+                or "tls=true" in connection_string.lower()
+                or "ssl=true" in connection_string.lower()
+            ):
+                client_kwargs["tlsCAFile"] = certifi.where()
+
+            cls._client = MongoClient(connection_string, **client_kwargs)
             cls._client.admin.command("ping")
             cls._db = cls._client[db_name]
             logger.info(f"Lookup Service connected to MongoDB: {db_name}")

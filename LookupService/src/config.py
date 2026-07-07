@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     # ── MongoDB (the lookup service's OWN db — never a representative's db) ─────
     MONGODB_URL: str = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
-    MONGODB_DB:  str = os.getenv("MONGODB_DB", "n2n_lookup")
+    MONGODB_DB:  str = os.getenv("MONGODB_DB", "master_lookup")
 
     # ── Auth for representative servers registering themselves ──────────────────
     LOOKUP_REGISTER_KEY: str = os.getenv("LOOKUP_REGISTER_KEY", "change-this-shared-secret")

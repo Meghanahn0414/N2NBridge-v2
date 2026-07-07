@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Alert, StatusBar, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
   fetchConstituencies, resolveRepresentative,
   ConstituencyOption, ResolvedRepresentative, RepType,
@@ -27,6 +27,11 @@ type Step = "pick-type" | "pick-constituency" | "confirm" | "contact" | "otp" | 
 
 export default function LinkRepresentativeScreen() {
   const router = useRouter();
+  // Optional deep-link param — set when this screen is opened from the
+  // "Your Representative" chips on the profile screen with a specific type
+  // already chosen (e.g. switching from MLA to MP), so the citizen doesn't
+  // have to pick the type again on the "pick-type" step.
+  const params = useLocalSearchParams<{ repType?: string }>();
   const addLink = useRepresentativesStore((s) => s.addLink);
   const getLink = useRepresentativesStore((s) => s.getLink);
 
@@ -56,7 +61,17 @@ export default function LinkRepresentativeScreen() {
     setChosen(null); setResolved(null); setContact(""); setOtp("");
     setToken(null); setCitizenId(null); setNeedsProfile(false);
     setName(""); setEmail(""); setError(null);
-  }, []));
+
+    // Deep-linked with a type already chosen — skip straight to picking a
+    // constituency for it (pickRepType still shows the "already linked"
+    // alert if this type is linked already, e.g. tapping the active MLA
+    // chip again).
+    const preselect = (params.repType || "").toUpperCase();
+    if (preselect === "COUNCILLOR" || preselect === "MLA" || preselect === "MP") {
+      pickRepType(preselect as RepType);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.repType]));
 
   async function pickRepType(rt: RepType) {
     if (getLink(rt)) {
