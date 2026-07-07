@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAuthRole } from "../../../services/authStorage";
+import { getAuthRole, getRepRolePrefix } from "../../../services/authStorage";
 import api from "../../../shared/services/api";
 import { ROUTES } from "../../../app/routes/RouteConstants";
 import "../styles/mla-layout.css";
@@ -804,7 +804,7 @@ export default function ExecutiveDashboard() {
 
           {/* Export button */}
           <ExportButton
-            filename="mla-overview"
+            filename={`${getRepRolePrefix()}-overview`}
             pdfRef={dashboardRef}
             pdfOrientation="landscape"
             data={[

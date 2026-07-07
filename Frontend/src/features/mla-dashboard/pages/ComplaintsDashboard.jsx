@@ -7,6 +7,7 @@ import '../../../styles/mla-dashboard/ComplaintsDashboard.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
 import ExportButton from '../../../components/ExportButton';
+import { getRepRolePrefix } from '../../../services/authStorage';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
@@ -171,7 +172,7 @@ export default function ComplaintsDashboard() {
           <button type="button" className="btn-primary" onClick={handleViewAllComplaints}>{t("view_all_complaints")}</button>
           <button type="button" className="btn-primary" onClick={handleEscalateIssue}>{t("escalate_issue")}</button>
           <ExportButton
-            filename="complaints-report"
+            filename={`${getRepRolePrefix()}-complaints-report`}
             pdfRef={pageRef}
             data={topWards}
             columns={exportColumns}

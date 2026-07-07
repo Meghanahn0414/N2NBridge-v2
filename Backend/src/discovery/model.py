@@ -8,7 +8,7 @@ representative's tenant database can still follow and read public content
 from ANY other representative (MLA, MP, or COUNCILLOR) in the system.
 
 A representative is identified purely by db_name — every tenant database
-holds exactly one REPRESENTATIVE user (see utils/directory_client.py and
+holds exactly one REPRESENTATIVE user (see utils/lookup_client.py and
 citizens/routes.py's my_representatives), so no separate rep_id is needed.
 """
 from typing import Optional

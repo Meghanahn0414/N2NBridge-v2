@@ -1,10 +1,11 @@
 """
 Citizen Routes — Multi-Tenant
 
-GET  /api/citizens/me                   Own profile
-PUT  /api/citizens/me                   Update own profile
-POST /api/citizens/me/upload-photo      Upload own profile photo
-GET  /api/citizens/my-representatives   Councillor, MLA, MP lookup (from master DB)
+GET  /api/citizens/me                       Own profile
+PUT  /api/citizens/me                       Update own profile
+POST /api/citizens/me/upload-photo          Upload own profile photo
+GET  /api/citizens/my-representative-type   This citizen's rep_type + constituency name
+GET  /api/citizens/my-representatives       Councillor, MLA, MP lookup (from master DB)
 GET  /api/citizens/{id}                 Rep/Staff: get citizen profile
 GET  /api/citizens/                     Rep/Staff: list all citizens
 """
@@ -79,6 +80,41 @@ async def get_my_profile(db=Depends(get_tenant_db), user=Depends(require_auth)):
     if not citizen:
         raise HTTPException(status_code=404, detail="Profile not found")
     return success_response(_doc(citizen), "Profile retrieved")
+
+
+@router.get("/my-representative-type")
+async def my_representative_type(db=Depends(get_tenant_db), user=Depends(require_auth)):
+    """
+    Lightweight lookup for the citizen app's profile screen: which rep_type
+    (MLA/MP/COUNCILLOR) and constituency name this citizen's tenant belongs
+    to. A citizen's own record doesn't carry this (it's implicit in which
+    tenant DB they live in) — used so a returning citizen's "Your
+    Representative" section can be shown correctly pre-filled instead of
+    blank, without needing the heavier /my-representatives lookup.
+    """
+    rep = db.users.find_one(
+        {"role": "REPRESENTATIVE"},
+        {"_id": 0, "title": 1, "assembly_name": 1, "parliamentary_name": 1,
+         "ward_id": 1, "ward_name": 1},
+    )
+    if not rep:
+        raise HTTPException(status_code=404, detail="Representative not found")
+
+    rep_type = (rep.get("title") or "").upper()
+    if rep_type == "MLA":
+        area = rep.get("assembly_name") or ""
+    elif rep_type == "MP":
+        area = rep.get("parliamentary_name") or ""
+    elif rep_type == "COUNCILLOR":
+        area = rep.get("ward_name") or rep.get("ward_id") or ""
+    else:
+        area = ""
+
+    return success_response({
+        "rep_type": rep_type,
+        "area":     area,
+        "ward_id":  rep.get("ward_id") or "",
+    }, "Representative type retrieved")
 
 
 @router.put("/me")

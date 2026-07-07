@@ -6,6 +6,7 @@ import '../../../styles/mla-dashboard/TeamPerformanceDashboard.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
 import ExportButton from '../../../components/ExportButton';
+import { getRepRolePrefix } from '../../../services/authStorage';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value);
 
@@ -172,7 +173,7 @@ export default function TeamPerformanceDashboard() {
           <button type="button" className="btn-primary" onClick={handleScheduleMeeting}>Schedule Meeting</button>
           <button type="button" className="btn-primary" onClick={handleViewAnalytics}>View Detailed Analytics</button>
           <ExportButton
-            filename="team-performance"
+            filename={`${getRepRolePrefix()}-team-performance`}
             pdfRef={pageRef}
             data={teamData.map(m => ({
               name: m.name || 'Unknown',

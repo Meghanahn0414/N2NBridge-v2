@@ -1,14 +1,14 @@
 """
-Directory Service routes.
+Lookup Service routes.
 
 Three jobs, and nothing else:
-  1. GET  /api/directory/constituencies   — dropdown data for the app's
+  1. GET  /api/lookup/constituencies   — dropdown data for the app's
      "choose your Councillor / MLA / MP" screen.
-  2. GET  /api/directory/resolve          — given a rep_type + the constituency
+  2. GET  /api/lookup/resolve          — given a rep_type + the constituency
      identifier the citizen picked (ward_id / assembly_name / parliamentary_name),
      return that representative's OWN server_url. The app then talks directly
      to that server for everything else (login, profile, grievances...).
-  3. POST /api/directory/register         — a representative's own server
+  3. POST /api/lookup/register         — a representative's own server
      calls this (on startup, or via a one-time setup script) to add/update
      itself in the registry. Protected by a shared secret header.
 """
@@ -20,11 +20,11 @@ from typing import Optional
 from fastapi import APIRouter, Header, HTTPException
 
 from config import settings
-from database import DirectoryDatabase
+from database import LookupDatabase
 from models import RegisterServerRequest
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/directory", tags=["Directory"])
+router = APIRouter(prefix="/api/lookup", tags=["Lookup"])
 
 REP_TYPES = ("MLA", "MP", "COUNCILLOR")
 
@@ -77,6 +77,7 @@ def _public_doc(r: dict) -> dict:
         "name":                r.get("name", ""),
         "rep_type":            r.get("rep_type", ""),
         "server_url":          r.get("server_url", ""),
+        "db_url":              r.get("db_url") or "",
         "assembly_name":       r.get("assembly_name") or "",
         "parliamentary_name":  r.get("parliamentary_name") or "",
         "ward_id":             r.get("ward_id") or "",
@@ -84,34 +85,31 @@ def _public_doc(r: dict) -> dict:
         "taluk":               r.get("taluk") or "",
         "district":            r.get("district") or "",
         "state":               r.get("state") or "",
-        "status":              r.get("status", "ACTIVE"),
     }
 
 
 @router.get("/health")
 async def health():
-    return {"status": "healthy", "service": "N2N Directory Service"}
+    return {"status": "healthy", "service": "N2N Lookup Service"}
 
 
 @router.get("/representatives", summary="List every registered representative with full details")
 async def list_representatives(
-    rep_type:        Optional[str] = None,
-    status:          Optional[str] = None,
-    x_directory_key: Optional[str] = Header(None, alias="X-Directory-Key"),
+    rep_type:      Optional[str] = None,
+    x_lookup_key:  Optional[str] = Header(None, alias="X-Lookup-Key"),
 ):
     """
     Admin/debug endpoint — returns the full registry (name, rep_type,
-    server_url, constituency identifiers, status) for every representative,
-    or filtered by rep_type/status. Protected by the same shared secret used
-    for /register, since server_url is otherwise not exposed anywhere else.
+    server_url, constituency identifiers) for every representative, or
+    filtered by rep_type. Protected by the same shared secret used for
+    /register, since server_url is otherwise not exposed anywhere else.
 
     Examples:
-      GET /api/directory/representatives                     -> all reps, any type/status
-      GET /api/directory/representatives?rep_type=MLA          -> only MLAs
-      GET /api/directory/representatives?status=ACTIVE          -> only active reps
+      GET /api/lookup/representatives                     -> all reps
+      GET /api/lookup/representatives?rep_type=MLA          -> only MLAs
     """
-    if x_directory_key != settings.DIRECTORY_REGISTER_KEY:
-        raise HTTPException(status_code=401, detail="Invalid or missing X-Directory-Key")
+    if x_lookup_key != settings.LOOKUP_REGISTER_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Lookup-Key")
 
     query = {}
     if rep_type:
@@ -119,10 +117,8 @@ async def list_representatives(
         if rep_type not in REP_TYPES:
             raise HTTPException(status_code=400, detail="rep_type must be MLA, MP, or COUNCILLOR")
         query["rep_type"] = rep_type
-    if status:
-        query["status"] = status.strip().upper()
 
-    db = DirectoryDatabase.get_db()
+    db = LookupDatabase.get_db()
     reps = list(db.representatives.find(query).sort([("rep_type", 1), ("name", 1)]))
 
     return _success({
@@ -138,9 +134,9 @@ async def list_constituencies(rep_type: str):
     if rep_type not in REP_TYPES:
         raise HTTPException(status_code=400, detail="rep_type must be MLA, MP, or COUNCILLOR")
 
-    db = DirectoryDatabase.get_db()
+    db = LookupDatabase.get_db()
     reps = list(db.representatives.find(
-        {"rep_type": rep_type, "status": "ACTIVE"},
+        {"rep_type": rep_type},
         {"_id": 0, "name": 1, "assembly_name": 1, "parliamentary_name": 1,
          "ward_id": 1, "ward_name": 1, "district": 1, "state": 1},
     ))
@@ -193,12 +189,11 @@ async def resolve(
         raise HTTPException(status_code=400, detail="rep_type must be MLA, MP, or COUNCILLOR")
 
     query = _identifier_query(rep_type, assembly_name, parliamentary_name, ward_id)
-    query["status"] = "ACTIVE"
 
-    db = DirectoryDatabase.get_db()
+    db = LookupDatabase.get_db()
     rep = db.representatives.find_one(query)
     if not rep:
-        raise HTTPException(status_code=404, detail="No active representative found for the selected constituency")
+        raise HTTPException(status_code=404, detail="No representative found for the selected constituency")
     if not rep.get("server_url"):
         raise HTTPException(status_code=503, detail="Representative found but has no server registered yet")
 
@@ -208,16 +203,16 @@ async def resolve(
 @router.post("/register", summary="A representative's server registers/updates itself")
 async def register_server(
     body: RegisterServerRequest,
-    x_directory_key: Optional[str] = Header(None, alias="X-Directory-Key"),
+    x_lookup_key: Optional[str] = Header(None, alias="X-Lookup-Key"),
 ):
     """
     Called by each representative's own server — typically once at startup
-    — so the directory always has an up-to-date server_url for it. Idempotent:
-    calling this again for the same rep_type + constituency just updates the
-    existing entry (e.g. after the server's URL changes).
+    — so the lookup registry always has an up-to-date server_url for it.
+    Idempotent: calling this again for the same rep_type + constituency just
+    updates the existing entry (e.g. after the server's URL changes).
     """
-    if x_directory_key != settings.DIRECTORY_REGISTER_KEY:
-        raise HTTPException(status_code=401, detail="Invalid or missing X-Directory-Key")
+    if x_lookup_key != settings.LOOKUP_REGISTER_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Lookup-Key")
 
     rep_type = body.rep_type.strip().upper()
     if rep_type not in REP_TYPES:
@@ -227,7 +222,7 @@ async def register_server(
 
     query = _identifier_query(rep_type, body.assembly_name, body.parliamentary_name, body.ward_id)
 
-    db = DirectoryDatabase.get_db()
+    db = LookupDatabase.get_db()
     now = datetime.now(timezone.utc)
     existing = db.representatives.find_one(query)
 
@@ -235,15 +230,15 @@ async def register_server(
         db.representatives.update_one({"_id": existing["_id"]}, {"$set": {
             "name":       body.name.strip(),
             "server_url": body.server_url.strip().rstrip("/"),
+            "db_url":     (body.db_url.strip() if body.db_url else existing.get("db_url", "")),
             "ward_name":  (body.ward_name or existing.get("ward_name") or ""),
             "taluk":      (body.taluk or existing.get("taluk") or ""),
             "district":   (body.district or existing.get("district") or ""),
             "state":      (body.state or existing.get("state") or ""),
-            "status":     (body.status or "ACTIVE").upper(),
             "updated_at": now,
         }})
         rep = db.representatives.find_one({"_id": existing["_id"]})
-        logger.info(f"Directory: updated {rep_type} '{body.name}' -> {body.server_url}")
+        logger.info(f"Lookup: updated {rep_type} '{body.name}' -> {body.server_url}")
     else:
         base_slug = _slugify(f"{body.name}-{rep_type}")
         slug = _ensure_unique_slug(db, base_slug)
@@ -258,12 +253,12 @@ async def register_server(
             "district":           (body.district or ""),
             "state":              (body.state or ""),
             "server_url":         body.server_url.strip().rstrip("/"),
-            "status":             (body.status or "ACTIVE").upper(),
+            "db_url":             (body.db_url.strip() if body.db_url else ""),
             "created_at":         now,
             "updated_at":         now,
         }
         db.representatives.insert_one(doc)
         rep = doc
-        logger.info(f"Directory: registered new {rep_type} '{body.name}' ({rep_code}) -> {body.server_url}")
+        logger.info(f"Lookup: registered new {rep_type} '{body.name}' ({rep_code}) -> {body.server_url}")
 
     return _success(_public_doc(rep), "Representative registered")

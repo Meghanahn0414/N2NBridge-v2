@@ -64,8 +64,15 @@ export default function LoginScreen() {
       const cached = useAuthStore.getState();
       if (cached.token && cached.user?.role) {
         const role = cached.user.role;
-        if (role === "CITIZEN" && !cached.profileComplete) {
-          router.replace("/citizen/edit-profile?required=1" as any);
+        if (role === "CITIZEN") {
+          // Every citizen login lands here first — pre-filled with whatever
+          // is already saved (required=1 only if there's truly nothing saved
+          // yet; postLogin=1 tells edit-profile.tsx to continue into the app
+          // on save instead of just going back, since there's no prior
+          // screen to return to in this flow).
+          router.replace((cached.profileComplete
+            ? "/citizen/edit-profile?postLogin=1"
+            : "/citizen/edit-profile?required=1") as any);
         } else {
           router.replace((ROLE_ROUTES[role] ?? "/citizen/") as any);
         }
@@ -80,8 +87,10 @@ export default function LoginScreen() {
       if (fresh.token && fresh.user?.role) {
         const role            = fresh.user.role;
         const profileComplete = fresh.profileComplete;
-        if (role === "CITIZEN" && !profileComplete) {
-          router.replace("/citizen/edit-profile?required=1" as any);
+        if (role === "CITIZEN") {
+          router.replace((profileComplete
+            ? "/citizen/edit-profile?postLogin=1"
+            : "/citizen/edit-profile?required=1") as any);
         } else {
           router.replace((ROLE_ROUTES[role] ?? "/citizen/") as any);
         }
@@ -173,13 +182,20 @@ export default function LoginScreen() {
       // Sync the store so the rest of the app is also up to date
       useAuthStore.getState().setProfileComplete(hasProfile);
 
-      if (role === "CITIZEN" && !hasProfile) {
-        // Carry the representative category chip picked on this screen
-        // through to the completion form so it doesn't have to be picked
-        // twice — it's otherwise decorative here (doesn't affect the OTP
-        // call itself), so this is the only place its value is used.
-        const repTypeParam = repCategory ? `&repType=${repCategory.toUpperCase()}` : "";
-        router.replace(`/citizen/edit-profile?required=1${repTypeParam}` as any);
+      if (role === "CITIZEN") {
+        if (!hasProfile) {
+          // Carry the representative category chip picked on this screen
+          // through to the completion form so it doesn't have to be picked
+          // twice — it's otherwise decorative here (doesn't affect the OTP
+          // call itself), so this is the only place its value is used.
+          const repTypeParam = repCategory ? `&repType=${repCategory.toUpperCase()}` : "";
+          router.replace(`/citizen/edit-profile?required=1${repTypeParam}` as any);
+        } else {
+          // Returning citizen — still route through edit-profile so they see
+          // (and can confirm/update) their previously saved details every
+          // time they log in, instead of skipping straight into the app.
+          router.replace(`/citizen/edit-profile?postLogin=1` as any);
+        }
       } else {
         router.replace((ROLE_ROUTES[role] ?? "/citizen/") as any);
       }

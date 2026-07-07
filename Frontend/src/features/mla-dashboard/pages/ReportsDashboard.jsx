@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import api from "../../../shared/services/api";
 import MIcon from "../../../components/MIcon";
 import ExportButton from "../../../components/ExportButton";
+import { getRepRolePrefix } from "../../../services/authStorage";
 import {
   RiTimeLine,
   RiSearchLine,
@@ -245,7 +246,7 @@ export default function ReportsDashboard() {
           </div>
           {/* Export */}
           <ExportButton
-            filename={`reports-${activeTab.toLowerCase().replace(/\s/g, "-")}`}
+            filename={`${getRepRolePrefix()}-reports-${activeTab.toLowerCase().replace(/\s/g, "-")}`}
             pdfRef={pageRef}
             pdfOrientation="portrait"
             data={exportData}

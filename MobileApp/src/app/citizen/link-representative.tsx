@@ -8,7 +8,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import {
   fetchConstituencies, resolveRepresentative,
   ConstituencyOption, ResolvedRepresentative, RepType,
-} from "../../services/directoryApi";
+} from "../../services/lookupApi";
 import { serverApi } from "../../services/repApi";
 import { useRepresentativesStore } from "../../store/representativesStore";
 
@@ -74,7 +74,7 @@ export default function LinkRepresentativeScreen() {
       setOptions(items);
       setStep("pick-constituency");
     } catch (e: any) {
-      setError(e?.response?.data?.detail || e?.message || "Could not reach the Directory Service");
+      setError(e?.response?.data?.detail || e?.message || "Could not reach the Lookup Service");
     } finally {
       setLoading(false);
     }

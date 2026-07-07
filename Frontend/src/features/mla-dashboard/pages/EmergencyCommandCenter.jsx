@@ -6,6 +6,7 @@ import '../../../styles/mla-dashboard/EmergencyCommandCenter.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
 import ExportButton from '../../../components/ExportButton';
+import { getRepRolePrefix } from '../../../services/authStorage';
 
 export default function EmergencyCommandCenter() {
   const navigate = useNavigate();
@@ -146,7 +147,7 @@ export default function EmergencyCommandCenter() {
           <button type="button" className="btn-primary" onClick={handleCallMeeting}>📞 Call Emergency Meeting</button>
           <button type="button" className="btn-primary" onClick={handleViewResponseLogs}>📋 View Response Logs</button>
           <ExportButton
-            filename="emergency-alerts"
+            filename={`${getRepRolePrefix()}-emergency-alerts`}
             pdfRef={pageRef}
             data={alerts}
             columns={[

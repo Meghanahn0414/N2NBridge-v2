@@ -7,6 +7,7 @@ import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import { getGrievanceCategories } from '../../../shared/services/lookupService';
 import PageHeader from '../../../components/PageHeader';
 import ExportButton from '../../../components/ExportButton';
+import { getRepRolePrefix } from '../../../services/authStorage';
 
 function normalizeWardLabel(value) {
   if (!value) return '';
@@ -198,7 +199,7 @@ export default function GeographicHeatMap() {
       <div className="mla-section">
         <div className="detail-buttons">
           <ExportButton
-            filename="ward-heatmap"
+            filename={`${getRepRolePrefix()}-ward-heatmap`}
             pdfRef={pageRef}
             data={wards}
             columns={[

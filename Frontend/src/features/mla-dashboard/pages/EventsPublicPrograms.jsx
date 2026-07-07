@@ -6,6 +6,7 @@ import '../../../styles/mla-dashboard/EventsPublicPrograms.css';
 import useMlaDashboard from '../../../shared/hooks/useMlaDashboard';
 import PageHeader from '../../../components/PageHeader';
 import ExportButton from '../../../components/ExportButton';
+import { getRepRolePrefix } from '../../../services/authStorage';
 
 const formatNumber = (value) => (value == null || value === '' ? '-' : value.toLocaleString());
 
@@ -95,7 +96,7 @@ export default function EventsPublicPrograms() {
           <button type="button" className="btn-primary" onClick={handleViewAnalytics}>View Event Analytics</button>
           <button type="button" className="btn-primary" onClick={handleSendReminders}>Send Reminders</button>
           <ExportButton
-            filename="events"
+            filename={`${getRepRolePrefix()}-events`}
             pdfRef={pageRef}
             data={events.length > 0 ? events.map(e => ({
               name: e.name || '—',

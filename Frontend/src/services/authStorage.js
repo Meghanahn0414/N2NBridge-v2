@@ -81,6 +81,31 @@ export function getAuthUser() {
   };
 }
 
+// "{role}-{username}" slug for the logged-in representative — used to prefix
+// exported file names, e.g. "mla-john-smith-overview-2026-07-07.pdf" instead
+// of just the role or a generic name. Role comes from the `title` field
+// (see Backend auth/routes.py — "title": rep_type at registration, and
+// AuthService.login's title=user.get("title")); falls back to "mla" only if
+// missing (very old accounts created before rep_type was tracked). Username
+// comes from the account's name (falling back to the email's local part) —
+// there's no separate dedicated "username" field in this codebase — slugified
+// to lowercase-hyphenated so it's filesystem/URL safe.
+export function getRepRolePrefix() {
+  const user = getAuthUser();
+  const role = String(user?.title || user?.rep_type || user?.repType || "mla").toLowerCase();
+
+  const rawName =
+    user?.name || user?.fullName || user?.full_name ||
+    (user?.email ? user.email.split("@")[0] : "") || "";
+  const nameSlug = String(rawName)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return nameSlug ? `${role}-${nameSlug}` : role;
+}
+
 export function clearAuth() {
   removeStorage('token');
   removeStorage('role');
