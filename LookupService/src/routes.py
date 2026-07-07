@@ -21,7 +21,7 @@ from fastapi import APIRouter, Header, HTTPException
 
 from config import settings
 from database import LookupDatabase
-from models import RegisterServerRequest
+from models import RegisterServerRequest, UpdateRepresentativeRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/lookup", tags=["Lookup"])
@@ -262,3 +262,180 @@ async def register_server(
         logger.info(f"Lookup: registered new {rep_type} '{body.name}' ({rep_code}) -> {body.server_url}")
 
     return _success(_public_doc(rep), "Representative registered")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ─ CRUD Operations for Admin Management ─────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/crud/representatives/{rep_code}", summary="Get a specific representative by code")
+async def get_representative(
+    rep_code: str,
+    x_lookup_key: Optional[str] = Header(None, alias="X-Lookup-Key"),
+):
+    """
+    Admin endpoint — retrieve details of a single representative by rep_code.
+    Protected by X-Lookup-Key.
+
+    Example: GET /api/lookup/crud/representatives/MLA00001
+    """
+    if x_lookup_key != settings.LOOKUP_REGISTER_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Lookup-Key")
+
+    db = LookupDatabase.get_db()
+    rep = db.representatives.find_one({"rep_code": rep_code.strip().upper()})
+
+    if not rep:
+        raise HTTPException(status_code=404, detail=f"Representative with code {rep_code} not found")
+
+    return _success(_public_doc(rep), "Representative retrieved")
+
+
+@router.put("/crud/representatives/{rep_code}", summary="Update a representative's details")
+async def update_representative(
+    rep_code: str,
+    body: UpdateRepresentativeRequest,
+    x_lookup_key: Optional[str] = Header(None, alias="X-Lookup-Key"),
+):
+    """
+    Admin endpoint — update an existing representative's details by rep_code.
+    Only provided fields are updated; omitted fields are left unchanged.
+    Protected by X-Lookup-Key.
+
+    Example: PUT /api/lookup/crud/representatives/MLA00001
+    """
+    if x_lookup_key != settings.LOOKUP_REGISTER_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Lookup-Key")
+
+    db = LookupDatabase.get_db()
+    rep = db.representatives.find_one({"rep_code": rep_code.strip().upper()})
+
+    if not rep:
+        raise HTTPException(status_code=404, detail=f"Representative with code {rep_code} not found")
+
+    update_data = {}
+
+    if body.name:
+        update_data["name"] = body.name.strip()
+    if body.server_url:
+        update_data["server_url"] = body.server_url.strip().rstrip("/")
+    if body.db_url is not None:
+        update_data["db_url"] = body.db_url.strip() if body.db_url else ""
+    if body.ward_name is not None:
+        update_data["ward_name"] = body.ward_name or ""
+    if body.assembly_name is not None:
+        update_data["assembly_name"] = body.assembly_name or ""
+    if body.parliamentary_name is not None:
+        update_data["parliamentary_name"] = body.parliamentary_name or ""
+    if body.ward_id is not None:
+        update_data["ward_id"] = body.ward_id or ""
+    if body.taluk is not None:
+        update_data["taluk"] = body.taluk or ""
+    if body.district is not None:
+        update_data["district"] = body.district or ""
+    if body.state is not None:
+        update_data["state"] = body.state or ""
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields provided to update")
+
+    update_data["updated_at"] = datetime.now(timezone.utc)
+
+    db.representatives.update_one(
+        {"rep_code": rep_code.strip().upper()},
+        {"$set": update_data}
+    )
+
+    updated_rep = db.representatives.find_one({"rep_code": rep_code.strip().upper()})
+    logger.info(f"Lookup: updated representative '{updated_rep.get('name')}' ({rep_code})")
+
+    return _success(_public_doc(updated_rep), "Representative updated successfully")
+
+
+@router.delete("/crud/representatives/{rep_code}", summary="Delete a representative")
+async def delete_representative(
+    rep_code: str,
+    x_lookup_key: Optional[str] = Header(None, alias="X-Lookup-Key"),
+):
+    """
+    Admin endpoint — delete a representative from the registry by rep_code.
+    This is a hard delete and cannot be undone.
+    Protected by X-Lookup-Key.
+
+    Example: DELETE /api/lookup/crud/representatives/MLA00001
+    """
+    if x_lookup_key != settings.LOOKUP_REGISTER_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Lookup-Key")
+
+    db = LookupDatabase.get_db()
+    rep = db.representatives.find_one({"rep_code": rep_code.strip().upper()})
+
+    if not rep:
+        raise HTTPException(status_code=404, detail=f"Representative with code {rep_code} not found")
+
+    name = rep.get("name", "Unknown")
+    db.representatives.delete_one({"rep_code": rep_code.strip().upper()})
+    logger.info(f"Lookup: deleted representative '{name}' ({rep_code})")
+
+    return _success(
+        {"deleted_rep_code": rep_code, "deleted_name": name},
+        "Representative deleted successfully"
+    )
+
+
+@router.post("/crud/representatives", summary="Create a new representative (admin)")
+async def create_representative(
+    body: RegisterServerRequest,
+    x_lookup_key: Optional[str] = Header(None, alias="X-Lookup-Key"),
+):
+    """
+    Admin endpoint — create a new representative.
+    Similar to /register but forces creation (won't update existing).
+    Protected by X-Lookup-Key.
+    """
+    if x_lookup_key != settings.LOOKUP_REGISTER_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Lookup-Key")
+
+    rep_type = body.rep_type.strip().upper()
+    if rep_type not in REP_TYPES:
+        raise HTTPException(status_code=400, detail="rep_type must be MLA, MP, or COUNCILLOR")
+    if not body.server_url.strip():
+        raise HTTPException(status_code=400, detail="server_url is required")
+
+    query = _identifier_query(rep_type, body.assembly_name, body.parliamentary_name, body.ward_id)
+
+    db = LookupDatabase.get_db()
+    now = datetime.now(timezone.utc)
+    existing = db.representatives.find_one(query)
+
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A {rep_type} for this constituency already exists (rep_code: {existing.get('rep_code')})"
+        )
+
+    base_slug = _slugify(f"{body.name}-{rep_type}")
+    slug = _ensure_unique_slug(db, base_slug)
+    rep_code = _next_rep_code(db, rep_type)
+    doc = {
+        "slug": slug,
+        "rep_code": rep_code,
+        "name": body.name.strip(),
+        "rep_type": rep_type,
+        "assembly_name": (body.assembly_name or ""),
+        "parliamentary_name": (body.parliamentary_name or ""),
+        "ward_id": (body.ward_id or ""),
+        "ward_name": (body.ward_name or ""),
+        "taluk": (body.taluk or ""),
+        "district": (body.district or ""),
+        "state": (body.state or ""),
+        "server_url": body.server_url.strip().rstrip("/"),
+        "db_url": (body.db_url.strip() if body.db_url else ""),
+        "created_at": now,
+        "updated_at": now,
+    }
+    db.representatives.insert_one(doc)
+    logger.info(f"Lookup: created new {rep_type} '{body.name}' ({rep_code}) -> {body.server_url}")
+
+    return _success(_public_doc(doc), "Representative created successfully")

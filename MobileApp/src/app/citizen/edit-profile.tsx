@@ -90,13 +90,23 @@ const ADDRESS_FIELDS: FieldConfig[] = [
 export default function EditProfileScreen() {
   const tr = useT();
   const router      = useRouter();
-  const params      = useLocalSearchParams<{ required?: string; repType?: string; postLogin?: string }>();
+  const params      = useLocalSearchParams<{ required?: string; repType?: string; postLogin?: string; resolved?: string; repArea?: string }>();
   const isRequired  = params.required === "1";
   // Set when index.tsx routed a *returning* citizen here automatically after
   // login (as opposed to them tapping "Edit" from Profile/Settings) — there's
   // no prior screen to go "back" to in that case, so save should continue
   // into the app instead.
   const isPostLogin = params.postLogin === "1";
+  // Set when the citizen signed in via the Lookup Service wizard on the
+  // login screen — representative type AND constituency were already
+  // resolved and the tenant citizen record already created by
+  // /api/auth/citizen/register, so this form must NOT re-resolve a tenant
+  // (that's what complete-profile does, and it assumes a tenant-less
+  // placeholder that doesn't exist in this path). It just fills in the
+  // remaining personal fields via the normal PUT /me used for later edits,
+  // and shows the already-matched representative read-only, same as
+  // isPostLogin.
+  const isResolved  = params.resolved === "1";
   // Representative category chip picked on the login screen, carried over
   // so it doesn't have to be picked twice on this form.
   const repTypeParam = (params.repType || "").toUpperCase();
@@ -104,6 +114,11 @@ export default function EditProfileScreen() {
     (["COUNCILLOR", "MLA", "MP"] as const).includes(repTypeParam as any)
       ? (repTypeParam as RepCategory)
       : null;
+  // Read-only display of "Your Representative" — either a returning citizen
+  // (postLogin) or a first-timer who already resolved theirs on the login
+  // wizard (isResolved). Only a genuinely first-time citizen on the older
+  // plain-OTP flow still picks it here.
+  const isReadOnlyRep = isPostLogin || isResolved;
   const { user, setAuth, setProfileComplete, updateUser } = useAuthStore();
   const [loading,        setLoading]        = useState(true);
   const [saving,         setSaving]         = useState(false);
@@ -116,7 +131,7 @@ export default function EditProfileScreen() {
   const [focusedField,   setFocusedField]   = useState<string | null>(null);
   const [form,           setForm]           = useState(INITIAL_FORM);
   const [repType,        setRepType]        = useState<RepCategory | null>(initialRepType);
-  const [repArea,        setRepArea]        = useState("");
+  const [repArea,        setRepArea]        = useState(isResolved ? (params.repArea || "") : "");
   const [areaOptions,    setAreaOptions]    = useState<ConstituencyOption[]>([]);
   const [areaLoading,    setAreaLoading]    = useState(false);
   const [showAreaPicker, setShowAreaPicker] = useState(false);
@@ -189,7 +204,8 @@ export default function EditProfileScreen() {
   // never matched their real representative. Picking from this list
   // guarantees an exact match every time.
   useEffect(() => {
-    if (!repType) { setAreaOptions([]); return; }
+    // Already resolved on the login wizard — no picker to populate here.
+    if (!repType || isResolved) { setAreaOptions([]); return; }
     setAreaLoading(true);
     api.get(`/api/auth/citizen/constituencies`, { params: { rep_type: repType } })
       .then(({ data }) => {
@@ -368,16 +384,59 @@ export default function EditProfileScreen() {
       if (!form.mobile.trim())  { showMsg("Required", "Phone number is required"); return; }
       if (!form.age.trim())     { showMsg("Required", "Age is required"); return; }
       if (!form.address.trim()) { showMsg("Required", "Address is required"); return; }
-      if (!repType) {
-        showMsg("Required", "Please select Councillor, MLA, or MP");
-        return;
-      }
-      if (!repArea.trim()) {
-        const cat = REP_CATEGORIES.find((c) => c.key === repType)!;
-        showMsg("Required", `${cat.areaLabel} is required`);
-        return;
+      // Representative type + constituency were already resolved and saved
+      // by /api/auth/citizen/register on the login wizard — nothing to
+      // validate or re-resolve here.
+      if (!isResolved) {
+        if (!repType) {
+          showMsg("Required", "Please select Councillor, MLA, or MP");
+          return;
+        }
+        if (!repArea.trim()) {
+          const cat = REP_CATEGORIES.find((c) => c.key === repType)!;
+          showMsg("Required", `${cat.areaLabel} is required`);
+          return;
+        }
       }
       setSaving(true);
+
+      if (isResolved) {
+        // Tenant citizen record already exists (created at OTP-verify time,
+        // already in the right representative's database) — just fill in
+        // the remaining personal fields via the same endpoint used for
+        // later edits. Mobile is left alone: it's tied to the OTP-verified
+        // identity, not a plain profile field.
+        const body: Record<string, any> = {
+          name:    form.fullName.trim(),
+          email:   form.email.trim(),
+          age:     Number(form.age.trim()),
+          address: form.address.trim(),
+        };
+        if (wardId.trim()) body.ward_id = wardId.trim();
+        try {
+          await api.put(`/api/citizens/me`, body);
+          setProfileComplete(true);
+          updateUser({ name: form.fullName.trim(), age: Number(form.age.trim()) });
+
+          if (pendingPhoto) {
+            await uploadPickedPhoto(pendingPhoto.uri);
+            setPendingPhoto(null);
+          }
+
+          router.replace("/citizen/" as any);
+        } catch (err: any) {
+          const detail = err?.response?.data?.detail;
+          const msg = Array.isArray(detail)
+            ? detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ")
+            : typeof detail === "string" ? detail
+            : err?.message || "Failed to save profile. Please try again.";
+          showMsg("Error", String(msg));
+        } finally {
+          setSaving(false);
+        }
+        return;
+      }
+
       try {
         const body: Record<string, any> = {
           fullName: form.fullName.trim(),
@@ -583,15 +642,17 @@ export default function EditProfileScreen() {
           </View>
 
           {/* ── Your Representative ──
-              First-time completion: editable, resolves which representative's
-              tenant this citizen belongs to.
-              Returning citizen (postLogin): read-only display of the
-              representative they're already linked to — pre-filled from
-              GET /api/citizens/my-representative-type above. Changing which
-              representative a citizen is linked to isn't done from this form
-              (see MobileApp's separate "Link a representative" flow), so the
-              chips/area field are non-interactive here to avoid implying an
-              edit that wouldn't actually be saved. */}
+              Genuinely first-time, old plain-OTP flow: editable, resolves
+              which representative's tenant this citizen belongs to on save.
+              Returning citizen (postLogin) OR first-timer who already
+              resolved theirs on the login wizard (isResolved): shows the
+              matched representative read-only. Actually switching which
+              representative a citizen is linked to means moving them to a
+              different representative's server/tenant, which this form
+              doesn't do — so tapping a chip or the area field here doesn't
+              edit in place, it deep-links into the existing "Link a
+              representative" OTP flow (pre-selecting that type) so the
+              switch happens correctly. */}
           {(isRequired || isPostLogin) && (
             <View style={s.section}>
               <View style={s.sectionHeader}>
@@ -605,12 +666,15 @@ export default function EditProfileScreen() {
                     return (
                       <TouchableOpacity
                         key={cat.key}
-                        style={[s.repCard, active && s.repCardActive, isPostLogin && !active && { opacity: 0.5 }]}
+                        style={[s.repCard, active && s.repCardActive]}
                         onPress={() => {
-                          if (isPostLogin) return;
+                          if (isReadOnlyRep) {
+                            router.push({ pathname: "/citizen/link-representative", params: { repType: cat.key } } as any);
+                            return;
+                          }
                           setRepType(cat.key); setRepArea(""); setAreaSearch("");
                         }}
-                        activeOpacity={isPostLogin ? 1 : 0.85}
+                        activeOpacity={0.85}
                       >
                         <Ionicons
                           name={cat.icon as any}
@@ -636,22 +700,33 @@ export default function EditProfileScreen() {
                             <Text style={s.fieldLabel}>{cat.areaLabel} *</Text>
                             <TouchableOpacity
                               style={s.input}
-                              activeOpacity={isPostLogin ? 1 : 0.7}
-                              onPress={() => { if (!isPostLogin) setShowAreaPicker(true); }}
+                              activeOpacity={0.7}
+                              onPress={() => {
+                                if (isReadOnlyRep) {
+                                  router.push({ pathname: "/citizen/link-representative", params: { repType: cat.key } } as any);
+                                  return;
+                                }
+                                setShowAreaPicker(true);
+                              }}
                             >
                               <Text style={{ fontSize: 15, color: repArea ? C.text : "#CBD5E1" }}>
                                 {repArea || cat.areaPlaceholder}
                               </Text>
                             </TouchableOpacity>
-                            {!isPostLogin && areaLoading && <Text style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Loading…</Text>}
-                            {!isPostLogin && !areaLoading && areaOptions.length === 0 && (
+                            {!isReadOnlyRep && areaLoading && <Text style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Loading…</Text>}
+                            {!isReadOnlyRep && !areaLoading && areaOptions.length === 0 && (
                               <Text style={{ fontSize: 12, color: "#DC2626", marginTop: 4 }}>
                                 No {cat.label} registered yet for any constituency.
                               </Text>
                             )}
+                            {isResolved && (
+                              <Text style={{ fontSize: 12, color: C.primary, marginTop: 4 }}>
+                                Matched when you signed in. Tap to switch to a different {cat.label}.
+                              </Text>
+                            )}
                             {isPostLogin && (
-                              <Text style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
-                                To change your representative, use "Link a representative" from Services.
+                              <Text style={{ fontSize: 12, color: C.primary, marginTop: 4 }}>
+                                Tap to switch or update your {cat.label}.
                               </Text>
                             )}
                           </View>

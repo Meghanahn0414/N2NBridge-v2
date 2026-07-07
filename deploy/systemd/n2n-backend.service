@@ -1,0 +1,17 @@
+[Unit]
+Description=N2N Backend (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/var/www/n2n-backend/current
+ExecStart=/var/www/n2n-backend/current/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=3
+# Reads /var/www/n2n-backend/current/.env, which is itself a symlink to
+# /var/www/n2n-backend/shared/.env — see deploy-backend.sh.
+
+[Install]
+WantedBy=multi-user.target
