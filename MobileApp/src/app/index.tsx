@@ -625,11 +625,6 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity onPress={() => setFlowMode("staff")} style={s.modeSwitch}>
-              <Text style={s.modeSwitchText}>
-                Representative, Admin, or Staff? <Text style={s.modeSwitchLink}>Sign in here</Text>
-              </Text>
-            </TouchableOpacity>
           </>
         )}
 
