@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAuthRole, getRepRolePrefix } from "../../../services/authStorage";
+import { getAuthRole, getAuthUser, getRepRolePrefix } from "../../../services/authStorage";
 import api from "../../../shared/services/api";
 import { ROUTES } from "../../../app/routes/RouteConstants";
 import "../styles/mla-layout.css";
@@ -476,6 +476,13 @@ const KPI = [
 export default function ExecutiveDashboard() {
   const pg       = { background: "#F3F5FA", minHeight: "100vh", fontFamily: "'Hanken Grotesk', sans-serif" };
   const navigate = useNavigate();
+
+  // Ward only exists as a concept for Councillors — MLA/MP representatives
+  // are elected from an assembly/parliamentary constituency, not a ward — so
+  // the "Ward: —" line under Top Active Citizens only makes sense for a
+  // Councillor's dashboard and is hidden for MLA/MP below.
+  const repTitle = String(getAuthUser()?.title || getAuthUser()?.rep_type || "").toUpperCase();
+  const isCouncillor = repTitle === "COUNCILLOR";
 
   const [selectedDays, setSelectedDays] = useState(365);
   const [showDateMenu,  setShowDateMenu] = useState(false);
@@ -1403,7 +1410,9 @@ export default function ExecutiveDashboard() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="notranslate" translate="no" style={{ font: "700 14px 'Hanken Grotesk'", color: "#16233C" }}>{r.name}</div>
-                      <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>Ward: {r.ward || "—"}</div>
+                      {isCouncillor && (
+                        <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>Ward: {r.ward || "—"}</div>
+                      )}
                     </div>
                     {i === 0 && (
                       <span className="notranslate" translate="no" style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#FCF1E0", color: "#B5781A", font: "700 11px 'Hanken Grotesk'", padding: "4px 10px", borderRadius: 20, flexShrink: 0 }}>
