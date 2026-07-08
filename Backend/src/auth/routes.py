@@ -47,6 +47,7 @@ from users.model import (
 )
 from utils.email_service import send_welcome_email
 from utils.jwt import TokenManager
+from utils.lookup_client import register_representative_with_lookup
 from utils.response import success_response
 
 # ── Three routers — one per Swagger section ───────────────────────────────────
@@ -368,13 +369,24 @@ def _create_representative_account(body: RepresentativeRegisterRequest) -> dict:
     except Exception as e:
         logger.warning(f"Welcome email failed for representative {email}: {e}")
 
-    return {
+    result = {
         "slug": slug, "rep_code": rep_code, "db_name": db_name, "user_id": user_id,
         "token": token, "name": name, "rep_type": rep_type, "email": email, "mobile": mobile,
         "assembly_name": assembly_name, "parliamentary_name": parliamentary_name,
         "ward_id": ward_id, "ward_name": ward_name,
         "taluk": taluk, "district": district, "state": state,
     }
+
+    # Immediately tell the central Lookup Service about this new
+    # representative — safe no-op unless LOOKUP_SERVICE_URL/REP_SERVER_URL/
+    # LOOKUP_REGISTER_KEY are configured on this server. Never let a
+    # Lookup Service hiccup fail the registration itself.
+    try:
+        register_representative_with_lookup(result)
+    except Exception as e:
+        logger.warning(f"Lookup Service registration failed for {email}: {e}")
+
+    return result
 
 
 @rep_router.post("/register", status_code=status.HTTP_201_CREATED,
