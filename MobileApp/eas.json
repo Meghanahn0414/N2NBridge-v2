@@ -16,7 +16,10 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_LOOKUP_URL": "https://kvslookup.in"
+      }
     }
   },
   "submit": {

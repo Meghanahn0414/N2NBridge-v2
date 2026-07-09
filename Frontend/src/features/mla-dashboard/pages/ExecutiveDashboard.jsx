@@ -142,12 +142,19 @@ function InfoTip({ text, children }) {
   const [open, setOpen] = useState(false);
   return (
     <span
-      style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "0 8px", minWidth: 24, minHeight: 24 }}
-      onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+      style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, cursor: "default", padding: "0 8px", minWidth: 24, minHeight: 24 }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
       tabIndex={0}
       aria-label={text}
     >
       {children}
+      {/* Hidden until this whole group (label/children + icon) is hovered —
+          `children` must be placed INSIDE InfoTip (not as a sibling next to
+          it) for that hover area to include the label text, not just the
+          tiny icon itself. */}
       <span style={{ width: 20, height: 20, borderRadius: 999, background: "#EFF6FF", border: "1px solid #DDE7F5", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#2563EB", fontSize: 12, fontWeight: 700, fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", opacity: open ? 1 : 0, transition: "opacity .12s ease" }}>
         i
       </span>
@@ -568,8 +575,8 @@ export default function ExecutiveDashboard() {
       } : null);
 
   const dashboardCards = [
-    { id: "overview", title: "Grievance Overview", type: "overview" },
-    { id: "category", title: "Grievances by Category", type: "category" },
+    { id: "overview", title: "Grievance Overview", type: "overview", tooltip: "Breakdown of all grievances by current status — New, Assigned, In Progress, and Resolved — for the selected date range." },
+    { id: "category", title: "Grievances by Category", type: "category", tooltip: "Grievance volume grouped by category (e.g. Roads, Water, Electricity), showing the top categories for the selected date range." },
   ];
 
   const categoryStats = analytics?.grievances?.byCategory
@@ -938,9 +945,14 @@ export default function ExecutiveDashboard() {
                   <span style={{ font:"600 12px 'Hanken Grotesk'", color:trendColor }}>{trendLabel}</span>
                 </div>
                 <div style={{ fontFamily:"'Newsreader','Noto Sans Kannada',serif", fontSize:"clamp(18px,2vw,28px)", fontWeight:400, color:"#16233C", lineHeight:1.2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{kv.value}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, font:"500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#8590A6", marginTop:4, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                  <span>{k.label}</span>
-                  <InfoTip text={k.tooltip} />
+                {/* overflow/ellipsis moved onto the label <span> itself, not this
+                    row — this row also holds InfoTip's absolutely-positioned
+                    popup, which `overflow:hidden` here was silently clipping,
+                    so the icon showed but its tooltip text never did. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, font:"500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#8590A6", marginTop:4 }}>
+                  <InfoTip text={k.tooltip}>
+                    <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{k.label}</span>
+                  </InfoTip>
                 </div>
                 {/* Trend bar — width proportional to value, no fake sparkline */}
                 <div style={{ marginTop:12, height:4, borderRadius:3, background:"#F0F2F7", overflow:"hidden" }}>
@@ -974,9 +986,10 @@ export default function ExecutiveDashboard() {
                   <span style={{ font:"600 12px 'Hanken Grotesk'", color:citizensTrendColor }}>{citizensTrendLabel}</span>
                 </div>
                 <div style={{ fontFamily:"'Newsreader','Noto Sans Kannada',serif", fontSize:"clamp(18px,2vw,28px)", fontWeight:400, color:"#16233C", lineHeight:1.2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{residentStats ? fmt(residentsTotal) : "—"}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, font:"500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#8590A6", marginTop:4, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                  <span>Total Registered Citizens</span>
-                  <InfoTip text="Total registered residents in your constituency." />
+                <div style={{ display: "flex", alignItems: "center", gap: 6, font:"500 12px 'Hanken Grotesk','Noto Sans Kannada',sans-serif", color:"#8590A6", marginTop:4 }}>
+                  <InfoTip text="Total registered residents in your constituency.">
+                    <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>Total Registered Citizens</span>
+                  </InfoTip>
                 </div>
                 <div style={{ marginTop:12, height:4, borderRadius:3, background:"#F0F2F7", overflow:"hidden" }}>
                   <div style={{ height:"100%", borderRadius:3, background:"#2B5BD7", width:`${activeShare}%`, opacity:0.5 }} />
@@ -1021,8 +1034,9 @@ export default function ExecutiveDashboard() {
           <div style={{ background:"#fff", borderRadius:22, padding:24, border:"1px solid #EAEDF4", boxShadow:"0 14px 30px -22px rgba(20,35,60,.18)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18, flexWrap:"wrap", gap:10 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>Grievance Trend</div>
-                <InfoTip text={`Received = grievances created in each calendar month. Resolved = grievances marked RESOLVED or CLOSED in each calendar month (by the date they were resolved, not created). Bucketed to match therange selected above.`} />
+                <InfoTip text={`Received = grievances created in each calendar month. Resolved = grievances marked RESOLVED or CLOSED in each calendar month (by the date they were resolved, not created). Bucketed to match therange selected above.`}>
+                  <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>Grievance Trend</div>
+                </InfoTip>
               </div>
               <div style={{ display:"flex", gap:14 }}>
                 <span style={{ display:"flex", alignItems:"center", gap:6, font:"600 12px 'Hanken Grotesk'", color:"#475569" }}>
@@ -1094,8 +1108,9 @@ export default function ExecutiveDashboard() {
           <div style={{ background:"#fff", border:"1px solid #EAEDF4", borderRadius:22, padding:24, boxShadow:"0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Support by Area</div>
-                <InfoTip text="Support by Area = approval percentage by area (ward for Councillors, assembly constituency for MLAs, parliamentary constituency for MPs), plotted from low to high on the gradient." />
+                <InfoTip text="Support by Area = approval percentage by area (ward for Councillors, assembly constituency for MLAs, parliamentary constituency for MPs), plotted from low to high on the gradient.">
+                  <div style={{ font:"700 16px 'Hanken Grotesk'", color:"#16233C" }}>Support by Area</div>
+                </InfoTip>
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                 <span style={{ font:"500 11px 'Hanken Grotesk'", color:"#8590A6" }}>Low</span>
@@ -1125,10 +1140,11 @@ export default function ExecutiveDashboard() {
                     <div key={w.wardId} style={{ position:"relative" }}>
                       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3, alignItems:"center" }}>
                         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                          <span style={{ font:"600 11px 'Hanken Grotesk'", color:"#16233C" }}>
-                            Ward {w.wardName}
-                          </span>
-                          <InfoTip text={`Ward ${w.wardName}: ${pct}% approval, ${w.total ?? 0} grievances.`} />
+                          <InfoTip text={`Ward ${w.wardName}: ${pct}% approval, ${w.total ?? 0} grievances.`}>
+                            <span style={{ font:"600 11px 'Hanken Grotesk'", color:"#16233C" }}>
+                              Ward {w.wardName}
+                            </span>
+                          </InfoTip>
                         </div>
                         <span style={{ font:"700 11px 'Hanken Grotesk'", color: barColor }}>{pct}%</span>
                       </div>
@@ -1195,7 +1211,9 @@ export default function ExecutiveDashboard() {
               return (
                 <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
-                    <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                    <InfoTip text={card.tooltip}>
+                      <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                    </InfoTip>
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:"160px 1fr", gap:24, alignItems:"center" }}>
                     <div style={{ position:"relative", width:160, height:160 }}>
@@ -1243,7 +1261,9 @@ export default function ExecutiveDashboard() {
               return (
                 <div key={card.id} style={{ background: "#fff", borderRadius: 22, padding: 24, border: "1px solid #EAEDF4", boxShadow: "0 14px 30px -22px rgba(20,35,60,.18)" }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
-                    <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                    <InfoTip text={card.tooltip}>
+                      <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C" }}>{card.title}</div>
+                    </InfoTip>
                   </div>
                   {categoryStats.length > 0 ? (
                     <div style={{ display:"grid", gap:14 }}>
@@ -1443,7 +1463,9 @@ export default function ExecutiveDashboard() {
 
           {/* Citizen Satisfaction Index */}
           <div style={{ background:"#fff", borderRadius:22, padding:24, border:"1px solid #EAEDF4", boxShadow:"0 14px 30px -22px rgba(20,35,60,.18)", display:"flex", flexDirection:"column", alignItems:"center" }}>
-            <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C", alignSelf:"flex-start", marginBottom:8 }}>Citizen Satisfaction Index</div>
+            <InfoTip text="Approval rating computed from AI sentiment analysis of citizen feedback and grievance comments, or overall ratings when sentiment data isn't yet available.">
+              <div style={{ font:"700 18px 'Hanken Grotesk'", color:"#16233C", alignSelf:"flex-start", marginBottom:8 }}>Citizen Satisfaction Index</div>
+            </InfoTip>
             {hasSatisfactionData ? (
               <>
                 <div style={{ position:"relative", width:220, marginTop:10 }}>

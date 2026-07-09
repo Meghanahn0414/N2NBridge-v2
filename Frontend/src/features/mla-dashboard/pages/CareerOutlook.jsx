@@ -13,8 +13,11 @@ function InfoTip({ text, children }) {
   const [open, setOpen] = useState(false);
   return (
     <span
-      style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "0 8px", minWidth: 24, minHeight: 24 }}
-      onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+      style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, cursor: "default", padding: "0 8px", minWidth: 24, minHeight: 24 }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
       tabIndex={0}
       aria-label={text}
     >

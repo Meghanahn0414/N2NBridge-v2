@@ -37,18 +37,21 @@ function usePopularityData(days) {
 }
 
 /* ── Approval Line Chart ──────────────────────────────────────── */
-function InfoTip({ text }) {
+function InfoTip({ text, children }) {
   const [open, setOpen] = useState(false);
   return (
     <span
-      style={{ position: "relative", display: "inline-flex", alignItems: "center", padding: "0 6px", minWidth: 20, cursor: "pointer" }}
-      onClick={(e) => { e.stopPropagation(); setOpen(open => !open); }}
+      style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6, padding: "0 6px", minWidth: 20, cursor: "default" }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
       tabIndex={0}
       aria-label={text}
     >
+      {children}
       <span
         style={{
-          marginLeft: 8,
           cursor: "help",
           color: "#2563eb",
           display: "inline-flex",
@@ -551,8 +554,9 @@ export default function CitizenSentimentDashboard() {
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Overall Approval Rating</div>
-              <InfoTip text="Latest approval % from citizen sentiment trend data." />
+              <InfoTip text="Latest approval % from citizen sentiment trend data.">
+                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Overall Approval Rating</div>
+              </InfoTip>
             </div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 13 }}>
                   <span style={{ font: "400 52px 'Newsreader'", color: "#16233C", lineHeight: .9, letterSpacing: "-.02em" }}>
@@ -574,15 +578,17 @@ export default function CitizenSentimentDashboard() {
               <div style={{ display: "flex", gap: 18 }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>Lowest point</span>
-                    <InfoTip text={`The lowest approval rating recorded during the last ${period}. Approval rating comes from citizen sentiment (positive feedback share) over time.`} />
+                    <InfoTip text={`The lowest approval rating recorded during the last ${period}. Approval rating comes from citizen sentiment (positive feedback share) over time.`}>
+                      <span style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>Lowest point</span>
+                    </InfoTip>
                   </div>
                   <div style={{ font: "400 20px 'Newsreader'", color: "#16233C" }}>{moLow != null ? `${moLow}%` : "—"}</div>
                 </div>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>Highest point</span>
-                    <InfoTip text={`The highest approval rating recorded during the last ${period}. Approval rating comes from citizen sentiment (positive feedback share) over time.`} />
+                    <InfoTip text={`The highest approval rating recorded during the last ${period}. Approval rating comes from citizen sentiment (positive feedback share) over time.`}>
+                      <span style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6" }}>Highest point</span>
+                    </InfoTip>
                   </div>
                   <div style={{ font: "400 20px 'Newsreader'", color: "#2B5BD7" }}>{moHigh != null ? `${moHigh}%` : "—"}</div>
                 </div>
@@ -594,8 +600,9 @@ export default function CitizenSentimentDashboard() {
           {/* Net sentiment score */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: "26px 28px", boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Citizen Mood Score</div>
-              <InfoTip text="How this number is worked out: the share of feedback that's positive, minus the share that's negative. A higher number means more people are happy; a lower (or negative) number means more people are unhappy." />
+              <InfoTip text="How this number is worked out: the share of feedback that's positive, minus the share that's negative. A higher number means more people are happy; a lower (or negative) number means more people are unhappy.">
+                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>Citizen Mood Score</div>
+              </InfoTip>
             </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>Happy feedback minus unhappy feedback</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 6 }}>
@@ -651,8 +658,9 @@ export default function CitizenSentimentDashboard() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>How Citizens Feel Over Time</div>
-                  <InfoTip text="Shows the mix of happy, neutral, and unhappy feedback from citizens, month by month." />
+                  <InfoTip text="Shows the mix of happy, neutral, and unhappy feedback from citizens, month by month.">
+                    <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C" }}>How Citizens Feel Over Time</div>
+                  </InfoTip>
                 </div>
                 <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginTop: 2 }}>Happy, neutral, and unhappy feedback, last {period}</div>
               </div>
@@ -671,8 +679,9 @@ export default function CitizenSentimentDashboard() {
           {/* Where feedback comes from */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Where Feedback Comes From</div>
-              <InfoTip text="Where citizens are sending their feedback from: app reports, comments, and surveys." />
+              <InfoTip text="Where citizens are sending their feedback from: app reports, comments, and surveys.">
+                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Where Feedback Comes From</div>
+              </InfoTip>
             </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 20 }}>
               {sources?.total != null ? `${sources.total.toLocaleString()} responses this period` : "No responses yet this period"}
@@ -707,8 +716,9 @@ export default function CitizenSentimentDashboard() {
           {/* Approval by age group */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Approval by Age Group</div>
-              <InfoTip text="How approval differs across citizen age groups." />
+              <InfoTip text="How approval differs across citizen age groups.">
+                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Approval by Age Group</div>
+              </InfoTip>
             </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 22 }}>Where you connect — and where to grow</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 18, height: 180, padding: "0 6px" }}>
@@ -732,8 +742,9 @@ export default function CitizenSentimentDashboard() {
           {/* What's moving your numbers */}
           <div style={{ background: "#fff", border: "1px solid #EAEDF4", borderRadius: 22, padding: 24, boxShadow: "0 14px 30px -22px rgba(20,35,60,.3)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Top Issues Affecting Public Opinion</div>
-              <InfoTip text="Most influential issues driving sentiment during this period." />
+              <InfoTip text="Most influential issues driving sentiment during this period.">
+                <div style={{ font: "700 16px 'Hanken Grotesk'", color: "#16233C", marginBottom: 4 }}>Top Issues Affecting Public Opinion</div>
+              </InfoTip>
             </div>
             <div style={{ font: "500 12px 'Hanken Grotesk'", color: "#8590A6", marginBottom: 18 }}>Issues with the biggest impact this period</div>
             {moving?.hasData ? (
@@ -756,8 +767,9 @@ export default function CitizenSentimentDashboard() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ font: "700 13px 'Hanken Grotesk'", color: "#16233C", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.label}</div>
-                          <InfoTip text={tooltip} />
+                          <InfoTip text={tooltip}>
+                            <div style={{ font: "700 13px 'Hanken Grotesk'", color: "#16233C", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.label}</div>
+                          </InfoTip>
                         </div>
                         <div style={{ font: "500 11px 'Hanken Grotesk'", color: "#8590A6" }}>{d.sub}</div>
                       </div>

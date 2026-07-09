@@ -1,0 +1,63 @@
+/* ============================================================
+   N2Bridge — Typography tokens
+   Display: Source Serif 4 (warm, editorial, trustworthy)
+   UI/Body: Public Sans (civic humanist sans — USWDS lineage)
+   Mono:    IBM Plex Mono (case IDs, timestamps, data)
+   ============================================================ */
+:root {
+  /* Families */
+  --font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* Type scale (1.20 minor-third-ish, tuned) */
+  --text-2xs: 11px;
+  --text-xs:  12px;
+  --text-sm:  13px;
+  --text-base: 15px;
+  --text-md:  16px;
+  --text-lg:  18px;
+  --text-xl:  21px;
+  --text-2xl: 26px;
+  --text-3xl: 32px;
+  --text-4xl: 40px;
+  --text-5xl: 52px;
+  --text-6xl: 64px;
+
+  /* Weights */
+  --weight-regular: 400;
+  --weight-medium:  500;
+  --weight-semibold: 600;
+  --weight-bold:    700;
+
+  /* Line heights */
+  --leading-tight: 1.12;
+  --leading-snug:  1.28;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Letter spacing */
+  --tracking-tight: -0.02em;
+  --tracking-snug:  -0.01em;
+  --tracking-normal: 0em;
+  --tracking-wide:  0.04em;
+  --tracking-caps:  0.08em;
+
+  /* ---- Semantic text roles ---- */
+  --text-body:       var(--text-base);
+  --text-body-lg:    var(--text-md);
+  --text-label:      var(--text-sm);
+  --text-caption:    var(--text-xs);
+  --text-overline:   var(--text-2xs);
+}
+
+/* Reusable type utility classes (optional helpers for kits/cards) */
+.n2-display-xl { font-family: var(--font-display); font-size: var(--text-6xl); font-weight: var(--weight-700, 700); line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); }
+.n2-display    { font-family: var(--font-display); font-size: var(--text-4xl); font-weight: 600; line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); }
+.n2-headline   { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 600; line-height: var(--leading-snug); letter-spacing: var(--tracking-snug); }
+.n2-title      { font-family: var(--font-sans); font-size: var(--text-lg); font-weight: 600; line-height: var(--leading-snug); }
+.n2-body       { font-family: var(--font-sans); font-size: var(--text-base); font-weight: 400; line-height: var(--leading-normal); }
+.n2-label      { font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 500; line-height: var(--leading-snug); }
+.n2-caption    { font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 400; line-height: var(--leading-snug); color: var(--text-muted); }
+.n2-overline   { font-family: var(--font-sans); font-size: var(--text-2xs); font-weight: 600; line-height: 1; letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--text-muted); }
+.n2-mono       { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; letter-spacing: var(--tracking-snug); }

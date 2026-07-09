@@ -1,0 +1,37 @@
+# Root-level .easignore — controls what `eas build` uploads when run from
+# MobileApp/ inside this monorepo. Without this, EAS archives the ENTIRE
+# repo (Backend, Frontend, LookupService, MobileApp together), including
+# multi-GB Python venvs that have nothing to do with the mobile app build.
+
+# Python backends — never needed for a mobile app build
+Backend/.venv/
+Backend/venv/
+Backend/__pycache__/
+Backend/**/__pycache__/
+Backend/.pytest_cache/
+Backend/uploads/
+LookupService/.venv/
+LookupService/venv/
+LookupService/__pycache__/
+LookupService/**/__pycache__/
+LookupService/.pytest_cache/
+
+# Frontend web app — not needed for the mobile build either
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+
+# MobileApp itself — EAS reinstalls deps server-side, don't ship these
+MobileApp/node_modules/
+MobileApp/.expo/
+MobileApp/dist/
+MobileApp/web-build/
+MobileApp/android/
+MobileApp/ios/
+MobileApp/coverage/
+
+# Git metadata / misc caches anywhere in the repo
+.git/
+.pytest_cache/
+**/__pycache__/
+*.pyc
